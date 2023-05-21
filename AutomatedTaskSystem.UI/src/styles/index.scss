@@ -1,0 +1,16 @@
+@import "./root";
+
+#app {
+	font-family: Inter;
+	background-color: #e2e8f0;
+	display: flex;
+	flex-direction: row;
+	height: 100vh;
+	width: 100vw;
+}
+
+.container {
+	padding: 0 1.25rem;
+	flex-grow: 1;
+	overflow-y: auto;
+}

@@ -1,0 +1,26 @@
+@import "../../styles/root";
+
+.pageheader {
+	flex-shrink: 0;
+	position: sticky;
+	top: 0;
+	left: 0;
+	background-color: $white;
+	border-bottom-left-radius: 0.75rem;
+	border-bottom-right-radius: 0.75rem;
+	height: 5rem;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 1rem;
+	font-size: 1.5rem;
+	font-weight: bold;
+	color: $gunmetal;
+	z-index: 10;
+
+	& > div {
+		display: flex;
+		align-items: center;
+		gap: 0.625rem;
+	}
+}

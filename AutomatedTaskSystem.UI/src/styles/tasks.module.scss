@@ -1,0 +1,69 @@
+.container {
+	max-height: 100vh;
+	padding: 0 1.25rem;
+	flex-grow: 1;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+
+	.tasks {
+		padding-top: 1.25rem;
+		flex-grow: 1;
+		overflow-x: auto;
+		overflow-y: hidden;
+		white-space: nowrap;
+
+		& > .col {
+			display: inline-flex;
+			gap: 1rem;
+			width: 25rem;
+			border-left: 1px solid #fff;
+			height: 100%;
+			overflow-y: auto;
+			flex-direction: column;
+			padding: 0 0.75rem;
+
+			&:first-child {
+				border: none;
+			}
+
+			.flagged {
+				border: 1px solid red;
+			}
+
+			.task {
+				background-color: #fff;
+				padding: 1rem;
+				border-radius: 0.5rem;
+				display: flex;
+				flex-direction: column;
+				gap: 0.5rem;
+
+				.info {
+					display: flex;
+					align-items: center;
+					gap: 0.5rem;
+
+					.color {
+						width: 0.5rem;
+						height: 0.5rem;
+						border-radius: 100%;
+						background-color: black;
+					}
+				}
+
+				.details {
+					display: flex;
+					justify-content: space-between;
+					color: rgba(0, 0, 0, 0.75);
+				}
+
+				.actions {
+					display: flex;
+					justify-content: space-between;
+					flex-direction: row-reverse;
+				}
+			}
+		}
+	}
+}

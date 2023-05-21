@@ -1,0 +1,22 @@
+@import "../styles/root";
+
+.GridItem {
+	background-color: $white;
+	display: flex;
+	align-items: center;
+	border-radius: 0.5rem;
+	overflow: hidden;
+	width: 12.5rem;
+	height: 5rem;
+	gap: 0.5rem;
+
+	.color {
+		height: 3.75rem;
+		width: 3.75rem;
+	}
+
+	.info {
+		font-size: 0.875rem;
+		opacity: 0.5;
+	}
+}

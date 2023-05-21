@@ -1,0 +1,26 @@
+@import "../../styles/root";
+
+.table {
+	width: 100%;
+	padding: 0.75rem;
+	background-color: $white;
+	border-radius: 0.75rem;
+
+	.title {
+		font-size: 1.25rem;
+		font-weight: 500;
+	}
+
+	.info {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 0.5rem;
+	}
+
+	.content {
+		padding: 0.5rem;
+		background-color: #eaeef4;
+		border-radius: 0.5rem;
+	}
+}

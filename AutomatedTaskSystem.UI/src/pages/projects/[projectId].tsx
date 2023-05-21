@@ -1,0 +1,571 @@
+import { useEffect, useState } from "react";
+import PlusIcon from "../../assets/Icons/Plus";
+import QueryButton from "../../components/button/queryButton";
+import Header from "../../components/header/header";
+import API from "../../lib/API";
+import { useRouter } from "next/router";
+import AddUnit from "../../components/forms/projects/addUnit";
+import AddLesson from "../../components/forms/projects/addLesson";
+import AddLearningObjective from "../../components/forms/projects/addLearningObjective";
+import { useAppSelector } from "../../app/hooks";
+import ProjectAssign from "../../components/forms/projects/projectAssign";
+import ProjectUnassign from "../../components/forms/projects/projectUnassign";
+import EditLearningObjective from "../../components/forms/projects/editLearningObjective";
+import Link from "next/link";
+
+const LearningObjective = (
+  props: LearningObjective & {
+    remove: (id: number) => void;
+    lightBg?: boolean;
+  }
+) => {
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
+
+  return (
+    <div
+      className={`grid grid-cols-6 px-2 ${
+        props.lightBg ? " bg-slate-100" : "bg-slate-200"
+      }`}
+      onMouseLeave={deleting ? () => setDeleting(false) : undefined}
+    >
+      <div className="bg-inherit">{props.name}</div>
+      <div className="bg-inherit">{props.schema.name}</div>
+      <div className="bg-inherit">{props.tag}</div>
+      <div className="bg-inherit">{props.template}</div>
+      <div className="bg-inherit">{props.environment}</div>
+      <div className="bg-inherit flex justify-end">
+        <Link
+          href={{
+            pathname: `/projects/${router.query.projectId}`,
+            query: {
+              learningObjective: props.id,
+            },
+          }}
+        >
+          <button className="text-base text-blue-600 font-normal px-3 rounded flex items-center justify-center py-1 hover:underline">
+            Edit
+          </button>
+        </Link>
+        <button
+          className={`transition-all ease-out text-base gap-2 font-normal px-3 rounded flex items-center justify-center py-1 ${
+            deleting ? "bg-rose-500 text-white" : "text-rose-500"
+          }`}
+          onClick={
+            deleting ? () => props.remove(props.id) : () => setDeleting(true)
+          }
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const Lesson = (
+  props: Lesson & {
+    removeLearningObjective: (id: number) => void;
+    remove: (id: number) => void;
+  }
+) => {
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+
+  return (
+    <div>
+      <div
+        onMouseLeave={deleting ? () => setDeleting(false) : undefined}
+        className="flex justify-between bg-slate-300 p-2"
+      >
+        <h3 className="text-lg">{props.name}</h3>
+        <div className="flex gap-2">
+          <button
+            className={`transition-all ease-out text-base gap-2 font-normal px-3 rounded flex items-center justify-center py-1 ${
+              deleting ? "bg-rose-500 text-white" : "text-rose-500"
+            }`}
+            onClick={
+              deleting ? () => props.remove(props.id) : () => setDeleting(true)
+            }
+          >
+            Delete
+          </button>
+          <QueryButton
+            iconLeft
+            iconRight={false}
+            icon={<PlusIcon />}
+            text="Learning Objective"
+            url={{
+              pathname: `/projects/${router.query.projectId}`,
+              query: {
+                form: "learning-objective",
+                lessonId: props.id,
+              },
+            }}
+          />
+        </div>
+      </div>
+      <div className="relative flex flex-col gap-1">
+        <div className="grid px-2 grid-cols-6 sticky top-0 bg-slate-100">
+          <div>Name</div>
+          <div>Type</div>
+          <div>Tag</div>
+          <div>Template</div>
+          <div>Environment</div>
+          <div className="flex gap-2 justify-end ">Actions</div>
+        </div>
+        {props.learningObjectives.map((lo, i) => {
+          return (
+            <LearningObjective
+              remove={props.removeLearningObjective}
+              key={lo.id}
+              lightBg={i % 2 !== 0}
+              {...lo}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const Unit = (
+  props: Unit & {
+    remove: (id: number) => void;
+    removeLesson: (id: number) => void;
+    removeLearningObjective: (id: number) => void;
+  }
+) => {
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+
+  return (
+    <div className="overflow-hidden border border-solid border-slate-300 rounded-md">
+      <div
+        className="flex justify-between p-2"
+        onMouseLeave={deleting ? () => setDeleting(false) : undefined}
+      >
+        <h3 className="text-xl">{props.name}</h3>
+        <div className="flex gap-1">
+          <button
+            className={`transition-all ease-out text-base gap-2 font-normal px-3 rounded flex items-center justify-center py-1 ${
+              deleting ? "bg-rose-500 text-white" : "text-rose-500"
+            }`}
+            onClick={
+              deleting ? () => props.remove(props.id) : () => setDeleting(true)
+            }
+          >
+            Delete
+          </button>
+          <QueryButton
+            iconLeft
+            iconRight={false}
+            icon={<PlusIcon />}
+            text="Lesson"
+            url={{
+              pathname: `/projects/${router.query.projectId}`,
+              query: {
+                form: "lesson",
+                unitId: props.id,
+              },
+            }}
+          />
+        </div>
+      </div>
+      <div className="flex flex-col mt-2">
+        {props.lessons.map((l) => (
+          <Lesson
+            removeLearningObjective={props.removeLearningObjective}
+            remove={props.removeLesson}
+            key={l.id}
+            {...l}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const Project = () => {
+  const [project, setProject] = useState<ProjectDetails>();
+  const router = useRouter();
+  const auth = useAppSelector((s) => s.authSlice);
+  const [activeLO, setActiveLO] = useState<LearningObjective>();
+
+  if (!auth.isAuth || auth.role != 1) router.replace("/");
+
+  useEffect(() => {
+    if (router.query.projectId)
+      API.PROJECTS.GET_ONE_DETAILED(router.query.projectId).then((res) => {
+        if (res && !res.error) setProject(res.data);
+      });
+  }, [router.query]);
+
+  useEffect(() => {
+    const idQuery = router.query.learningObjective;
+    if (idQuery && project) {
+      const id = parseInt(idQuery.toString());
+      if (!isNaN(id))
+        for (const { lessons } of project.units)
+          for (const { learningObjectives } of lessons)
+            for (const lo of learningObjectives)
+              if (lo.id === id) return setActiveLO(lo);
+    }
+    setActiveLO(undefined);
+  }, [router.query.learningObjective, project]);
+
+  const handlers = {
+    project: {
+      assign: (userIds: number[]) => {
+        API.PROJECTS.ASSIGN({
+          projectId: router.query.projectId!,
+          userIds,
+        }).then(() => {
+          router.back();
+        });
+      },
+      unassign: (userIds: number[]) => {
+        API.PROJECTS.UNASSIGN({
+          projectId: router.query.projectId!,
+          userIds,
+        }).then(() => {
+          router.back();
+        });
+      },
+    },
+    unit: {
+      add: (name: string) => {
+        if (project) {
+          API.PROJECTS.UNITS.ADD({
+            name,
+            projectId: project.id,
+          }).then((res) => {
+            if (res && !res.error) {
+              setProject((ps) => {
+                return { ...ps!, units: [...ps!.units, res.data] };
+              });
+              router.back();
+            }
+          });
+        }
+      },
+      remove: (id: number) => {
+        if (project) {
+          API.PROJECTS.UNITS.REMOVE(id).then((res) => {
+            if (res) {
+              setProject((ps) => {
+                const newUnits: Unit[] = [];
+                ps!.units.forEach((u) => {
+                  if (u.id == id) {
+                    return;
+                  }
+                  newUnits.push(u);
+                });
+                return { ...ps!, units: newUnits };
+              });
+            }
+          });
+        }
+      },
+    },
+    lesson: {
+      add: (name: string) => {
+        const unitId = router.query.unitId;
+        if (unitId) {
+          const id = parseInt(unitId.toString());
+          !isNaN(id) &&
+            API.PROJECTS.UNITS.LESSONS.ADD({
+              name,
+              unitId: id,
+            }).then((res) => {
+              if (res) {
+                setProject((ps) => {
+                  const units: Unit[] = [];
+                  ps!.units.forEach((u) => {
+                    if (u.id == id) {
+                      u.lessons.push(res);
+                    }
+                    units.push(u);
+                  });
+                  return { ...ps!, units };
+                });
+                router.back();
+              }
+            });
+        }
+      },
+      remove: (id: number) => {
+        API.PROJECTS.UNITS.LESSONS.REMOVE(id).then((res) => {
+          if (res) {
+            setProject((ps) => {
+              const newUnits: Unit[] = [];
+              ps!.units.forEach((u) => {
+                const newLessons: Lesson[] = [];
+                u.lessons.forEach((l) => {
+                  if (l.id == id) {
+                    return;
+                  }
+                  newLessons.push(l);
+                });
+                newUnits.push({ ...u, lessons: newLessons });
+              });
+              return { ...ps!, units: newUnits };
+            });
+          }
+        });
+      },
+    },
+    learningObjective: {
+      add: ({
+        name,
+        schemaId,
+        environment,
+        tag,
+        template,
+      }: {
+        name: string;
+        schemaId: number;
+        tag: string;
+        template: string;
+        environment: string;
+      }) => {
+        const lessonId = router.query.lessonId;
+        if (lessonId) {
+          const id = parseInt(lessonId.toString());
+          API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.CREATE({
+            lessonId: id,
+            name,
+            schemaId,
+            environment,
+            tag,
+            template,
+          }).then((res) => {
+            if (res) {
+              setProject((ps) => {
+                const units: Unit[] = [];
+                ps!.units.forEach((u) => {
+                  u.lessons.forEach((l) => {
+                    if (l.id == id) {
+                      l.learningObjectives.push(res);
+                    }
+                  });
+                  units.push(u);
+                });
+                return { ...ps!, units };
+              });
+              router.back();
+            }
+          });
+        }
+      },
+      edit: async (params: LearningObjective) => {
+        setProject((ps) => {
+          const newUnits: Unit[] = [];
+          ps!.units.forEach((u) => {
+            const newLessons: Lesson[] = [];
+            u.lessons.forEach((l) => {
+              const newLOs: LearningObjective[] = [];
+              l.learningObjectives.forEach((lo) => {
+                if (lo.id == params.id) return newLOs.push(params);
+                newLOs.push(lo);
+              });
+              newLessons.push({
+                ...l,
+                learningObjectives: newLOs,
+              });
+            });
+            newUnits.push({
+              ...u,
+              lessons: newLessons,
+            });
+          });
+          return { ...ps!, units: newUnits };
+        });
+        router.back();
+      },
+      remove: (id: number) => {
+        API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.REMOVE(id).then(
+          (res) => {
+            if (res) {
+              setProject((ps) => {
+                const newUnits: Unit[] = [];
+                ps!.units.forEach((u) => {
+                  const newLessons: Lesson[] = [];
+                  u.lessons.forEach((l) => {
+                    const newLOs: LearningObjective[] = [];
+                    l.learningObjectives.forEach((lo) => {
+                      if (lo.id == id) {
+                        return;
+                      }
+                      newLOs.push(lo);
+                    });
+                    newLessons.push({
+                      ...l,
+                      learningObjectives: newLOs,
+                    });
+                  });
+                  newUnits.push({
+                    ...u,
+                    lessons: newLessons,
+                  });
+                });
+                return { ...ps!, units: newUnits };
+              });
+            }
+          }
+        );
+      },
+      assignment: (
+        id: string | string[],
+        type: "assign" | "unassign",
+        userIds: number[]
+      ) => {
+        if (type == "assign")
+          API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.ASSIGN(
+            id,
+            userIds
+          ).then((res) => {
+            if (res) {
+              setProject((ps) => {
+                const newUnits: Unit[] = [];
+                ps!.units.forEach((u) => {
+                  const newLessons: Lesson[] = [];
+                  u.lessons.forEach((l) => {
+                    const newLOs: LearningObjective[] = [];
+                    l.learningObjectives.forEach((lo) => {
+                      if (lo.id.toString() === id) {
+                        return newLOs.push(res);
+                      }
+                      newLOs.push(lo);
+                    });
+                    newLessons.push({
+                      ...l,
+                      learningObjectives: newLOs,
+                    });
+                  });
+                  newUnits.push({
+                    ...u,
+                    lessons: newLessons,
+                  });
+                });
+                return { ...ps!, units: newUnits };
+              });
+            }
+            router.back();
+          });
+        else
+          return API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.UNASSIGN(
+            id,
+            userIds
+          ).then((res) => {
+            if (res) {
+              setProject((ps) => {
+                const newUnits: Unit[] = [];
+                ps!.units.forEach((u) => {
+                  const newLessons: Lesson[] = [];
+                  u.lessons.forEach((l) => {
+                    const newLOs: LearningObjective[] = [];
+                    l.learningObjectives.forEach((lo) => {
+                      if (lo.id.toString() === id) {
+                        return newLOs.push(res);
+                      }
+                      newLOs.push(lo);
+                    });
+                    newLessons.push({
+                      ...l,
+                      learningObjectives: newLOs,
+                    });
+                  });
+                  newUnits.push({
+                    ...u,
+                    lessons: newLessons,
+                  });
+                });
+                return { ...ps!, units: newUnits };
+              });
+            }
+          });
+      },
+    },
+  };
+
+  if (project)
+    return (
+      <div className="w-full px-4">
+        <Header text={project.name} icon="Project">
+          <QueryButton
+            icon={<PlusIcon />}
+            text="Remove Users"
+            url={{
+              pathname: `/projects/${project.id}`,
+              query: {
+                form: "unassign",
+              },
+            }}
+          />
+          <QueryButton
+            icon={<PlusIcon />}
+            text="Assign Users"
+            url={{
+              pathname: `/projects/${project.id}`,
+              query: {
+                form: "assign",
+              },
+            }}
+          />
+        </Header>
+        <div className="py-4 flex flex-col gap-4">
+          <div className="flex justify-between">
+            <h2 className="text-3xl">Units</h2>
+            <QueryButton
+              iconLeft
+              iconRight={false}
+              icon={<PlusIcon />}
+              text="Unit"
+              url={{
+                pathname: `/projects/${project.id}`,
+                query: {
+                  form: "unit",
+                },
+              }}
+            />
+          </div>
+          {project.units.map((u) => (
+            <Unit
+              key={u.id}
+              {...u}
+              removeLesson={handlers.lesson.remove}
+              removeLearningObjective={handlers.learningObjective.remove}
+              remove={handlers.unit.remove}
+            />
+          ))}
+        </div>
+        <>
+          <AddUnit
+            path={`/projects/${project.id}`}
+            submit={handlers.unit.add}
+          />
+          <AddLesson
+            path={`/projects/${project.id}`}
+            submit={handlers.lesson.add}
+          />
+          <AddLearningObjective
+            path={`/projects/${project.id}`}
+            submit={handlers.learningObjective.add}
+          />
+          <ProjectAssign handler={handlers.project.assign} />
+          <ProjectUnassign handler={handlers.project.unassign} />
+          {activeLO ? (
+            <EditLearningObjective
+              updateLo={handlers.learningObjective.edit}
+              {...activeLO}
+            />
+          ) : (
+            ""
+          )}
+        </>
+      </div>
+    );
+  return <div>loading</div>;
+};
+
+export default Project;
