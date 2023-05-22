@@ -22,7 +22,7 @@ const columns: GridColDef[] = [
 	{ field: "col3", headerName: "Role", width: 200 },
 	{
 		field: "col4",
-		headerName: "Action",
+		headerName: "Actions",
 		width: 150,
 		renderCell: (c) => (
 			<div className="flex justify-end gap-4">
@@ -95,7 +95,7 @@ const Users = () => {
 					}}
 				>
 					<button className="px-4 py-1 rounded bg-blue-600 text-white">
-						Add user
+						Add User
 					</button>
 				</Link>
 			</div>
