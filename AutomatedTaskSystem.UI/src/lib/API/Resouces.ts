@@ -116,6 +116,36 @@ const RESOURCES = {
 				return false;
 			}
 		},
+		EDIT: async ({
+			id,
+			name,
+			groupId,
+			roleId,
+		}: {
+			id: string | number;
+			name: string;
+			groupId: number;
+			roleId: number;
+		}) => {
+			try {
+				const res = await fetch(`${url}/users/${id}`, {
+					method: "PATCH",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ name, groupId, roleId }),
+				});
+				const data: {
+					error: boolean;
+					message: string;
+					data: IUser;
+				} = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		},
 		GET_ALL_MINI: async () => {
 			try {
 				const res = await fetch(`${url}/users/mini`);
@@ -144,10 +174,14 @@ const RESOURCES = {
 				return false;
 			}
 		},
-		GET_ONE: async (id: number) => {
+		GET_ONE: async (id: number | string) => {
 			try {
 				const res = await fetch(`${url}/users/${id}`);
-				const data: IUser[] = await res.json();
+				const data: {
+					data: IUser;
+					error: boolean;
+					message: string;
+				} = await res.json();
 				return data;
 			} catch (error) {
 				console.error(error);

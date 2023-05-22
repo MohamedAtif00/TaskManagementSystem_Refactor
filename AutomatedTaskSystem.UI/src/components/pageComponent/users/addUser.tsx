@@ -4,10 +4,14 @@ import { useEffect, useState } from "react";
 import FormConclusion from "../../formComponents/FormConclusion";
 import Dropdown from "../../formComponents/DropDown";
 import API from "../../../lib/API";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
+import { useAppDispatch } from "../../../app/hooks";
+import { add } from "../../../slices/userSlice";
+import Link from "next/link";
 
 const AddUser = () => {
-	const { query } = useRouter();
+	const dispatch = useAppDispatch();
+	const { query, pathname } = useRouter();
 	const [active, setActive] = useState<boolean>(false);
 	const [name, setName] = useState("");
 	const [error, setError] = useState("");
@@ -46,7 +50,10 @@ const AddUser = () => {
 			groupId: group.id,
 			roleId: role.id,
 		}).then((res) => {
-			if (res && !res.error) setDone(res.data);
+			if (res && !res.error) {
+				setDone(res.data);
+				dispatch(add(res.data.user));
+			}
 		});
 	};
 
@@ -79,6 +86,13 @@ const AddUser = () => {
 								<div className="font-bold text-2xl text-center">
 									{done.code}
 								</div>
+							</div>
+							<div className="flex justify-center">
+								<Link href={{ pathname }}>
+									<button className="h-10 bg-black text-white font-bold w-1/2">
+										Done
+									</button>
+								</Link>
 							</div>
 						</div>
 					) : (

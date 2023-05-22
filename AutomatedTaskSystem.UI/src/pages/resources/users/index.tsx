@@ -6,6 +6,7 @@ import { clear, load } from "../../../slices/userSlice";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import AddUser from "../../../components/pageComponent/users/addUser";
 import Link from "next/link";
+import EditUser from "../../../components/pageComponent/users/editUser";
 
 const columns: GridColDef[] = [
 	{ field: "col0", headerName: "ID", width: 100 },
@@ -17,6 +18,34 @@ const columns: GridColDef[] = [
 	},
 	{ field: "col2", headerName: "Group", width: 200 },
 	{ field: "col3", headerName: "Role", width: 200 },
+	{
+		field: "col4",
+		headerName: "Action",
+		width: 150,
+		renderCell: (c) => (
+			<div className="flex justify-end gap-4">
+				<Link
+					href={{
+						pathname: "/resources/users",
+						query: {
+							form: "edit-user",
+							userId: c.id,
+						},
+					}}
+				>
+					<div className="text-blue-600 hover:underline cursor-pointer">
+						Edit
+					</div>
+				</Link>
+				<div className="text-red-600 hover:underline cursor-pointer">
+					Delete
+				</div>
+			</div>
+		),
+		filterable: false,
+		disableColumnMenu: true,
+		sortable: false,
+	},
 ];
 
 const Users = () => {
@@ -71,6 +100,7 @@ const Users = () => {
 				/>
 			</div>
 			<AddUser />
+			<EditUser />
 		</div>
 	);
 };

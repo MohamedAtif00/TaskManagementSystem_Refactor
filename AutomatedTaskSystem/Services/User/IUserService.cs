@@ -6,7 +6,17 @@ namespace AutomatedTaskSystem.Services.UserService;
 
 public interface IUserService
 {
-	Task<ActionResult<ResponseService<Responses.UserDTO>>> GetUserById(int Id);
-	Task<ActionResult<ResponseService<Responses.UserAddedDTO>>> CreateUser(string Name, int GroupId, int RoleId);
-	Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetUsers();
+    Task<ActionResult<ResponseService<Responses.UserDTO>>> GetUserById(int Id);
+    Task<ActionResult<ResponseService<Responses.UserAddedDTO>>> CreateUser(
+        string Name,
+        int GroupId,
+        int RoleId
+    );
+    Task<ActionResult<ResponseService<Responses.UserDTO>>> EditUser(
+        int id,
+        string Name,
+        int GroupId,
+        int RoleId
+    );
+    Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetUsers();
 }

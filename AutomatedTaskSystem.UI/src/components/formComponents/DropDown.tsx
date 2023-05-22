@@ -11,8 +11,6 @@ const getDropdownPosition = (target: EventTarget) => {
 	if (target instanceof Element) {
 		const { top, left, width } = target.getBoundingClientRect();
 
-		console.log({ top, left });
-
 		return {
 			top: top + 44,
 			left,
@@ -43,6 +41,7 @@ const Dropdown = ({ label, value, options, handleChange }: Props) => {
 
 	useEffect(() => {
 		const handleScrollAndResize = () =>
+			active &&
 			dropdownRef.current &&
 			setPos(getDropdownPosition(dropdownRef.current));
 
@@ -53,10 +52,10 @@ const Dropdown = ({ label, value, options, handleChange }: Props) => {
 			document.removeEventListener("scroll", handleScrollAndResize);
 			document.removeEventListener("resize", handleScrollAndResize);
 		};
-	}, [dropdownRef]);
+	}, [dropdownRef, active]);
 
 	useEffect(() => {
-		const handleClickAway = (e: MouseEvent) => {
+		const handleClickAway = () => {
 			setActive(false);
 		};
 		document.addEventListener("click", handleClickAway);
