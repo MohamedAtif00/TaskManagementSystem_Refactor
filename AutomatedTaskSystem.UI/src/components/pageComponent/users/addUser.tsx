@@ -110,6 +110,7 @@ const AddUser = () => {
 									)}
 								</motion.div>
 								<InputTextField
+									label="Name"
 									value={name}
 									handleChange={setName}
 								/>

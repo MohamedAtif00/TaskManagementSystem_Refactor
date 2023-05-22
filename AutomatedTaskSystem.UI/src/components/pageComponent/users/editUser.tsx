@@ -84,7 +84,11 @@ const EditUser = () => {
 								<div className="text-red-600">{error}</div>
 							)}
 						</motion.div>
-						<InputTextField value={name} handleChange={setName} />
+						<InputTextField
+							label="Name"
+							value={name}
+							handleChange={setName}
+						/>
 						<Dropdown
 							label="Group"
 							value={group}
