@@ -8,6 +8,7 @@ import AddUser from "../../../components/pageComponent/users/addUser";
 import Link from "next/link";
 import EditUser from "../../../components/pageComponent/users/editUser";
 import RemoveUser from "../../../components/pageComponent/users/removeUser";
+import ResourcesIcon from "../../../assets/Icons/Resources";
 
 const columns: GridColDef[] = [
 	{ field: "col0", headerName: "ID", width: 100 },
@@ -81,7 +82,10 @@ const Users = () => {
 	return (
 		<div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
 			<div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
-				<h1 className="font-bold text-2xl ">Users</h1>
+				<div className="flex gap-2 items-center">
+					<ResourcesIcon />
+					<h1 className="font-bold text-2xl ">Users</h1>
+				</div>
 				<Link
 					href={{
 						pathname: "/resources/users",
