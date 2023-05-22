@@ -146,6 +146,21 @@ const RESOURCES = {
 				return false;
 			}
 		},
+		DELETE: async ({ id }: { id: string | number }) => {
+			try {
+				const res = await fetch(`${url}/users/${id}`, {
+					method: "DELETE",
+				});
+				const data: {
+					error: boolean;
+					message: string;
+				} = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		},
 		GET_ALL_MINI: async () => {
 			try {
 				const res = await fetch(`${url}/users/mini`);

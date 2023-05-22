@@ -7,6 +7,7 @@ import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import AddUser from "../../../components/pageComponent/users/addUser";
 import Link from "next/link";
 import EditUser from "../../../components/pageComponent/users/editUser";
+import RemoveUser from "../../../components/pageComponent/users/removeUser";
 
 const columns: GridColDef[] = [
 	{ field: "col0", headerName: "ID", width: 100 },
@@ -37,9 +38,19 @@ const columns: GridColDef[] = [
 						Edit
 					</div>
 				</Link>
-				<div className="text-red-600 hover:underline cursor-pointer">
-					Delete
-				</div>
+				<Link
+					href={{
+						pathname: "/resources/users",
+						query: {
+							form: "remove-user",
+							userId: c.id,
+						},
+					}}
+				>
+					<div className="text-red-600 hover:underline cursor-pointer">
+						Delete
+					</div>
+				</Link>
 			</div>
 		),
 		filterable: false,
@@ -100,6 +111,7 @@ const Users = () => {
 				/>
 			</div>
 			<AddUser />
+			<RemoveUser />
 			<EditUser />
 		</div>
 	);
