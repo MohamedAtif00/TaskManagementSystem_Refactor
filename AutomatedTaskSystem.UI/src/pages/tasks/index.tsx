@@ -16,7 +16,10 @@ interface Props {
 const ProjectItem = ({ id, name, description }: Props) => {
 	return (
 		<Link href={`/tasks/${id}`}>
-			<div className={styles2.GridItem} style={{ padding: "0.5rem 1rem" }}>
+			<div
+				className={styles2.GridItem}
+				style={{ padding: "0.5rem 1rem" }}
+			>
 				<div>
 					<div>{name}</div>
 					<div className={styles2.info}>{description}</div>
@@ -39,7 +42,7 @@ const Projects = () => {
 	}, [dispatch]);
 
 	return (
-		<div className="container">
+		<div className="mainContainer">
 			<Header text="Projects" icon="Project" />
 			<div className={styles.container}>
 				{projects.map((p) => {

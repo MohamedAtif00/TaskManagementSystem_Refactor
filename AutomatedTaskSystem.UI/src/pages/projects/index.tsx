@@ -29,7 +29,7 @@ const Projects = () => {
 	}, [dispatch]);
 
 	return (
-		<div className="container">
+		<div className="mainContainer">
 			<Header text="Projects" icon="Project">
 				<QueryButton
 					icon={<PlusIcon />}

@@ -33,7 +33,7 @@ const Groups = () => {
 	}, [dispatch]);
 
 	return (
-		<div className="container">
+		<div className="mainContainer">
 			<Header text="Groups" icon="Resources">
 				<QueryButton
 					icon={<PlusIcon />}

@@ -99,7 +99,7 @@ const Schema = () => {
 	}
 
 	return (
-		<div className="container">
+		<div className="mainContainer">
 			<Header text={schema.name} icon="Schema">
 				{auth.role === 1 ? (
 					<>

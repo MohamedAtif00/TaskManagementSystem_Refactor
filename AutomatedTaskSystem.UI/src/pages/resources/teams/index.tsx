@@ -32,7 +32,7 @@ const Teams = () => {
 	}, [dispatch]);
 
 	return (
-		<div className="container">
+		<div className="mainContainer">
 			<Header text="Teams" icon="Resources">
 				<QueryButton
 					icon={<PlusIcon />}
@@ -42,8 +42,8 @@ const Teams = () => {
 					url={{
 						pathname: "/resources/teams",
 						query: {
-							form: 'team'
-						}
+							form: "team",
+						},
 					}}
 				/>
 			</Header>

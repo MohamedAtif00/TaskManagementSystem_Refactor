@@ -13,7 +13,7 @@ const Resources = () => {
 	}
 
 	return (
-		<div className="container">
+		<div className="mainContainer">
 			<Header text="Resources" icon="Resources"></Header>
 			<div className={styles.container}>
 				<Link href="/resources/groups">
