@@ -15,7 +15,9 @@ const PROJECTS = {
 	},
 	USERS_UNASSIGNED: async (projectId: string | string[]) => {
 		try {
-			const res = await fetch(`${url}/projects/${projectId}/users/unassigned`);
+			const res = await fetch(
+				`${url}/projects/${projectId}/users/unassigned`
+			);
 			const data: {
 				data: IUser[];
 				error: boolean;
@@ -29,7 +31,9 @@ const PROJECTS = {
 	},
 	USERS_ASSIGNED: async (projectId: string | string[]) => {
 		try {
-			const res = await fetch(`${url}/projects/${projectId}/users/assigned`);
+			const res = await fetch(
+				`${url}/projects/${projectId}/users/assigned`
+			);
 			const data: {
 				data: IUser[];
 				error: boolean;
@@ -100,7 +104,11 @@ const PROJECTS = {
 				},
 				body: JSON.stringify({ name, description }),
 			});
-			const data: IProject = await res.json();
+			const data: {
+				data: IProject;
+				error: boolean;
+				message: string;
+			} = await res.json();
 			return data;
 		} catch (error) {
 			console.error(error);
@@ -166,7 +174,13 @@ const PROJECTS = {
 		}
 	},
 	UNITS: {
-		ADD: async ({ name, projectId }: { name: string; projectId: number }) => {
+		ADD: async ({
+			name,
+			projectId,
+		}: {
+			name: string;
+			projectId: number;
+		}) => {
 			try {
 				const res = await fetch(`${url}/projects/${projectId}/units`, {
 					method: "POST",
@@ -313,13 +327,16 @@ const PROJECTS = {
 					}
 				) => {
 					try {
-						const res = await fetch(`${url}/learning-objectives/${id}`, {
-							method: "PATCH",
-							headers: {
-								"Content-Type": "application/json",
-							},
-							body: JSON.stringify(edit),
-						});
+						const res = await fetch(
+							`${url}/learning-objectives/${id}`,
+							{
+								method: "PATCH",
+								headers: {
+									"Content-Type": "application/json",
+								},
+								body: JSON.stringify(edit),
+							}
+						);
 						const data: LearningObjective = await res.json();
 						return data;
 					} catch (error) {
@@ -329,9 +346,12 @@ const PROJECTS = {
 				},
 				REMOVE: async (id: number) => {
 					try {
-						const res = await fetch(`${url}/learning-objectives/${id}`, {
-							method: "DELETE",
-						});
+						const res = await fetch(
+							`${url}/learning-objectives/${id}`,
+							{
+								method: "DELETE",
+							}
+						);
 						const data = await res.json();
 						return data;
 					} catch (error) {
@@ -341,13 +361,16 @@ const PROJECTS = {
 				},
 				ASSIGN: async (id: string | string[], userIds: number[]) => {
 					try {
-						const res = await fetch(`${url}/learning-objectives/${id}/assign`, {
-							method: "POST",
-							headers: {
-								"Content-Type": "application/json",
-							},
-							body: JSON.stringify({ userIds }),
-						});
+						const res = await fetch(
+							`${url}/learning-objectives/${id}/assign`,
+							{
+								method: "POST",
+								headers: {
+									"Content-Type": "application/json",
+								},
+								body: JSON.stringify({ userIds }),
+							}
+						);
 						const data: LearningObjective = await res.json();
 						return data;
 					} catch (error) {
