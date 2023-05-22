@@ -19,4 +19,5 @@ public interface IUserService
         int RoleId
     );
     Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetUsers();
+    Task<ActionResult<BaseResponseService>> ArchiveUser(int id);
 }

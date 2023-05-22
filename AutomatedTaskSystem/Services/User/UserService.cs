@@ -15,6 +15,24 @@ public class UserService : IUserService
         _context = context;
     }
 
+    public async Task<ActionResult<BaseResponseService>> ArchiveUser(int id)
+    {
+        var user = await _context.Users.Where(u => u.Id == id && !u.Archived).FirstOrDefaultAsync();
+
+        if (user is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = $"User of id:{id} is not found" }
+            );
+
+        user.Archived = true;
+
+        await _context.SaveChangesAsync();
+
+        return new NotFoundObjectResult(
+            new BaseResponseService { Error = false, Message = $"User of id:{id} is now deleted" }
+        );
+    }
+
     public async Task<ActionResult<ResponseService<Responses.UserAddedDTO>>> CreateUser(
         string Name,
         int GroupId,
@@ -137,7 +155,6 @@ public class UserService : IUserService
             Error = false,
             Message = $"User of id:{user.Id}"
         };
-        throw new NotImplementedException();
     }
 
     public async Task<ActionResult<ResponseService<Responses.UserDTO>>> GetUserById(int Id)

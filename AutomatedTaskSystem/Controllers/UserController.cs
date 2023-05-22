@@ -42,5 +42,11 @@ namespace AutomatedTaskSystem.Controllers
             int id,
             Requests.UserDTO req
         ) => await _userService.EditUser(id, req.Name, req.GroupId, req.RoleId);
+
+        // PATCH:
+        // Edit User
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<BaseResponseService>> DeleteUser(int id) =>
+            await _userService.ArchiveUser(id);
     }
 }
