@@ -10,14 +10,13 @@ namespace AutomatedTaskSystem.Controllers
     public class NodeController : ControllerBase
     {
         private readonly DataContext _context;
-        public NodeController(DataContext context)
-        {
-            _context = context;
-        }
+
+        public NodeController(DataContext context) => _context = context;
+
         private async Task<ActionResult<Responses.NodeDTO>> getNode(int nodeId)
         {
             var node = await _context.Nodes
-                .Where(_n => _n.Id == nodeId)
+                .Where(_n => _n.Id == nodeId && !_n.Archived)
                 .Include(_n => _n.Previous)
                 .Include(_n => _n.Next)
                 .Include(_n => _n.Required)
@@ -26,9 +25,7 @@ namespace AutomatedTaskSystem.Controllers
 
             if (node == null)
             {
-                return NotFound(
-                    new Responses.BadRequestsDTO("Node not found")
-                );
+                return NotFound(new Responses.BadRequestsDTO("Node not found"));
             }
 
             var res = new Responses.NodeDTO
@@ -39,25 +36,17 @@ namespace AutomatedTaskSystem.Controllers
                 Name = node.Name,
             };
 
-            node.Previous.ForEach(_n =>
-                res.Previous.Add(
-                    new Responses.IDName { Id = _n.Id, Name = _n.Name }
-                )
+            node.Previous.ForEach(
+                _n => res.Previous.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
             );
-            node.Next.ForEach(_n =>
-                res.Next.Add(
-                    new Responses.IDName { Id = _n.Id, Name = _n.Name }
-                )
+            node.Next.ForEach(
+                _n => res.Next.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
             );
-            node.Required.ForEach(_n =>
-                res.Required.Add(
-                    new Responses.IDName { Id = _n.Id, Name = _n.Name }
-                )
+            node.Required.ForEach(
+                _n => res.Required.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
             );
-            node.Requires.ForEach(_n =>
-                res.Requires.Add(
-                    new Responses.IDName { Id = _n.Id, Name = _n.Name }
-                )
+            node.Requires.ForEach(
+                _n => res.Requires.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
             );
             var steps = await _context.Steps
                 .Where(_s => _s.NodeId == node.Id)
@@ -85,40 +74,44 @@ namespace AutomatedTaskSystem.Controllers
                 res.Steps.Add(nodeStep);
             });
 
-            res.Steps.Sort((a, b) =>
-            {
-                if (a.Order > b.Order)
-                    return 1;
-                if (a.Order < b.Order)
-                    return -1;
-                return 0;
-            });
+            res.Steps.Sort(
+                (a, b) =>
+                {
+                    if (a.Order > b.Order)
+                        return 1;
+                    if (a.Order < b.Order)
+                        return -1;
+                    return 0;
+                }
+            );
 
             return res;
         }
+
         // PATCH:
         // Edit Existing Node
         [HttpPatch("{nodeId}")]
-        public async Task<ActionResult<Responses.NodeDTO>> EditNode(int nodeId, Requests.NodeDTO req)
+        public async Task<ActionResult<Responses.NodeDTO>> EditNode(
+            int nodeId,
+            Requests.NodeDTO req
+        )
         {
             var node = await _context.Nodes
-                .Where(n => n.Id == nodeId)
+                .Where(n => n.Id == nodeId && !n.Archived)
                 .Include(n => n.Previous)
                 .Include(n => n.Next)
                 .Include(n => n.Steps)
-                    .ThenInclude(s => s.TaskBank)
-                        .ThenInclude(tb => tb.Group)
+                .ThenInclude(s => s.TaskBank)
+                .ThenInclude(tb => tb.Group)
                 .FirstOrDefaultAsync();
 
             if (node == null)
             {
-                return NotFound(
-                    new Responses.BadRequestsDTO("Node not found")
-                );
+                return NotFound(new Responses.BadRequestsDTO("Node not found"));
             }
 
             var prevNodes = await _context.Nodes
-                .Where(n => req.Previous.Contains(n.Id))
+                .Where(n => req.Previous.Contains(n.Id) && !n.Archived)
                 .Include(n => n.Previous)
                 .Include(n => n.Next)
                 .Include(n => n.Requires)
@@ -126,7 +119,7 @@ namespace AutomatedTaskSystem.Controllers
                 .ToListAsync();
 
             var requires = await _context.Nodes
-                .Where(n => req.Requires.Contains(n.Id))
+                .Where(n => req.Requires.Contains(n.Id) && !n.Archived)
                 .Include(n => n.Previous)
                 .Include(n => n.Next)
                 .Include(n => n.Requires)
@@ -152,53 +145,39 @@ namespace AutomatedTaskSystem.Controllers
             foreach (var item in node.Steps)
             {
                 var groups = new List<Responses.IDName> { };
-                steps.Add(new Responses.NodeStepDTO
-                {
-                    Id = item.Id,
-                    TL = item.TaskBank.TL,
-                    Name = item.TaskBank.Name,
-                    Order = item.Order,
-                    Group = new Responses.IDName
+                steps.Add(
+                    new Responses.NodeStepDTO
                     {
+                        Id = item.Id,
+                        TL = item.TaskBank.TL,
                         Name = item.TaskBank.Name,
-                        Id = item.TaskBank.Id
-                    },
-                    Reviewable = item.TaskBank.TypeId == 3,
-                    Duration = item.Duration
-                });
+                        Order = item.Order,
+                        Group = new Responses.IDName
+                        {
+                            Name = item.TaskBank.Name,
+                            Id = item.TaskBank.Id
+                        },
+                        Reviewable = item.TaskBank.TypeId == 3,
+                        Duration = item.Duration
+                    }
+                );
             }
 
             var prevs = new List<Responses.IDName> { };
             foreach (var item in node.Previous)
-                prevs.Add(new Responses.IDName
-                {
-                    Name = item.Name,
-                    Id = item.Id
-                });
+                prevs.Add(new Responses.IDName { Name = item.Name, Id = item.Id });
 
             var nexts = new List<Responses.IDName> { };
             foreach (var item in node.Next)
-                nexts.Add(new Responses.IDName
-                {
-                    Name = item.Name,
-                    Id = item.Id
-                });
+                nexts.Add(new Responses.IDName { Name = item.Name, Id = item.Id });
 
             var reqs = new List<Responses.IDName> { };
             foreach (var item in node.Requires)
-                reqs.Add(new Responses.IDName
-                {
-                    Name = item.Name,
-                    Id = item.Id
-                });
+                reqs.Add(new Responses.IDName { Name = item.Name, Id = item.Id });
 
             var reqd = new List<Responses.IDName> { };
             foreach (var item in node.Required)
-                reqs.Add(new Responses.IDName
-                {
-                    Name = item.Name,
-                    Id = item.Id
-                });
+                reqs.Add(new Responses.IDName { Name = item.Name, Id = item.Id });
 
             var res = new Responses.NodeDTO
             {
@@ -215,10 +194,14 @@ namespace AutomatedTaskSystem.Controllers
 
             return res;
         }
+
         // POST:
         // Create new Node
         [HttpPost("{schemaId}")]
-        public async Task<ActionResult<Responses.NodeDTO>> CreateNode(int schemaId, Requests.NodeDTO req)
+        public async Task<ActionResult<Responses.NodeDTO>> CreateNode(
+            int schemaId,
+            Requests.NodeDTO req
+        )
         {
             var schema = await _context.Schemas
                 .Where(_s => _s.Id == schemaId)
@@ -226,9 +209,7 @@ namespace AutomatedTaskSystem.Controllers
 
             if (schema == null)
             {
-                return NotFound(
-                    new Responses.BadRequestsDTO("Schema not found")
-                );
+                return NotFound(new Responses.BadRequestsDTO("Schema not found"));
             }
 
             var previousNodes = new List<Node> { };
@@ -252,7 +233,7 @@ namespace AutomatedTaskSystem.Controllers
             for (int i = 0; i < req.Previous.Count; i++)
             {
                 var _pn = await _context.Nodes
-                    .Where(_n => _n.Id == req.Previous[i])
+                    .Where(_n => _n.Id == req.Previous[i] && !_n.Archived)
                     .Include(_n => _n.Next)
                     .FirstOrDefaultAsync();
 
@@ -270,7 +251,7 @@ namespace AutomatedTaskSystem.Controllers
             for (int i = 0; i < req.Requires.Count; i++)
             {
                 var _pn = await _context.Nodes
-                    .Where(_n => _n.Id == req.Requires[i])
+                    .Where(_n => _n.Id == req.Requires[i] && !_n.Archived)
                     .Include(_n => _n.Next)
                     .FirstOrDefaultAsync();
 
@@ -290,6 +271,7 @@ namespace AutomatedTaskSystem.Controllers
 
             return await getNode(newNode.Id);
         }
+
         // GET:
         // Fetch all schema's Nodes
         [HttpGet("{schemaId}/mini")]
@@ -297,24 +279,20 @@ namespace AutomatedTaskSystem.Controllers
         {
             var schema = await _context.Schemas
                 .Where(_s => _s.Id == schemaId)
-				.Include(_ => _.Nodes)
+                .Include(_ => _.Nodes)
                 .FirstOrDefaultAsync();
 
             if (schema == null)
-                return NotFound(
-                    new Responses.BadRequestsDTO("Schema not found")
-                );
+                return NotFound(new Responses.BadRequestsDTO("Schema not found"));
 
             var res = new List<Responses.IDName> { };
 
-			foreach (var node in schema.Nodes)
-				res.Add(new Responses.IDName{
-					Name = node.Name,
-					Id = node.Id
-				});
+            foreach (var node in schema.Nodes)
+                res.Add(new Responses.IDName { Name = node.Name, Id = node.Id });
 
             return res;
         }
+
         // GET:
         // Fetch all schema's Nodes
         [HttpGet("{schemaId}")]
@@ -325,12 +303,10 @@ namespace AutomatedTaskSystem.Controllers
                 .FirstOrDefaultAsync();
 
             if (schema == null)
-                return NotFound(
-                    new Responses.BadRequestsDTO("Schema not found")
-                );
+                return NotFound(new Responses.BadRequestsDTO("Schema not found"));
 
             var nodes = await _context.Nodes
-                .Where(_n => _n.SchemaId == schemaId)
+                .Where(_n => _n.SchemaId == schemaId && !_n.Archived)
                 .Include(_n => _n.Previous)
                 .Include(_n => _n.Next)
                 .Include(_n => _n.Required)
@@ -341,13 +317,14 @@ namespace AutomatedTaskSystem.Controllers
 
             for (int i = 0; i < nodes.Count; i++)
             {
-                var node = await _context.Nodes
-                    .Where(_n => _n.Id == nodes[i].Id)
-                    .Include(_n => _n.Previous)
-                    .Include(_n => _n.Next)
-                    .Include(_n => _n.Required)
-                    .Include(_n => _n.Requires)
-                    .FirstOrDefaultAsync();
+                var node = nodes[i];
+                // await _context.Nodes
+                //     .Where(_n => _n.Id == nodes[i].Id)
+                //     .Include(_n => _n.Previous)
+                //     .Include(_n => _n.Next)
+                //     .Include(_n => _n.Required)
+                //     .Include(_n => _n.Requires)
+                //     .FirstOrDefaultAsync();
 
                 if (node == null)
                     return BadRequest("An error poped up");
@@ -360,30 +337,22 @@ namespace AutomatedTaskSystem.Controllers
                     Name = node.Name,
                 };
 
-                node.Previous.ForEach(_n =>
-                    nodeRes.Previous.Add(
-                        new Responses.IDName { Id = _n.Id, Name = _n.Name }
-                    )
+                node.Previous.ForEach(
+                    _n => nodeRes.Previous.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
                 );
-                node.Next.ForEach(_n =>
-                    nodeRes.Next.Add(
-                        new Responses.IDName { Id = _n.Id, Name = _n.Name }
-                    )
+                node.Next.ForEach(
+                    _n => nodeRes.Next.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
                 );
-                node.Required.ForEach(_n =>
-                    nodeRes.Required.Add(
-                        new Responses.IDName { Id = _n.Id, Name = _n.Name }
-                    )
+                node.Required.ForEach(
+                    _n => nodeRes.Required.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
                 );
-                node.Requires.ForEach(_n =>
-                    nodeRes.Requires.Add(
-                        new Responses.IDName { Id = _n.Id, Name = _n.Name }
-                    )
+                node.Requires.ForEach(
+                    _n => nodeRes.Requires.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
                 );
                 var steps = await _context.Steps
-                    .Where(_s => _s.NodeId == node.Id)
+                    .Where(_s => _s.NodeId == node.Id && !_s.Archived)
                     .Include(_s => _s.TaskBank)
-                        .ThenInclude(tb => tb.Group)
+                    .ThenInclude(tb => tb.Group)
                     .ToListAsync();
 
                 steps.ForEach(_s =>
@@ -405,40 +374,42 @@ namespace AutomatedTaskSystem.Controllers
 
                     nodeRes.Steps.Add(nodeStep);
                 });
-                nodeRes.Steps.Sort((a, b) =>
-                {
-                    if (a.Order > b.Order)
-                        return 1;
-                    if (a.Order < b.Order)
-                        return -1;
-                    return 0;
-                });
+                nodeRes.Steps.Sort(
+                    (a, b) =>
+                    {
+                        if (a.Order > b.Order)
+                            return 1;
+                        if (a.Order < b.Order)
+                            return -1;
+                        return 0;
+                    }
+                );
                 res.Add(nodeRes);
             }
 
             return res;
         }
+
         // DELETE:
         // Delete node
         [HttpDelete("{id}")]
         public async Task<ActionResult<Responses.SuccessDTO>> DeleteNode(int id)
         {
             var node = await _context.Nodes
-                .Where(n => n.Id == id)
+                .Where(n => n.Id == id && !n.Archived)
                 .Include(n => n.Next)
-                    .ThenInclude(n => n.Previous)
+                .ThenInclude(n => n.Previous)
                 .Include(n => n.Previous)
-                    .ThenInclude(n => n.Next)
+                .ThenInclude(n => n.Next)
                 .Include(n => n.Required)
-                    .ThenInclude(n => n.Requires)
+                .ThenInclude(n => n.Requires)
                 .Include(n => n.Requires)
-                    .ThenInclude(n => n.Required)
+                .ThenInclude(n => n.Required)
                 .Include(n => n.Steps)
                 .FirstOrDefaultAsync();
 
             if (node == null)
                 return NotFound(new Responses.BadRequestsDTO("Node not found"));
-
 
             foreach (var item in node.Next)
             {
@@ -462,7 +433,10 @@ namespace AutomatedTaskSystem.Controllers
             foreach (var item in node.Requires)
                 item.Required.Remove(node);
 
-            _context.Nodes.Remove(node);
+            foreach (var step in node.Steps)
+                step.Archived = true;
+
+            node.Archived = true;
             await _context.SaveChangesAsync();
 
             return Ok(new Responses.SuccessDTO("Node Delete"));

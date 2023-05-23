@@ -11,6 +11,10 @@ namespace AutomatedTaskSystem.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<Node>().Property(n => n.Archived).HasDefaultValue(false);
+
+            modelBuilder.Entity<RefreshToken>().Property(rt => rt.Used).HasDefaultValue(false);
+
             modelBuilder
                 .Entity<Node>()
                 .HasMany(n => n.Next)

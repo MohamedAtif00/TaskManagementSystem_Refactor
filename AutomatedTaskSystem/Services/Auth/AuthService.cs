@@ -136,12 +136,12 @@ public class AuthService : IAuthService
                 new BaseResponseService { Error = true, Message = "Invalid refesh token" }
             );
 
-        if (!token.Active && token.Expires < DateTime.Now)
+        if (token.Used && token.Expires < DateTime.Now)
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Token expired" }
             );
 
-        token.Active = false;
+        token.Used = true;
 
         await _context.SaveChangesAsync();
 
@@ -170,12 +170,12 @@ public class AuthService : IAuthService
                 new BaseResponseService { Error = true, Message = "Invalid Refresh Token" }
             );
 
-        if (!foundToken.Active && DateTime.Now > foundToken.Expires)
+        if (foundToken.Used && DateTime.Now > foundToken.Expires)
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Token expired" }
             );
 
-        foundToken.Active = false;
+        foundToken.Used = false;
 
         var newToken = _tokenService.GenerateRefreshToken(foundToken.User);
 

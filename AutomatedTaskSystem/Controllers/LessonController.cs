@@ -70,11 +70,11 @@ namespace AutomatedTaskSystem.Controllers
             lesson.LearningObjectives.Add(newLO);
             _context.LearningObjectives.Add(newLO);
 
-			await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
 
             await _pathService.GeneratePath(schema.Id, newLO);
 
-            var firstNodes = schema.Nodes.Where(n => n.isStart).ToList();
+            var firstNodes = schema.Nodes.Where(n => n.isStart && !n.Archived).ToList();
 
             foreach (var node in firstNodes)
             {
@@ -84,7 +84,7 @@ namespace AutomatedTaskSystem.Controllers
                 {
                     var newTask = await _taskService.CreateTaskWithStep(firstStep, newLO);
 
-					await _pathService.UpdatePathTask(newTask, firstStep);
+                    await _pathService.UpdatePathTask(newTask, firstStep);
                 }
             }
 

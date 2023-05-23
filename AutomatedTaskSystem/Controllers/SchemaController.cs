@@ -29,7 +29,7 @@ namespace AutomatedTaskSystem.Controllers
             }
 
             var nodes = await _context.Nodes
-                .Where(n => n.SchemaId == schema.Id)
+                .Where(n => n.SchemaId == schema.Id && !n.Archived)
                 .Include(n => n.Steps)
                 .ToListAsync();
 
@@ -207,7 +207,7 @@ namespace AutomatedTaskSystem.Controllers
                 var schema = schemas[i];
                 var nodes = await _context.Nodes
                     .Include(n => n.Steps)
-                    .Where(node => node.SchemaId == schema.Id)
+                    .Where(node => node.SchemaId == schema.Id && !node.Archived)
                     .ToListAsync();
 
                 int tasksCount = 0;
@@ -236,7 +236,7 @@ namespace AutomatedTaskSystem.Controllers
                 var schema = schemas[i];
                 var nodes = await _context.Nodes
                     .Include(n => n.Steps)
-                    .Where(node => node.SchemaId == schema.Id)
+                    .Where(node => node.SchemaId == schema.Id && !node.Archived)
                     .ToListAsync();
 
                 int tasksCount = 0;

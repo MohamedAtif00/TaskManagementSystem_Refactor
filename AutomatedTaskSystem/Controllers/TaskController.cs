@@ -880,7 +880,7 @@ public class TaskController : ControllerBase
                     );
 
                     var node = await _context.Nodes
-                        .Where(n => n.Id == nextStep.NodeId)
+                        .Where(n => n.Id == nextStep.NodeId && !n.Archived)
                         .Include(n => n.Requires)
                         .ThenInclude(n => n.Steps)
                         .FirstOrDefaultAsync();
