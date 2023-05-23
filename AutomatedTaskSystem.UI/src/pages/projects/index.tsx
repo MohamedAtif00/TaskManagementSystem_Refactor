@@ -7,6 +7,8 @@ import ProjectIcon from "../../assets/Icons/Project";
 import Link from "next/link";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import AddProject from "../../components/pageComponent/projects/addProject";
+import EditProject from "../../components/pageComponent/projects/editProject";
+import RemoveProject from "../../components/pageComponent/projects/removeProject";
 
 const columns: GridColDef[] = [
 	{ field: "col0", headerName: "ID", width: 100 },
@@ -118,6 +120,8 @@ const Projects = () => {
 				/>
 			</div>
 			<AddProject />
+			<EditProject />
+			<RemoveProject />
 		</div>
 	);
 };

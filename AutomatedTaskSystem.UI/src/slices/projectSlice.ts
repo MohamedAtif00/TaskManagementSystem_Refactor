@@ -15,9 +15,18 @@ export const projectsSlice = createSlice({
 		clear: (state) => {
 			return (state = initialState);
 		},
+		remove: (state, action: PayloadAction<IProject>) => {
+			const newState: IProject[] = [];
+
+			state.forEach(
+				(p) => p.id !== action.payload.id && newState.push(p)
+			);
+
+			return newState;
+		},
 	},
 });
 
-export const { add, load, clear } = projectsSlice.actions;
+export const { add, load, clear, remove } = projectsSlice.actions;
 
 export default projectsSlice.reducer;

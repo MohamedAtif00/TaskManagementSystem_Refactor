@@ -326,7 +326,7 @@ public class TaskController : ControllerBase
                 return Unauthorized(new Responses.BadRequestsDTO("Please login"));
 
             var project = await _context.Projects
-                .Where(p => p.Id == id)
+                .Where(p => p.Id == id && !p.Archived)
                 .Include(p => p.Units)
                 .ThenInclude(u => u.Lessons)
                 .ThenInclude(l => l.LearningObjectives)

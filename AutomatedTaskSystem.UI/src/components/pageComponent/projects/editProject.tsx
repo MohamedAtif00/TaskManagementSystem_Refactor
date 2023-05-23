@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
 import { add } from "../../../slices/projectSlice";
 
-const AddProject = () => {
+const EditProject = () => {
 	const dispatch = useAppDispatch();
 	const { query, pathname, push: routerPush } = useRouter();
 	const [active, setActive] = useState<boolean>(false);
@@ -16,7 +16,15 @@ const AddProject = () => {
 	const [error, setError] = useState("");
 
 	useEffect(() => {
-		if (query.form === "add-project") return setActive(true);
+		if (query.form === "edit-project" && query.projectId) {
+			API.PROJECTS.GET_ONE(query.projectId).then((res) => {
+				if (res && !res.error) {
+					setName(res.data.name);
+					setDescription(res.data.description);
+				}
+			});
+			return setActive(true);
+		}
 		setActive(false);
 	}, [query]);
 
@@ -26,7 +34,8 @@ const AddProject = () => {
 
 		if (name === "") return setError("Please enter name");
 
-		API.PROJECTS.CREATE({
+		API.PROJECTS.EDIT({
+			id: query.projectId!,
 			name,
 			description,
 		}).then((res) => {
@@ -49,7 +58,7 @@ const AddProject = () => {
 					animate={{ opacity: 1 }}
 					className="bg-white px-5 py-4 basis-80 rounded-lg"
 				>
-					<h2 className="text-lg mb-5">Add new project</h2>
+					<h2 className="text-lg mb-5">Edit project</h2>
 					<form
 						onSubmit={handleSubmit}
 						className="flex flex-col gap-2"
@@ -78,4 +87,4 @@ const AddProject = () => {
 	return <></>;
 };
 
-export default AddProject;
+export default EditProject;

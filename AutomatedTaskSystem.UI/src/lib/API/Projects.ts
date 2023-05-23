@@ -89,6 +89,34 @@ const PROJECTS = {
 			return false;
 		}
 	},
+	EDIT: async ({
+		id,
+		name,
+		description,
+	}: {
+		id: string | string[] | number;
+		name: string;
+		description: string;
+	}) => {
+		try {
+			const res = await fetch(`${url}/projects/${id}`, {
+				method: "PATCH",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ name, description }),
+			});
+			const data: {
+				data: IProject;
+				error: boolean;
+				message: string;
+			} = await res.json();
+			return data;
+		} catch (error) {
+			console.error(error);
+			return false;
+		}
+	},
 	CREATE: async ({
 		name,
 		description,
@@ -106,6 +134,21 @@ const PROJECTS = {
 			});
 			const data: {
 				data: IProject;
+				error: boolean;
+				message: string;
+			} = await res.json();
+			return data;
+		} catch (error) {
+			console.error(error);
+			return false;
+		}
+	},
+	DELETE: async (id: string | string[] | number) => {
+		try {
+			const res = await fetch(`${url}/projects/${id}`, {
+				method: "DELETE",
+			});
+			const data: {
 				error: boolean;
 				message: string;
 			} = await res.json();
