@@ -1,5 +1,5 @@
 import { ITaskBank } from "../../pages/schemas/task-bank";
-import { url, CommonResponse, BasicInfo } from './'
+import { url, CommonResponse, BasicInfo } from "./";
 
 type Node = {
 	schemaId: number;
@@ -23,20 +23,23 @@ const SCHEMAS = {
 				return false;
 			}
 		},
-		EDIT: async (id: string | string[], request: {
-			name: string;
-			tl: boolean;
-			type: number;
-			group: number;
-			duration: number;
-		}) => {
+		EDIT: async (
+			id: string | string[],
+			request: {
+				name: string;
+				tl: boolean;
+				type: number;
+				group: number;
+				duration: number;
+			}
+		) => {
 			try {
 				const res = await fetch(`${url}/schemas/task-bank/${id}`, {
 					method: "PATCH",
 					headers: {
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify(request)
+					body: JSON.stringify(request),
 				});
 				const data: ITaskBank = await res.json();
 				return data;
@@ -58,7 +61,7 @@ const SCHEMAS = {
 					headers: {
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify(request)
+					body: JSON.stringify(request),
 				});
 				const data: ITaskBank = await res.json();
 				return data;
@@ -76,15 +79,12 @@ const SCHEMAS = {
 				console.error(error);
 				return false;
 			}
-		}
+		},
 	},
 	DUPLICATE: async (id: number) => {
 		try {
 			const res = await fetch(`${url}/schemas/${id}/duplicate`, {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
 			});
 			const data: ISchema = await res.json();
 			return data;
@@ -227,7 +227,8 @@ const SCHEMAS = {
 				const res = await fetch(`${url}/nodes/${id}`, {
 					method: "DELETE",
 				});
-				const data: { info: string; error: boolean }[] = await res.json();
+				const data: { info: string; error: boolean }[] =
+					await res.json();
 				return data;
 			} catch (error) {
 				console.error(error);
@@ -257,11 +258,15 @@ const SCHEMAS = {
 		STEPS: {
 			GET_MULTIPLE: async (nodes: number[]) => {
 				try {
-					const res = await fetch(`${url}/steps/multiple?${nodes.map(_ => `nodeId=${_}`).join("&")}`);
+					const res = await fetch(
+						`${url}/steps/multiple?${nodes
+							.map((_) => `nodeId=${_}`)
+							.join("&")}`
+					);
 					const data: {
 						id: number;
 						name: string;
-						steps: BasicInfo[]
+						steps: BasicInfo[];
 					}[] = await res.json();
 					return data;
 				} catch (error) {
@@ -272,7 +277,7 @@ const SCHEMAS = {
 			ADD: async ({
 				nodeId,
 				taskBankItem,
-				duration
+				duration,
 			}: {
 				nodeId: string;
 				taskBankItem: number;
@@ -286,7 +291,7 @@ const SCHEMAS = {
 						},
 						body: JSON.stringify({
 							taskBankItem,
-							duration
+							duration,
 						}),
 					});
 					const data: IStep = await res.json();
@@ -299,7 +304,7 @@ const SCHEMAS = {
 			EDIT: async ({
 				stepId,
 				taskBankItem,
-				duration
+				duration,
 			}: {
 				stepId: string;
 				taskBankItem: number;
@@ -313,7 +318,7 @@ const SCHEMAS = {
 						},
 						body: JSON.stringify({
 							taskBankItem,
-							duration
+							duration,
 						}),
 					});
 					const data: IStep = await res.json();
@@ -337,6 +342,6 @@ const SCHEMAS = {
 			},
 		},
 	},
-}
+};
 
 export default SCHEMAS;
