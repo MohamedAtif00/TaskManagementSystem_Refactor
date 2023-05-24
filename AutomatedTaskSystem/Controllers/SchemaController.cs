@@ -1,6 +1,8 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Services.SchemaService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers
@@ -10,10 +12,12 @@ namespace AutomatedTaskSystem.Controllers
     public class SchemaController : ControllerBase
     {
         private readonly DataContext _context;
+        private readonly ISchemaService _schemaService;
 
-        public SchemaController(DataContext context)
+        public SchemaController(DataContext context, ISchemaService schemaService)
         {
             _context = context;
+            _schemaService = schemaService;
         }
 
         private async Task<ActionResult<Responses.SchemaDTO>> GetSimpleSchema(int id)
@@ -24,25 +28,13 @@ namespace AutomatedTaskSystem.Controllers
                 .FirstOrDefaultAsync();
 
             if (schema == null)
-            {
                 return NotFound(new Responses.BadRequestsDTO("Schema not found"));
-            }
-
-            var nodes = await _context.Nodes
-                .Where(n => n.SchemaId == schema.Id && !n.Archived)
-                .Include(n => n.Steps)
-                .ToListAsync();
-
-            int tasksCount = 0;
-
-            nodes.ForEach(n => tasksCount += n.Steps.Count);
 
             var res = new Responses.SchemaDTO
             {
                 Description = schema.Description,
                 Id = schema.Id,
                 Name = schema.Name,
-                Tasks = tasksCount
             };
 
             return res;
@@ -234,16 +226,6 @@ namespace AutomatedTaskSystem.Controllers
             for (int i = 0; i < schemas.Count; i++)
             {
                 var schema = schemas[i];
-                var nodes = await _context.Nodes
-                    .Include(n => n.Steps)
-                    .Where(node => node.SchemaId == schema.Id && !node.Archived)
-                    .ToListAsync();
-
-                int tasksCount = 0;
-                nodes.ForEach(n =>
-                {
-                    tasksCount += n.Steps.Count;
-                });
 
                 res.Add(
                     new Responses.SchemaDTO
@@ -251,7 +233,6 @@ namespace AutomatedTaskSystem.Controllers
                         Description = schema.Description,
                         Id = schema.Id,
                         Name = schema.Name,
-                        Tasks = tasksCount
                     }
                 );
             }
@@ -295,7 +276,6 @@ namespace AutomatedTaskSystem.Controllers
             _context.Schemas.Add(newSchema);
             var newNodes = new List<Node> { };
             var oldNodes = schema.Nodes;
-            int tasks = 0;
             foreach (var n in oldNodes)
             {
                 var nn = new Node
@@ -320,7 +300,6 @@ namespace AutomatedTaskSystem.Controllers
                             NodeId = nn.Id,
                         }
                     );
-                    tasks++;
                 });
                 nn.Steps = steps;
                 newNodes.Add(nn);
@@ -358,7 +337,6 @@ namespace AutomatedTaskSystem.Controllers
                     Name = newSchema.Name,
                     Description = newSchema.Description,
                     Id = newSchema.Id,
-                    Tasks = tasks
                 }
             );
         }
@@ -366,15 +344,9 @@ namespace AutomatedTaskSystem.Controllers
         // POST:
         // Create new Schema
         [HttpPost]
-        public async Task<ActionResult<Responses.SchemaDTO>> CreateSchema(Requests.SchemaDTO req)
-        {
-            var newSchema = new Schema { Name = req.Name, Description = req.Description };
-
-            _context.Schemas.Add(newSchema);
-            await _context.SaveChangesAsync();
-
-            return await GetSimpleSchema(newSchema.Id);
-        }
+        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> CreateSchema(
+            Requests.SchemaDTO req
+        ) => await _schemaService.CreateSchema(req.Name, req.Description);
 
         // PATCH:
         // Update Schema

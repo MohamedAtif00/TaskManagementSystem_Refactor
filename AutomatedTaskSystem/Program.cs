@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using AutomatedTaskSystem.Services.TokenService;
+using AutomatedTaskSystem.Services.SchemaService;
 
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 var builder = WebApplication.CreateBuilder(args);
@@ -35,32 +36,33 @@ builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IPathService, PathService>();
+builder.Services.AddScoped<ISchemaService, SchemaService>();
 builder.Services
-	.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-	.AddJwtBearer(opts =>
-	{
-		opts.TokenValidationParameters = new TokenValidationParameters
-		{
-			ValidateIssuerSigningKey = true,
-			IssuerSigningKey = new SymmetricSecurityKey(
-				Encoding.UTF8.GetBytes(builder.Configuration.GetSection("AppSetting:Token").Value)
-			),
-			ValidateIssuer = false,
-			ValidateAudience = false
-		};
-	});
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(opts =>
+    {
+        opts.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration.GetSection("AppSetting:Token").Value)
+            ),
+            ValidateIssuer = false,
+            ValidateAudience = false
+        };
+    });
 builder.Services.AddDbContext<DataContext>(opts =>
 {
-	string ConnString = builder.Configuration.GetConnectionString("DefaultConnection");
-	opts.UseSqlServer(ConnString);
-	opts.EnableDetailedErrors(true);
+    string ConnString = builder.Configuration.GetConnectionString("DefaultConnection");
+    opts.UseSqlServer(ConnString);
+    opts.EnableDetailedErrors(true);
 });
 builder.Services.AddCors(options =>
 {
-	options.AddPolicy(
-		name: MyAllowSpecificOrigins,
-		policy => policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()
-	);
+    options.AddPolicy(
+        name: MyAllowSpecificOrigins,
+        policy => policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()
+    );
 });
 
 var app = builder.Build();
