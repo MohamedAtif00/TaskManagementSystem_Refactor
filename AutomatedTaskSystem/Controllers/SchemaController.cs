@@ -213,95 +213,9 @@ namespace AutomatedTaskSystem.Controllers
         // POST:
         // Duplicate
         [HttpPost("{id}/duplicate")]
-        public async Task<ActionResult<Responses.SchemaDTO>> DuplicateSchema(int id)
-        {
-            var schema = await _context.Schemas
-                .Where(s => s.Id == id && !s.Archived)
-                .Include(s => s.Nodes)
-                .ThenInclude(n => n.Steps)
-                .ThenInclude(s => s.TaskBank)
-                .Include(s => s.Nodes)
-                .ThenInclude(n => n.Previous)
-                .Include(s => s.Nodes)
-                .ThenInclude(n => n.Requires)
-                .FirstOrDefaultAsync();
-
-            if (schema == null)
-                return NotFound(new Responses.BadRequestsDTO("Schema not found"));
-
-            var newSchema = new Schema
-            {
-                Archived = false,
-                Name = $"{schema.Name} - Duplicate",
-                Description = schema.Description,
-            };
-            _context.Schemas.Add(newSchema);
-            var newNodes = new List<Node> { };
-            var oldNodes = schema.Nodes;
-            foreach (var n in oldNodes)
-            {
-                var nn = new Node
-                {
-                    Schema = newSchema,
-                    SchemaId = newSchema.Id,
-                    isEnd = n.isEnd,
-                    isStart = n.isStart,
-                    Name = n.Name,
-                };
-                var steps = new List<Step> { };
-                n.Steps.ForEach(s =>
-                {
-                    steps.Add(
-                        new Step
-                        {
-                            Archived = s.Archived,
-                            Order = s.Order,
-                            Node = nn,
-                            TaskBank = s.TaskBank,
-                            TaskBankId = s.TaskBankId,
-                            NodeId = nn.Id,
-                        }
-                    );
-                });
-                nn.Steps = steps;
-                newNodes.Add(nn);
-                newSchema.Nodes.Add(nn);
-                _context.Nodes.Add(nn);
-            }
-
-            for (int i = 0; i < oldNodes.Count; i++)
-            {
-                var oldNode = oldNodes[i];
-                foreach (var item in oldNode.Previous)
-                {
-                    var index = oldNodes.FindIndex(n => n.Id == item.Id);
-                    if (index >= 0)
-                    {
-                        newNodes[i].Previous.Add(newNodes[index]);
-                        newNodes[index].Next.Add(newNodes[i]);
-                    }
-                }
-                foreach (var item in oldNode.Requires)
-                {
-                    var index = oldNodes.FindIndex(n => n.Id == item.Id);
-                    if (index >= 0)
-                    {
-                        newNodes[i].Requires.Add(newNodes[index]);
-                        newNodes[index].Required.Add(newNodes[i]);
-                    }
-                }
-            }
-            await _context.SaveChangesAsync();
-
-            return Ok(
-                new Responses.SchemaDTO
-                {
-                    Name = newSchema.Name,
-                    Description = newSchema.Description,
-                    Id = newSchema.Id,
-                }
-            );
-        }
+        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> DuplicateSchema(
+            int id
+        ) => await _schemaService.DuplicateSchema(id);
 
         // POST:
         // Create new Schema
@@ -322,20 +236,7 @@ namespace AutomatedTaskSystem.Controllers
         // Archive Schema
         // TODO: Archive dependant tables
         [HttpDelete("{id}")]
-        public async Task<ActionResult<Responses.SuccessDTO>> ArchiveSchema(int id)
-        {
-            var schema = await _context.Schemas
-                .Where(s => !s.Archived && s.Id == id)
-                .FirstOrDefaultAsync();
-
-            if (schema == null)
-                return BadRequest(new Responses.BadRequestsDTO("Schema not found"));
-
-            schema.Archived = true;
-
-            await _context.SaveChangesAsync();
-
-            return new Responses.SuccessDTO($"Schema '{schema.Name}' has been archived");
-        }
+        public async Task<ActionResult<BaseResponseService>> ArchiveSchema(int id) =>
+            await _schemaService.DeleteSchema(id);
     }
 }

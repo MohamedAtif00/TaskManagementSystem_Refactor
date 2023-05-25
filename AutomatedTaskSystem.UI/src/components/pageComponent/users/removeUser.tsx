@@ -58,7 +58,7 @@ const RemoveUser = () => {
 							<form onSubmit={handleSubmit}>
 								<FormConclusion
 									submittable={true}
-									danger
+									type="danger"
 									text={{
 										save: "DELETE",
 									}}

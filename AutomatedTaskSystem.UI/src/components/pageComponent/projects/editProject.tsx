@@ -5,7 +5,7 @@ import FormConclusion from "../../formComponents/FormConclusion";
 import API from "../../../lib/API";
 import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
-import { add } from "../../../slices/projectSlice";
+import { edit } from "../../../slices/projectSlice";
 
 const EditProject = () => {
 	const dispatch = useAppDispatch();
@@ -40,7 +40,7 @@ const EditProject = () => {
 			description,
 		}).then((res) => {
 			if (res && !res.error) {
-				dispatch(add(res.data));
+				dispatch(edit(res.data));
 				routerPush(pathname);
 			}
 		});

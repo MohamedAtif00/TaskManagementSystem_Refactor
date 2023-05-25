@@ -17,4 +17,6 @@ public interface ISchemaService
         string Name,
         string Description
     );
+    Task<ActionResult<ResponseService<Responses.SchemaDTO>>> DuplicateSchema(int id);
+    Task<ActionResult<BaseResponseService>> DeleteSchema(int id);
 }

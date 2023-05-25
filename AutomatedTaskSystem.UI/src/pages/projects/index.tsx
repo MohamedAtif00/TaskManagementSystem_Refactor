@@ -30,20 +30,18 @@ const columns: GridColDef[] = [
 					url={{
 						pathname: `/projects/${c.id}`,
 					}}
-					color="black"
-					icon="eye"
+					type="eye"
 				/>
 				<TableAction
 					text="Edit"
 					url={{
-						pathname: `/projects/${c.id}`,
+						pathname: "/projects",
 						query: {
 							form: "edit-project",
 							projectId: c.id,
 						},
 					}}
-					color="blue"
-					icon="edit"
+					type="edit"
 				/>
 				<TableAction
 					text="Archive"
@@ -54,8 +52,7 @@ const columns: GridColDef[] = [
 							projectId: c.id,
 						},
 					}}
-					color="red"
-					icon="archive"
+					type="archive"
 				/>
 			</div>
 		),

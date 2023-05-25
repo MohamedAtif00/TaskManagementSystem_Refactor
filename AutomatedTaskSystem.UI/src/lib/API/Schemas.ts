@@ -9,6 +9,23 @@ type Node = {
 	requires: number[];
 };
 
+export interface UnarchivableSchemaResponse {
+	name: string;
+	id: number;
+	units: {
+		name: string;
+		id: number;
+		lessons: {
+			name: string;
+			id: number;
+			learningObjectives: {
+				name: string;
+				id: number;
+			}[];
+		}[];
+	}[];
+}
+
 const SCHEMAS = {
 	TASK_BANK: {
 		DELETE: async (id: number) => {
@@ -86,7 +103,11 @@ const SCHEMAS = {
 			const res = await fetch(`${url}/schemas/${id}/duplicate`, {
 				method: "POST",
 			});
-			const data: ISchema = await res.json();
+			const data: {
+				data: ISchema;
+				error: boolean;
+				message: string;
+			} = await res.json();
 			return data;
 		} catch (error) {
 			console.error(error);
@@ -139,6 +160,27 @@ const SCHEMAS = {
 			return false;
 		}
 	},
+	DELETE: async (id: string | string[] | number) => {
+		try {
+			const res = await fetch(`${url}/schemas/${id}`, {
+				method: "DELETE",
+			});
+			const data:
+				| {
+						error: false;
+						message: string;
+				  }
+				| {
+						error: true;
+						message: string;
+						data: UnarchivableSchemaResponse[];
+				  } = await res.json();
+			return data;
+		} catch (error) {
+			console.error(error);
+			return false;
+		}
+	},
 	GET_ONE: async (id: string | string[]) => {
 		try {
 			const res = await fetch(`${url}/schemas/${id}`);
@@ -162,7 +204,7 @@ const SCHEMAS = {
 		name,
 		description,
 	}: {
-		id: number;
+		id: number | string | string[];
 		name: string;
 		description: string;
 	}) => {
@@ -174,7 +216,11 @@ const SCHEMAS = {
 				},
 				body: JSON.stringify({ name, description }),
 			});
-			const data: ISchema = await res.json();
+			const data: {
+				data: ISchema;
+				error: boolean;
+				message: string;
+			} = await res.json();
 			return data;
 		} catch (error) {
 			console.error(error);

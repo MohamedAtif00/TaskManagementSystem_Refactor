@@ -4,18 +4,18 @@ import FormConclusion from "../../formComponents/FormConclusion";
 import API from "../../../lib/API";
 import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
-import { remove } from "../../../slices/projectSlice";
+import { add } from "../../../slices/schemaSlice";
 
-const RemoveProject = () => {
+const DuplicateSchema = () => {
 	const dispatch = useAppDispatch();
 	const { query, pathname, push: routerPush } = useRouter();
 	const [active, setActive] = useState<boolean>(false);
-	const [project, setProject] = useState<IProject>();
+	const [schema, setSchema] = useState<ISchema>();
 
 	useEffect(() => {
-		if (query.form === "remove-project" && query.projectId) {
-			API.PROJECTS.GET_ONE(query.projectId.toString()).then((res) => {
-				if (res && !res.error) setProject(res.data);
+		if (query.form === "duplicate-schema" && query.schemaId) {
+			API.SCHEMAS.GET_ONE(query.schemaId).then((res) => {
+				if (res && !res.error) setSchema(res.data);
 			});
 			return setActive(true);
 		}
@@ -25,10 +25,10 @@ const RemoveProject = () => {
 	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 
-		project &&
-			API.PROJECTS.DELETE(project.id).then((res) => {
+		schema &&
+			API.SCHEMAS.DUPLICATE(schema.id).then((res) => {
 				if (res && !res.error) {
-					dispatch(remove(project));
+					dispatch(add(res.data));
 					routerPush(pathname);
 				}
 			});
@@ -46,21 +46,21 @@ const RemoveProject = () => {
 					animate={{ opacity: 1, height: "12rem" }}
 					className="bg-white px-5 py-4 basis-80 rounded-lg flex flex-col justify-between"
 				>
-					{project ? (
+					{schema ? (
 						<>
-							<h2 className="text-lg">Delete Project</h2>
+							<h2 className="text-lg">Duplicate Schema</h2>
 							<div>
-								About to delete{" "}
-								<span className="font-bold text-red-700">
-									{project.name}
+								About to duplicate{" "}
+								<span className="font-bold text-cyan-700">
+									{schema.name}
 								</span>
 							</div>
 							<form onSubmit={handleSubmit}>
 								<FormConclusion
 									submittable={true}
-									type="danger"
+									type="chill"
 									text={{
-										save: "Archive",
+										save: "Duplicate",
 									}}
 								/>
 							</form>
@@ -75,4 +75,4 @@ const RemoveProject = () => {
 	return <></>;
 };
 
-export default RemoveProject;
+export default DuplicateSchema;

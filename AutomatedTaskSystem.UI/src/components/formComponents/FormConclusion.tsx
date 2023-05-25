@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 
+type ConclusionType = "danger" | "chill";
+
 interface Props {
 	submittable: boolean;
 	text?: {
 		cancel?: string;
 		save?: string;
 	};
-	danger?: boolean;
+	type?: ConclusionType;
 }
 
-const FormConclusion = ({ submittable, text, danger }: Props) => {
+const FormConclusion = ({ submittable, text, type }: Props) => {
 	const router = useRouter();
 
 	return (
@@ -26,7 +28,11 @@ const FormConclusion = ({ submittable, text, danger }: Props) => {
 			<button
 				type="submit"
 				className={`${
-					danger ? "bg-red-600" : "bg-black"
+					type === "danger"
+						? "bg-red-600"
+						: type === "chill"
+						? "bg-cyan-600"
+						: "bg-black"
 				} py-2 flex items-center justify-center grow ${
 					submittable ? "text-white" : "opacity-50 text-gray-300"
 				}`}

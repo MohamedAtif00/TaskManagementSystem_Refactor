@@ -5,9 +5,9 @@ import FormConclusion from "../../formComponents/FormConclusion";
 import API from "../../../lib/API";
 import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
-import { add } from "../../../slices/schemaSlice";
+import { edit } from "../../../slices/schemaSlice";
 
-const CreateSchema = () => {
+const EditSchema = () => {
 	const dispatch = useAppDispatch();
 	const { query, pathname, push: routerPush } = useRouter();
 	const [active, setActive] = useState<boolean>(false);
@@ -34,12 +34,13 @@ const CreateSchema = () => {
 
 		if (name === "") return setError("Please enter name");
 
-		API.SCHEMAS.CREATE({
+		API.SCHEMAS.EDIT({
+			id: query.schemaId!,
 			name,
 			description,
 		}).then((res) => {
 			if (res && !res.error) {
-				dispatch(add(res.data));
+				dispatch(edit(res.data));
 				routerPush(pathname);
 			}
 		});
@@ -57,26 +58,28 @@ const CreateSchema = () => {
 					animate={{ opacity: 1 }}
 					className="bg-white px-5 py-4 basis-80 rounded-lg"
 				>
-					<h2 className="text-lg mb-5">Add new project</h2>
+					<h2 className="text-lg mb-5">Edit Project</h2>
 					<form
 						onSubmit={handleSubmit}
-						className="flex flex-col gap-2"
+						className="flex flex-col gap-8"
 					>
-						<motion.div>
-							{error !== "" && (
-								<div className="text-red-600">{error}</div>
-							)}
-						</motion.div>
-						<InputTextField
-							label="Name"
-							value={name}
-							handleChange={setName}
-						/>
-						<InputTextField
-							label="Description"
-							value={description}
-							handleChange={setDescription}
-						/>
+						<div className="flex flex-col gap-2">
+							<motion.div>
+								{error !== "" && (
+									<div className="text-red-600">{error}</div>
+								)}
+							</motion.div>
+							<InputTextField
+								label="Name"
+								value={name}
+								handleChange={setName}
+							/>
+							<InputTextField
+								label="Description"
+								value={description}
+								handleChange={setDescription}
+							/>
+						</div>
 						<FormConclusion submittable={true} />
 					</form>
 				</motion.div>
@@ -86,4 +89,4 @@ const CreateSchema = () => {
 	return <></>;
 };
 
-export default CreateSchema;
+export default EditSchema;

@@ -7,6 +7,9 @@ import Link from "next/link";
 import SchemaIcon from "../../assets/Icons/Schema";
 import CreateSchema from "../../components/pageComponent/schemas/createSchema";
 import TableAction from "../../components/TableComponents/TableActionButton";
+import EditSchema from "../../components/pageComponent/schemas/editSchema";
+import DuplicateSchema from "../../components/pageComponent/schemas/duplicateSchema";
+import RemoveSchema from "../../components/pageComponent/schemas/removeSchema";
 
 const columns: GridColDef[] = [
 	{ field: "col0", headerName: "ID", width: 100 },
@@ -121,6 +124,9 @@ const Schemas = () => {
 				/>
 			</div>
 			<CreateSchema />
+			<EditSchema />
+			<DuplicateSchema />
+			<RemoveSchema />
 		</div>
 	);
 };
