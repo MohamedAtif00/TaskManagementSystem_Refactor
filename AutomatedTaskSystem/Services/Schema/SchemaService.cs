@@ -66,7 +66,7 @@ public class SchemaService : ISchemaService
                 new BaseResponseService { Error = true, Message = "Schema is not found" }
             );
 
-        if (Name != "")
+        if (Name == "")
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Name cannot be empty" }
             );
