@@ -60,8 +60,8 @@ const Schema = () => {
 	useEffect(() => {
 		if (router.query.schemaId)
 			API.SCHEMAS.GET_ONE(router.query.schemaId).then((res) => {
-				if (res) {
-					setSchema(res);
+				if (res && !res.error) {
+					setSchema(res.data);
 				}
 			});
 	}, [router.query.schemaId]);
