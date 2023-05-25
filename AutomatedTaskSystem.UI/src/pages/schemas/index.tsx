@@ -43,10 +43,10 @@ const columns: GridColDef[] = [
 				<TableAction
 					text="Duplicate"
 					url={{
-						pathname: `/projects/${c.id}`,
+						pathname: `/schemas`,
 						query: {
-							form: "edit-project",
-							projectId: c.id,
+							form: "duplicate-schema",
+							schemaId: c.id,
 						},
 					}}
 					type="duplicate"
@@ -121,56 +121,8 @@ const Schemas = () => {
 				/>
 			</div>
 			<CreateSchema />
-			{/* <AddProject />
-			<EditProject />
-			<RemoveProject /> */}
 		</div>
 	);
 };
-
-// <Header text="Schema" icon="Schema">
-// 	<QueryButton
-// 		text="View Task Bank"
-// 		url={{
-// 			pathname: "/schemas/task-bank",
-// 		}}
-// 	/>
-// 	<QueryButton
-// 		icon={<PlusIcon />}
-// 		iconLeft
-// 		iconRight={false}
-// 		text="Add"
-// 		url={{
-// 			pathname: "/schemas",
-// 			query: {
-// 				form: "schema",
-// 			},
-// 		}}
-// 	/>
-// 	<QueryButton
-// 		icon={<CopyIcon className="stroke-white" />}
-// 		iconLeft
-// 		iconRight={false}
-// 		text="Duplicate"
-// 		url={{
-// 			pathname: "/schemas",
-// 			query: {
-// 				form: "duplicate",
-// 			},
-// 		}}
-// 	/>
-// </Header>
-// <div className={styles.container}>
-// 	{schemas.map((s) => (
-// 		<SchemaItem
-// 			name={s.name}
-// 			tasks={s.tasks}
-// 			key={s.id}
-// 			id={s.id}
-// 		/>
-// 	))}
-// </div>
-// <AddSchema />
-// <DuplicateSchemaForm />
 
 export default Schemas;

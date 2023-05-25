@@ -143,9 +143,13 @@ const SCHEMAS = {
 		try {
 			const res = await fetch(`${url}/schemas/${id}`);
 			const data: {
-				description: string;
-				id: number;
-				name: string;
+				data: {
+					description: string;
+					id: number;
+					name: string;
+				};
+				error: boolean;
+				message: string;
 			} = await res.json();
 			return data;
 		} catch (error) {

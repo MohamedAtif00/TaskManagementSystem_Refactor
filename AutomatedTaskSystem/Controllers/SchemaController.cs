@@ -20,43 +20,6 @@ namespace AutomatedTaskSystem.Controllers
             _schemaService = schemaService;
         }
 
-        private async Task<ActionResult<Responses.SchemaDTO>> GetSimpleSchema(int id)
-        {
-            var schema = await _context.Schemas
-                .Where(s => s.Id == id)
-                .Include(s => s.LearningObjectives)
-                .FirstOrDefaultAsync();
-
-            if (schema == null)
-                return NotFound(new Responses.BadRequestsDTO("Schema not found"));
-
-            var res = new Responses.SchemaDTO
-            {
-                Description = schema.Description,
-                Id = schema.Id,
-                Name = schema.Name,
-            };
-
-            return res;
-        }
-
-        private async Task<ActionResult<Responses.DetailedSchemaDTO>> GetSchema(int id)
-        {
-            var schema = await _context.Schemas.Where(s => s.Id == id).FirstOrDefaultAsync();
-
-            if (schema == null)
-                return NotFound(new Responses.BadRequestsDTO("Schema not found"));
-
-            var res = new Responses.DetailedSchemaDTO
-            {
-                Description = schema.Description,
-                Id = schema.Id,
-                Name = schema.Name
-            };
-
-            return res;
-        }
-
         // DELETE:
         // Create Task Bank item
         [HttpDelete("task-bank/{id}")]
@@ -243,10 +206,9 @@ namespace AutomatedTaskSystem.Controllers
         // GET:
         // Get schema Info
         [HttpGet("{id}")]
-        public async Task<ActionResult<Responses.DetailedSchemaDTO>> GetSchemaDetailed(int id)
-        {
-            return await GetSchema(id);
-        }
+        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> GetSchemaDetailed(
+            int id
+        ) => await _schemaService.GetSchema(id);
 
         // POST:
         // Duplicate
@@ -351,27 +313,10 @@ namespace AutomatedTaskSystem.Controllers
         // PATCH:
         // Update Schema
         [HttpPatch("{id}")]
-        public async Task<ActionResult<Responses.SchemaDTO>> UpdateSchema(
+        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> UpdateSchema(
             int id,
             Requests.SchemaDTO req
-        )
-        {
-            var schema = await _context.Schemas
-                .Where(s => !s.Archived && s.Id == id)
-                .FirstOrDefaultAsync();
-
-            if (schema == null)
-                return BadRequest(new Responses.BadRequestsDTO("Schema not found"));
-
-            if (req.Name != "")
-                schema.Name = req.Name;
-
-            schema.Description = req.Description;
-
-            await _context.SaveChangesAsync();
-
-            return await GetSimpleSchema(schema.Id);
-        }
+        ) => await _schemaService.EditSchema(id, req.Name, req.Description);
 
         // DELETE:
         // Archive Schema

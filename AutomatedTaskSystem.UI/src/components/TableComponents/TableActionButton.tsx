@@ -24,7 +24,7 @@ const TableAction = ({ type, url, text }: Props) => {
 					: type === "duplicate"
 					? "hover:border-cyan-600"
 					: ""
-			} shadow-lg transition-all ease-in flex gap-2 h-7 border-solid border rounded items-center group px-2 py-1 opacity-50 hover:opacity-100`}
+			} bg-white shadow-lg transition-all ease-in flex gap-2 h-7 border-solid border rounded items-center group px-2 py-1 opacity-50 hover:opacity-100`}
 			href={url}
 		>
 			{type === "edit" ? (

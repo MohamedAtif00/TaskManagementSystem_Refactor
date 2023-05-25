@@ -11,4 +11,10 @@ public interface ISchemaService
         string Name,
         string Description
     );
+    Task<ActionResult<ResponseService<Responses.SchemaDTO>>> GetSchema(int id);
+    Task<ActionResult<ResponseService<Responses.SchemaDTO>>> EditSchema(
+        int id,
+        string Name,
+        string Description
+    );
 }

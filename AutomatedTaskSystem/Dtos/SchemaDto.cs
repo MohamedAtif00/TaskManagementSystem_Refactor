@@ -18,14 +18,6 @@ namespace AutomatedTaskSystem.DTO
             public string Name { get; set; } = "";
             public string Description { get; set; } = "";
         }
-
-        public class DetailedSchemaDTO
-        {
-            public int Id { get; set; }
-            public string Name { get; set; } = "";
-            public string Description { get; set; } = "";
-            // public List<SchemaNodeDTO> Nodes { get; set; } = new List<SchemaNodeDTO> { };
-        }
     }
 
     public static partial class Requests
