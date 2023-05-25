@@ -52,23 +52,21 @@ const AddProject = () => {
 					<h2 className="text-lg mb-5">Add new project</h2>
 					<form
 						onSubmit={handleSubmit}
-						className="flex flex-col gap-2"
+						className="flex flex-col gap-8"
 					>
-						<motion.div>
-							{error !== "" && (
-								<div className="text-red-600">{error}</div>
-							)}
-						</motion.div>
-						<InputTextField
-							label="Name"
-							value={name}
-							handleChange={setName}
-						/>
-						<InputTextField
-							label="Description"
-							value={description}
-							handleChange={setDescription}
-						/>
+						<div className="flex flex-col gap-2">
+							<div className="text-red-600">{error}</div>
+							<InputTextField
+								label="Name"
+								value={name}
+								handleChange={setName}
+							/>
+							<InputTextField
+								label="Description"
+								value={description}
+								handleChange={setDescription}
+							/>
+						</div>
 						<FormConclusion submittable={true} />
 					</form>
 				</motion.div>

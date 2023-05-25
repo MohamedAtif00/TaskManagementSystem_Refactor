@@ -9,6 +9,7 @@ import Link from "next/link";
 import EditUser from "../../../components/pageComponent/users/editUser";
 import RemoveUser from "../../../components/pageComponent/users/removeUser";
 import ResourcesIcon from "../../../assets/Icons/Resources";
+import TableAction from "../../../components/TableComponents/TableActionButton";
 
 const columns: GridColDef[] = [
 	{ field: "col0", headerName: "ID", width: 100 },
@@ -23,35 +24,31 @@ const columns: GridColDef[] = [
 	{
 		field: "col4",
 		headerName: "Actions",
-		width: 150,
+		width: 250,
 		renderCell: (c) => (
 			<div className="flex justify-end gap-4">
-				<Link
-					href={{
+				<TableAction
+					text="Edit"
+					url={{
 						pathname: "/resources/users",
 						query: {
 							form: "edit-user",
 							userId: c.id,
 						},
 					}}
-				>
-					<div className="text-blue-600 hover:underline cursor-pointer">
-						Edit
-					</div>
-				</Link>
-				<Link
-					href={{
+					type="edit"
+				/>
+				<TableAction
+					text="Archive"
+					url={{
 						pathname: "/resources/users",
 						query: {
 							form: "remove-user",
 							userId: c.id,
 						},
 					}}
-				>
-					<div className="text-red-600 hover:underline cursor-pointer">
-						Delete
-					</div>
-				</Link>
+					type="archive"
+				/>
 			</div>
 		),
 		filterable: false,

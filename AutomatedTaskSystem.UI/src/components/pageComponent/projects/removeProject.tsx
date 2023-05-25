@@ -43,12 +43,12 @@ const RemoveProject = () => {
 			>
 				<motion.div
 					initial={{ opacity: 0.1, height: "10rem" }}
-					animate={{ opacity: 1, height: "11rem" }}
-					className="bg-white px-5 py-4 basis-80 rounded-lg"
+					animate={{ opacity: 1, height: "12rem" }}
+					className="bg-white px-5 py-4 basis-80 rounded-lg flex flex-col justify-between"
 				>
 					{project ? (
 						<>
-							<h2 className="text-lg mb-5">Delete Project</h2>
+							<h2 className="text-lg">Delete Project</h2>
 							<div>
 								About to delete{" "}
 								<span className="font-bold text-red-700">
@@ -60,7 +60,7 @@ const RemoveProject = () => {
 									submittable={true}
 									danger
 									text={{
-										save: "DELETE",
+										save: "Archive",
 									}}
 								/>
 							</form>

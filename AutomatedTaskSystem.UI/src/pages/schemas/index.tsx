@@ -1,18 +1,12 @@
-import Header from "../../components/header/header";
-import styles from "../../styles/resources.module.scss";
-import SchemaItem from "../../components/schemaItem/schemaItem";
-import QueryButton from "../../components/button/queryButton";
-import PlusIcon from "../../assets/Icons/Plus";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { useEffect } from "react";
 import API from "../../lib/API";
 import { clear, load } from "../../slices/schemaSlice";
-import AddSchema from "../../components/forms/schemas/addSchema";
-import CopyIcon from "../../assets/Icons/Copy";
-import DuplicateSchemaForm from "../../components/forms/schemas/duplicate";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import Link from "next/link";
 import SchemaIcon from "../../assets/Icons/Schema";
+import CreateSchema from "../../components/pageComponent/schemas/createSchema";
+import TableAction from "../../components/TableComponents/TableActionButton";
 
 const columns: GridColDef[] = [
 	{ field: "col0", headerName: "ID", width: 100 },
@@ -28,41 +22,46 @@ const columns: GridColDef[] = [
 		width: 450,
 		renderCell: (c) => (
 			<div className="flex justify-end gap-4">
-				<Link
-					href={{
+				<TableAction
+					text="View"
+					url={{
 						pathname: `/schemas/${c.id}`,
 					}}
-				>
-					<div className="text-black hover:underline cursor-pointer">
-						View
-					</div>
-				</Link>
-				<Link
-					href={{
+					type="eye"
+				/>
+				<TableAction
+					text="Edit"
+					url={{
 						pathname: "/schemas",
 						query: {
 							form: "edit-schema",
 							schemaId: c.id,
 						},
 					}}
-				>
-					<div className="text-blue-600 hover:underline cursor-pointer">
-						Edit
-					</div>
-				</Link>
-				<Link
-					href={{
+					type="edit"
+				/>
+				<TableAction
+					text="Duplicate"
+					url={{
+						pathname: `/projects/${c.id}`,
+						query: {
+							form: "edit-project",
+							projectId: c.id,
+						},
+					}}
+					type="duplicate"
+				/>
+				<TableAction
+					text="Delete"
+					url={{
 						pathname: "/schemas",
 						query: {
 							form: "remove-schema",
 							schemaId: c.id,
 						},
 					}}
-				>
-					<div className="text-red-600 hover:underline cursor-pointer">
-						Delete
-					</div>
-				</Link>
+					type="archive"
+				/>
 			</div>
 		),
 		filterable: false,
@@ -71,7 +70,7 @@ const columns: GridColDef[] = [
 	},
 ];
 
-const Schema = () => {
+const Schemas = () => {
 	const schemas = useAppSelector((states) => states.schemasSlice);
 	const dispatch = useAppDispatch();
 
@@ -121,6 +120,7 @@ const Schema = () => {
 					columns={columns}
 				/>
 			</div>
+			<CreateSchema />
 			{/* <AddProject />
 			<EditProject />
 			<RemoveProject /> */}
@@ -173,4 +173,4 @@ const Schema = () => {
 // <AddSchema />
 // <DuplicateSchemaForm />
 
-export default Schema;
+export default Schemas;

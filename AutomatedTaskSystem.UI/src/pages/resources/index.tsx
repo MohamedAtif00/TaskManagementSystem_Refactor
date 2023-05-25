@@ -16,19 +16,19 @@ const Resources = () => {
 		<div className="mainContainer">
 			<Header text="Resources" icon="Resources"></Header>
 			<div className={styles.container}>
-				<Link href="/resources/groups">
-					<a className={styles.resource}>Groups</a>
+				<Link className={styles.resource} href="/resources/groups">
+					Groups
 				</Link>
-				<Link href="/resources/users">
-					<a className={styles.resource}>Users</a>
+				<Link className={styles.resource} href="/resources/users">
+					Users
 				</Link>
 				{/*
 					<Link href="/resources/teams">
 						<a className={styles.resource}>Teams</a>
 					</Link>
 				*/}
-				<Link href="/resources/sections">
-					<a className={styles.resource}>Sections</a>
+				<Link className={styles.resource} href="/resources/sections">
+					Sections
 				</Link>
 			</div>
 		</div>

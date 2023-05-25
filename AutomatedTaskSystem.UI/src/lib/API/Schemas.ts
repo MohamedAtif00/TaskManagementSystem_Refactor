@@ -128,7 +128,11 @@ const SCHEMAS = {
 				},
 				body: JSON.stringify({ name, description }),
 			});
-			const data: ISchema = await res.json();
+			const data: {
+				data: ISchema;
+				error: boolean;
+				message: string;
+			} = await res.json();
 			return data;
 		} catch (error) {
 			console.error(error);

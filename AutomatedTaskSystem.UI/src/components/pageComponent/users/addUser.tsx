@@ -100,37 +100,33 @@ const AddUser = () => {
 							<h2 className="text-lg mb-5">Add new user</h2>
 							<form
 								onSubmit={handleSubmit}
-								className="flex flex-col gap-2"
+								className="flex flex-col gap-8"
 							>
-								<motion.div>
-									{error !== "" && (
-										<div className="text-red-600">
-											{error}
-										</div>
-									)}
-								</motion.div>
-								<InputTextField
-									label="Name"
-									value={name}
-									handleChange={setName}
-								/>
-								<Dropdown
-									label="Group"
-									value={group}
-									options={groups}
-									handleChange={setGroup}
-								/>
-								<Dropdown
-									label="Role"
-									value={role}
-									options={[
-										{ id: 1, name: "Project Manager" },
-										{ id: 2, name: "Section Head" },
-										{ id: 3, name: "Team Leader" },
-										{ id: 4, name: "Member" },
-									]}
-									handleChange={setRole}
-								/>
+								<div className="gap-2 flex flex-col">
+									<div className="text-red-600">{error}</div>
+									<InputTextField
+										label="Name"
+										value={name}
+										handleChange={setName}
+									/>
+									<Dropdown
+										label="Group"
+										value={group}
+										options={groups}
+										handleChange={setGroup}
+									/>
+									<Dropdown
+										label="Role"
+										value={role}
+										options={[
+											{ id: 1, name: "Project Manager" },
+											{ id: 2, name: "Section Head" },
+											{ id: 3, name: "Team Leader" },
+											{ id: 4, name: "Member" },
+										]}
+										handleChange={setRole}
+									/>
+								</div>
 								<FormConclusion submittable={true} />
 							</form>
 						</>

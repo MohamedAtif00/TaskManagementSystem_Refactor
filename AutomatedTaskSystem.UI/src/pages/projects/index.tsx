@@ -9,6 +9,7 @@ import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import AddProject from "../../components/pageComponent/projects/addProject";
 import EditProject from "../../components/pageComponent/projects/editProject";
 import RemoveProject from "../../components/pageComponent/projects/removeProject";
+import TableAction from "../../components/TableComponents/TableActionButton";
 
 const columns: GridColDef[] = [
 	{ field: "col0", headerName: "ID", width: 100 },
@@ -17,48 +18,45 @@ const columns: GridColDef[] = [
 		headerName: "Name",
 		width: 200,
 	},
-	{ field: "col2", headerName: "Description", width: 500 },
+	{ field: "col2", headerName: "Description", width: 400 },
 	{
 		field: "col3",
 		headerName: "Actions",
-		width: 250,
+		width: 320,
 		renderCell: (c) => (
 			<div className="flex justify-end gap-4">
-				<Link
-					href={{
+				<TableAction
+					text="View"
+					url={{
 						pathname: `/projects/${c.id}`,
 					}}
-				>
-					<div className="text-black hover:underline cursor-pointer">
-						View
-					</div>
-				</Link>
-				<Link
-					href={{
-						pathname: "/projects",
+					color="black"
+					icon="eye"
+				/>
+				<TableAction
+					text="Edit"
+					url={{
+						pathname: `/projects/${c.id}`,
 						query: {
 							form: "edit-project",
 							projectId: c.id,
 						},
 					}}
-				>
-					<div className="text-blue-600 hover:underline cursor-pointer">
-						Edit
-					</div>
-				</Link>
-				<Link
-					href={{
-						pathname: "/projects",
+					color="blue"
+					icon="edit"
+				/>
+				<TableAction
+					text="Archive"
+					url={{
+						pathname: `/projects`,
 						query: {
 							form: "remove-project",
 							projectId: c.id,
 						},
 					}}
-				>
-					<div className="text-red-600 hover:underline cursor-pointer">
-						Delete
-					</div>
-				</Link>
+					color="red"
+					icon="archive"
+				/>
 			</div>
 		),
 		filterable: false,

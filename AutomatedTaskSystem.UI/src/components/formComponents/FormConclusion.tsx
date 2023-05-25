@@ -14,12 +14,12 @@ const FormConclusion = ({ submittable, text, danger }: Props) => {
 	const router = useRouter();
 
 	return (
-		<div className="flex justify-between gap-4 font-bold mt-5">
-			<Link href={router.pathname}>
-				<button
-					type="button"
-					className="py-2 flex items-center justify-center border-2 border-solid border-black grow"
-				>
+		<div className="flex justify-between gap-4 font-bold">
+			<Link
+				className="py-2 flex items-center justify-center border-2 border-solid border-black grow"
+				href={router.pathname}
+			>
+				<button type="button">
 					{text && text.cancel ? text.cancel : "Back"}
 				</button>
 			</Link>

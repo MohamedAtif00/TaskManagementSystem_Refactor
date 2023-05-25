@@ -5,9 +5,9 @@ import FormConclusion from "../../formComponents/FormConclusion";
 import API from "../../../lib/API";
 import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
-import { add } from "../../../slices/projectSlice";
+import { add } from "../../../slices/schemaSlice";
 
-const EditProject = () => {
+const CreateSchema = () => {
 	const dispatch = useAppDispatch();
 	const { query, pathname, push: routerPush } = useRouter();
 	const [active, setActive] = useState<boolean>(false);
@@ -16,15 +16,7 @@ const EditProject = () => {
 	const [error, setError] = useState("");
 
 	useEffect(() => {
-		if (query.form === "edit-project" && query.projectId) {
-			API.PROJECTS.GET_ONE(query.projectId).then((res) => {
-				if (res && !res.error) {
-					setName(res.data.name);
-					setDescription(res.data.description);
-				}
-			});
-			return setActive(true);
-		}
+		if (query.form === "add-schema") return setActive(true);
 		setActive(false);
 	}, [query]);
 
@@ -34,8 +26,7 @@ const EditProject = () => {
 
 		if (name === "") return setError("Please enter name");
 
-		API.PROJECTS.EDIT({
-			id: query.projectId!,
+		API.SCHEMAS.CREATE({
 			name,
 			description,
 		}).then((res) => {
@@ -58,24 +49,26 @@ const EditProject = () => {
 					animate={{ opacity: 1 }}
 					className="bg-white px-5 py-4 basis-80 rounded-lg"
 				>
-					<h2 className="text-lg mb-5">Edit project</h2>
+					<h2 className="text-lg mb-5">Add new project</h2>
 					<form
 						onSubmit={handleSubmit}
-						className="flex flex-col gap-8"
+						className="flex flex-col gap-2"
 					>
-						<div className="flex flex-col gap-2">
-							<div className="text-red-600">{error}</div>
-							<InputTextField
-								label="Name"
-								value={name}
-								handleChange={setName}
-							/>
-							<InputTextField
-								label="Description"
-								value={description}
-								handleChange={setDescription}
-							/>
-						</div>
+						<motion.div>
+							{error !== "" && (
+								<div className="text-red-600">{error}</div>
+							)}
+						</motion.div>
+						<InputTextField
+							label="Name"
+							value={name}
+							handleChange={setName}
+						/>
+						<InputTextField
+							label="Description"
+							value={description}
+							handleChange={setDescription}
+						/>
 						<FormConclusion submittable={true} />
 					</form>
 				</motion.div>
@@ -85,4 +78,4 @@ const EditProject = () => {
 	return <></>;
 };
 
-export default EditProject;
+export default CreateSchema;

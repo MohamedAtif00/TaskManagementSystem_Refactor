@@ -14,7 +14,7 @@ interface IGroup {
 }
 
 interface IUser {
-	id: number;  
+	id: number;
 	name: string;
 	group: { id: number; name: string };
 	role: { id: number; name: string };
@@ -24,7 +24,6 @@ interface ISchema {
 	description: string;
 	id: number;
 	name: string;
-	tasks: number;
 }
 
 interface IStep {

@@ -42,13 +42,13 @@ const RemoveUser = () => {
 				className="z-50 flex items-center justify-center fixed top-0 left-0 right-0 min-h-screen"
 			>
 				<motion.div
-					initial={{ opacity: 0.1 }}
-					animate={{ opacity: 1, height: "auto" }}
-					className="bg-white px-5 py-4 basis-80 rounded-lg"
+					initial={{ opacity: 0.1, height: "10rem" }}
+					animate={{ opacity: 1, height: "12rem" }}
+					className="bg-white px-5 py-4 basis-80 rounded-lg flex-col flex justify-between"
 				>
 					{user ? (
 						<>
-							<h2 className="text-lg mb-5">Delete user</h2>
+							<h2 className="text-lg">Delete user</h2>
 							<div>
 								About to delete{" "}
 								<span className="font-bold text-red-700">
