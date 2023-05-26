@@ -93,10 +93,14 @@ const PROJECTS = {
 		id,
 		name,
 		description,
+		term,
+		year,
 	}: {
 		id: string | string[] | number;
 		name: string;
 		description: string;
+		term: boolean;
+		year: number;
 	}) => {
 		try {
 			const res = await fetch(`${url}/projects/${id}`, {
@@ -104,7 +108,7 @@ const PROJECTS = {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({ name, description }),
+				body: JSON.stringify({ name, description, term, yearId: year }),
 			});
 			const data: {
 				data: IProject;
@@ -120,9 +124,13 @@ const PROJECTS = {
 	CREATE: async ({
 		name,
 		description,
+		term,
+		year,
 	}: {
 		name: string;
 		description: string;
+		term: boolean;
+		year: number;
 	}) => {
 		try {
 			const res = await fetch(`${url}/projects`, {
@@ -130,7 +138,7 @@ const PROJECTS = {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({ name, description }),
+				body: JSON.stringify({ name, description, term, yearId: year }),
 			});
 			const data: {
 				data: IProject;
@@ -441,6 +449,22 @@ const PROJECTS = {
 					}
 				},
 			},
+		},
+	},
+	YEARS: {
+		GET_ALL: async () => {
+			try {
+				const res = await fetch(`${url}/projects/years`);
+				const data: {
+					data: { id: number; name: string }[];
+					error: boolean;
+					message: string;
+				} = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
 		},
 	},
 };

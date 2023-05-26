@@ -49,6 +49,8 @@ interface IProject {
 	id: number;
 	description: string;
 	name: string;
+	year: { id: number; name: string};
+	term: boolean;
 }
 
 interface ISection {

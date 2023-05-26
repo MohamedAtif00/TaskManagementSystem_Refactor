@@ -6,6 +6,7 @@ import API from "../../../lib/API";
 import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
 import { add } from "../../../slices/projectSlice";
+import Dropdown from "../../formComponents/DropDown";
 
 const AddProject = () => {
 	const dispatch = useAppDispatch();
@@ -13,10 +14,24 @@ const AddProject = () => {
 	const [active, setActive] = useState<boolean>(false);
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
+	const [term, setTerm] = useState<null | { id: number; name: string }>(null);
+	const [year, setYear] = useState<null | { id: number; name: string }>(null);
+	const [years, setYears] = useState<{ id: number; name: string }[]>([]);
 	const [error, setError] = useState("");
 
 	useEffect(() => {
-		if (query.form === "add-project") return setActive(true);
+		if (query.form === "add-project") {
+			API.PROJECTS.YEARS.GET_ALL().then((res) => {
+				if (res && !res.error) {
+					setYears(res.data);
+				}
+			});
+			setName("");
+			setDescription("");
+			setYear(null);
+			setTerm(null);
+			return setActive(true);
+		}
 		setActive(false);
 	}, [query]);
 
@@ -25,10 +40,14 @@ const AddProject = () => {
 		setError("");
 
 		if (name === "") return setError("Please enter name");
+		if (year === null) return setError("Please select a year");
+		if (term === null) return setError("Please select a term");
 
 		API.PROJECTS.CREATE({
 			name,
 			description,
+			year: year.id,
+			term: term.id === 1 ? false : true,
 		}).then((res) => {
 			if (res && !res.error) {
 				dispatch(add(res.data));
@@ -66,6 +85,27 @@ const AddProject = () => {
 								value={description}
 								handleChange={setDescription}
 							/>
+							<div className="grid grid-cols-2 gap-2">
+								<div>
+									<Dropdown
+										value={year}
+										handleChange={setYear}
+										label="Year"
+										options={years}
+									/>
+								</div>
+								<div>
+									<Dropdown
+										value={term}
+										handleChange={setTerm}
+										label="Term"
+										options={[
+											{ id: 1, name: "Term 1" },
+											{ id: 2, name: "Term 2" },
+										]}
+									/>
+								</div>
+							</div>
 						</div>
 						<FormConclusion submittable={true} />
 					</form>

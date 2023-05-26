@@ -6,6 +6,7 @@ import API from "../../../lib/API";
 import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
 import { edit } from "../../../slices/projectSlice";
+import Dropdown from "../../formComponents/DropDown";
 
 const EditProject = () => {
 	const dispatch = useAppDispatch();
@@ -13,6 +14,9 @@ const EditProject = () => {
 	const [active, setActive] = useState<boolean>(false);
 	const [name, setName] = useState("");
 	const [description, setDescription] = useState("");
+	const [term, setTerm] = useState<null | { id: number; name: string }>(null);
+	const [year, setYear] = useState<null | { id: number; name: string }>(null);
+	const [years, setYears] = useState<{ id: number; name: string }[]>([]);
 	const [error, setError] = useState("");
 
 	useEffect(() => {
@@ -21,6 +25,17 @@ const EditProject = () => {
 				if (res && !res.error) {
 					setName(res.data.name);
 					setDescription(res.data.description);
+					setTerm(
+						res.data.term
+							? { id: 2, name: "Term 2" }
+							: { id: 1, name: "Term 1" }
+					);
+					setYear(res.data.year);
+				}
+			});
+			API.PROJECTS.YEARS.GET_ALL().then((res) => {
+				if (res && !res.error) {
+					setYears(res.data);
 				}
 			});
 			return setActive(true);
@@ -33,11 +48,15 @@ const EditProject = () => {
 		setError("");
 
 		if (name === "") return setError("Please enter name");
+		if (year === null) return setError("Please select a year");
+		if (term === null) return setError("Please select a term");
 
 		API.PROJECTS.EDIT({
 			id: query.projectId!,
 			name,
 			description,
+			term: term.id === 1 ? false : true,
+			year: year.id,
 		}).then((res) => {
 			if (res && !res.error) {
 				dispatch(edit(res.data));
@@ -75,6 +94,27 @@ const EditProject = () => {
 								value={description}
 								handleChange={setDescription}
 							/>
+							<div className="grid grid-cols-2 gap-2">
+								<div>
+									<Dropdown
+										value={year}
+										handleChange={setYear}
+										label="Year"
+										options={years}
+									/>
+								</div>
+								<div>
+									<Dropdown
+										value={term}
+										handleChange={setTerm}
+										label="Term"
+										options={[
+											{ id: 1, name: "Term 1" },
+											{ id: 2, name: "Term 2" },
+										]}
+									/>
+								</div>
+							</div>
 						</div>
 						<FormConclusion submittable={true} />
 					</form>

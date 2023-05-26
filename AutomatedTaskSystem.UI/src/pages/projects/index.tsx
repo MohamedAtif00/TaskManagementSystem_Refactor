@@ -12,15 +12,17 @@ import RemoveProject from "../../components/pageComponent/projects/removeProject
 import TableAction from "../../components/TableComponents/TableActionButton";
 
 const columns: GridColDef[] = [
-	{ field: "col0", headerName: "ID", width: 100 },
+	{ field: "col0", headerName: "ID", width: 90 },
 	{
 		field: "col1",
 		headerName: "Name",
 		width: 200,
 	},
-	{ field: "col2", headerName: "Description", width: 400 },
+	{ field: "col2", headerName: "Description", width: 300 },
+	{ field: "col3", headerName: "Year", width: 100 },
+	{ field: "col4", headerName: "Term", width: 100 },
 	{
-		field: "col3",
+		field: "col5",
 		headerName: "Actions",
 		width: 320,
 		renderCell: (c) => (
@@ -68,9 +70,7 @@ const Projects = () => {
 	const auth = useAppSelector((s) => s.authSlice);
 	const router = useRouter();
 
-	if (!auth.isAuth || auth.role != 1) {
-		router.replace("/");
-	}
+	if (!auth.isAuth || auth.role != 1) router.replace("/");
 
 	useEffect(() => {
 		API.PROJECTS.GET_ALL().then((res) => {
@@ -109,6 +109,8 @@ const Projects = () => {
 							col0: p.id,
 							col1: p.name,
 							col2: p.description,
+							col3: p.year.name,
+							col4: p.term ? "Term 2" : "Term 1",
 						};
 					})}
 					columns={columns}

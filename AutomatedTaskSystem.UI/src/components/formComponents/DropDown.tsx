@@ -68,11 +68,13 @@ const Dropdown = ({ label, value, options, handleChange }: Props) => {
 			<label className="text-sm">{label}</label>
 			<div
 				onClick={handleToggle}
-				className="basis-10 items-center flex justify-between px-4 border-2 border-solid hover:bg-slate-100 cursor-default"
+				className="basis-10 items-center flex justify-between px-2 border-2 border-solid hover:bg-slate-100 cursor-default"
 				ref={dropdownRef}
 			>
 				<div
-					className={`select-none${value === null && " opacity-50"}`}
+					className={`select-none${
+						value === null && " opacity-50 text-xs"
+					}`}
 				>
 					{value ? value.name : "Select an item"}
 				</div>
