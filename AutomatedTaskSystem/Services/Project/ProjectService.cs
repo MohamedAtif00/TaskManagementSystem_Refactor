@@ -244,7 +244,7 @@ public class ProjectService : IProjectService
                             Id = p.Id,
                             Name = p.Name,
                             Term = p.Term,
-                            Year = new Responses.IDName { Id = p.Id, Name = p.Name }
+                            Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number }
                         }
                 )
                 .ToList(),
@@ -493,7 +493,7 @@ public class ProjectService : IProjectService
                                 Name = p.Name,
                                 Description = p.Description,
                                 Term = p.Term,
-                                Year = new Responses.IDName { Id = p.Id, Name = p.Name }
+                                Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number }
                             }
                     )
                     .ToList()
@@ -511,7 +511,11 @@ public class ProjectService : IProjectService
                         Name = project.Name,
                         Description = project.Description,
                         Term = project.Term,
-                        Year = new Responses.IDName { Id = project.Id, Name = project.Name }
+                        Year = new Responses.IDName
+                        {
+                            Id = project.YearId,
+                            Name = project.Year.Number
+                        }
                     }
                 );
             }
