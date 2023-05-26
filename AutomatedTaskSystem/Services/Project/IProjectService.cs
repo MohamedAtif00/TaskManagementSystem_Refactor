@@ -14,7 +14,9 @@ public interface IProjectService
     );
     Task<ActionResult<ResponseService<Responses.ProjectDTO>>> CreateProject(
         string Name,
-        string Description
+        string Description,
+        int YearId,
+        bool Term
     );
     Task<ActionResult<ResponseService<Responses.ProjectDTO>>> EditProject(
         int id,

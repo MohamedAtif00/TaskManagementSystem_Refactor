@@ -17,6 +17,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using AutomatedTaskSystem.Services.TokenService;
 using AutomatedTaskSystem.Services.SchemaService;
+using AutomatedTaskSystem.Services.YearService;
 
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 var builder = WebApplication.CreateBuilder(args);
@@ -37,6 +38,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IPathService, PathService>();
 builder.Services.AddScoped<ISchemaService, SchemaService>();
+builder.Services.AddScoped<IYearService, YearService>();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opts =>

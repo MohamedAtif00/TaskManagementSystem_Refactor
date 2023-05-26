@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using AutomatedTaskSystem.Services.AuthService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.ProjectService;
+using AutomatedTaskSystem.Services.YearService;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -13,11 +14,17 @@ namespace AutomatedTaskSystem.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IProjectService _projectService;
+        private readonly IYearService _yearService;
 
-        public ProjectController(IAuthService authService, IProjectService projectService)
+        public ProjectController(
+            IAuthService authService,
+            IProjectService projectService,
+            IYearService yearService
+        )
         {
             _authService = authService;
             _projectService = projectService;
+            _yearService = yearService;
         }
 
         // Get all unassigned users
@@ -93,7 +100,7 @@ namespace AutomatedTaskSystem.Controllers
         [HttpPost]
         public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> CreateProject(
             Requests.ProjectDTO req
-        ) => await _projectService.CreateProject(req.Name, req.Description);
+        ) => await _projectService.CreateProject(req.Name, req.Description, req.YearId, req.Term);
 
         // Add unit to project
         [HttpPost("{id}/units")]
@@ -101,5 +108,11 @@ namespace AutomatedTaskSystem.Controllers
             int id,
             Requests.NameDTO req
         ) => await _projectService.AddUnit(id, req.Name);
+
+        // GET:
+        // Get Project Years
+        [HttpGet("years")]
+        public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetActiveYears() =>
+            await _yearService.GetActiveYears();
     }
 }

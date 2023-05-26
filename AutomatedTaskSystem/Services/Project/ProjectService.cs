@@ -82,7 +82,9 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> CreateProject(
         string Name,
-        string Description
+        string Description,
+        int YearId,
+        bool Term
     )
     {
         if (await CheckIfProjectExists(Name))
@@ -90,7 +92,21 @@ public class ProjectService : IProjectService
                 new BaseResponseService { Error = true, Message = "Project already exists." }
             );
 
-        var newProject = new Project { Name = Name, Description = Description, };
+        var year = await _context.Years.Where(y => y.Id == YearId).FirstOrDefaultAsync();
+
+        if (year is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Year" }
+            );
+
+        var newProject = new Project
+        {
+            Name = Name,
+            Description = Description,
+            Term = Term,
+            Year = year,
+            YearId = year.Id
+        };
 
         _context.Projects.Add(newProject);
         await _context.SaveChangesAsync();
@@ -101,7 +117,9 @@ public class ProjectService : IProjectService
             {
                 Id = newProject.Id,
                 Description = newProject.Description,
-                Name = newProject.Name
+                Name = newProject.Name,
+                Year = new Responses.IDName { },
+                Term = newProject.Term
             },
             Error = false,
             Message = $"Project {Name} is created.",
