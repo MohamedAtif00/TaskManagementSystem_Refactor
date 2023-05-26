@@ -56,7 +56,7 @@ const TableAction = ({ type, url, text }: Props) => {
 						? "group-hover:text-cyan-600"
 						: ""
 				}
-				transition-all ease-in hover:underline cursor-pointer font-medium`}
+				transition-all ease-in group-hover:underline cursor-pointer font-medium`}
 			>
 				{text}
 			</div>
