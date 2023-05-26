@@ -118,7 +118,11 @@ public class ProjectService : IProjectService
                 Id = newProject.Id,
                 Description = newProject.Description,
                 Name = newProject.Name,
-                Year = new Responses.IDName { },
+                Year = new Responses.IDName
+                {
+                    Id = newProject.YearId,
+                    Name = newProject.Year.Number
+                },
                 Term = newProject.Term
             },
             Error = false,
@@ -141,7 +145,6 @@ public class ProjectService : IProjectService
                 new BaseResponseService { Error = true, Message = "Project is not found" }
             );
 
-        project.Archived = true;
         foreach (var unit in project.Units)
         {
             if (unit.Archived)
@@ -166,6 +169,7 @@ public class ProjectService : IProjectService
             }
             unit.Archived = true;
         }
+        project.Archived = true;
 
         await _context.SaveChangesAsync();
 
@@ -175,18 +179,34 @@ public class ProjectService : IProjectService
     public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> EditProject(
         int id,
         string Name,
-        string Description
+        string Description,
+        int YearId,
+        bool term
     )
     {
         var project = await _context.Projects
             .Where(p => p.Id == id && !p.Archived)
+            .Include(p => p.Year)
             .FirstOrDefaultAsync();
 
         if (project is null)
             return new NotFoundResult();
 
+        if (YearId != project.YearId)
+        {
+            var year = await _context.Years.Where(y => y.Id == YearId).FirstOrDefaultAsync();
+
+            if (year is null)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Invalid year" }
+                );
+
+            project.Year = year;
+        }
+
         project.Name = Name;
         project.Description = Description;
+        project.Term = term;
 
         await _context.SaveChangesAsync();
 
@@ -196,7 +216,9 @@ public class ProjectService : IProjectService
             {
                 Id = project.Id,
                 Description = project.Description,
-                Name = project.Name
+                Name = project.Name,
+                Term = project.Term,
+                Year = new Responses.IDName { Name = project.Year.Number, Id = project.Year.Id, }
             },
             Error = false,
             Message = $"Project of id:{id} edited.",
@@ -205,7 +227,10 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<List<Responses.ProjectDTO>>>> GetAllProjects()
     {
-        var projects = await _context.Projects.Where(p => !p.Archived).ToListAsync();
+        var projects = await _context.Projects
+            .Where(p => !p.Archived)
+            .Include(p => p.Year)
+            .ToListAsync();
 
         return new ResponseService<List<Responses.ProjectDTO>>
         {
@@ -217,7 +242,9 @@ public class ProjectService : IProjectService
                         {
                             Description = p.Description,
                             Id = p.Id,
-                            Name = p.Name
+                            Name = p.Name,
+                            Term = p.Term,
+                            Year = new Responses.IDName { Id = p.Id, Name = p.Name }
                         }
                 )
                 .ToList(),
@@ -272,6 +299,7 @@ public class ProjectService : IProjectService
     {
         var project = await _context.Projects
             .Where(p => p.Id == Id && !p.Archived)
+            .Include(p => p.Year)
             .FirstOrDefaultAsync();
 
         if (project is null)
@@ -286,6 +314,8 @@ public class ProjectService : IProjectService
                 Id = project.Id,
                 Name = project.Name,
                 Description = project.Description,
+                Term = project.Term,
+                Year = new Responses.IDName { Id = project.YearId, Name = project.Year.Number }
             },
             Error = false,
             Message = "Project found"
@@ -436,6 +466,7 @@ public class ProjectService : IProjectService
         var user = await _context.Users
             .Where(u => u.Id == uid && !u.Archived)
             .Include(u => u.Projects)
+            .ThenInclude(p => p.Year)
             .FirstOrDefaultAsync();
 
         if (user is null)
@@ -448,14 +479,21 @@ public class ProjectService : IProjectService
             {
                 Error = false,
                 Message = "List of all projects",
-                Data = (await _context.Projects.Where(p => !p.Archived).ToListAsync())
+                Data = (
+                    await _context.Projects
+                        .Where(p => !p.Archived)
+                        .Include(p => p.Year)
+                        .ToListAsync()
+                )
                     .Select(
                         p =>
                             new Responses.ProjectDTO
                             {
                                 Id = p.Id,
                                 Name = p.Name,
-                                Description = p.Description
+                                Description = p.Description,
+                                Term = p.Term,
+                                Year = new Responses.IDName { Id = p.Id, Name = p.Name }
                             }
                     )
                     .ToList()
@@ -471,7 +509,9 @@ public class ProjectService : IProjectService
                     {
                         Id = project.Id,
                         Name = project.Name,
-                        Description = project.Description
+                        Description = project.Description,
+                        Term = project.Term,
+                        Year = new Responses.IDName { Id = project.Id, Name = project.Name }
                     }
                 );
             }

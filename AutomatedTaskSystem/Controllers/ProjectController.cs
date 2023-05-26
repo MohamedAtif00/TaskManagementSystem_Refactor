@@ -94,7 +94,7 @@ namespace AutomatedTaskSystem.Controllers
         public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> EditProject(
             int id,
             Requests.ProjectDTO req
-        ) => await _projectService.EditProject(id, req.Name, req.Description);
+        ) => await _projectService.EditProject(id, req.Name, req.Description, req.YearId, req.Term);
 
         // Create Project
         [HttpPost]

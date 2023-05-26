@@ -21,7 +21,9 @@ public interface IProjectService
     Task<ActionResult<ResponseService<Responses.ProjectDTO>>> EditProject(
         int id,
         string Name,
-        string Description
+        string Description,
+        int YearId,
+        bool Term
     );
     Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetUnassignedUsers(int Id);
     Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetAssignedUsers(int Id);
