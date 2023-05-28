@@ -86,6 +86,20 @@ const RESOURCES = {
 				return false;
 			}
 		},
+		GET_ONE: async (id: string | string[] | number) => {
+			try {
+				const res = await fetch(`${url}/groups/${id}`);
+				const data: {
+					data: IGroup;
+					error: boolean;
+					message: string;
+				} = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		},
 	},
 	USERS: {
 		CREATE: async ({

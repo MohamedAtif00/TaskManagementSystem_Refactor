@@ -21,9 +21,7 @@ const Projects = () => {
 
 	useEffect(() => {
 		API.TASKS.PROJECTS().then((res) => {
-			if (res && !res.error) {
-				setProjects(res.data);
-			}
+			if (res && !res.error) setProjects(res.data);
 		});
 	}, []);
 
