@@ -11,7 +11,9 @@ import styles from "../../../styles/resources.module.scss";
 const Sections = () => {
 	const [users, setUsers] = useState<IUser[]>([]);
 	const [groups, setGroups] = useState<IGroup[]>([]);
-	const [sections, setSections] = useState<{ id: number; name: string }[]>([]);
+	const [sections, setSections] = useState<{ id: number; name: string }[]>(
+		[]
+	);
 
 	useEffect(() => {
 		API.RESOURCES.USERS.GET_ALL().then((res) => {
@@ -54,7 +56,7 @@ const Sections = () => {
 	};
 
 	return (
-		<div className="container">
+		<div className="mainContainer">
 			<Header text="Sections" icon="Resources">
 				<QueryButton
 					icon={<PlusIcon />}
@@ -74,7 +76,11 @@ const Sections = () => {
 					<SectionItem id={s.id} name={s.name} key={s.id} />
 				))}
 			</div>
-			<AddSection users={users} groups={groups} handleSubmit={handleAdd} />
+			<AddSection
+				users={users}
+				groups={groups}
+				handleSubmit={handleAdd}
+			/>
 		</div>
 	);
 };

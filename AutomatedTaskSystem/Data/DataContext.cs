@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.YearModel;
 
 namespace AutomatedTaskSystem.Data
 {
@@ -10,6 +11,10 @@ namespace AutomatedTaskSystem.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Node>().Property(n => n.Archived).HasDefaultValue(false);
+
+            modelBuilder.Entity<RefreshToken>().Property(rt => rt.Used).HasDefaultValue(false);
 
             modelBuilder
                 .Entity<Node>()
@@ -122,9 +127,47 @@ namespace AutomatedTaskSystem.Data
                 .HasOne(p => p.NextStep)
                 .WithMany()
                 .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder
+                .Entity<Year>()
+                .HasData(
+                    new Year
+                    {
+                        Active = true,
+                        Id = 1,
+                        Number = "2020"
+                    },
+                    new Year
+                    {
+                        Active = true,
+                        Id = 2,
+                        Number = "2021"
+                    },
+                    new Year
+                    {
+                        Active = true,
+                        Id = 3,
+                        Number = "2022"
+                    },
+                    new Year
+                    {
+                        Active = true,
+                        Id = 4,
+                        Number = "2023"
+                    },
+                    new Year
+                    {
+                        Active = true,
+                        Id = 5,
+                        Number = "2024"
+                    }
+                );
+
+            modelBuilder.Entity<Project>().Property(p => p.YearId).HasDefaultValue(1);
         }
 
         public DbSet<Team> Teams => Set<Team>();
+        public DbSet<Year> Years => Set<Year>();
         public DbSet<Models.Path> Paths => Set<Models.Path>();
         public DbSet<Activity> Activities => Set<Activity>();
         public DbSet<ActivityType> ActivityTypes => Set<ActivityType>();

@@ -11,6 +11,7 @@ namespace AutomatedTaskSystem.Models
 		public bool OnBoard { get; set; } = false;
 		public string Name { get; set; } = "";
 		public List<Project> Projects { get; set; } = new List<Project> {};
+		public List<Task> Tasks { get; set; } = new List<Task> {};
 		public Team? Team { get; set; } = null;
 		public int? TeamId { get; set; }
 		public Group Group { get; set; } = new Group { };

@@ -1,6 +1,8 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Services.SchemaService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers
@@ -10,59 +12,12 @@ namespace AutomatedTaskSystem.Controllers
     public class SchemaController : ControllerBase
     {
         private readonly DataContext _context;
+        private readonly ISchemaService _schemaService;
 
-        public SchemaController(DataContext context)
+        public SchemaController(DataContext context, ISchemaService schemaService)
         {
             _context = context;
-        }
-
-        private async Task<ActionResult<Responses.SchemaDTO>> GetSimpleSchema(int id)
-        {
-            var schema = await _context.Schemas
-                .Where(s => s.Id == id)
-                .Include(s => s.LearningObjectives)
-                .FirstOrDefaultAsync();
-
-            if (schema == null)
-            {
-                return NotFound(new Responses.BadRequestsDTO("Schema not found"));
-            }
-
-            var nodes = await _context.Nodes
-                .Where(n => n.SchemaId == schema.Id)
-                .Include(n => n.Steps)
-                .ToListAsync();
-
-            int tasksCount = 0;
-
-            nodes.ForEach(n => tasksCount += n.Steps.Count);
-
-            var res = new Responses.SchemaDTO
-            {
-                Description = schema.Description,
-                Id = schema.Id,
-                Name = schema.Name,
-                Tasks = tasksCount
-            };
-
-            return res;
-        }
-
-        private async Task<ActionResult<Responses.DetailedSchemaDTO>> GetSchema(int id)
-        {
-            var schema = await _context.Schemas.Where(s => s.Id == id).FirstOrDefaultAsync();
-
-            if (schema == null)
-                return NotFound(new Responses.BadRequestsDTO("Schema not found"));
-
-            var res = new Responses.DetailedSchemaDTO
-            {
-                Description = schema.Description,
-                Id = schema.Id,
-                Name = schema.Name
-            };
-
-            return res;
+            _schemaService = schemaService;
         }
 
         // DELETE:
@@ -207,7 +162,7 @@ namespace AutomatedTaskSystem.Controllers
                 var schema = schemas[i];
                 var nodes = await _context.Nodes
                     .Include(n => n.Steps)
-                    .Where(node => node.SchemaId == schema.Id)
+                    .Where(node => node.SchemaId == schema.Id && !node.Archived)
                     .ToListAsync();
 
                 int tasksCount = 0;
@@ -234,16 +189,6 @@ namespace AutomatedTaskSystem.Controllers
             for (int i = 0; i < schemas.Count; i++)
             {
                 var schema = schemas[i];
-                var nodes = await _context.Nodes
-                    .Include(n => n.Steps)
-                    .Where(node => node.SchemaId == schema.Id)
-                    .ToListAsync();
-
-                int tasksCount = 0;
-                nodes.ForEach(n =>
-                {
-                    tasksCount += n.Steps.Count;
-                });
 
                 res.Add(
                     new Responses.SchemaDTO
@@ -251,7 +196,6 @@ namespace AutomatedTaskSystem.Controllers
                         Description = schema.Description,
                         Id = schema.Id,
                         Name = schema.Name,
-                        Tasks = tasksCount
                     }
                 );
             }
@@ -262,163 +206,37 @@ namespace AutomatedTaskSystem.Controllers
         // GET:
         // Get schema Info
         [HttpGet("{id}")]
-        public async Task<ActionResult<Responses.DetailedSchemaDTO>> GetSchemaDetailed(int id)
-        {
-            return await GetSchema(id);
-        }
+        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> GetSchemaDetailed(
+            int id
+        ) => await _schemaService.GetSchema(id);
 
         // POST:
         // Duplicate
         [HttpPost("{id}/duplicate")]
-        public async Task<ActionResult<Responses.SchemaDTO>> DuplicateSchema(int id)
-        {
-            var schema = await _context.Schemas
-                .Where(s => s.Id == id && !s.Archived)
-                .Include(s => s.Nodes)
-                .ThenInclude(n => n.Steps)
-                .ThenInclude(s => s.TaskBank)
-                .Include(s => s.Nodes)
-                .ThenInclude(n => n.Previous)
-                .Include(s => s.Nodes)
-                .ThenInclude(n => n.Requires)
-                .FirstOrDefaultAsync();
-
-            if (schema == null)
-                return NotFound(new Responses.BadRequestsDTO("Schema not found"));
-
-            var newSchema = new Schema
-            {
-                Archived = false,
-                Name = $"{schema.Name} - Duplicate",
-                Description = schema.Description,
-            };
-            _context.Schemas.Add(newSchema);
-            var newNodes = new List<Node> { };
-            var oldNodes = schema.Nodes;
-            int tasks = 0;
-            foreach (var n in oldNodes)
-            {
-                var nn = new Node
-                {
-                    Schema = newSchema,
-                    SchemaId = newSchema.Id,
-                    isEnd = n.isEnd,
-                    isStart = n.isStart,
-                    Name = n.Name,
-                };
-                var steps = new List<Step> { };
-                n.Steps.ForEach(s =>
-                {
-                    steps.Add(
-                        new Step
-                        {
-                            Archived = s.Archived,
-                            Order = s.Order,
-                            Node = nn,
-                            TaskBank = s.TaskBank,
-                            TaskBankId = s.TaskBankId,
-                            NodeId = nn.Id,
-                        }
-                    );
-                    tasks++;
-                });
-                nn.Steps = steps;
-                newNodes.Add(nn);
-                newSchema.Nodes.Add(nn);
-                _context.Nodes.Add(nn);
-            }
-
-            for (int i = 0; i < oldNodes.Count; i++)
-            {
-                var oldNode = oldNodes[i];
-                foreach (var item in oldNode.Previous)
-                {
-                    var index = oldNodes.FindIndex(n => n.Id == item.Id);
-                    if (index >= 0)
-                    {
-                        newNodes[i].Previous.Add(newNodes[index]);
-                        newNodes[index].Next.Add(newNodes[i]);
-                    }
-                }
-                foreach (var item in oldNode.Requires)
-                {
-                    var index = oldNodes.FindIndex(n => n.Id == item.Id);
-                    if (index >= 0)
-                    {
-                        newNodes[i].Requires.Add(newNodes[index]);
-                        newNodes[index].Required.Add(newNodes[i]);
-                    }
-                }
-            }
-            await _context.SaveChangesAsync();
-
-            return Ok(
-                new Responses.SchemaDTO
-                {
-                    Name = newSchema.Name,
-                    Description = newSchema.Description,
-                    Id = newSchema.Id,
-                    Tasks = tasks
-                }
-            );
-        }
+        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> DuplicateSchema(
+            int id
+        ) => await _schemaService.DuplicateSchema(id);
 
         // POST:
         // Create new Schema
         [HttpPost]
-        public async Task<ActionResult<Responses.SchemaDTO>> CreateSchema(Requests.SchemaDTO req)
-        {
-            var newSchema = new Schema { Name = req.Name, Description = req.Description };
-
-            _context.Schemas.Add(newSchema);
-            await _context.SaveChangesAsync();
-
-            return await GetSimpleSchema(newSchema.Id);
-        }
+        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> CreateSchema(
+            Requests.SchemaDTO req
+        ) => await _schemaService.CreateSchema(req.Name, req.Description);
 
         // PATCH:
         // Update Schema
         [HttpPatch("{id}")]
-        public async Task<ActionResult<Responses.SchemaDTO>> UpdateSchema(
+        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> UpdateSchema(
             int id,
             Requests.SchemaDTO req
-        )
-        {
-            var schema = await _context.Schemas
-                .Where(s => !s.Archived && s.Id == id)
-                .FirstOrDefaultAsync();
-
-            if (schema == null)
-                return BadRequest(new Responses.BadRequestsDTO("Schema not found"));
-
-            if (req.Name != "")
-                schema.Name = req.Name;
-
-            schema.Description = req.Description;
-
-            await _context.SaveChangesAsync();
-
-            return await GetSimpleSchema(schema.Id);
-        }
+        ) => await _schemaService.EditSchema(id, req.Name, req.Description);
 
         // DELETE:
         // Archive Schema
         // TODO: Archive dependant tables
         [HttpDelete("{id}")]
-        public async Task<ActionResult<Responses.SuccessDTO>> ArchiveSchema(int id)
-        {
-            var schema = await _context.Schemas
-                .Where(s => !s.Archived && s.Id == id)
-                .FirstOrDefaultAsync();
-
-            if (schema == null)
-                return BadRequest(new Responses.BadRequestsDTO("Schema not found"));
-
-            schema.Archived = true;
-
-            await _context.SaveChangesAsync();
-
-            return new Responses.SuccessDTO($"Schema '{schema.Name}' has been archived");
-        }
+        public async Task<ActionResult<BaseResponseService>> ArchiveSchema(int id) =>
+            await _schemaService.DeleteSchema(id);
     }
 }

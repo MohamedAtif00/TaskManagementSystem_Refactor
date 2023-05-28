@@ -49,8 +49,8 @@ const AddGroup = () => {
 				name,
 				colorCode: _color!.color,
 			}).then((res) => {
-				if (res) {
-					dispatch(add(res));
+				if (res && !res.error) {
+					dispatch(add(res.data));
 					router.back();
 				}
 			});

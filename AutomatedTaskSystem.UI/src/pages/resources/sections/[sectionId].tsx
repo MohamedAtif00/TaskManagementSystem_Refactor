@@ -4,7 +4,7 @@ import Header from "../../../components/header/header";
 import styles from "../../../styles/resources.module.scss";
 import API from "../../../lib/API";
 
-interface Props { }
+interface Props {}
 
 const Section = (props: Props) => {
 	const router = useRouter();
@@ -24,7 +24,7 @@ const Section = (props: Props) => {
 	// const sectionGroups: IGroup[] = [];
 
 	return (
-		<div className="container">
+		<div className="mainContainer">
 			<Header text={section ? section.name : ""} icon="Resources">
 				{/* <QueryButton
 					icon={<PlusIcon />}
