@@ -20,16 +20,8 @@ public class PathService : IPathService
     {
         var res = new List<Models.Path> { };
 
-        var paths = await _context.Paths
-            .Where(p => p.LearningObjectiveId == learningObjective.Id)
-            .Include(p => p.LearningObjective)
-            .Include(p => p.Task)
-            .Include(p => p.Step)
-            .Include(p => p.NextStep)
-            .ToListAsync();
-
         var schema = await _context.Schemas
-            .Where(s => s.Id == schemaId)
+            .Where(s => s.Id == schemaId && !s.Archived)
             .Include(s => s.Nodes)
             .ThenInclude(n => n.Steps)
             .ThenInclude(s => s.TaskBank)
@@ -104,7 +96,7 @@ public class PathService : IPathService
             throw new NotImplementedException("Tarsh");
 
         var schema = await _context.Schemas
-            .Where(s => s.Id == node.SchemaId)
+            .Where(s => s.Id == node.SchemaId && !s.Archived)
             .Include(s => s.Nodes)
             .ThenInclude(n => n.Steps)
             .ThenInclude(s => s.TaskBank)
@@ -213,9 +205,8 @@ public class PathService : IPathService
         return paths;
     }
 
-    public async Task<List<Models.Path>> GetPathByTask(Models.Task task)
-    {
-        return await _context.Paths
+    public async Task<List<Models.Path>> GetPathByTask(Models.Task task) =>
+        await _context.Paths
             .Include(p => p.Step)
             .Include(p => p.NextStep)
             .ThenInclude(ns => ns.Node)
@@ -224,29 +215,24 @@ public class PathService : IPathService
             .ThenInclude(tb => tb.Group)
             .Where(p => p.TaskId == task.Id)
             .ToListAsync();
-    }
 
-    public async Task<List<Models.Path>> GetStepPreviousPath(Step step)
-    {
-        return await _context.Paths
+    public async Task<List<Models.Path>> GetStepPreviousPath(Step step) =>
+        await _context.Paths
             .Include(p => p.NextStep)
             .Include(p => p.Step)
             .Include(p => p.Task)
             .Where(p => p.NextStepId == step.Id)
             .ToListAsync();
-    }
 
     public async Task<List<Models.Path>> GetPathByLearningObjective(
         LearningObjective learningObjective
-    )
-    {
-        return await _context.Paths
+    ) =>
+        await _context.Paths
             .Include(p => p.NextStep)
             .Include(p => p.Step)
             .Include(p => p.Task)
             .Where(p => p.LearningObjectiveId == learningObjective.Id)
             .ToListAsync();
-    }
 
     public async Task<bool> DeleteLearningObjectivePath(int learningObjectiveId)
     {
@@ -312,14 +298,16 @@ public class PathService : IPathService
     }
 
     private List<Node> nextNodesInSchema(Node currentNode, Schema schema) =>
-        schema.Nodes.Where(n => n.Previous.Any(n => n.Id == currentNode.Id)).ToList();
+        schema.Nodes
+            .Where(n => !n.Archived && n.Previous.Any(n => n.Id == currentNode.Id))
+            .ToList();
 
     private List<Node> firstNodesInSchema(Schema schema) =>
-        schema.Nodes.Where(n => n.isStart).ToList();
+        schema.Nodes.Where(n => n.isStart && !n.Archived).ToList();
 
     private Step? getStepByOrder(Node node, int Order) =>
-        node.Steps.Where(s => s.Order == Order).FirstOrDefault();
+        node.Steps.Where(s => s.Order == Order && !s.Archived).FirstOrDefault();
 
     private Step? firstStepInNode(Node node) =>
-        node.Steps.Where(s => s.Order == 1).FirstOrDefault();
+        node.Steps.Where(s => s.Order == 1 && !s.Archived).FirstOrDefault();
 }

@@ -78,7 +78,7 @@ namespace AutomatedTaskSystem.Controllers
 
             foreach (var node in firstNodes)
             {
-                var firstStep = node.Steps.Where(s => s.Order == 1).FirstOrDefault();
+                var firstStep = node.Steps.Where(s => s.Order == 1 && !s.Archived).FirstOrDefault();
 
                 if (firstStep is not null)
                 {
