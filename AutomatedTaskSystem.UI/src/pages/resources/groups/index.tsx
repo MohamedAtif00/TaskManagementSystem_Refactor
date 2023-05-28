@@ -128,8 +128,6 @@ const Groups = () => {
 	const auth = useAppSelector((s) => s.authSlice);
 	const router = useRouter();
 
-	if (!auth.isAuth || auth.role != 1) return router.replace("/");
-
 	useEffect(() => {
 		API.RESOURCES.GROUPS.GET_ALL().then((res) => {
 			if (res && !res.error) {
@@ -140,6 +138,8 @@ const Groups = () => {
 			dispatch(clear());
 		};
 	}, [dispatch]);
+
+	if (!auth.isAuth || auth.role != 1) return router.replace("/");
 
 	return (
 		<div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
