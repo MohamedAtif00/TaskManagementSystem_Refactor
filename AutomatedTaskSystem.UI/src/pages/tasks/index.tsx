@@ -49,6 +49,7 @@ const Projects = () => {
 											if (c.field === "col1")
 												return (
 													<div
+														key={c.headerName}
 														style={{
 															minWidth: c.width,
 															maxWidth: c.width,
@@ -61,6 +62,7 @@ const Projects = () => {
 
 											return (
 												<div
+													key={c.headerName}
 													style={{
 														minWidth: c.width,
 														maxWidth: c.width,
