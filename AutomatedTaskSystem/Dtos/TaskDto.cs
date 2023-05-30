@@ -33,6 +33,8 @@ namespace AutomatedTaskSystem.DTO
             public DateTime CreatedAt { get; set; }
             public DateTime? StartedAt { get; set; }
             public DateTime? DoneAt { get; set; }
+            public string? From { get; set; }
+            public int? Priority { get; set; }
         }
 
         public class TaskDTO
@@ -61,7 +63,8 @@ namespace AutomatedTaskSystem.DTO
             public List<CommentDTO> Comments { get; set; } = new List<CommentDTO> { };
             public bool IsRollback { get; set; } = false;
             public int RollbackCount { get; set; }
-            public string From { get; set; } = "";
+            public string? From { get; set; }
+            public int? Priority { get; set; } = null;
         }
 
         public class PreviousNodeDTO
@@ -81,6 +84,11 @@ namespace AutomatedTaskSystem.DTO
 
     public static partial class Requests
     {
+        public class PriorityUpdateDto
+        {
+            public int? Priority { get; set; } = null;
+        }
+
         public class NewTaskDTO
         {
             public int UserId { get; set; }

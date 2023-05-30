@@ -6,6 +6,7 @@ namespace AutomatedTaskSystem.DTO
         {
             public int TaskBankItem { get; set; }
             public int Duration { get; set; }
+            public int? Priority { get; set; } = null;
         }
     }
 
@@ -20,6 +21,7 @@ namespace AutomatedTaskSystem.DTO
             public bool TL { get; set; } = false;
             public IDName Group { get; set; } = new IDName { };
             public int Duration { get; set; }
+            public int? Priority { get; set; } = null;
         }
     }
 }

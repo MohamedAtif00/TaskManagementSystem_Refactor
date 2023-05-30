@@ -33,6 +33,12 @@ public class TaskController : ControllerBase
         _taskService = taskService;
     }
 
+    [HttpPatch("{id}/priority")]
+    public async Task<ActionResult<ResponseService<Responses.ITaskDTO>>> EditTask(
+        int id,
+        Requests.PriorityUpdateDto req
+    ) => await _taskService.UpdateTaskPriority(id, req.Priority);
+
     // POST:
     // Add Comment to Task
     [Authorize, HttpPost]
@@ -234,6 +240,7 @@ public class TaskController : ControllerBase
         var task = await _context.Tasks
             .Where(t => !t.Archived && t.Id == id)
             .Include(t => t.Group)
+            .Include(t => t.From)
             .Include(t => t.Status)
             .Include(t => t.LearningObjective)
             .ThenInclude(lo => lo.Schema)
@@ -300,6 +307,8 @@ public class TaskController : ControllerBase
             Template = task.LearningObjective.Template,
             Comments = comments,
             CreatedAt = task.CreatedAt,
+            From = task.From is null ? null : task.From.Name,
+            Priority = task.Priority
         };
         return res;
     }
@@ -415,7 +424,8 @@ public class TaskController : ControllerBase
                                             UserId = task.UserId,
                                             IsRollback = task.IsRollback,
                                             RollbackCount = task.RollbackCount,
-                                            From = task.From is null ? "" : task.From.Name
+                                            From = task.From is null ? "" : task.From.Name,
+                                            Priority = task.Priority
                                         }
                                     );
                                 }
@@ -476,7 +486,8 @@ public class TaskController : ControllerBase
                                                 IsRollback = task.IsRollback,
                                                 Attention = task.Attention,
                                                 RollbackCount = task.RollbackCount,
-                                                From = task.From is null ? "" : task.From.Name
+                                                From = task.From is null ? "" : task.From.Name,
+                                                Priority = task.Priority
                                             }
                                         );
                                 }
@@ -556,7 +567,8 @@ public class TaskController : ControllerBase
                                                     Attention = task.Attention,
                                                     IsRollback = task.IsRollback,
                                                     RollbackCount = task.RollbackCount,
-                                                    From = task.From is null ? "" : task.From.Name
+                                                    From = task.From is null ? "" : task.From.Name,
+                                                    Priority = task.Priority
                                                 }
                                             );
                                     }
@@ -623,7 +635,8 @@ public class TaskController : ControllerBase
                                             IsRollback = task.IsRollback,
                                             Attention = task.Attention,
                                             RollbackCount = task.RollbackCount,
-                                            From = task.From is null ? "" : task.From.Name
+                                            From = task.From is null ? "" : task.From.Name,
+                                            Priority = task.Priority
                                         }
                                     );
                             }
