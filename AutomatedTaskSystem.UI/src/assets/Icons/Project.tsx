@@ -1,4 +1,4 @@
-const ProjectIcon = ({ color }: { color?: string }) => {
+const ProjectIcon = ({ color = "black" }: { color?: string }) => {
 	return (
 		<svg
 			width="24"

@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers;
+
 [Route("steps")]
 [ApiController]
 public class StepController : ControllerBase
@@ -51,7 +52,7 @@ public class StepController : ControllerBase
     )
     {
         var nodes = await _context.Nodes
-            .Where(n => nodeIds.Contains(n.Id))
+            .Where(n => nodeIds.Contains(n.Id) && !n.Archived)
             .Include(n => n.Steps)
             .ThenInclude(s => s.TaskBank)
             .ToListAsync();
@@ -80,7 +81,7 @@ public class StepController : ControllerBase
     public async Task<ActionResult<Responses.StepDTO>> CreateStep(int nodeId, Requests.StepDTO req)
     {
         var node = await _context.Nodes
-            .Where(n => n.Id == nodeId)
+            .Where(n => n.Id == nodeId && !n.Archived)
             .Include(n => n.Steps)
             .FirstOrDefaultAsync();
         if (node == null)
@@ -120,7 +121,7 @@ public class StepController : ControllerBase
         if (step == null)
             return NotFound(new Responses.BadRequestsDTO("Step not found"));
 
-		step.Archived = true;
+        step.Archived = true;
 
         var nextSteps = await _context.Steps
             .Where(s => s.NodeId == step.NodeId && s.Order > step.Order)

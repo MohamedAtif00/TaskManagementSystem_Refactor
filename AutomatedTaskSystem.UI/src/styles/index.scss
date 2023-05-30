@@ -7,9 +7,11 @@
 	flex-direction: row;
 	height: 100vh;
 	width: 100vw;
+	padding-left: 220px;
+	overflow-y: auto;
 }
 
-.container {
+.mainContainer {
 	padding: 0 1.25rem;
 	flex-grow: 1;
 	overflow-y: auto;

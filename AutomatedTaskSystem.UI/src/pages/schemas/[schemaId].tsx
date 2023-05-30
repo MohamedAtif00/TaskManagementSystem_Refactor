@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import PlusIcon from "../../assets/Icons/Plus";
 import QueryButton from "../../components/button/queryButton";
-import EditSchema from "../../components/forms/schemas/editSchema";
 import AddNode from "../../components/forms/schemas/nodes/addNode";
 import EditNode from "../../components/forms/schemas/nodes/editNode";
 import AddStep from "../../components/forms/schemas/nodes/steps/addStep";
@@ -13,6 +12,7 @@ import NodeItem from "../../components/nodeItem";
 import API from "../../lib/API";
 import { load } from "../../slices/nodesSlice";
 import styles from "../../styles/resources.module.scss";
+import EditSchema from "../../components/pageComponent/schemas/editSchema";
 
 interface ISchemaLocal {
 	description: string;
@@ -60,8 +60,8 @@ const Schema = () => {
 	useEffect(() => {
 		if (router.query.schemaId)
 			API.SCHEMAS.GET_ONE(router.query.schemaId).then((res) => {
-				if (res) {
-					setSchema(res);
+				if (res && !res.error) {
+					setSchema(res.data);
 				}
 			});
 	}, [router.query.schemaId]);
@@ -99,7 +99,7 @@ const Schema = () => {
 	}
 
 	return (
-		<div className="container">
+		<div className="mainContainer">
 			<Header text={schema.name} icon="Schema">
 				{auth.role === 1 ? (
 					<>
@@ -151,14 +151,7 @@ const Schema = () => {
 			</div>
 			{auth.role === 1 ? (
 				<>
-					{router.query.form === "editSchema" ? (
-						<EditSchema
-							schema={schema}
-							updateSchema={updateSchema}
-						/>
-					) : (
-						""
-					)}
+					<EditSchema />
 					<AddNode
 						updateList={updateNodes}
 						schemaId={schema.id}

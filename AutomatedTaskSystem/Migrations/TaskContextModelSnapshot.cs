@@ -335,6 +335,11 @@ namespace AutomatedTaskSystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
+                    b.Property<bool>("Archived")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -407,7 +412,17 @@ namespace AutomatedTaskSystem.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("Term")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("YearId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.HasKey("Id");
+
+                    b.HasIndex("YearId");
 
                     b.ToTable("Projects");
                 });
@@ -422,6 +437,11 @@ namespace AutomatedTaskSystem.Migrations
 
                     b.Property<DateTime>("Expires")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("Used")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
@@ -838,6 +858,58 @@ namespace AutomatedTaskSystem.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.YearModel.Year", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Years");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Active = true,
+                            Number = "2020"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Active = true,
+                            Number = "2021"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Active = true,
+                            Number = "2022"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Active = true,
+                            Number = "2023"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Active = true,
+                            Number = "2024"
+                        });
+                });
+
             modelBuilder.Entity("NodeNode", b =>
                 {
                     b.Property<int>("NextId")
@@ -1060,6 +1132,17 @@ namespace AutomatedTaskSystem.Migrations
                     b.Navigation("Task");
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Project", b =>
+                {
+                    b.HasOne("AutomatedTaskSystem.Models.YearModel.Year", "Year")
+                        .WithMany()
+                        .HasForeignKey("YearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Year");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.RefreshToken", b =>
                 {
                     b.HasOne("AutomatedTaskSystem.Models.User", "User")
@@ -1130,7 +1213,7 @@ namespace AutomatedTaskSystem.Migrations
                         .HasForeignKey("StepId");
 
                     b.HasOne("AutomatedTaskSystem.Models.User", "User")
-                        .WithMany()
+                        .WithMany("Tasks")
                         .HasForeignKey("UserId");
 
                     b.Navigation("From");
@@ -1179,7 +1262,7 @@ namespace AutomatedTaskSystem.Migrations
             modelBuilder.Entity("AutomatedTaskSystem.Models.User", b =>
                 {
                     b.HasOne("AutomatedTaskSystem.Models.Group", "Group")
-                        .WithMany()
+                        .WithMany("Users")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1247,6 +1330,11 @@ namespace AutomatedTaskSystem.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Group", b =>
+                {
+                    b.Navigation("Users");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.LearningObjective", b =>
                 {
                     b.Navigation("Tasks");
@@ -1307,6 +1395,8 @@ namespace AutomatedTaskSystem.Migrations
             modelBuilder.Entity("AutomatedTaskSystem.Models.User", b =>
                 {
                     b.Navigation("RefreshTokens");
+
+                    b.Navigation("Tasks");
                 });
 #pragma warning restore 612, 618
         }

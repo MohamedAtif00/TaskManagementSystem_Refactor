@@ -54,17 +54,19 @@ const AddUser = () => {
 	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		if (submittable)
-			API.RESOURCES.USERS.CREATE({ name, groupId, roleId }).then((res) => {
-				if (res) {
-					dispatch(userSlice.add(res.user));
-					setDone({
-						code: res.code,
-						name: res.user.name,
-						group: res.user.group.name,
-						status: true,
-					});
+			API.RESOURCES.USERS.CREATE({ name, groupId, roleId }).then(
+				(res) => {
+					if (res && !res.error) {
+						dispatch(userSlice.add(res.data.user));
+						setDone({
+							code: res.data.code,
+							name: res.data.user.name,
+							group: res.data.user.group.name,
+							status: true,
+						});
+					}
 				}
-			});
+			);
 	};
 
 	if (active)
@@ -75,7 +77,8 @@ const AddUser = () => {
 						<h2>{done.name}</h2>
 						<p className={styles.center}>was added</p>
 						<p className={styles.userInfo}>
-							{done.name} is a <span className={styles.bold}>{done.group}</span>
+							{done.name} is a{" "}
+							<span className={styles.bold}>{done.group}</span>
 						</p>
 						<p className={styles.loginCode}>Log in Code</p>
 						<h1>
@@ -101,7 +104,11 @@ const AddUser = () => {
 					<div className={styles.form}>
 						<form onSubmit={handleSubmit}>
 							<div className={styles.inputs}>
-								<FormField label="Name" onChange={setName} value={name} />
+								<FormField
+									label="Name"
+									onChange={setName}
+									value={name}
+								/>
 								<Dropdown
 									label="Group"
 									options={groups}

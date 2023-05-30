@@ -26,7 +26,9 @@ public class SectionService : ISectionService
                 new BaseResponseService { Error = true, Message = "Section already exists" }
             );
 
-        var head = await _context.Users.Where(u => u.Id == HeadId).FirstOrDefaultAsync();
+        var head = await _context.Users
+            .Where(u => u.Id == HeadId && !u.Archived)
+            .FirstOrDefaultAsync();
 
         if (head is null)
             return new BadRequestObjectResult(

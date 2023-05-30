@@ -1,7 +1,7 @@
-const CopyIcon = (props: { className?: string }) => {
+const CopyIcon = ({ className }: { className?: string }) => {
 	return (
 		<svg
-			className={props.className ? props.className : ""}
+			className={className}
 			width="24"
 			height="24"
 			viewBox="0 0 24 24"
