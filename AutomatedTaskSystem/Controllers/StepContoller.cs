@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers;
@@ -40,7 +41,8 @@ public class StepController : ControllerBase
                 Name = step.TaskBank.Group.Name
             },
             Name = step.TaskBank.Name,
-            Duration = step.Duration
+            Duration = step.Duration,
+            Priority = step.Priority
         };
 
         return Ok(res);
@@ -104,7 +106,8 @@ public class StepController : ControllerBase
             TaskBank = taskBankItem,
             TaskBankId = taskBankItem.Id,
             Archived = false,
-            Duration = req.Duration
+            Duration = req.Duration,
+            Priority = req.Priority
         };
 
         _context.Steps.Add(newStep);
@@ -156,6 +159,13 @@ public class StepController : ControllerBase
 
         if (taskBankItem == null)
             return NotFound(new Responses.BadRequestsDTO("Task Bank Item not found"));
+
+        if (req.Priority is null || req.Priority == 1 || req.Priority == 2 || req.Priority == 3)
+            step.Priority = req.Priority;
+        else
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Priority" }
+            );
 
         step.Duration = req.Duration;
         step.TaskBankId = taskBankItem.Id;

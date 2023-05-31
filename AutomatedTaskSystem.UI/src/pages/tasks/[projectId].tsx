@@ -21,16 +21,18 @@ const Task = ({
 	from,
 	isRollback,
 	rollbackCount,
+	priority,
 }: {
 	id: number;
 	name: string;
 	lo: string;
 	flagged: boolean;
 	attention: boolean;
-	userName: string;
+	userName?: string;
 	from: string;
 	isRollback: boolean;
 	rollbackCount: number;
+	priority?: number | null;
 }) => {
 	const router = useRouter();
 	const projectId = router.query.projectId;
@@ -65,6 +67,28 @@ const Task = ({
 				<div className={styles.info}>
 					<div>{name}</div>
 				</div>
+				{priority && (
+					<div className="flex justify-end">
+						<div className="flex gap-2 items-center">
+							<div className="text-sm">Priority:</div>
+							{priority === 1 ? (
+								<div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-red-600">
+									High
+								</div>
+							) : priority === 2 ? (
+								<div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-yellow-600">
+									Medium
+								</div>
+							) : priority === 3 ? (
+								<div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-blue-600">
+									Low
+								</div>
+							) : (
+								""
+							)}
+						</div>
+					</div>
+				)}
 				{from && (
 					<div className="flex justify-end">
 						<div>
@@ -78,9 +102,13 @@ const Task = ({
 				<div className={styles.details}>
 					<div>{lo}</div>
 				</div>
-				<div className={styles.details}>
-					<div>{userName}</div>
-				</div>
+				{userName ? (
+					<div className={styles.details}>
+						<div>{userName}</div>
+					</div>
+				) : (
+					""
+				)}
 			</div>
 		</Link>
 	);
@@ -97,7 +125,7 @@ const Tasks = () => {
 	useEffect(() => {
 		if (loFilter > 0) {
 			setFilteredTasks(
-				tasks.filter((_) => _.learningObjectiveId == loFilter)
+				tasks.filter((_) => _.learningObjective.id === loFilter)
 			);
 			return;
 		}
@@ -143,8 +171,11 @@ const Tasks = () => {
 
 	const los: { id: number; name: string }[] = [];
 	tasks.forEach((t) => {
-		if (!los.find((_) => _.id === t.learningObjectiveId))
-			los.push({ id: t.learningObjectiveId, name: t.learningObjective });
+		if (!los.find((_) => _.id === t.learningObjective.id))
+			los.push({
+				id: t.learningObjective.id,
+				name: t.learningObjective.name,
+			});
 	});
 
 	if (!project) return <div>Loading</div>;
@@ -193,66 +224,98 @@ const Tasks = () => {
 			<div className={styles.tasks}>
 				<div className={styles.col}>
 					<h3>Backlogs</h3>
-					{filteredTasks
-						.filter((t) => t.status == "Backlog")
-						.map((t) => {
-							return (
-								<Task
-									attention={t.attention}
-									id={t.id}
-									key={t.id}
-									name={t.name}
-									lo={t.learningObjective}
-									flagged={t.flagged}
-									userName={t.user}
-									from={t.from}
-									isRollback={t.isRollback}
-									rollbackCount={t.rollbackCount}
-								/>
-							);
-						})}
+					{[
+						...filteredTasks.filter(
+							(t) => t.status == "Backlog" && t.priority === 1
+						),
+						...filteredTasks.filter(
+							(t) => t.status == "Backlog" && t.priority === 2
+						),
+						...filteredTasks.filter(
+							(t) => t.status == "Backlog" && t.priority === 3
+						),
+						...filteredTasks.filter(
+							(t) => t.status == "Backlog" && !t.priority
+						),
+					].map((t) => (
+						<Task
+							priority={t.priority}
+							attention={t.attention}
+							id={t.id}
+							key={t.id}
+							name={t.name}
+							lo={t.learningObjective.name}
+							flagged={t.flagged}
+							userName={t.user && t.user.name}
+							from={t.from}
+							isRollback={t.isRollback}
+							rollbackCount={t.rollbackCount}
+						/>
+					))}
 				</div>
 				<div className={styles.col}>
 					<h3>To Do</h3>
-					{filteredTasks
-						.filter((t) => t.status == "To Do")
-						.map((t) => {
-							return (
-								<Task
-									attention={t.attention}
-									id={t.id}
-									key={t.id}
-									name={t.name}
-									lo={t.learningObjective}
-									flagged={t.flagged}
-									userName={t.user}
-									from={t.from}
-									isRollback={t.isRollback}
-									rollbackCount={t.rollbackCount}
-								/>
-							);
-						})}
+					{[
+						...filteredTasks.filter(
+							(t) => t.status == "To Do" && t.priority === 1
+						),
+						...filteredTasks.filter(
+							(t) => t.status == "To Do" && t.priority === 2
+						),
+						...filteredTasks.filter(
+							(t) => t.status == "To Do" && t.priority === 3
+						),
+						...filteredTasks.filter(
+							(t) => t.status == "To Do" && !t.priority
+						),
+					].map((t) => (
+						<Task
+							priority={t.priority}
+							attention={t.attention}
+							id={t.id}
+							key={t.id}
+							name={t.name}
+							lo={t.learningObjective.name}
+							flagged={t.flagged}
+							userName={t.user && t.user.name}
+							from={t.from}
+							isRollback={t.isRollback}
+							rollbackCount={t.rollbackCount}
+						/>
+					))}
 				</div>
 				<div className={styles.col}>
 					<h3>Doing</h3>
-					{filteredTasks
-						.filter((t) => t.status == "Doing")
-						.map((t) => {
-							return (
-								<Task
-									attention={t.attention}
-									id={t.id}
-									key={t.id}
-									name={t.name}
-									lo={t.learningObjective}
-									flagged={t.flagged}
-									userName={t.user}
-									from={t.from}
-									isRollback={t.isRollback}
-									rollbackCount={t.rollbackCount}
-								/>
-							);
-						})}
+					{[
+						...filteredTasks.filter(
+							(t) => t.status == "Doing" && t.priority === 1
+						),
+						...filteredTasks.filter(
+							(t) => t.status == "Doing" && t.priority === 2
+						),
+						...filteredTasks.filter(
+							(t) => t.status == "Doing" && t.priority === 3
+						),
+						...filteredTasks.filter(
+							(t) => t.status == "Doing" && !t.priority
+						),
+					].map((t) => {
+						return (
+							<Task
+								priority={t.priority}
+								attention={t.attention}
+								id={t.id}
+								key={t.id}
+								name={t.name}
+								lo={t.learningObjective.name}
+								flagged={t.flagged}
+								userName={t.user && t.user.name}
+								from={t.from}
+								isRollback={t.isRollback}
+								rollbackCount={t.rollbackCount}
+							/>
+						);
+					})}
 				</div>
 				<div className={styles.col}>
 					<h3>Done</h3>
@@ -267,9 +330,9 @@ const Tasks = () => {
 									attention={t.attention}
 									key={t.id}
 									name={t.name}
-									lo={t.learningObjective}
+									lo={t.learningObjective.name}
 									flagged={t.flagged}
-									userName={t.user}
+									userName={t.user && t.user.name}
 									from={t.from}
 									isRollback={t.isRollback}
 									rollbackCount={t.rollbackCount}

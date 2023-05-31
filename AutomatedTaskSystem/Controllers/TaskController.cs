@@ -33,6 +33,12 @@ public class TaskController : ControllerBase
         _taskService = taskService;
     }
 
+    [HttpPatch("{id}/priority")]
+    public async Task<ActionResult<ResponseService<Responses.ITaskDTO>>> EditTask(
+        int id,
+        Requests.PriorityUpdateDto req
+    ) => await _taskService.UpdateTaskPriority(id, req.Priority);
+
     // POST:
     // Add Comment to Task
     [Authorize, HttpPost]
@@ -106,28 +112,14 @@ public class TaskController : ControllerBase
                 LearningObjective = new Responses.IDName { Id = lo.Id, Name = lo.Name },
                 Name = newTask.Name,
                 IsReview = newTask.IsReview,
-                Group = new Responses.IDName
-                {
-                    Id = TaskBankItem.GroupId,
-                    Name = TaskBankItem.Name
-                },
-                TL = newTask.TL,
                 Id = newTask.Id,
                 Tag = lo.Tag,
-                Unit = lo.Lesson.Unit.Name,
-                Lesson = lo.Lesson.Name,
                 Schema = new Responses.IDName { Name = lo.Schema.Name, Id = lo.Schema.Id },
                 Flagged = false,
                 Status = newTask.Status.Name,
-                User =
-                    newTask.User != null
-                        ? new Responses.IDName { Name = newTask.User.Name, Id = newTask.User.Id, }
-                        : null,
-                Project = lo.Lesson.Unit.Project.Name,
                 Comments = new List<Responses.CommentDTO> { },
                 Template = lo.Template,
                 Environment = lo.Environment,
-                CreatedAt = newTask.CreatedAt
             }
         );
     }
@@ -234,6 +226,7 @@ public class TaskController : ControllerBase
         var task = await _context.Tasks
             .Where(t => !t.Archived && t.Id == id)
             .Include(t => t.Group)
+            .Include(t => t.From)
             .Include(t => t.Status)
             .Include(t => t.LearningObjective)
             .ThenInclude(lo => lo.Schema)
@@ -270,11 +263,9 @@ public class TaskController : ControllerBase
 
         var res = new Responses.ITaskDTO
         {
-            Attention = task.Attention,
             Pause = task.Pause,
             StartedAt = started != null ? started.TimeStamp : null,
             DoneAt = done != null ? done.TimeStamp : null,
-            Group = new Responses.IDName { Name = task.Group.Name, Id = task.Group.Id },
             Id = task.Id,
             IsReview = task.IsReview,
             LearningObjective = new Responses.IDName
@@ -289,17 +280,12 @@ public class TaskController : ControllerBase
             },
             Name = task.Name,
             Status = task.Status.Name,
-            TL = task.TL,
-            User =
-                task.User != null
-                    ? new Responses.IDName { Id = task.User.Id, Name = task.User.Name }
-                    : null,
             Flagged = task.Flagged,
             Tag = task.LearningObjective.Tag,
             Environment = task.LearningObjective.Environment,
             Template = task.LearningObjective.Template,
             Comments = comments,
-            CreatedAt = task.CreatedAt,
+            Priority = task.Priority
         };
         return res;
     }
@@ -392,30 +378,22 @@ public class TaskController : ControllerBase
                                         new Responses.TaskDTO
                                         {
                                             Attention = task.Attention,
-                                            Comments = comments,
-                                            Environment = lo.Environment,
                                             Flagged = task.Flagged,
-                                            Group = task.Group.Name,
-                                            GroupId = task.GroupId,
                                             Id = task.Id,
                                             IsReview = task.IsReview,
-                                            LearningObjective = lo.Name,
-                                            LearningObjectiveId = lo.Id,
-                                            Lesson = lesson.Name,
                                             Name = task.Name,
-                                            Project = project.Name,
-                                            ProjectDescription = project.Description,
-                                            ProjectId = project.Id,
                                             Status = task.Status.Name,
-                                            Tag = lo.Tag,
-                                            Template = lo.Template,
                                             TL = task.TL,
-                                            Unit = unit.Name,
-                                            User = task.User?.Name,
-                                            UserId = task.UserId,
                                             IsRollback = task.IsRollback,
                                             RollbackCount = task.RollbackCount,
-                                            From = task.From is null ? "" : task.From.Name
+                                            From = task.From is null ? "" : task.From.Name,
+                                            Priority = task.Priority,
+                                            Comments = comments,
+                                            LearningObjective = new Responses.IDName
+                                            {
+                                                Id = task.LearningObjectiveId,
+                                                Name = task.LearningObjective.Name
+                                            }
                                         }
                                     );
                                 }
@@ -452,31 +430,23 @@ public class TaskController : ControllerBase
                                         res.Add(
                                             new Responses.TaskDTO
                                             {
-                                                Comments = comments,
-                                                Environment = lo.Environment,
+                                                Attention = task.Attention,
                                                 Flagged = task.Flagged,
-                                                Group = task.Group.Name,
-                                                GroupId = task.GroupId,
                                                 Id = task.Id,
                                                 IsReview = task.IsReview,
-                                                LearningObjective = lo.Name,
-                                                LearningObjectiveId = lo.Id,
-                                                Lesson = lesson.Name,
                                                 Name = task.Name,
-                                                Project = project.Name,
-                                                ProjectDescription = project.Description,
-                                                ProjectId = project.Id,
                                                 Status = task.Status.Name,
-                                                Tag = lo.Tag,
-                                                Template = lo.Template,
                                                 TL = task.TL,
-                                                Unit = unit.Name,
-                                                User = task.User?.Name,
-                                                UserId = task.UserId,
                                                 IsRollback = task.IsRollback,
-                                                Attention = task.Attention,
                                                 RollbackCount = task.RollbackCount,
-                                                From = task.From is null ? "" : task.From.Name
+                                                From = task.From is null ? "" : task.From.Name,
+                                                Priority = task.Priority,
+                                                Comments = comments,
+                                                LearningObjective = new Responses.IDName
+                                                {
+                                                    Id = task.LearningObjectiveId,
+                                                    Name = task.LearningObjective.Name
+                                                }
                                             }
                                         );
                                 }
@@ -532,31 +502,23 @@ public class TaskController : ControllerBase
                                             res.Add(
                                                 new Responses.TaskDTO
                                                 {
-                                                    Comments = comments,
-                                                    Environment = lo.Environment,
+                                                    Attention = task.Attention,
                                                     Flagged = task.Flagged,
-                                                    Group = task.Group.Name,
-                                                    GroupId = task.GroupId,
                                                     Id = task.Id,
                                                     IsReview = task.IsReview,
-                                                    LearningObjective = lo.Name,
-                                                    LearningObjectiveId = lo.Id,
-                                                    Lesson = lesson.Name,
                                                     Name = task.Name,
-                                                    Project = project.Name,
-                                                    ProjectDescription = project.Description,
-                                                    ProjectId = project.Id,
                                                     Status = task.Status.Name,
-                                                    Tag = lo.Tag,
-                                                    Template = lo.Template,
                                                     TL = task.TL,
-                                                    Unit = unit.Name,
-                                                    User = task.User?.Name,
-                                                    UserId = task.UserId,
-                                                    Attention = task.Attention,
                                                     IsRollback = task.IsRollback,
                                                     RollbackCount = task.RollbackCount,
-                                                    From = task.From is null ? "" : task.From.Name
+                                                    From = task.From is null ? "" : task.From.Name,
+                                                    Priority = task.Priority,
+                                                    Comments = comments,
+                                                    LearningObjective = new Responses.IDName
+                                                    {
+                                                        Id = task.LearningObjectiveId,
+                                                        Name = task.LearningObjective.Name
+                                                    }
                                                 }
                                             );
                                     }
@@ -599,31 +561,23 @@ public class TaskController : ControllerBase
                                     res.Add(
                                         new Responses.TaskDTO
                                         {
-                                            Comments = comments,
-                                            Environment = lo.Environment,
+                                            Attention = task.Attention,
                                             Flagged = task.Flagged,
-                                            Group = task.Group.Name,
-                                            GroupId = task.GroupId,
                                             Id = task.Id,
                                             IsReview = task.IsReview,
-                                            LearningObjective = lo.Name,
-                                            LearningObjectiveId = lo.Id,
-                                            Lesson = lesson.Name,
                                             Name = task.Name,
-                                            Project = project.Name,
-                                            ProjectDescription = project.Description,
-                                            ProjectId = project.Id,
                                             Status = task.Status.Name,
-                                            Tag = lo.Tag,
-                                            Template = lo.Template,
                                             TL = task.TL,
-                                            Unit = unit.Name,
-                                            User = task.User?.Name,
-                                            UserId = task.UserId,
                                             IsRollback = task.IsRollback,
-                                            Attention = task.Attention,
                                             RollbackCount = task.RollbackCount,
-                                            From = task.From is null ? "" : task.From.Name
+                                            From = task.From is null ? "" : task.From.Name,
+                                            Priority = task.Priority,
+                                            Comments = comments,
+                                            LearningObjective = new Responses.IDName
+                                            {
+                                                Id = task.LearningObjectiveId,
+                                                Name = task.LearningObjective.Name
+                                            }
                                         }
                                     );
                             }
