@@ -10,61 +10,39 @@ namespace AutomatedTaskSystem.DTO
 
         public class ITaskDTO
         {
-            public Boolean Error { get; } = false;
-            public Boolean Pause { get; set; } = false;
-            public Boolean Attention { get; set; } = false;
+            public bool Pause { get; set; }
             public int Id { get; set; }
             public string Name { get; set; } = "";
-            public string Status { get; set; } = "Backlog";
-            public bool TL { get; set; } = false;
-            public IDName Group { get; set; } = new IDName { };
-            public IDName? User { get; set; } = new IDName { };
             public IDName LearningObjective { get; set; } = new IDName { };
-            public IDName Schema { get; set; } = new IDName { };
-            public bool IsReview { get; set; } = false;
-            public bool Flagged { get; set; } = false;
-            public string Lesson { get; set; } = "";
-            public string Unit { get; set; } = "";
-            public string Project { get; set; } = "";
             public string Tag { get; set; } = "";
-            public string Environment { get; set; } = "";
             public string Template { get; set; } = "";
-            public List<CommentDTO> Comments { get; set; } = new List<CommentDTO> { };
-            public DateTime CreatedAt { get; set; }
+            public string Environment { get; set; } = "";
+            public IDName Schema { get; set; } = new IDName { };
+            public bool IsReview { get; set; }
+            public string Status { get; set; } = "";
+            public bool Flagged { get; set; }
             public DateTime? StartedAt { get; set; }
             public DateTime? DoneAt { get; set; }
-            public string? From { get; set; }
             public int? Priority { get; set; }
+            public List<CommentDTO> Comments { get; set; } = new List<CommentDTO> { };
         }
 
         public class TaskDTO
         {
             public int Id { get; set; }
             public string Name { get; set; } = "";
-            public string Status { get; set; } = "Backlog";
-            public bool TL { get; set; } = false;
-            public string? Group { get; set; }
-            public int? GroupId { get; set; }
-            public string? User { get; set; }
-            public int? UserId { get; set; }
-            public string LearningObjective { get; set; } = "";
-            public int LearningObjectiveId { get; set; }
-            public bool IsReview { get; set; } = false;
-            public bool Flagged { get; set; } = false;
-            public bool Attention { get; set; } = false;
-            public string Lesson { get; set; } = "";
-            public string Unit { get; set; } = "";
-            public string Project { get; set; } = "";
-            public int ProjectId { get; set; }
-            public string ProjectDescription { get; set; } = "";
-            public string Tag { get; set; } = "";
-            public string Environment { get; set; } = "";
-            public string Template { get; set; } = "";
+            public string Status { get; set; } = "";
+            public bool TL { get; set; }
+            public IDName? User { get; set; } = null;
+            public IDName LearningObjective { get; set; } = new IDName { };
+            public bool IsReview { get; set; }
+            public bool Flagged { get; set; }
+            public bool Attention { get; set; }
             public List<CommentDTO> Comments { get; set; } = new List<CommentDTO> { };
-            public bool IsRollback { get; set; } = false;
+            public bool IsRollback { get; set; }
             public int RollbackCount { get; set; }
-            public string? From { get; set; }
-            public int? Priority { get; set; } = null;
+            public string From { get; set; } = "";
+            public int? Priority { get; set; }
         }
 
         public class PreviousNodeDTO

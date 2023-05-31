@@ -95,13 +95,10 @@ public class TaskService : ITaskService
             Message = "Task Priority edited",
             Data = new Responses.ITaskDTO
             {
-                Attention = task.Attention,
                 Environment = task.LearningObjective.Environment,
                 Tag = task.LearningObjective.Tag,
                 Template = task.LearningObjective.Template,
                 Flagged = task.Flagged,
-                From = task.From is not null ? task.From.Name : null,
-                Group = new Responses.IDName { Id = task.Group.Id, Name = task.Group.Name },
                 Id = task.Id,
                 IsReview = task.IsReview,
                 LearningObjective = new Responses.IDName
@@ -109,13 +106,8 @@ public class TaskService : ITaskService
                     Id = task.LearningObjective.Id,
                     Name = task.LearningObjective.Name
                 },
-                Lesson = task.LearningObjective.Lesson.Name,
                 Name = task.Name,
-                Project = task.LearningObjective.Lesson.Unit.Project.Name,
                 Status = task.Status.Name,
-                TL = task.TL,
-                Unit = task.LearningObjective.Lesson.Unit.Name,
-                CreatedAt = task.CreatedAt,
                 Pause = task.Pause,
                 Schema = new Responses.IDName
                 {
@@ -124,9 +116,6 @@ public class TaskService : ITaskService
                 },
                 StartedAt = started is null ? null : started.TimeStamp,
                 DoneAt = done is null ? null : done.TimeStamp,
-                User = task.User is null
-                    ? null
-                    : new Responses.IDName { Id = task.User.Id, Name = task.User.Name },
                 Priority = task.Priority
             }
         };
