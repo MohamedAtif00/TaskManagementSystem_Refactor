@@ -6,7 +6,6 @@ namespace AutomatedTaskSystem.DTO
         {
             public int TaskBankItem { get; set; }
             public int Duration { get; set; }
-            public int? Priority { get; set; } = null;
         }
     }
 
