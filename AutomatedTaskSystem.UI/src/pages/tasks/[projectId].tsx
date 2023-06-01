@@ -76,7 +76,7 @@ const Task = ({
 									High
 								</div>
 							) : priority === 2 ? (
-								<div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-yellow-600">
+								<div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-orange-500">
 									Medium
 								</div>
 							) : priority === 3 ? (

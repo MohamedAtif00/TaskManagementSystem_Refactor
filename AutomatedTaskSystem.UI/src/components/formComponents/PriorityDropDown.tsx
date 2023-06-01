@@ -81,7 +81,7 @@ const PriorityDropDown = ({ value, handleChange }: Props) => {
 									value.id === 1
 										? "bg-rose-600"
 										: value.id === 2
-										? "bg-yellow-500"
+										? "bg-orange-500"
 										: value.id === 3
 										? "bg-blue-600"
 										: "bg-white"
@@ -135,7 +135,7 @@ const PriorityDropDown = ({ value, handleChange }: Props) => {
 						}}
 						className="px-4 basis-8 shrink-0 hover:bg-slate-300 hover:text-black text-slate-600 flex items-center gap-2"
 					>
-						<div className="p-2 rounded-full bg-yellow-600"></div>
+						<div className="p-2 rounded-full bg-orange-500"></div>
 						<div className="capitalize">Medium</div>
 					</div>
 					<div
