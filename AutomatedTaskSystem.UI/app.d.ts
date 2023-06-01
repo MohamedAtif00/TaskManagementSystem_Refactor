@@ -34,6 +34,7 @@ interface IStep {
 	tl: boolean;
 	group: { name: string; id: number };
 	duration: number;
+	priority: number | null;
 }
 
 interface INode {
@@ -49,7 +50,7 @@ interface IProject {
 	id: number;
 	description: string;
 	name: string;
-	year: { id: number; name: string};
+	year: { id: number; name: string };
 	term: boolean;
 }
 
@@ -106,30 +107,17 @@ type CommentInfo = {
 
 type TaskInfo = {
 	id: number;
-	lesson: string;
-	project: string;
-	projectDescription: string;
-	projectId: number;
-	unit: string;
 	name: string;
 	status: "Done" | "Doing" | "To Do" | "Backlog" | "Rollback";
-	step?: string;
-	stepId: number;
 	TL: boolean;
-	group: string;
-	groupId: number;
-	user: string;
-	userId: string;
-	learningObjective: string;
-	learningObjectiveId: number;
+	user?: { id: number; name: string };
+	learningObjective: { id: number; name: string };
 	isReview: boolean;
 	flagged: boolean;
 	attention: boolean;
-	tag: string;
-	environment: string;
-	template: string;
 	comments: CommentInfo[];
 	isRollback: boolean;
 	rollbackCount: number;
 	from: string;
+	priority?: number;
 };

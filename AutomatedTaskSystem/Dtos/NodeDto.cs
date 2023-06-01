@@ -47,6 +47,7 @@ namespace AutomatedTaskSystem.DTO
             public IDName Group { get; set; } = new IDName { };
             public bool Reviewable { get; set; } = false;
             public int Duration { get; set; }
+            public int? Priority { get; set; } = null;
         }
 
         public class NodeWithStepsDTO

@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers;
@@ -40,7 +41,8 @@ public class StepController : ControllerBase
                 Name = step.TaskBank.Group.Name
             },
             Name = step.TaskBank.Name,
-            Duration = step.Duration
+            Duration = step.Duration,
+            Priority = step.Priority
         };
 
         return Ok(res);
@@ -104,7 +106,7 @@ public class StepController : ControllerBase
             TaskBank = taskBankItem,
             TaskBankId = taskBankItem.Id,
             Archived = false,
-            Duration = req.Duration
+            Duration = req.Duration,
         };
 
         _context.Steps.Add(newStep);
@@ -135,6 +137,57 @@ public class StepController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new Responses.SuccessDTO("Step Deleted"));
+    }
+
+    [HttpPatch("{stepId}/priority")]
+    public async Task<ActionResult<ResponseService<Responses.StepDTO>>> EditStep(
+        int stepId,
+        Requests.PriorityUpdateDto req
+    )
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId)
+            .Include(s => s.TaskBank)
+            .ThenInclude(t => t.Group)
+            .Include(s => s.Node)
+            .FirstOrDefaultAsync();
+
+        if (step == null)
+            return NotFound(new Responses.BadRequestsDTO("Step not found"));
+
+        if (req.Priority == 1 || req.Priority == 2 || req.Priority == 3 || req.Priority is null)
+        {
+            if (req.Priority != step.Priority)
+            {
+                step.Priority = req.Priority;
+                await _context.SaveChangesAsync();
+            }
+        }
+        else
+            return BadRequest(
+                new BaseResponseService { Error = true, Message = "Invalid Priority" }
+            );
+
+        return new ResponseService<Responses.StepDTO>
+        {
+            Data = new Responses.StepDTO
+            {
+                Duration = step.Duration,
+                Group = new Responses.IDName
+                {
+                    Id = step.TaskBank.GroupId,
+                    Name = step.TaskBank.Group.Name
+                },
+                Id = step.Id,
+                Name = step.TaskBank.Name,
+                Order = step.Order,
+                Priority = step.Priority,
+                Reviewable = step.TaskBank.TypeId == 3,
+                TL = step.TaskBank.TL
+            },
+            Error = false,
+            Message = "Priority updated"
+        };
     }
 
     [HttpPatch("{stepId}")]

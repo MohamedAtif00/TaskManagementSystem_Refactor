@@ -9,6 +9,7 @@ import QueryButton from "../button/queryButton";
 import ExpansionPanel from "../expansionPanel";
 import Backdrop from "../forms/backdrop";
 import RollbackForm from "../forms/tasks/rollback";
+import PriorityDropDown from "../formComponents/PriorityDropDown";
 
 const dateHandler = (params: string) => {
 	const date = new Date(params);
@@ -50,13 +51,17 @@ const dateHandler = (params: string) => {
 	} else if (d === 0) {
 		time = `${Math.floor(h)} Hour${h > 1 ? "s" : ""} Ago`;
 	} else if (d > 0 && d < 2) {
-		time = `Yeseterday, ${date.getHours() % 12 < 10 ? "0" : ""
-			}${date.getHours()}:${date.getMinutes() < 10 ? "0" : ""
-			}${date.getMinutes()}`;
+		time = `Yeseterday, ${
+			date.getHours() % 12 < 10 ? "0" : ""
+		}${date.getHours()}:${
+			date.getMinutes() < 10 ? "0" : ""
+		}${date.getMinutes()}`;
 	} else if (d > 0 && d < 7) {
-		time = `${WeekDays.get(date.getDay())}, ${date.getHours() % 12 < 10 ? "0" : ""
-			}${date.getHours()}:${date.getMinutes() < 10 ? "0" : ""
-			}${date.getMinutes()}`;
+		time = `${WeekDays.get(date.getDay())}, ${
+			date.getHours() % 12 < 10 ? "0" : ""
+		}${date.getHours()}:${
+			date.getMinutes() < 10 ? "0" : ""
+		}${date.getMinutes()}`;
 	} else if (d > 0 && d < 365) {
 		time = `${MonthNames.get(date.getMonth())}, ${date.getDate()}`;
 	} else {
@@ -78,7 +83,6 @@ export interface ITask {
 	template: string;
 	environment: string;
 	schema: { id: number; name: string };
-	user?: { id: number; name: string };
 	isReview: boolean;
 	status: "Backlog" | "To Do" | "Doing" | "Done" | "Rollback";
 	flagged: boolean;
@@ -91,9 +95,9 @@ export interface ITask {
 		content: string;
 		timestamp: string;
 	}[];
-	createdAt: string;
 	startedAt?: string;
 	doneAt?: string;
+	priority?: number;
 }
 
 interface Props {
@@ -103,6 +107,7 @@ interface Props {
 
 const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 	const [task, setTask] = useState<ITask>();
+	const [prio, setPrio] = useState<number | null>(null);
 	const router = useRouter();
 	const auth = useAppSelector((s) => s.authSlice);
 
@@ -110,87 +115,98 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 		const id = router.query.taskId;
 		if (id)
 			API.TASKS.GET_ONE(id).then((res) => {
-				if (res) setTask(res);
+				if (res) {
+					setTask(res);
+					setPrio(res.priority ? res.priority : null);
+				}
 			});
-		else setTask(undefined);
+		else {
+			setTask(undefined);
+			setPrio(null);
+		}
 	}, [setTask, router.query.taskId]);
 
-	const mainAction = () => {
-		if (task)
-			switch (task.status) {
-				case "Backlog":
-					return API.TASKS.ADD_TODO(task.id).then((res) => {
-						if (res) {
-							refreshTasks();
-							if (!res.error) setTask(res);
-						}
-					});
-				case "To Do":
-					return API.TASKS.DOING(task.id).then((res) => {
-						if (res) {
-							refreshTasks();
-							if (!res.error) setTask(res);
-						}
-					});
-				case "Doing": {
-					if (task.isReview)
-						return API.TASKS.APPROVE(task.id).then((res) => {
-							if (res) {
-								refreshTasks();
-								if (!res.error) {
-									setTask(res);
-								}
-							}
-						});
-					return API.TASKS.COMPLETE(task.id).then((res) => {
-						if (res) {
-							refreshTasks();
-							if (!res.error) setTask(res);
-						}
-					});
-				}
-			}
-	};
+	if (task === undefined) return <></>;
 
+	const mainAction = () => {
+		switch (task.status) {
+			case "Backlog":
+				return API.TASKS.ADD_TODO(task.id).then((res) => {
+					if (res) {
+						refreshTasks();
+						if (!res.error) setTask(res);
+					}
+				});
+			case "To Do":
+				return API.TASKS.DOING(task.id).then((res) => {
+					if (res) {
+						refreshTasks();
+						if (!res.error) setTask(res);
+					}
+				});
+			case "Doing": {
+				if (task.isReview)
+					return API.TASKS.APPROVE(task.id).then((res) => {
+						if (res) {
+							refreshTasks();
+							if (!res.error) {
+								setTask(res);
+							}
+						}
+					});
+				return API.TASKS.COMPLETE(task.id).then((res) => {
+					if (res) {
+						refreshTasks();
+						if (!res.error) setTask(res);
+					}
+				});
+			}
+		}
+	};
 	const flagTask = () => {
-		task &&
-			API.TASKS.FLAG_TASK(task.id).then((res) => {
-				if (res) {
-					if (!res.error) setTask(res);
-					refreshTasks();
-				}
-			});
+		API.TASKS.FLAG_TASK(task.id).then((res) => {
+			if (res) {
+				if (!res.error) setTask(res);
+				refreshTasks();
+			}
+		});
 	};
 	const unflagTask = () => {
-		task &&
-			API.TASKS.UNFLAG_TASK(task.id).then((res) => {
-				if (res) {
-					if (!res.error) setTask(res);
-					refreshTasks();
-				}
-			});
+		API.TASKS.UNFLAG_TASK(task.id).then((res) => {
+			if (res) {
+				if (!res.error) setTask(res);
+				refreshTasks();
+			}
+		});
 	};
-
 	const pauseTask = () => {
-		task &&
-			API.TASKS.PAUSE(task.id).then((res) => {
-				if (res) {
-					if (!res.error) setTask(res);
-					refreshTasks();
-				}
-			});
+		API.TASKS.PAUSE(task.id).then((res) => {
+			if (res) {
+				if (!res.error) setTask(res);
+				refreshTasks();
+			}
+		});
 	};
 	const unpauseTask = () => {
-		task &&
-			API.TASKS.UNPAUSE(task.id).then((res) => {
-				if (res) {
-					if (!res.error) setTask(res);
-					refreshTasks();
-				}
-			});
+		API.TASKS.UNPAUSE(task.id).then((res) => {
+			if (res) {
+				if (!res.error) setTask(res);
+				refreshTasks();
+			}
+		});
 	};
-
-	if (task === undefined) return <></>;
+	const updatePrio = (value: null | number) => {
+		setPrio(value);
+		API.TASKS.UPDATE_PRIORITY(
+			task.id,
+			value === 1 || value === 2 || value === 3 ? value : null
+		).then((res) => {
+			if (res && !res.error) {
+				setTask(res.data);
+				refreshTasks();
+			}
+		});
+	};
 
 	return (
 		<>
@@ -220,37 +236,65 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 						<h1 className="text-xl flex items-center gap-2">
 							<TaskIcon color="black" />
 							<div>
-								<div className="text-lg max-w-[10rem]">{task.name}</div>
+								<div className="text-lg max-w-[10rem]">
+									{task.name}
+								</div>
 							</div>
 						</h1>
 						<div
-							className={`px-3 py-1 rounded-3xl ${task.status === "Done"
-								? "bg-emerald-500 text-white"
-								: task.status === "Doing"
+							className={`px-3 py-1 rounded-3xl ${
+								task.status === "Done"
+									? "bg-emerald-500 text-white"
+									: task.status === "Doing"
 									? "bg-orange-500 text-white"
 									: task.status === "Rollback"
-										? "bg-black text-white"
-										: task.status === "To Do"
-											? "bg-blue-500 text-white"
-											: "border-2 border-black border-solid"
-								}`}
+									? "bg-black text-white"
+									: task.status === "To Do"
+									? "bg-blue-500 text-white"
+									: "border-2 border-black border-solid"
+							}`}
 						>
 							{task.status}
 						</div>
 					</div>
+					{task.priority && (
+						<div className="flex justify-end">
+							<div className="flex gap-2 items-center">
+								<div className="text-sm">Priority:</div>
+								{task.priority === 1 ? (
+									<div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-red-600">
+										High
+									</div>
+								) : task.priority === 2 ? (
+									<div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-orange-500">
+										Medium
+									</div>
+								) : task.priority === 3 ? (
+									<div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-blue-600">
+										Low
+									</div>
+								) : (
+									""
+								)}
+							</div>
+						</div>
+					)}
 					<div>
 						<h1 className="text-xl mt-4 flex items-center gap-2">
 							<HandPointingIcon className="stroke-black" />
 							<div>Actions</div>
 						</h1>
 						<div className="flex gap-2">
-							{!task.pause && task.status === "Doing" ?
+							{!task.pause && task.status === "Doing" ? (
 								<button
 									className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
 									onClick={pauseTask}
 								>
 									Pause
-								</button> : <></>}
+								</button>
+							) : (
+								<></>
+							)}
 							{task.flagged ? (
 								<button
 									className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
@@ -258,16 +302,19 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 								>
 									Clear Flag
 								</button>
-							) : task.pause ? <>
-								<button
-									className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
-									onClick={unpauseTask}
-								>
-									Resume
-								</button>
-							</> : (
+							) : task.pause ? (
 								<>
-									{task.status === "Doing" && task.isReview ? (
+									<button
+										className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
+										onClick={unpauseTask}
+									>
+										Resume
+									</button>
+								</>
+							) : (
+								<>
+									{task.status === "Doing" &&
+									task.isReview ? (
 										<>
 											<Link
 												href={`/tasks/${router.query.projectId}?form=rollback&taskId=${task.id}`}
@@ -293,24 +340,29 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 												{task.status === "Backlog"
 													? "Add"
 													: task.status === "To Do"
-														? "Start"
-														: "Complete"}
+													? "Start"
+													: "Complete"}
 											</button>
 										)
 									)}
-									{task.status !== "Done" && task.status !== "Rollback" ? (
+									{task.status !== "Done" &&
+									task.status !== "Rollback" ? (
 										<>
-											{auth.role == 1 || auth.role == 2 || auth.role == 3 ? (
-												<QueryButton
-													text="Re-assign"
-													url={{
-														pathname: `/tasks/${router.query.projectId}`,
-														query: {
-															form: "task-assign",
-															taskId: task.id,
-														},
-													}}
-												/>
+											{auth.role == 1 ||
+											auth.role == 2 ||
+											auth.role == 3 ? (
+												<>
+													<QueryButton
+														text="Re-assign"
+														url={{
+															pathname: `/tasks/${router.query.projectId}`,
+															query: {
+																form: "task-assign",
+																taskId: task.id,
+															},
+														}}
+													/>
+												</>
 											) : (
 												""
 											)}
@@ -332,9 +384,30 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 							)}
 						</div>
 					</div>
+					<div className="flex items-center justify-end">
+						<div className="min-w-[10rem]">
+							<PriorityDropDown
+								value={
+									prio === 1
+										? { id: 1, name: "High" }
+										: prio === 2
+										? { id: 2, name: "Medium" }
+										: prio === 3
+										? { id: 3, name: "Low" }
+										: { id: 4, name: "None" }
+								}
+								handleChange={(e) => {
+									updatePrio(e.id);
+								}}
+							/>
+						</div>
+					</div>
 					<ExpansionPanel header="Template" content={task.template} />
 					<ExpansionPanel header="Tag" content={task.tag} />
-					<ExpansionPanel header="Environment" content={task.environment} />
+					<ExpansionPanel
+						header="Environment"
+						content={task.environment}
+					/>
 				</div>
 			</Backdrop>
 			{task.isReview ? (

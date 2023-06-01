@@ -68,7 +68,8 @@ namespace AutomatedTaskSystem.Controllers
                         Name = _s.TaskBank.Group.Name,
                         Id = _s.TaskBank.GroupId,
                     },
-                    Duration = _s.Duration
+                    Duration = _s.Duration,
+                    Priority = _s.Priority
                 };
 
                 res.Steps.Add(nodeStep);
@@ -148,6 +149,7 @@ namespace AutomatedTaskSystem.Controllers
                 steps.Add(
                     new Responses.NodeStepDTO
                     {
+                        Priority = item.Priority,
                         Id = item.Id,
                         TL = item.TaskBank.TL,
                         Name = item.TaskBank.Name,
@@ -359,6 +361,7 @@ namespace AutomatedTaskSystem.Controllers
                 {
                     var nodeStep = new Responses.NodeStepDTO
                     {
+                        Priority = _s.Priority,
                         Id = _s.Id,
                         Name = _s.TaskBank.Name,
                         Order = _s.Order,

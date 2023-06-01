@@ -26,4 +26,5 @@ public class Task
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public int RollbackCount { get; set; }
     public bool IsRollback { get; set; } = false;
+    public int? Priority { get; set; } = null;
 }

@@ -355,6 +355,34 @@ const SCHEMAS = {
 					return false;
 				}
 			},
+			UPDATE_PRIO: async ({
+				stepId,
+				priority,
+			}: {
+				stepId: string | number;
+				priority: number | null;
+			}) => {
+				try {
+					const res = await fetch(`${url}/steps/${stepId}/priority`, {
+						method: "PATCH",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							priority,
+						}),
+					});
+					const data: {
+						data: IStep;
+						error: boolean;
+						message: string;
+					} = await res.json();
+					return data;
+				} catch (error) {
+					console.error(error);
+					return false;
+				}
+			},
 			EDIT: async ({
 				stepId,
 				taskBankItem,

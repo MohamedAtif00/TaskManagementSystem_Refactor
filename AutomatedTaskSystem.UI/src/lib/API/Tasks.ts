@@ -3,6 +3,26 @@ import authService from "../Auth";
 import { CommonResponse, ErrorResponse, url } from "./";
 
 const TASKS = {
+	UPDATE_PRIORITY: async (id: number, priority: number | null) => {
+		try {
+			const res = await fetch(`${url}/tasks/${id}/priority`, {
+				method: "PATCH",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ priority }),
+			});
+			const data: {
+				data: ITask;
+				error: boolean;
+				message: string;
+			} = await res.json();
+			return data;
+		} catch (err) {
+			console.error(err);
+			return false;
+		}
+	},
 	ADD_TASK: async (params: {
 		userId: number;
 		TaskBankItemId: number;
