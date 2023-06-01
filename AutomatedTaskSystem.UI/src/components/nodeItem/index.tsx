@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import PlusIcon from "../../assets/Icons/Plus";
 import API from "../../lib/API";
-import { removeStep } from "../../slices/nodesSlice";
+import { editStep, removeStep } from "../../slices/nodesSlice";
 import QueryButton from "../button/queryButton";
 import styles from "./styles.module.scss";
+import React from "react";
 
 interface Props {
 	schemaId: number;
@@ -133,6 +134,94 @@ const NodeItem = ({
 	);
 };
 
+interface TogglePrioProps {
+	x: number;
+	y: number;
+	id: number;
+	exit: () => void;
+	parent: EventTarget;
+}
+
+const TogglePriorityForm = (props: TogglePrioProps): React.JSX.Element => {
+	const dropDownRef = useRef<HTMLDivElement>(null);
+	const dispatch = useAppDispatch();
+	const [{ x, y }, setPos] = useState<{ x: number; y: number }>({
+		x: props.x,
+		y: props.y,
+	});
+
+	useEffect(() => {
+		const handleScrollAndResize = () => {
+			if (props.parent instanceof Element) {
+				const newBounds = props.parent.getBoundingClientRect();
+
+				setPos({
+					x: newBounds.x + newBounds.width,
+					y: newBounds.y,
+				});
+			}
+		};
+
+		const container = document.querySelector(".mainContainer");
+
+		if (!container) return;
+
+		container.addEventListener("scroll", handleScrollAndResize);
+		container.addEventListener("resize", handleScrollAndResize);
+
+		return () => {
+			container.removeEventListener("scroll", handleScrollAndResize);
+			container.removeEventListener("resize", handleScrollAndResize);
+		};
+	}, []);
+
+	const updatePrio = (priority: number | null) => {
+		API.SCHEMAS.NODES.STEPS.UPDATE_PRIO({
+			stepId: props.id,
+			priority,
+		}).then((res) => {
+			if (res && !res.error) {
+				dispatch(editStep({ step: res.data }));
+			}
+		});
+		props.exit();
+	};
+
+	return (
+		<div
+			ref={dropDownRef}
+			className="font-bold text-white fixed px-1 py-1 z-50 bg-white flex flex-col gap-1 w-28 rounded-xl border border-solid border-slate-500 cursor-auto"
+			style={{ top: y, left: x }}
+			onClick={(e) => e.stopPropagation()}
+		>
+			<div
+				onClick={() => updatePrio(null)}
+				className="rounded-full py-1 text-black bg-white hover:bg-slate-200 text-center"
+			>
+				None
+			</div>
+			<div
+				onClick={() => updatePrio(3)}
+				className="rounded-full py-1 bg-blue-600 hover:bg-blue-500 text-center"
+			>
+				Low
+			</div>
+			<div
+				onClick={() => updatePrio(2)}
+				className="rounded-full py-1 bg-orange-600 hover:bg-orange-500 text-center"
+			>
+				Medium
+			</div>
+			<div
+				onClick={() => updatePrio(1)}
+				className="rounded-full py-1 bg-rose-600 hover:bg-rose-500 text-center"
+			>
+				High
+			</div>
+		</div>
+	);
+};
+
 const Step = ({
 	priority,
 	nodeId,
@@ -155,6 +244,7 @@ const Step = ({
 	const router = useRouter();
 	const [deleting, setDeleting] = useState(false);
 	const [editing, setEditng] = useState(false);
+	const [prioEdit, setPrioEdit] = useState<TogglePrioProps>();
 	const dispatch = useAppDispatch();
 	const auth = useAppSelector((s) => s.authSlice);
 
@@ -175,7 +265,21 @@ const Step = ({
 			<td>{reviewable ? "True" : ""}</td>
 			<td>{TL ? "True" : ""}</td>
 			<td className={styles.name}>{name}</td>
-			<td className="flex items-center justify-start">
+			<td
+				className="flex items-center justify-start select-none cursor-pointer"
+				onClick={(e) => {
+					if (prioEdit) return setPrioEdit(undefined);
+
+					const bounds = e.currentTarget.getBoundingClientRect();
+					setPrioEdit({
+						id,
+						x: bounds.x + bounds.width,
+						y: bounds.y,
+						exit: () => setPrioEdit(undefined),
+						parent: e.currentTarget,
+					});
+				}}
+			>
 				{priority === 1 ? (
 					<div className="font-bold px-3 bg-rose-600 text-white rounded-full border-2 border-white border-opacity-50 border-solid">
 						High
@@ -191,6 +295,7 @@ const Step = ({
 				) : (
 					<div>None</div>
 				)}
+				{prioEdit && <TogglePriorityForm {...prioEdit} />}
 			</td>
 			<td>{group.name}</td>
 			<td>
