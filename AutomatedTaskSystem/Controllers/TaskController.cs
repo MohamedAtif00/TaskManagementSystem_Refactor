@@ -1112,7 +1112,7 @@ public class TaskController : ControllerBase
             .ThenInclude(tb => tb.Group)
             .Include(s => s.Nodes)
             .ThenInclude(n => n.Previous)
-            .Where(s => s.Nodes.Any(n => n.Id == task.Step.NodeId))
+            .Where(s => !s.Archived && s.Nodes.Any(n => !n.Archived && n.Id == task.Step.NodeId))
             .FirstOrDefaultAsync();
 
         if (schema is null)
@@ -1120,7 +1120,7 @@ public class TaskController : ControllerBase
 
         var nodes = new List<Node>
         {
-            schema.Nodes.Where(n => n.Steps.Any(s => s.Id == task.StepId)).First()
+            schema.Nodes.Where(n => !n.Archived && n.Steps.Any(s => s.Id == task.StepId)).First()
         };
 
         while (true)
@@ -1130,7 +1130,7 @@ public class TaskController : ControllerBase
             foreach (var item in nodes)
                 foreach (var prev in item.Previous)
                 {
-                    var check = nodes.Any(n => n.Id == prev.Id);
+                    var check = nodes.Any(n => !n.Archived && n.Id == prev.Id);
                     if (!check)
                         prevList.Add(prev);
                 }
@@ -1145,7 +1145,8 @@ public class TaskController : ControllerBase
         foreach (var item in nodes)
             foreach (var step in item.Steps)
                 if (
-                    step.TaskBank.TypeId != 3
+                    !step.Archived
+                    && step.TaskBank.TypeId != 3
                     && (
                         step.NodeId != task.Step.NodeId
                         || (step.NodeId == task.Step.NodeId && step.Order < task.Step.Order)
