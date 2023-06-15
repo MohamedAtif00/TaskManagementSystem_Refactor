@@ -2,7 +2,6 @@ using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using Microsoft.AspNetCore.Mvc;
-using AutomatedTaskSystem.Services.PathService;
 using AutomatedTaskSystem.Services.TaskService;
 
 namespace AutomatedTaskSystem.Controllers
@@ -12,17 +11,11 @@ namespace AutomatedTaskSystem.Controllers
     public class LessonController : ControllerBase
     {
         private readonly DataContext _context;
-        private readonly IPathService _pathService;
         private readonly ITaskService _taskService;
 
-        public LessonController(
-            DataContext context,
-            IPathService pathService,
-            ITaskService taskService
-        )
+        public LessonController(DataContext context, ITaskService taskService)
         {
             _context = context;
-            _pathService = pathService;
             _taskService = taskService;
         }
 
@@ -72,8 +65,6 @@ namespace AutomatedTaskSystem.Controllers
 
             await _context.SaveChangesAsync();
 
-            await _pathService.GeneratePath(schema.Id, newLO);
-
             var firstNodes = schema.Nodes.Where(n => n.isStart && !n.Archived).ToList();
 
             foreach (var node in firstNodes)
@@ -81,11 +72,7 @@ namespace AutomatedTaskSystem.Controllers
                 var firstStep = node.Steps.Where(s => s.Order == 1 && !s.Archived).FirstOrDefault();
 
                 if (firstStep is not null)
-                {
-                    var newTask = await _taskService.CreateTaskWithStep(firstStep, newLO);
-
-                    await _pathService.UpdatePathTask(newTask, firstStep);
-                }
+                    await _taskService.CreateTaskWithStep(firstStep, newLO);
             }
 
             return Ok(
