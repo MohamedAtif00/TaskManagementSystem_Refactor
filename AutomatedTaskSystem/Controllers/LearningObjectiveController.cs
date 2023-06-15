@@ -1,184 +1,157 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using Microsoft.AspNetCore.Mvc;
-using AutomatedTaskSystem.Interfaces;
-using AutomatedTaskSystem.Services.PathService;
 using AutomatedTaskSystem.Services.TaskService;
-using AutomatedTaskSystem.Services.AuthService;
 
 namespace AutomatedTaskSystem.Controllers
 {
-	[Route("learning-objectives")]
-	[ApiController]
-	public class LearningObjectiveController : ControllerBase
-	{
-		private readonly DataContext _context;
-		private readonly IPathService _pathService;
-		private readonly ITaskService _taskService;
+    [Route("learning-objectives")]
+    [ApiController]
+    public class LearningObjectiveController : ControllerBase
+    {
+        private readonly DataContext _context;
+        private readonly ITaskService _taskService;
 
-		public LearningObjectiveController(
-			DataContext context,
-			IAuthService authService,
-			IPathService pathService,
-			ITaskService taskService
-		)
-		{
-			_pathService = pathService;
-			_taskService = taskService;
-			_context = context;
-		}
+        public LearningObjectiveController(DataContext context, ITaskService taskService)
+        {
+            _taskService = taskService;
+            _context = context;
+        }
 
-		// DELETE:
-		// Delete a lo with all is sub models
-		[HttpDelete("{id}")]
-		public async Task<ActionResult<Responses.SuccessDTO>> DeleteLearningObjective(int id)
-		{
-			var lo = await _context.LearningObjectives
-				.Where(lo => lo.Id == id)
-				.Include(lo => lo.Tasks)
-				.ThenInclude(t => t.Comments)
-				.FirstOrDefaultAsync();
+        // DELETE:
+        // Delete a lo with all is sub models
+        [HttpDelete("{id}")]
+        public async Task<ActionResult<Responses.SuccessDTO>> DeleteLearningObjective(int id)
+        {
+            var lo = await _context.LearningObjectives
+                .Where(lo => lo.Id == id)
+                .Include(lo => lo.Tasks)
+                .ThenInclude(t => t.Comments)
+                .FirstOrDefaultAsync();
 
-			if (lo == null)
-				return NotFound(new Responses.BadRequestsDTO("Learning Objective not Found"));
+            if (lo == null)
+                return NotFound(new Responses.BadRequestsDTO("Learning Objective not Found"));
 
-			var paths = await _context.Paths
-				.Where(p => p.LearningObjectiveId == lo.Id)
-				.ToListAsync();
+            var paths = await _context.Paths
+                .Where(p => p.LearningObjectiveId == lo.Id)
+                .ToListAsync();
 
-			foreach (var item in paths)
-				_context.Paths.Remove(item);
+            foreach (var item in paths)
+                _context.Paths.Remove(item);
 
-			foreach (var t in lo.Tasks)
-			{
-				foreach (var c in t.Comments)
-					_context.Comments.Remove(c);
+            foreach (var t in lo.Tasks)
+            {
+                foreach (var c in t.Comments)
+                    _context.Comments.Remove(c);
 
-				_context.Tasks.Remove(t);
-			}
+                _context.Tasks.Remove(t);
+            }
 
-			_context.LearningObjectives.Remove(lo);
-			await _context.SaveChangesAsync();
+            _context.LearningObjectives.Remove(lo);
+            await _context.SaveChangesAsync();
 
-			return Ok(new Responses.SuccessDTO("Learning Objective Deleted"));
-		}
+            return Ok(new Responses.SuccessDTO("Learning Objective Deleted"));
+        }
 
-		// PATCH:
-		// Edit a lo all is sub models
-		[HttpPatch("{id}")]
-		public async Task<ActionResult<Responses.LearningObjectiveDTO>> EditLearningObjective(
-			int id,
-			Requests.EditLearningObjectiveDTO req
-		)
-		{
-			if (req.Steps.Count == 0)
-				return BadRequest(new Responses.BadRequestsDTO("Please supply steps"));
+        // PATCH:
+        // Edit a lo all is sub models
+        [HttpPatch("{id}")]
+        public async Task<ActionResult<Responses.LearningObjectiveDTO>> EditLearningObjective(
+            int id,
+            Requests.EditLearningObjectiveDTO req
+        )
+        {
+            if (req.Steps.Count == 0)
+                return BadRequest(new Responses.BadRequestsDTO("Please supply steps"));
 
-			var lo = await _context.LearningObjectives
-				.Where(lo => lo.Id == id)
-				.FirstOrDefaultAsync();
+            var lo = await _context.LearningObjectives
+                .Where(lo => lo.Id == id)
+                .FirstOrDefaultAsync();
 
-			if (lo == null)
-				return NotFound(new Responses.BadRequestsDTO("Learning Objective not Found"));
+            if (lo == null)
+                return NotFound(new Responses.BadRequestsDTO("Learning Objective not Found"));
 
-			if (lo.SchemaId != req.SchemaId)
-			{
-				var schema = await _context.Schemas
-					.Where(s => s.Id == req.SchemaId)
-					.FirstOrDefaultAsync();
+            if (lo.SchemaId != req.SchemaId)
+            {
+                var schema = await _context.Schemas
+                    .Where(s => s.Id == req.SchemaId)
+                    .FirstOrDefaultAsync();
 
-				if (schema == null)
-					return NotFound(new Responses.BadRequestsDTO("Schema not Found"));
+                if (schema == null)
+                    return NotFound(new Responses.BadRequestsDTO("Schema not Found"));
 
-				lo.Schema = schema;
-				lo.SchemaId = schema.Id;
+                lo.Schema = schema;
+                lo.SchemaId = schema.Id;
 
-				var tasks = await _context.Tasks
-					.Where(t => t.LearningObjectiveId == lo.Id)
-					.ToListAsync();
+                var tasks = await _context.Tasks
+                    .Where(t => t.LearningObjectiveId == lo.Id)
+                    .ToListAsync();
 
-				var COSEA = await _context.EndActivityTypes.FindAsync(6);
-				if (COSEA != null)
-				{
-					var status = await _context.Statuses.FindAsync(4);
-					if (status == null)
-						return NotFound(new Responses.BadRequestsDTO("Done status not Found"));
+                var COSEA = await _context.EndActivityTypes.FindAsync(6);
+                if (COSEA != null)
+                {
+                    var status = await _context.Statuses.FindAsync(4);
+                    if (status == null)
+                        return NotFound(new Responses.BadRequestsDTO("Done status not Found"));
 
-					foreach (var task in tasks)
-					{
-						task.Archived = true;
-						task.Status = status;
-						task.StatusId = status.Id;
+                    foreach (var task in tasks)
+                    {
+                        task.Archived = true;
+                        task.Status = status;
+                        task.StatusId = status.Id;
 
-						var currentEA = await _context.EndActivities
-							.Where(
-								_ =>
-									_.UserId == task.UserId
-									&& _.TaskId == task.Id
-									&& _.EndDate == null
-									&& _.EndActivityTypeId == null
-							)
-							.FirstOrDefaultAsync();
+                        var currentEA = await _context.EndActivities
+                            .Where(
+                                _ =>
+                                    _.UserId == task.UserId
+                                    && _.TaskId == task.Id
+                                    && _.EndDate == null
+                                    && _.EndActivityTypeId == null
+                            )
+                            .FirstOrDefaultAsync();
 
-						if (currentEA != null)
-						{
-							currentEA.EndActivityTypeId = COSEA.Id;
-							currentEA.EndActivityType = COSEA;
-							currentEA.EndDate = DateTime.Now;
-						}
-					}
-				}
+                        if (currentEA != null)
+                        {
+                            currentEA.EndActivityTypeId = COSEA.Id;
+                            currentEA.EndActivityType = COSEA;
+                            currentEA.EndDate = DateTime.Now;
+                        }
+                    }
+                }
 
-				await _pathService.DeleteLearningObjectivePath(lo.Id);
+                if (req.Steps.Count < 0)
+                    return NotFound(new Responses.BadRequestsDTO("Please supply steps"));
 
-				if (req.Steps.Count < 0)
-					return NotFound(new Responses.BadRequestsDTO("Please supply steps"));
+                foreach (var stepId in req.Steps)
+                {
+                    var step = await _context.Steps
+                        .Where(s => s.Id == stepId)
+                        .Include(s => s.TaskBank)
+                        .ThenInclude(tb => tb.Group)
+                        .FirstOrDefaultAsync();
 
-				foreach (var stepId in req.Steps)
-				{
-					var step = await _context.Steps
-						.Where(s => s.Id == stepId)
-						.Include(s => s.TaskBank)
-						.ThenInclude(tb => tb.Group)
-						.FirstOrDefaultAsync();
+                    if (step == null)
+                        return NotFound(new Responses.BadRequestsDTO("Step not Found"));
 
-					if (step == null)
-						return NotFound(new Responses.BadRequestsDTO("Step not Found"));
+                    var newTask = await _taskService.CreateTaskWithStep(step, lo);
+                }
+            }
+            lo.Environment = req.Environment;
+            lo.Template = req.Template;
+            lo.Tag = req.Tag;
+            lo.Name = req.Name;
 
-					await _pathService.GeneratePathFromStartPoint(step, lo);
-				}
+            await _context.SaveChangesAsync();
 
-				foreach (var stepId in req.Steps)
-				{
-					var step = await _context.Steps
-						.Where(s => s.Id == stepId)
-						.Include(s => s.TaskBank)
-						.ThenInclude(tb => tb.Group)
-						.FirstOrDefaultAsync();
-
-					if (step == null)
-						return NotFound(new Responses.BadRequestsDTO("Step not Found"));
-
-					var newTask = await _taskService.CreateTaskWithStep(step, lo);
-					var y = await _pathService.UpdatePathTask(newTask, step);
-				}
-			}
-			lo.Environment = req.Environment;
-			lo.Template = req.Template;
-			lo.Tag = req.Tag;
-			lo.Name = req.Name;
-
-			await _context.SaveChangesAsync();
-
-			return new Responses.LearningObjectiveDTO
-			{
-				Id = lo.Id,
-				Name = lo.Name,
-				Schema = new Responses.IDName { Name = lo.Schema.Name, Id = lo.Schema.Id },
-				Tag = lo.Tag,
-				Template = lo.Template,
-				Environment = lo.Environment
-			};
-		}
-	}
+            return new Responses.LearningObjectiveDTO
+            {
+                Id = lo.Id,
+                Name = lo.Name,
+                Schema = new Responses.IDName { Name = lo.Schema.Name, Id = lo.Schema.Id },
+                Tag = lo.Tag,
+                Template = lo.Template,
+                Environment = lo.Environment
+            };
+        }
+    }
 }
