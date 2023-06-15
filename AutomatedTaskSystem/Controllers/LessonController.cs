@@ -105,13 +105,13 @@ namespace AutomatedTaskSystem.Controllers
 
             los.ForEach(lo =>
             {
-                _context.LearningObjectives.Remove(lo);
+                lo.Archived = true;
                 lo.Tasks.ForEach(t =>
                 {
-                    _context.Tasks.Remove(t);
+                    t.Archived = true;
                 });
             });
-            _context.Lessons.Remove(lesson);
+            lesson.Archived = true;
             await _context.SaveChangesAsync();
 
             return Ok(new Responses.SuccessDTO("Lesson Deleted"));

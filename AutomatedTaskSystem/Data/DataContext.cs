@@ -118,17 +118,6 @@ namespace AutomatedTaskSystem.Data
             modelBuilder.Entity<Models.Task>().Property(_ => _.Pause).HasDefaultValue(false);
 
             modelBuilder
-                .Entity<Models.Path>()
-                .HasOne(p => p.Step)
-                .WithMany()
-                .OnDelete(DeleteBehavior.NoAction);
-            modelBuilder
-                .Entity<Models.Path>()
-                .HasOne(p => p.NextStep)
-                .WithMany()
-                .OnDelete(DeleteBehavior.NoAction);
-
-            modelBuilder
                 .Entity<Year>()
                 .HasData(
                     new Year
@@ -168,7 +157,6 @@ namespace AutomatedTaskSystem.Data
 
         public DbSet<Team> Teams => Set<Team>();
         public DbSet<Year> Years => Set<Year>();
-        public DbSet<Models.Path> Paths => Set<Models.Path>();
         public DbSet<Activity> Activities => Set<Activity>();
         public DbSet<ActivityType> ActivityTypes => Set<ActivityType>();
         public DbSet<EndActivityType> EndActivityTypes => Set<EndActivityType>();

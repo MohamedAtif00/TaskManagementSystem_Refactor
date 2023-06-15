@@ -32,22 +32,15 @@ namespace AutomatedTaskSystem.Controllers
             if (lo == null)
                 return NotFound(new Responses.BadRequestsDTO("Learning Objective not Found"));
 
-            var paths = await _context.Paths
-                .Where(p => p.LearningObjectiveId == lo.Id)
-                .ToListAsync();
-
-            foreach (var item in paths)
-                _context.Paths.Remove(item);
-
             foreach (var t in lo.Tasks)
             {
                 foreach (var c in t.Comments)
-                    _context.Comments.Remove(c);
+                    c.Archived = true;
 
-                _context.Tasks.Remove(t);
+                t.Archived = true;
             }
 
-            _context.LearningObjectives.Remove(lo);
+            lo.Archived = true;
             await _context.SaveChangesAsync();
 
             return Ok(new Responses.SuccessDTO("Learning Objective Deleted"));
