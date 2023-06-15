@@ -4,7 +4,6 @@ using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Static;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using AutomatedTaskSystem.Services.PathService;
 using AutomatedTaskSystem.Services.TaskService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
@@ -17,19 +16,12 @@ public class TaskController : ControllerBase
 {
     private readonly DataContext _context;
     private readonly ITokenService _tokenService;
-    private readonly IPathService _pathService;
     private readonly ITaskService _taskService;
 
-    public TaskController(
-        DataContext context,
-        ITokenService authService,
-        IPathService pathService,
-        ITaskService taskService
-    )
+    public TaskController(DataContext context, ITokenService authService, ITaskService taskService)
     {
         _context = context;
         _tokenService = authService;
-        _pathService = pathService;
         _taskService = taskService;
     }
 
@@ -377,6 +369,13 @@ public class TaskController : ControllerBase
                                     res.Add(
                                         new Responses.TaskDTO
                                         {
+                                            User = task.User is not null
+                                                ? new Responses.IDName
+                                                {
+                                                    Id = task.User.Id,
+                                                    Name = task.User.Name,
+                                                }
+                                                : null,
                                             Attention = task.Attention,
                                             Flagged = task.Flagged,
                                             Id = task.Id,
@@ -430,6 +429,13 @@ public class TaskController : ControllerBase
                                         res.Add(
                                             new Responses.TaskDTO
                                             {
+                                                User = task.User is not null
+                                                    ? new Responses.IDName
+                                                    {
+                                                        Id = task.User.Id,
+                                                        Name = task.User.Name,
+                                                    }
+                                                    : null,
                                                 Attention = task.Attention,
                                                 Flagged = task.Flagged,
                                                 Id = task.Id,
@@ -502,6 +508,13 @@ public class TaskController : ControllerBase
                                             res.Add(
                                                 new Responses.TaskDTO
                                                 {
+                                                    User = task.User is not null
+                                                        ? new Responses.IDName
+                                                        {
+                                                            Id = task.User.Id,
+                                                            Name = task.User.Name,
+                                                        }
+                                                        : null,
                                                     Attention = task.Attention,
                                                     Flagged = task.Flagged,
                                                     Id = task.Id,
@@ -561,6 +574,13 @@ public class TaskController : ControllerBase
                                     res.Add(
                                         new Responses.TaskDTO
                                         {
+                                            User = task.User is not null
+                                                ? new Responses.IDName
+                                                {
+                                                    Id = task.User.Id,
+                                                    Name = task.User.Name,
+                                                }
+                                                : null,
                                             Attention = task.Attention,
                                             Flagged = task.Flagged,
                                             Id = task.Id,
@@ -696,6 +716,9 @@ public class TaskController : ControllerBase
             if (task.Attention)
                 task.Attention = false;
 
+            if (task.User is null)
+                task.User = user;
+
             var DoingStatus = await _context.Statuses.FindAsync(Statuses.Doing);
             task.Status = DoingStatus!;
             task.StatusId = Statuses.Doing;
@@ -768,6 +791,7 @@ public class TaskController : ControllerBase
                 .Include(t => t.Status)
                 .Include(t => t.LearningObjective)
                 .Include(t => t.User)
+                .Include(t => t.Step)
                 .FirstOrDefaultAsync();
             if (task == null)
                 return NotFound(new Responses.BadRequestsDTO("Task not found"));
@@ -821,70 +845,169 @@ public class TaskController : ControllerBase
 
             task.From = null;
 
-            var paths = await _pathService.GetPathByTask(task);
-
-            foreach (var path in paths)
+            if (task.Step is not null)
             {
-                var nextStep = path.NextStep;
+                var BacklogStatus = await _context.Statuses.FindAsync(Statuses.Backlog);
+                var TodoStatus = await _context.Statuses.FindAsync(Statuses.ToDo);
 
-                if (nextStep.Order == 1)
+                var nextStep = await _context.Steps
+                    .Where(
+                        s =>
+                            s.NodeId == task.Step.NodeId
+                            && !s.Archived
+                            && s.Order == task.Step.Order + 1
+                    )
+                    .Include(s => s.TaskBank)
+                    .ThenInclude(tb => tb.Group)
+                    .FirstOrDefaultAsync();
+
+                if (nextStep is not null)
                 {
-                    var loPaths = await _pathService.GetPathByLearningObjective(
-                        task.LearningObjective
-                    );
-
-                    var node = await _context.Nodes
-                        .Where(n => n.Id == nextStep.NodeId && !n.Archived)
-                        .Include(n => n.Requires)
-                        .ThenInclude(n => n.Steps)
-                        .FirstOrDefaultAsync();
-
-                    if (node is null)
-                        throw new NotImplementedException("NODE IS NULL");
-
-                    bool isReady = true;
-                    foreach (var requiredNode in node.Requires)
+                    var foundTasks = await _context.Tasks
+                        .Where(
+                            t =>
+                                t.StepId == nextStep.Id
+                                && t.LearningObjectiveId == task.LearningObjectiveId
+                                && !t.Archived
+                        )
+                        .Include(t => t.Status)
+                        .ToListAsync();
+                    if (foundTasks.Count > 0)
+                        foundTasks.ForEach(t => t.StatusId = Statuses.ToDo);
+                    else
                     {
-                        var lastStep = requiredNode.Steps
-                            .Where(s => s.Order == requiredNode.Steps.Count)
-                            .FirstOrDefault();
-
-                        if (lastStep is null)
-                            throw new NotImplementedException("BAD IMPLEMENTATION");
-
-                        var lastStepPaths = loPaths.Where(p => p.StepId == lastStep.Id).ToList();
-
-                        foreach (var item in lastStepPaths)
+                        var newTask = new Models.Task
                         {
-                            if (
-                                !(
-                                    item.Task is not null
-                                    && (item.Task.StatusId == 4 || item.Task.StatusId == 5)
-                                )
-                            )
-                            {
-                                isReady = false;
-                                break;
-                            }
+                            Group = nextStep.TaskBank.Group,
+                            GroupId = nextStep.TaskBank.GroupId,
+                            IsReview = nextStep.TaskBank.TypeId == 3,
+                            LearningObjective = task.LearningObjective,
+                            LearningObjectiveId = task.LearningObjectiveId,
+                            Name = nextStep.TaskBank.Name,
+                            Step = nextStep,
+                            StepId = nextStep.Id,
+                            TL = nextStep.TaskBank.TL,
+                        };
+                        if (nextStep.TaskBank.TL)
+                        {
+                            newTask.Status = TodoStatus!;
+                            newTask.StatusId = TodoStatus!.Id;
                         }
-                    }
-
-                    if (isReady)
-                    {
-                        var newTask = await _taskService.CreateTaskWithStep(
-                            nextStep,
-                            task.LearningObjective
-                        );
-                        await _pathService.UpdatePathTask(newTask, nextStep);
+                        else
+                        {
+                            newTask.Status = BacklogStatus!;
+                            newTask.StatusId = BacklogStatus!.Id;
+                        }
+                        _context.Tasks.Add(newTask);
                     }
                 }
                 else
                 {
-                    var newTask = await _taskService.CreateTaskWithStep(
-                        nextStep,
-                        task.LearningObjective
-                    );
-                    await _pathService.UpdatePathTask(newTask, nextStep);
+                    var currentNode = await _context.Nodes
+                        .Where(n => n.Id == task.Step.NodeId)
+                        .Include(n => n.Next)
+                        .ThenInclude(n => n.Steps)
+                        .Include(n => n.Next)
+                        .ThenInclude(n => n.Requires)
+                        .ThenInclude(n => n.Steps)
+                        .FirstOrDefaultAsync();
+
+                    if (currentNode is not null)
+                    {
+                        foreach (var nextNode in currentNode.Next)
+                        {
+                            var requiredIsComplete = true;
+                            foreach (var nodeRequired in nextNode.Requires)
+                            {
+                                var lastStep = nodeRequired.Steps
+                                    .Where(s => s.Order == nodeRequired.Steps.Count)
+                                    .FirstOrDefault();
+                                if (lastStep is not null)
+                                {
+                                    var lastTask = await _context.Tasks
+                                        .Include(t => t.Status)
+                                        .Where(
+                                            t =>
+                                                t.StepId == lastStep.Id
+                                                && t.LearningObjectiveId == task.LearningObjectiveId
+                                        )
+                                        .ToListAsync();
+
+                                    if (lastTask.Count == 0)
+                                        requiredIsComplete = false;
+
+                                    lastTask.ForEach(t =>
+                                    {
+                                        if (
+                                            t.StatusId != Statuses.Done
+                                            || t.StatusId == Statuses.Rollback
+                                        )
+                                            requiredIsComplete = false;
+                                    });
+                                }
+                            }
+
+                            if (requiredIsComplete)
+                            {
+                                var firstStep = await _context.Steps
+                                    .Where(s => s.NodeId == nextNode.Id && s.Order == 1)
+                                    .Include(s => s.TaskBank)
+                                    .ThenInclude(tb => tb.Group)
+                                    .FirstOrDefaultAsync();
+
+                                if (firstStep == null)
+                                    return BadRequest(
+                                        new Responses.BadRequestsDTO("First step not found")
+                                    );
+
+                                var foundTasks = await _context.Tasks
+                                    .Include(t => t.Status)
+                                    .Where(
+                                        t =>
+                                            t.StepId == firstStep.Id
+                                            && t.LearningObjectiveId == task.LearningObjectiveId
+                                    )
+                                    .ToListAsync();
+
+                                if (foundTasks.Count > 0)
+                                    foundTasks.ForEach(t =>
+                                    {
+                                        t.StatusId = Statuses.ToDo;
+                                    });
+                                else
+                                {
+                                    var newTask = new Models.Task
+                                    {
+                                        Group = firstStep.TaskBank.Group,
+                                        GroupId = firstStep.TaskBank.GroupId,
+                                        IsReview = firstStep.TaskBank.TypeId == 3,
+                                        LearningObjective = task.LearningObjective,
+                                        LearningObjectiveId = task.LearningObjectiveId,
+                                        Name = firstStep.TaskBank.Name,
+                                        Status = BacklogStatus!,
+                                        StatusId = Statuses.Backlog,
+                                        Step = firstStep,
+                                        StepId = firstStep.Id,
+                                        TL = firstStep.TaskBank.TL,
+                                        Archived = false,
+                                        Flagged = false,
+                                        Attention = false,
+                                        Comments = new List<Comment> { },
+                                        CreatedAt = DateTime.Now,
+                                        From = null,
+                                        FromId = null,
+                                        IsRollback = false,
+                                        Pause = false,
+                                        Priority = firstStep.Priority,
+                                        RollbackCount = 0,
+                                        User = null,
+                                        UserId = null
+                                    };
+                                    _context.Tasks.Add(newTask);
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1063,15 +1186,70 @@ public class TaskController : ControllerBase
 
             _context.Activities.Add(newAct);
 
-            await _context.SaveChangesAsync();
+            var BacklogStatus = await _context.Statuses.FindAsync(Statuses.Backlog);
+            var TodoStatus = await _context.Statuses.FindAsync(Statuses.ToDo);
+            if (BacklogStatus is null || TodoStatus is null)
+            {
+                return BadRequest();
+            }
 
-            await _pathService.GeneratePathFromStartPoint(rollbackStep, task.LearningObjective);
-            var newTask = await _taskService.CreateTaskWithStep(
-                rollbackStep,
-                task.LearningObjective,
-                task
-            );
-            await _pathService.UpdatePathTask(newTask, rollbackStep);
+            var foundTask = await _context.Tasks
+                .Where(
+                    t =>
+                        t.StepId == rollbackStep.Id
+                        && t.LearningObjectiveId == task.LearningObjectiveId
+                        && !t.Archived
+                )
+                .OrderBy(t => t.Id)
+                .Include(t => t.Status)
+                .LastOrDefaultAsync();
+            if (foundTask is not null)
+            {
+                foundTask.From = task;
+                foundTask.FromId = task.FromId;
+                foundTask.RollbackCount++;
+                foundTask.IsRollback = true;
+                foundTask.Status = TodoStatus;
+            }
+            else
+            {
+                var newTask = new Models.Task
+                {
+                    Group = rollbackStep.TaskBank.Group,
+                    GroupId = rollbackStep.TaskBank.GroupId,
+                    IsReview = rollbackStep.TaskBank.TypeId == 3,
+                    LearningObjective = task.LearningObjective,
+                    LearningObjectiveId = task.LearningObjectiveId,
+                    Name = rollbackStep.TaskBank.Name,
+                    Step = rollbackStep,
+                    StepId = rollbackStep.Id,
+                    TL = rollbackStep.TaskBank.TL,
+                    Archived = false,
+                    Attention = false,
+                    Comments = new List<Comment> { },
+                    CreatedAt = DateTime.Now,
+                    Flagged = false,
+                    From = task,
+                    FromId = task.Id,
+                    IsRollback = true,
+                    Pause = false,
+                    Priority = rollbackStep.Priority,
+                    RollbackCount = 1,
+                    Status = rollbackStep.TaskBank.TL ? TodoStatus : BacklogStatus,
+                    StatusId = rollbackStep.TaskBank.TL ? TodoStatus.Id : BacklogStatus.Id,
+                };
+                if (rollbackStep.TaskBank.TL)
+                {
+                    newTask.Status = TodoStatus!;
+                    newTask.StatusId = TodoStatus!.Id;
+                }
+                else
+                {
+                    newTask.Status = BacklogStatus!;
+                    newTask.StatusId = BacklogStatus!.Id;
+                }
+                _context.Tasks.Add(newTask);
+            }
 
             await _context.SaveChangesAsync();
 
