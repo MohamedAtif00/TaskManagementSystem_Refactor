@@ -1,0 +1,37 @@
+using AutomatedTaskSystem.Interfaces;
+using AutomatedTaskSystem.Services;
+using AutomatedTaskSystem.Services.AuthService;
+using AutomatedTaskSystem.Services.GroupService;
+using AutomatedTaskSystem.Services.LearningObjectiveService;
+using AutomatedTaskSystem.Services.ProjectAssignmentService;
+using AutomatedTaskSystem.Services.ProjectService;
+using AutomatedTaskSystem.Services.SchemaService;
+using AutomatedTaskSystem.Services.SectionService;
+using AutomatedTaskSystem.Services.TaskService;
+using AutomatedTaskSystem.Services.TokenService;
+using AutomatedTaskSystem.Services.UnitService;
+using AutomatedTaskSystem.Services.UserService;
+using AutomatedTaskSystem.Services.YearService;
+
+namespace AutomatedTaskSystem.Builder.DependancyInjections;
+
+public static class DependancyInjections
+{
+    public static void Inject(WebApplicationBuilder builder)
+    {
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+        builder.Services.AddScoped<ITokenService, TokenService>();
+        builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IProjectService, ProjectService>();
+        builder.Services.AddScoped<IProjectAssignmentService, ProjectAssignmentService>();
+        builder.Services.AddScoped<IUnitService, UnitService>();
+        builder.Services.AddScoped<ILearningObjectiveService, LearningObjectiveService>();
+        builder.Services.AddScoped<IGroupService, GroupService>();
+        builder.Services.AddScoped<ISectionService, SectionService>();
+        builder.Services.AddScoped<IUserService, UserService>();
+        builder.Services.AddScoped<ITaskService, TaskService>();
+        builder.Services.AddScoped<ISchemaService, SchemaService>();
+        builder.Services.AddScoped<IYearService, YearService>();
+    }
+}
