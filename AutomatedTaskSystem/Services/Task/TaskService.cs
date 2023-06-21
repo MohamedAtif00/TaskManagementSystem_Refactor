@@ -1,5 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.Common;
+using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
@@ -44,6 +46,76 @@ public class TaskService : ITaskService
         var newTask = await createTask(step: step, learningObjective: lo, from);
 
         return newTask;
+    }
+
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id)
+    {
+        var task = await _context.Tasks
+            .Where(t => !t.Archived && t.Id == id)
+            .Include(t => t.Status)
+            .Include(t => t.LearningObjective)
+            .ThenInclude(t => t.Schema)
+            .Include(t => t.Comments)
+            .ThenInclude(c => c.User)
+            .FirstOrDefaultAsync();
+
+        if (task is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not found" }
+            );
+
+        var started = await _context.Activities
+            .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 1)
+            .OrderBy(a => a.TimeStamp)
+            .LastOrDefaultAsync();
+
+        var done = await _context.Activities
+            .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 2)
+            .OrderBy(a => a.TimeStamp)
+            .LastOrDefaultAsync();
+
+        return new ResponseService<GetTaskDetailsDto>
+        {
+            Error = false,
+            Data = new GetTaskDetailsDto
+            {
+                Comments = task.Comments
+                    .Select(
+                        c =>
+                            new TaskCommentDto
+                            {
+                                Content = c.Content,
+                                Id = c.Id,
+                                Timestamp = c.Timestamp,
+                                User = new BasicInfoDto { Id = c.User.Id, Name = c.User.Name }
+                            }
+                    )
+                    .ToList(),
+                DoneAt = done is null ? null : done.TimeStamp,
+                Environment = task.LearningObjective.Environment,
+                Flagged = task.Flagged,
+                Id = task.Id,
+                IsReview = task.IsReview,
+                LearningObjective = new BasicInfoDto
+                {
+                    Id = task.LearningObjective.Id,
+                    Name = task.LearningObjective.Name
+                },
+                Name = task.Name,
+                Pause = task.Pause,
+                Priority = task.Priority,
+                Schema = new BasicInfoDto
+                {
+                    Id = task.LearningObjective.Schema.Id,
+                    Name = task.LearningObjective.Schema.Name
+                },
+                StartedAt = started is null ? null : started.TimeStamp,
+                Status = task.Status.Name,
+                Tag = task.LearningObjective.Tag,
+                Template = task.LearningObjective.Template
+            },
+            Message = "Task found"
+        };
     }
 
     public async Task<ActionResult<ResponseService<Responses.ITaskDTO>>> UpdateTaskPriority(

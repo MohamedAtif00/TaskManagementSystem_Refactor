@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
@@ -14,4 +15,5 @@ public interface ITaskService
         int TaskId,
         int? Priority
     );
+    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id);
 }
