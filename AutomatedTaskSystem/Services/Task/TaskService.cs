@@ -105,6 +105,42 @@ public class TaskService : ITaskService
         return newTask;
     }
 
+    public async Task<ActionResult<ResponseService<GetTaskAssignmentDto>>> GetTaskAssignment(int id)
+    {
+        var task = await _context.Tasks
+            .Where(t => t.Id == id)
+            .Include(t => t.LearningObjective)
+            .ThenInclude(lo => lo.Lesson)
+            .ThenInclude(l => l.Unit)
+            .ThenInclude(u => u.Project)
+            .ThenInclude(p => p.Users)
+            .Include(t => t.User)
+            .FirstOrDefaultAsync();
+
+        if (task is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not found" }
+            );
+
+        var user = task.LearningObjective.Lesson.Unit.Project.Users
+            .Where(u => u.Id != task.UserId && u.GroupId == task.GroupId)
+            .ToList();
+
+        return new ResponseService<GetTaskAssignmentDto>
+        {
+            Data = new GetTaskAssignmentDto
+            {
+                AssignedUser = task.User is null
+                    ? null
+                    : new BasicInfoDto { Id = task.User.Id, Name = task.User.Name },
+                AssignableUsers = user.Select(u => new BasicInfoDto { Id = u.Id, Name = u.Name })
+                    .ToList()
+            },
+            Error = false,
+            Message = "List of all assignable users"
+        };
+    }
+
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id) =>
         await getTaskDetails(id);
 

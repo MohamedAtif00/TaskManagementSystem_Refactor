@@ -23,4 +23,5 @@ public interface ITaskService
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id);
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> TogglePause(int id);
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ToggleFlag(int id);
+    Task<ActionResult<ResponseService<GetTaskAssignmentDto>>> GetTaskAssignment(int id);
 }
