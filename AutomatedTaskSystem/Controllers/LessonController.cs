@@ -72,7 +72,7 @@ namespace AutomatedTaskSystem.Controllers
                 var firstStep = node.Steps.Where(s => s.Order == 1 && !s.Archived).FirstOrDefault();
 
                 if (firstStep is not null)
-                    await _taskService.CreateTaskWithStep(firstStep, newLO);
+                    await _taskService.CreateTask(firstStep, newLO);
             }
 
             return Ok(

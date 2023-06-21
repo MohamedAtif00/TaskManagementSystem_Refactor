@@ -71,40 +71,10 @@ public class TaskService : ITaskService
 
         var task = await createTask(TaskBankItem, lo, user);
 
-        return new ResponseService<GetTaskDetailsDto>
-        {
-            Data = new GetTaskDetailsDto
-            {
-                Comments = new List<TaskCommentDto> { },
-                DoneAt = null,
-                Environment = lo.Environment,
-                Flagged = false,
-                Id = task.Id,
-                IsReview = task.IsReview,
-                LearningObjective = new BasicInfoDto
-                {
-                    Id = task.LearningObjective.Id,
-                    Name = task.LearningObjective.Name
-                },
-                Name = task.Name,
-                Pause = task.Pause,
-                Priority = task.Priority,
-                Schema = new BasicInfoDto
-                {
-                    Id = task.LearningObjective.Schema.Id,
-                    Name = task.LearningObjective.Schema.Name,
-                },
-                StartedAt = null,
-                Status = status.Name,
-                Tag = task.LearningObjective.Tag,
-                Template = task.LearningObjective.Template,
-            },
-            Error = false,
-            Message = "Task created"
-        };
+        return await getTaskDetails(task.Id);
     }
 
-    public async Task<Models.Task> CreateTaskWithStep(Step step, LearningObjective lo)
+    public async Task<Models.Task> CreateTask(Step step, LearningObjective lo)
     {
         var backLogStatus = await _context.Statuses.Where(s => s.Id == 1).FirstOrDefaultAsync();
 
@@ -115,11 +85,7 @@ public class TaskService : ITaskService
         return newTask;
     }
 
-    public async Task<Models.Task> CreateTaskWithStep(
-        Step step,
-        LearningObjective lo,
-        Models.Task? from
-    )
+    public async Task<Models.Task> CreateTask(Step step, LearningObjective lo, Models.Task? from)
     {
         var backLogStatus = await _context.Statuses.Where(s => s.Id == 1).FirstOrDefaultAsync();
 
@@ -130,74 +96,67 @@ public class TaskService : ITaskService
         return newTask;
     }
 
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id)
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id) =>
+        await getTaskDetails(id);
+
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> TogglePause(int id)
     {
         var task = await _context.Tasks
             .Where(t => !t.Archived && t.Id == id)
             .Include(t => t.Status)
-            .Include(t => t.LearningObjective)
-            .ThenInclude(t => t.Schema)
-            .Include(t => t.Comments)
-            .ThenInclude(c => c.User)
             .FirstOrDefaultAsync();
-
-        if (task is null)
+        if (task == null)
             return new NotFoundObjectResult(
-                new BaseResponseService { Error = true, Message = "Task is not found" }
+                new BaseResponseService { Error = false, Message = "Task is not found" }
             );
 
-        var started = await _context.Activities
-            .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 1)
-            .OrderBy(a => a.TimeStamp)
-            .LastOrDefaultAsync();
+        if (!task.Pause && task.StatusId != 3)
+            return new BadRequestObjectResult(
+                new BaseResponseService
+                {
+                    Error = false,
+                    Message = "Task with a status other than 'Doing' cannot be pause"
+                }
+            );
 
-        var done = await _context.Activities
-            .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 2)
-            .OrderBy(a => a.TimeStamp)
-            .LastOrDefaultAsync();
+        if (task.Pause && task.StatusId != 2)
+            return new BadRequestObjectResult(
+                new BaseResponseService
+                {
+                    Error = false,
+                    Message = "Task cannot be resumed if status is not 'To Do'"
+                }
+            );
 
-        return new ResponseService<GetTaskDetailsDto>
+        task.Pause = !task.Pause;
+
+        if (task.Pause)
         {
-            Error = false,
-            Data = new GetTaskDetailsDto
+            var pauseEA = await _context.EndActivityTypes.FindAsync(2);
+            if (pauseEA != null)
             {
-                Comments = task.Comments
-                    .Select(
-                        c =>
-                            new TaskCommentDto
-                            {
-                                Content = c.Content,
-                                Id = c.Id,
-                                Timestamp = c.Timestamp,
-                                User = new BasicInfoDto { Id = c.User.Id, Name = c.User.Name }
-                            }
+                var currentEA = await _context.EndActivities
+                    .Where(
+                        _ =>
+                            _.UserId == task.UserId
+                            && _.TaskId == task.Id
+                            && _.EndDate == null
+                            && _.EndActivityTypeId == null
                     )
-                    .ToList(),
-                DoneAt = done is null ? null : done.TimeStamp,
-                Environment = task.LearningObjective.Environment,
-                Flagged = task.Flagged,
-                Id = task.Id,
-                IsReview = task.IsReview,
-                LearningObjective = new BasicInfoDto
+                    .FirstOrDefaultAsync();
+
+                if (currentEA != null)
                 {
-                    Id = task.LearningObjective.Id,
-                    Name = task.LearningObjective.Name
-                },
-                Name = task.Name,
-                Pause = task.Pause,
-                Priority = task.Priority,
-                Schema = new BasicInfoDto
-                {
-                    Id = task.LearningObjective.Schema.Id,
-                    Name = task.LearningObjective.Schema.Name
-                },
-                StartedAt = started is null ? null : started.TimeStamp,
-                Status = task.Status.Name,
-                Tag = task.LearningObjective.Tag,
-                Template = task.LearningObjective.Template
-            },
-            Message = "Task found"
-        };
+                    currentEA.EndActivityTypeId = pauseEA.Id;
+                    currentEA.EndActivityType = pauseEA;
+                    currentEA.EndDate = DateTime.Now;
+                }
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        return await getTaskDetails(task.Id);
     }
 
     public async Task<ActionResult<ResponseService<Responses.ITaskDTO>>> UpdateTaskPriority(
@@ -384,5 +343,75 @@ public class TaskService : ITaskService
         await _context.SaveChangesAsync();
 
         return newTask;
+    }
+
+    private async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> getTaskDetails(int id)
+    {
+        var task = await _context.Tasks
+            .Where(t => !t.Archived && t.Id == id)
+            .Include(t => t.Status)
+            .Include(t => t.LearningObjective)
+            .ThenInclude(t => t.Schema)
+            .Include(t => t.Comments)
+            .ThenInclude(c => c.User)
+            .FirstOrDefaultAsync();
+
+        if (task is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not found" }
+            );
+
+        var started = await _context.Activities
+            .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 1)
+            .OrderBy(a => a.TimeStamp)
+            .LastOrDefaultAsync();
+
+        var done = await _context.Activities
+            .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 2)
+            .OrderBy(a => a.TimeStamp)
+            .LastOrDefaultAsync();
+
+        return new ResponseService<GetTaskDetailsDto>
+        {
+            Error = false,
+            Data = new GetTaskDetailsDto
+            {
+                Comments = task.Comments
+                    .Select(
+                        c =>
+                            new TaskCommentDto
+                            {
+                                Content = c.Content,
+                                Id = c.Id,
+                                Timestamp = c.Timestamp,
+                                User = new BasicInfoDto { Id = c.User.Id, Name = c.User.Name }
+                            }
+                    )
+                    .ToList(),
+                DoneAt = done is null ? null : done.TimeStamp,
+                Environment = task.LearningObjective.Environment,
+                Flagged = task.Flagged,
+                Id = task.Id,
+                IsReview = task.IsReview,
+                LearningObjective = new BasicInfoDto
+                {
+                    Id = task.LearningObjective.Id,
+                    Name = task.LearningObjective.Name
+                },
+                Name = task.Name,
+                Pause = task.Pause,
+                Priority = task.Priority,
+                Schema = new BasicInfoDto
+                {
+                    Id = task.LearningObjective.Schema.Id,
+                    Name = task.LearningObjective.Schema.Name
+                },
+                StartedAt = started is null ? null : started.TimeStamp,
+                Status = task.Status.Name,
+                Tag = task.LearningObjective.Tag,
+                Template = task.LearningObjective.Template
+            },
+            Message = "Task found"
+        };
     }
 }
