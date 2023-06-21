@@ -26,4 +26,5 @@ public interface ITaskService
     Task<ActionResult<ResponseService<GetTaskAssignmentDto>>> GetTaskAssignment(int id);
     Task<ActionResult<BaseResponseService>> AssignUser(int id, int uid);
     Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid);
+    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(int taskId, int stepId);
 }

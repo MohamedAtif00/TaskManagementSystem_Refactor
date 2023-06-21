@@ -354,6 +354,170 @@ public class TaskService : ITaskService
         };
     }
 
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(
+        int taskId,
+        int stepId
+    )
+    {
+        var authRes = _tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = authRes.Message }
+            );
+
+        var statusUid = Int32.TryParse(authRes.Data, out int uid);
+        if (!statusUid)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Request" }
+            );
+
+        var user = await _context.Users
+            .Where(u => u.Id == uid && !u.Archived)
+            .Include(u => u.Group)
+            .FirstOrDefaultAsync();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid auth" }
+            );
+
+        var task = await _context.Tasks.Where(t => t.Id == taskId).FirstOrDefaultAsync();
+
+        if (task is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid auth" }
+            );
+
+        if (task.UserId is not null && task.UserId == user.Id)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not assigned for you" }
+            );
+        if (task.UserId is null)
+            task.User = user;
+
+        if (!task.IsReview)
+            return new BadRequestObjectResult(
+                new Responses.BadRequestsDTO("Task is not in a Reviewable")
+            );
+        if (task.StatusId != Statuses.Doing)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = false, Message = "Task status should be started" }
+            );
+
+        var RollbackStatus = await _context.Statuses.FindAsync(Statuses.Rollback);
+        if (RollbackStatus is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = false, Message = "Error" }
+            );
+        task.Status = RollbackStatus;
+        task.StatusId = Statuses.Rollback;
+
+        var doneAct = await _context.ActivityTypes.FindAsync(2);
+        var completeEA = await _context.EndActivityTypes.FindAsync(3);
+        if (completeEA != null)
+        {
+            var currentEA = await _context.EndActivities
+                .Where(
+                    _ =>
+                        _.UserId == user.Id
+                        && _.TaskId == task.Id
+                        && _.EndDate == null
+                        && _.EndActivityTypeId == null
+                )
+                .FirstOrDefaultAsync();
+
+            if (currentEA != null)
+            {
+                currentEA.EndActivityTypeId = completeEA.Id;
+                currentEA.EndActivityType = completeEA;
+                currentEA.EndDate = DateTime.Now;
+            }
+        }
+        if (doneAct == null)
+            return new NotFoundObjectResult(new Responses.BadRequestsDTO("I somehow failed"));
+
+        var newAct = new Activity
+        {
+            Task = task,
+            User = user,
+            TaskId = task.Id,
+            UserId = user.Id,
+            ActivityType = doneAct,
+            ActivityTypeId = doneAct.Id
+        };
+
+        var rollbackStep = await _context.Steps
+            .Where(s => s.Id == stepId)
+            .Include(s => s.Node)
+            .Include(s => s.TaskBank)
+            .ThenInclude(tb => tb.Group)
+            .FirstOrDefaultAsync();
+        if (rollbackStep is null)
+            return new BadRequestObjectResult(new Responses.BadRequestsDTO("Step is not found."));
+
+        var foundTask = await _context.Tasks
+            .Where(
+                t =>
+                    t.StepId == rollbackStep.Id
+                    && t.LearningObjectiveId == task.LearningObjectiveId
+                    && !t.Archived
+            )
+            .OrderBy(t => t.Id)
+            .Include(t => t.Status)
+            .LastOrDefaultAsync();
+        if (foundTask is not null)
+        {
+            var status = await _context.Statuses.FindAsync(Statuses.ToDo);
+            if (status is null)
+                return new BadRequestObjectResult(new Responses.BadRequestsDTO("Error"));
+
+            foundTask.From = task;
+            foundTask.FromId = task.FromId;
+            foundTask.RollbackCount++;
+            foundTask.IsRollback = true;
+            foundTask.Status = status;
+        }
+        else
+        {
+            var status = await _context.Statuses.FindAsync(
+                rollbackStep.TaskBank.TL ? Statuses.ToDo : Statuses.Backlog
+            );
+            if (status is null)
+                return new BadRequestObjectResult(new Responses.BadRequestsDTO("Error"));
+
+            var newTask = new Models.Task
+            {
+                Group = rollbackStep.TaskBank.Group,
+                GroupId = rollbackStep.TaskBank.GroupId,
+                IsReview = rollbackStep.TaskBank.TypeId == 3,
+                LearningObjective = task.LearningObjective,
+                LearningObjectiveId = task.LearningObjectiveId,
+                Name = rollbackStep.TaskBank.Name,
+                Step = rollbackStep,
+                StepId = rollbackStep.Id,
+                TL = rollbackStep.TaskBank.TL,
+                Archived = false,
+                Attention = false,
+                Comments = new List<Comment> { },
+                CreatedAt = DateTime.Now,
+                Flagged = false,
+                From = task,
+                FromId = task.Id,
+                IsRollback = true,
+                Pause = false,
+                Priority = rollbackStep.Priority,
+                RollbackCount = 1,
+                Status = status,
+                StatusId = status.Id,
+            };
+            _context.Tasks.Add(newTask);
+        }
+
+        _context.Activities.Add(newAct);
+
+        return await GetTaskDetails(task.Id);
+        throw new NotImplementedException();
+    }
+
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id) =>
         await getTaskDetails(id);
 
@@ -664,6 +828,7 @@ public class TaskService : ITaskService
             .ThenInclude(t => t.Schema)
             .Include(t => t.Comments)
             .ThenInclude(c => c.User)
+            .AsNoTracking()
             .FirstOrDefaultAsync();
 
         if (task is null)
