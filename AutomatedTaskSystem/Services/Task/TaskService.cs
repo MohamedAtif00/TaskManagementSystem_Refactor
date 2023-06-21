@@ -44,7 +44,7 @@ public class TaskService : ITaskService
             );
 
         if (authedUser.RoleId == 4)
-            return new BadRequestObjectResult(
+            return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = true, Message = "Unauthorized" }
             );
 
@@ -160,6 +160,162 @@ public class TaskService : ITaskService
         var newTask = await createTask(step: step, learningObjective: lo, from);
 
         return newTask;
+    }
+
+    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid)
+    {
+        var authRes = _tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = authRes.Message }
+            );
+
+        var statusUid = Int32.TryParse(authRes.Data, out int uid);
+
+        if (!statusUid)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Request" }
+            );
+
+        var user = await _context.Users
+            .Where(u => u.Id == uid && !u.Archived)
+            .Include(u => u.Group)
+            .FirstOrDefaultAsync();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = false, Message = "Invalid auth" }
+            );
+
+        if (user.RoleId == 1)
+        {
+            var p = await _context.Projects
+                .Where(_ => _.Id == pid && !_.Archived)
+                .Include(p => p.Units)
+                .ThenInclude(u => u.Lessons)
+                .ThenInclude(l => l.LearningObjectives)
+                .ThenInclude(lo => lo.Tasks)
+                .ThenInclude(t => t.Status)
+                .FirstOrDefaultAsync();
+
+            if (p is null)
+                return new NotFoundObjectResult(
+                    new BaseResponseService { Error = true, Message = "Project is not found" }
+                );
+
+            var tasks = new List<GetTaskCardDto> { };
+            foreach (var unit in p.Units)
+                foreach (var lesson in unit.Lessons)
+                    foreach (var lo in lesson.LearningObjectives)
+                        foreach (var task in lo.Tasks)
+                            tasks.Add(
+                                new GetTaskCardDto
+                                {
+                                    Attention = task.Attention,
+                                    Flagged = task.Flagged,
+                                    From = task.From is null ? "" : task.From.Name,
+                                    Id = task.Id,
+                                    IsReview = task.IsReview,
+                                    IsRollback = task.IsRollback,
+                                    LearningObjective = new BasicInfoDto
+                                    {
+                                        Id = lo.Id,
+                                        Name = lo.Name
+                                    },
+                                    Name = task.Name,
+                                    Priority = task.Priority,
+                                    RollbackCount = task.RollbackCount,
+                                    Status = task.Status.Name,
+                                    TL = task.TL,
+                                    User = task.User is null
+                                        ? null
+                                        : new BasicInfoDto
+                                        {
+                                            Name = task.User.Name,
+                                            Id = task.User.Id
+                                        }
+                                }
+                            );
+            return new ResponseService<List<GetTaskCardDto>>
+            {
+                Data = tasks,
+                Error = false,
+                Message = "List of all tasks in project"
+            };
+        }
+
+        var project = await _context.Projects
+            .Where(p => p.Id == pid)
+            .Include(p => p.Users)
+            .FirstOrDefaultAsync();
+
+        if (project is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Project is not found" }
+            );
+
+        if (!project.Users.Any(u => u.Id == user.Id))
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "User is unassigned to project" }
+            );
+
+        var groups = new List<Group> { user.Group };
+
+        if (user.RoleId == 2)
+        {
+            var section = await _context.Sections
+                .Where(s => s.HeadId == user.Id)
+                .Include(s => s.Groups)
+                .FirstOrDefaultAsync();
+
+            if (section is not null)
+                foreach (var group in section.Groups)
+                    groups.Add(group);
+        }
+
+        var _tasks = await _context.Tasks
+            .Where(
+                t =>
+                    groups.Any(g => g.Id == t.GroupId)
+                    && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
+            )
+            .Include(t => t.LearningObjective)
+            .ThenInclude(lo => lo.Lesson)
+            .ThenInclude(l => l.Unit)
+            .Include(t => t.User)
+            .ToListAsync();
+
+        return new ResponseService<List<GetTaskCardDto>>
+        {
+            Data = _tasks
+                .Select(
+                    t =>
+                        new GetTaskCardDto
+                        {
+                            Attention = t.Attention,
+                            Flagged = t.Flagged,
+                            From = t.From is null ? "" : t.From.Name,
+                            Id = t.Id,
+                            IsReview = t.IsReview,
+                            IsRollback = t.IsRollback,
+                            LearningObjective = new BasicInfoDto
+                            {
+                                Id = t.LearningObjective.Id,
+                                Name = t.LearningObjective.Name
+                            },
+                            Name = t.Name,
+                            Priority = t.Priority,
+                            RollbackCount = t.RollbackCount,
+                            Status = t.Status.Name,
+                            TL = t.TL,
+                            User = t.User is null
+                                ? null
+                                : new BasicInfoDto { Name = t.User.Name, Id = t.User.Id }
+                        }
+                )
+                .ToList(),
+            Error = false,
+            Message = "List of available tasks"
+        };
     }
 
     public async Task<ActionResult<ResponseService<GetTaskAssignmentDto>>> GetTaskAssignment(int id)
