@@ -34,7 +34,7 @@ public class TaskService : ITaskService
             .ThenInclude(l => l.Unit)
             .ThenInclude(u => u.Project)
             .FirstOrDefaultAsync();
-        if (lo == null)
+        if (lo is null)
             return new BadRequestObjectResult(
                 new BaseResponseService
                 {
@@ -47,7 +47,7 @@ public class TaskService : ITaskService
             .Where(g => g.Id == taskBankId)
             .Include(tb => tb.Group)
             .FirstOrDefaultAsync();
-        if (TaskBankItem == null)
+        if (TaskBankItem is null)
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Task Bank Item is not found" }
             );
@@ -61,10 +61,19 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "User is not found" }
             );
 
+        if (user is not null && user.GroupId != TaskBankItem.GroupId)
+            return new BadRequestObjectResult(
+                new BaseResponseService
+                {
+                    Error = true,
+                    Message = "User cannot be assigned to this task"
+                }
+            );
+
         var status = await _context.Statuses
             .Where(s => s.Id == (user == null ? Statuses.Backlog : Statuses.ToDo))
             .FirstOrDefaultAsync();
-        if (status == null)
+        if (status is null)
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "User status does not exist" }
             );
@@ -108,7 +117,7 @@ public class TaskService : ITaskService
             .Include(t => t.Status)
             .Include(t => t.User)
             .FirstOrDefaultAsync();
-        if (task == null)
+        if (task is null)
             return new NotFoundObjectResult(
                 new BaseResponseService { Error = true, Message = "Task is not found" }
             );
@@ -183,7 +192,7 @@ public class TaskService : ITaskService
         if (task.Pause)
         {
             var pauseEA = await _context.EndActivityTypes.FindAsync(2);
-            if (pauseEA != null)
+            if (pauseEA is not null)
             {
                 var currentEA = await _context.EndActivities
                     .Where(
