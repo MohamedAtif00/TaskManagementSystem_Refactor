@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Static;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Services.TaskService;
@@ -17,9 +18,90 @@ public class TaskService : ITaskService
         _context = context;
     }
 
-    public async Task<Models.Task> CreateTask(TaskBank taskBank, LearningObjective lo)
+    public async Task<Models.Task> CreateTask(TaskBank taskBank, LearningObjective lo) =>
+        await createTask(taskBank, lo);
+
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CreateTask(
+        int taskBankId,
+        int loId,
+        int? userId
+    )
     {
-        return await createTask(taskBank, lo);
+        var lo = await _context.LearningObjectives
+            .Where(lo => !lo.Archived && lo.Id == loId)
+            .Include(lo => lo.Schema)
+            .Include(lo => lo.Lesson)
+            .ThenInclude(l => l.Unit)
+            .ThenInclude(u => u.Project)
+            .FirstOrDefaultAsync();
+        if (lo == null)
+            return new BadRequestObjectResult(
+                new BaseResponseService
+                {
+                    Error = true,
+                    Message = "Learning objective is not found"
+                }
+            );
+
+        var TaskBankItem = await _context.TaskBank
+            .Where(g => g.Id == taskBankId)
+            .Include(tb => tb.Group)
+            .FirstOrDefaultAsync();
+        if (TaskBankItem == null)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Task Bank Item is not found" }
+            );
+
+        var user = userId is null
+            ? null
+            : await _context.Users.Where(u => u.Id == userId).FirstOrDefaultAsync();
+
+        if (user is null && userId is not null)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "User is not found" }
+            );
+
+        var status = await _context.Statuses
+            .Where(s => s.Id == (user == null ? Statuses.Backlog : Statuses.ToDo))
+            .FirstOrDefaultAsync();
+        if (status == null)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "User status does not exist" }
+            );
+
+        var task = await createTask(TaskBankItem, lo, user);
+
+        return new ResponseService<GetTaskDetailsDto>
+        {
+            Data = new GetTaskDetailsDto
+            {
+                Comments = new List<TaskCommentDto> { },
+                DoneAt = null,
+                Environment = lo.Environment,
+                Flagged = false,
+                Id = task.Id,
+                IsReview = task.IsReview,
+                LearningObjective = new BasicInfoDto
+                {
+                    Id = task.LearningObjective.Id,
+                    Name = task.LearningObjective.Name
+                },
+                Name = task.Name,
+                Pause = task.Pause,
+                Priority = task.Priority,
+                Schema = new BasicInfoDto
+                {
+                    Id = task.LearningObjective.Schema.Id,
+                    Name = task.LearningObjective.Schema.Name,
+                },
+                StartedAt = null,
+                Status = status.Name,
+                Tag = task.LearningObjective.Tag,
+                Template = task.LearningObjective.Template,
+            },
+            Error = false,
+            Message = "Task created"
+        };
     }
 
     public async Task<Models.Task> CreateTaskWithStep(Step step, LearningObjective lo)
@@ -196,6 +278,12 @@ public class TaskService : ITaskService
     private async Task<Models.Task> createTask(
         TaskBank taskBank,
         LearningObjective learningObjective
+    ) => await createTask(taskBank, learningObjective, null);
+
+    private async Task<Models.Task> createTask(
+        TaskBank taskBank,
+        LearningObjective learningObjective,
+        User? user
     )
     {
         var status = await _context.Statuses
@@ -215,8 +303,8 @@ public class TaskService : ITaskService
             From = null,
             FromId = null,
             Name = taskBank.Name,
-            User = null,
-            UserId = null,
+            User = user is null ? null : user,
+            UserId = user is null ? null : user.Id,
             Group = taskBank.Group,
             GroupId = taskBank.GroupId,
             Pause = false,

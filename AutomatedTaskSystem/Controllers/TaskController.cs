@@ -32,7 +32,7 @@ public class TaskController : ControllerBase
     ) => await _taskService.UpdateTaskPriority(id, req.Priority);
 
     // POST:
-    // Add Comment to Task
+    // Add Task
     [Authorize, HttpPost]
     public async Task<ActionResult<Responses.ITaskDTO>> AddTask(Requests.NewTaskDTO req)
     {
