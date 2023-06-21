@@ -99,6 +99,56 @@ public class TaskService : ITaskService
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id) =>
         await getTaskDetails(id);
 
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ToggleFlag(int id)
+    {
+        var task = await _context.Tasks
+            .Where(t => !t.Archived && t.Id == id)
+            .Include(t => t.Group)
+            .Include(t => t.LearningObjective)
+            .Include(t => t.Status)
+            .Include(t => t.User)
+            .FirstOrDefaultAsync();
+        if (task == null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not found" }
+            );
+
+        if (task.Flagged)
+        {
+            task.Flagged = false;
+            task.Attention = true;
+        }
+        else
+        {
+            task.Flagged = true;
+            var flagEA = await _context.EndActivityTypes.FindAsync(1);
+
+            if (flagEA != null)
+            {
+                var currentEA = await _context.EndActivities
+                    .Where(
+                        _ =>
+                            _.UserId == task.UserId
+                            && _.TaskId == task.Id
+                            && _.EndDate == null
+                            && _.EndActivityTypeId == null
+                    )
+                    .FirstOrDefaultAsync();
+
+                if (currentEA is not null)
+                {
+                    currentEA.EndActivityTypeId = flagEA.Id;
+                    currentEA.EndActivityType = flagEA;
+                    currentEA.EndDate = DateTime.Now;
+                }
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        return await getTaskDetails(task.Id);
+    }
+
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> TogglePause(int id)
     {
         var task = await _context.Tasks
@@ -145,7 +195,7 @@ public class TaskService : ITaskService
                     )
                     .FirstOrDefaultAsync();
 
-                if (currentEA != null)
+                if (currentEA is not null)
                 {
                     currentEA.EndActivityTypeId = pauseEA.Id;
                     currentEA.EndActivityType = pauseEA;
