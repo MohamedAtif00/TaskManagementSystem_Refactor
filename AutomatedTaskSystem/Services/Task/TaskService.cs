@@ -35,7 +35,9 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Invalid Request" }
             );
 
-        var authedUser = await _context.Users.Where(u => u.Id == uid).FirstOrDefaultAsync();
+        var authedUser = await _context.Users
+            .Where(u => !u.Archived && u.Id == uid)
+            .FirstOrDefaultAsync();
         if (authedUser is null)
             return new NotFoundObjectResult(
                 new BaseResponseService { Error = true, Message = "Invalid Request" }
@@ -99,7 +101,7 @@ public class TaskService : ITaskService
             );
 
         var TaskBankItem = await _context.TaskBank
-            .Where(g => g.Id == taskBankId)
+            .Where(g => g.Id == taskBankId && g.Active)
             .Include(tb => tb.Group)
             .FirstOrDefaultAsync();
         if (TaskBankItem is null)
@@ -109,7 +111,7 @@ public class TaskService : ITaskService
 
         var user = userId is null
             ? null
-            : await _context.Users.Where(u => u.Id == userId).FirstOrDefaultAsync();
+            : await _context.Users.Where(u => !u.Archived && u.Id == userId).FirstOrDefaultAsync();
 
         if (user is null && userId is not null)
             return new BadRequestObjectResult(
@@ -163,7 +165,7 @@ public class TaskService : ITaskService
     public async Task<ActionResult<ResponseService<GetTaskAssignmentDto>>> GetTaskAssignment(int id)
     {
         var task = await _context.Tasks
-            .Where(t => t.Id == id)
+            .Where(t => t.Id == id && !t.Archived)
             .Include(t => t.LearningObjective)
             .ThenInclude(lo => lo.Lesson)
             .ThenInclude(l => l.Unit)
@@ -178,7 +180,7 @@ public class TaskService : ITaskService
             );
 
         var user = task.LearningObjective.Lesson.Unit.Project.Users
-            .Where(u => u.Id != task.UserId && u.GroupId == task.GroupId)
+            .Where(u => u.Id != task.UserId && u.GroupId == task.GroupId && !u.Archived)
             .ToList();
 
         return new ResponseService<GetTaskAssignmentDto>
@@ -315,7 +317,7 @@ public class TaskService : ITaskService
     )
     {
         var task = await _context.Tasks
-            .Where(t => t.Id == TaskId)
+            .Where(t => t.Id == TaskId && !t.Archived)
             .Include(t => t.From)
             .Include(t => t.Group)
             .Include(t => t.User)
@@ -456,7 +458,9 @@ public class TaskService : ITaskService
                     await _context.Tasks
                         .Where(
                             t =>
-                                t.StepId == step.Id && t.LearningObjectiveId == learningObjective.Id
+                                t.StepId == step.Id
+                                && t.LearningObjectiveId == learningObjective.Id
+                                && !t.Archived
                         )
                         .ToListAsync()
                 ).Count;
