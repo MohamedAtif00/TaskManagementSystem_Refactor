@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Services.TokenService;
 using AutomatedTaskSystem.Static;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,10 +13,64 @@ namespace AutomatedTaskSystem.Services.TaskService;
 public class TaskService : ITaskService
 {
     private readonly DataContext _context;
+    private readonly ITokenService _tokenService;
 
-    public TaskService(DataContext context)
+    public TaskService(DataContext context, ITokenService tokenService)
     {
         _context = context;
+        _tokenService = tokenService;
+    }
+
+    public async Task<ActionResult<BaseResponseService>> AssignUser(int id, int uid)
+    {
+        var authRes = _tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = authRes.Message }
+            );
+
+        var parseStatus = Int32.TryParse(authRes.Message, out int userId);
+        if (!parseStatus)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Request" }
+            );
+
+        var authedUser = await _context.Users.Where(u => u.Id == uid).FirstOrDefaultAsync();
+        if (authedUser is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Request" }
+            );
+
+        if (authedUser.RoleId == 4)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Unauthorized" }
+            );
+
+        var user = await _context.Users
+            .Where(u => !u.Archived && u.Id == uid)
+            .FirstOrDefaultAsync();
+
+        if (user is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "User is not found" }
+            );
+
+        var task = await _context.Tasks.Where(t => !t.Archived && t.Id == id).FirstOrDefaultAsync();
+        if (task is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not found" }
+            );
+
+        if (user.GroupId != task.GroupId)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Cannot assign user to task" }
+            );
+
+        task.User = user;
+
+        await _context.SaveChangesAsync();
+
+        return new BaseResponseService { Error = false, Message = "User assigned" };
     }
 
     public async Task<Models.Task> CreateTask(TaskBank taskBank, LearningObjective lo) =>
