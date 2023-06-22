@@ -143,7 +143,7 @@ const Tasks = () => {
 	useEffect(() => {
 		project &&
 			API.TASKS.GET_ALL(project.id.toString()).then(
-				(res) => res && setTasks(res)
+				(res) => res && !res.error && setTasks(res.data)
 			);
 	}, [project]);
 
@@ -151,7 +151,7 @@ const Tasks = () => {
 		if (project) {
 			const refreshInterval = setInterval(() => {
 				API.TASKS.GET_ALL(project.id.toString()).then(
-					(res) => res && setTasks(res)
+					(res) => res && !res.error && setTasks(res.data)
 				);
 			}, 60000);
 			return () => clearInterval(refreshInterval);
@@ -161,11 +161,9 @@ const Tasks = () => {
 	const refreshTasks = () => {
 		const projectId = router.query.projectId;
 		if (projectId) {
-			API.TASKS.GET_ALL(projectId).then((res) => {
-				if (res) {
-					setTasks(res);
-				}
-			});
+			API.TASKS.GET_ALL(projectId).then(
+				(res) => res && !res.error && setTasks(res.data)
+			);
 		}
 	};
 

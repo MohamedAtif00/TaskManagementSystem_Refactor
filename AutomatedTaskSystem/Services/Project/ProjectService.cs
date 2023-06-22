@@ -347,6 +347,7 @@ public class ProjectService : IProjectService
                 Name = project.Name,
                 Description = project.Description,
                 Units = project.Units
+                    .Where(u => !u.Archived)
                     .Select(
                         u =>
                             new Responses.ProjectUnitDTO
@@ -354,6 +355,7 @@ public class ProjectService : IProjectService
                                 Id = u.Id,
                                 Name = u.Name,
                                 Lessons = u.Lessons
+                                    .Where(l => !l.Archived)
                                     .Select(
                                         l =>
                                             new Responses.ProjectLessonDTO
@@ -361,6 +363,7 @@ public class ProjectService : IProjectService
                                                 Id = l.Id,
                                                 Name = l.Name,
                                                 LearningObjectives = l.LearningObjectives
+                                                    .Where(lo => !lo.Archived)
                                                     .Select(
                                                         lo =>
                                                             new Responses.LearningObjectiveDTO

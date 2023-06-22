@@ -126,7 +126,7 @@ namespace AutomatedTaskSystem.Controllers
                     if (step == null)
                         return NotFound(new Responses.BadRequestsDTO("Step not Found"));
 
-                    var newTask = await _taskService.CreateTaskWithStep(step, lo);
+                    var newTask = await _taskService.CreateTask(step, lo);
                 }
             }
             lo.Environment = req.Environment;

@@ -90,7 +90,6 @@ namespace AutomatedTaskSystem.DTO
 
         public class RollbackDTO
         {
-            public int TaskId { get; set; }
             public int StepId { get; set; }
         }
     }
