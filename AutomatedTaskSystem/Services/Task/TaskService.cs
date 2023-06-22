@@ -29,18 +29,18 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = authRes.Message }
             );
 
-        var parseStatus = Int32.TryParse(authRes.Message, out int userId);
+        var parseStatus = Int32.TryParse(authRes.Data, out int userId);
         if (!parseStatus)
             return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = "Invalid Request" }
+                new BaseResponseService { Error = true, Message = "Invalid User Request." }
             );
 
         var authedUser = await _context.Users
-            .Where(u => !u.Archived && u.Id == uid)
+            .Where(u => !u.Archived && u.Id == userId)
             .FirstOrDefaultAsync();
         if (authedUser is null)
             return new NotFoundObjectResult(
-                new BaseResponseService { Error = true, Message = "Invalid Request" }
+                new BaseResponseService { Error = true, Message = "Invalid Auth Request" }
             );
 
         if (authedUser.RoleId == 4)
@@ -81,7 +81,7 @@ public class TaskService : ITaskService
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CreateTask(
         int taskBankId,
         int loId,
-        int? userId
+        int userId
     )
     {
         var lo = await _context.LearningObjectives
@@ -109,11 +109,14 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Task Bank Item is not found" }
             );
 
-        var user = userId is null
-            ? null
-            : await _context.Users.Where(u => !u.Archived && u.Id == userId).FirstOrDefaultAsync();
+        var user =
+            userId == 0
+                ? null
+                : await _context.Users
+                    .Where(u => !u.Archived && u.Id == userId)
+                    .FirstOrDefaultAsync();
 
-        if (user is null && userId is not null)
+        if (user is null && userId != 0)
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "User is not found" }
             );
@@ -125,14 +128,6 @@ public class TaskService : ITaskService
                     Error = true,
                     Message = "User cannot be assigned to this task"
                 }
-            );
-
-        var status = await _context.Statuses
-            .Where(s => s.Id == (user == null ? Statuses.Backlog : Statuses.ToDo))
-            .FirstOrDefaultAsync();
-        if (status is null)
-            return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = "User status does not exist" }
             );
 
         var task = await createTask(TaskBankItem, lo, user);
@@ -195,6 +190,11 @@ public class TaskService : ITaskService
                 .ThenInclude(l => l.LearningObjectives)
                 .ThenInclude(lo => lo.Tasks)
                 .ThenInclude(t => t.Status)
+                .Include(p => p.Units)
+                .ThenInclude(u => u.Lessons)
+                .ThenInclude(l => l.LearningObjectives)
+                .ThenInclude(lo => lo.Tasks)
+                .ThenInclude(t => t.User)
                 .FirstOrDefaultAsync();
 
             if (p is null)
@@ -204,37 +204,50 @@ public class TaskService : ITaskService
 
             var tasks = new List<GetTaskCardDto> { };
             foreach (var unit in p.Units)
+            {
+                if (unit.Archived)
+                    continue;
                 foreach (var lesson in unit.Lessons)
+                {
+                    if (lesson.Archived)
+                        continue;
                     foreach (var lo in lesson.LearningObjectives)
+                    {
+                        if (lo.Archived)
+                            continue;
                         foreach (var task in lo.Tasks)
-                            tasks.Add(
-                                new GetTaskCardDto
-                                {
-                                    Attention = task.Attention,
-                                    Flagged = task.Flagged,
-                                    From = task.From is null ? "" : task.From.Name,
-                                    Id = task.Id,
-                                    IsReview = task.IsReview,
-                                    IsRollback = task.IsRollback,
-                                    LearningObjective = new BasicInfoDto
+                            if (!task.Archived)
+                                tasks.Add(
+                                    new GetTaskCardDto
                                     {
-                                        Id = lo.Id,
-                                        Name = lo.Name
-                                    },
-                                    Name = task.Name,
-                                    Priority = task.Priority,
-                                    RollbackCount = task.RollbackCount,
-                                    Status = task.Status.Name,
-                                    TL = task.TL,
-                                    User = task.User is null
-                                        ? null
-                                        : new BasicInfoDto
+                                        Attention = task.Attention,
+                                        Flagged = task.Flagged,
+                                        From = task.From is null ? "" : task.From.Name,
+                                        Id = task.Id,
+                                        IsReview = task.IsReview,
+                                        IsRollback = task.IsRollback,
+                                        LearningObjective = new BasicInfoDto
                                         {
-                                            Name = task.User.Name,
-                                            Id = task.User.Id
-                                        }
-                                }
-                            );
+                                            Id = lo.Id,
+                                            Name = lo.Name
+                                        },
+                                        Name = task.Name,
+                                        Priority = task.Priority,
+                                        RollbackCount = task.RollbackCount,
+                                        Status = task.Status.Name,
+                                        TL = task.TL,
+                                        User = task.User is null
+                                            ? null
+                                            : new BasicInfoDto
+                                            {
+                                                Name = task.User.Name,
+                                                Id = task.User.Id
+                                            }
+                                    }
+                                );
+                    }
+                }
+            }
             return new ResponseService<List<GetTaskCardDto>>
             {
                 Data = tasks,
@@ -272,16 +285,28 @@ public class TaskService : ITaskService
                     groups.Add(group);
         }
 
-        var _tasks = await _context.Tasks
-            .Where(
+        IQueryable<Models.Task> query;
+
+        if (user.RoleId == 3 || user.RoleId == 2)
+            query = _context.Tasks.Where(
                 t =>
-                    groups.Any(g => g.Id == t.GroupId)
+                    groups.Contains(t.Group)
                     && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
-            )
+            );
+        else
+            query = _context.Tasks.Where(
+                t =>
+                    t.GroupId == user.GroupId
+                    && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
+                    && (t.UserId == user.Id || t.StatusId == 1)
+            );
+        var _tasks = await query
             .Include(t => t.LearningObjective)
             .ThenInclude(lo => lo.Lesson)
             .ThenInclude(l => l.Unit)
             .Include(t => t.User)
+            .Include(t => t.Group)
+            .Include(t => t.Status)
             .ToListAsync();
 
         return new ResponseService<List<GetTaskCardDto>>
@@ -387,7 +412,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Invalid auth" }
             );
 
-        if (task.UserId is not null && task.UserId == user.Id)
+        if (task.UserId is not null && task.UserId != user.Id)
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Task is not assigned for you" }
             );
@@ -514,8 +539,9 @@ public class TaskService : ITaskService
 
         _context.Activities.Add(newAct);
 
+        await _context.SaveChangesAsync();
+
         return await GetTaskDetails(task.Id);
-        throw new NotImplementedException();
     }
 
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id) =>
@@ -718,7 +744,7 @@ public class TaskService : ITaskService
     )
     {
         var status = await _context.Statuses
-            .Where(s => s.Id == (taskBank.TL ? 2 : 1))
+            .Where(s => s.Id == (taskBank.TL || user != null ? 2 : 1))
             .FirstOrDefaultAsync();
 
         if (status is null)
@@ -895,6 +921,9 @@ public class TaskService : ITaskService
         var task = await _context.Tasks
             .Where(t => !t.Archived && t.Id == taskId)
             .Include(t => t.Status)
+            .Include(t => t.User)
+            .Include(t => t.LearningObjective)
+            .Include(t => t.Step)
             .FirstOrDefaultAsync();
 
         if (task is null)
@@ -1001,6 +1030,10 @@ public class TaskService : ITaskService
         }
         else if (task.StatusId == 3)
         {
+            if (task.User is not null && user.Id != task.User.Id)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Unauthorized" }
+                );
             var DoneStatus = await _context.Statuses.FindAsync(Statuses.Done);
             task.Status = DoneStatus!;
             task.StatusId = Statuses.Done;
@@ -1051,6 +1084,7 @@ public class TaskService : ITaskService
             await _context.SaveChangesAsync();
             return await GetTaskDetails(task.Id);
         }
+
         return new BadRequestObjectResult(
             new BaseResponseService { Error = true, Message = "Cannot proceed with task" }
         );
@@ -1070,6 +1104,10 @@ public class TaskService : ITaskService
 
         if (nextStep is not null)
         {
+            for (int i = 0; i < 100; i++)
+            {
+                Console.WriteLine("Next Step is not Null");
+            }
             var foundTasks = await _context.Tasks
                 .Where(
                     t =>
@@ -1080,12 +1118,17 @@ public class TaskService : ITaskService
                 .Include(t => t.Status)
                 .ToListAsync();
             if (foundTasks.Count > 0)
+            {
                 foundTasks.ForEach(t => t.StatusId = Statuses.ToDo);
+
+                for (int i = 0; i < 100; i++)
+                {
+                    Console.WriteLine("Found Tasks");
+                    Console.WriteLine(foundTasks.Count);
+                }
+            }
             else
             {
-                var status = await _context.Statuses.FindAsync(
-                    nextStep.TaskBank.TL ? Statuses.ToDo : Statuses.Backlog
-                );
                 await createTask(
                     step: nextStep,
                     learningObjective: task.LearningObjective,
