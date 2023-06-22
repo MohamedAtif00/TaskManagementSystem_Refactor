@@ -115,9 +115,9 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 		const id = router.query.taskId;
 		if (id)
 			API.TASKS.GET_ONE(id).then((res) => {
-				if (res) {
-					setTask(res);
-					setPrio(res.priority ? res.priority : null);
+				if (res && !res.error) {
+					setTask(res.data);
+					setPrio(res.data.priority ? res.data.priority : null);
 				}
 			});
 		else {
@@ -129,52 +129,17 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 	if (task === undefined) return <></>;
 
 	const mainAction = () => {
-		switch (task.status) {
-			case "Backlog":
-				return API.TASKS.ADD_TODO(task.id).then((res) => {
-					if (res) {
-						refreshTasks();
-						if (!res.error) setTask(res);
-					}
-				});
-			case "To Do":
-				return API.TASKS.DOING(task.id).then((res) => {
-					if (res) {
-						refreshTasks();
-						if (!res.error) setTask(res);
-					}
-				});
-			case "Doing": {
-				if (task.isReview)
-					return API.TASKS.APPROVE(task.id).then((res) => {
-						if (res) {
-							refreshTasks();
-							if (!res.error) {
-								setTask(res);
-							}
-						}
-					});
-				return API.TASKS.COMPLETE(task.id).then((res) => {
-					if (res) {
-						refreshTasks();
-						if (!res.error) setTask(res);
-					}
-				});
+		return API.TASKS.PROCEED(task.id).then((res) => {
+			if (res) {
+				refreshTasks();
+				if (!res.error) setTask(res.data);
 			}
-		}
+		});
 	};
 	const flagTask = () => {
 		API.TASKS.FLAG_TASK(task.id).then((res) => {
 			if (res) {
-				if (!res.error) setTask(res);
-				refreshTasks();
-			}
-		});
-	};
-	const unflagTask = () => {
-		API.TASKS.UNFLAG_TASK(task.id).then((res) => {
-			if (res) {
-				if (!res.error) setTask(res);
+				if (!res.error) setTask(res.data);
 				refreshTasks();
 			}
 		});
@@ -182,15 +147,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 	const pauseTask = () => {
 		API.TASKS.PAUSE(task.id).then((res) => {
 			if (res) {
-				if (!res.error) setTask(res);
-				refreshTasks();
-			}
-		});
-	};
-	const unpauseTask = () => {
-		API.TASKS.UNPAUSE(task.id).then((res) => {
-			if (res) {
-				if (!res.error) setTask(res);
+				if (!res.error) setTask(res.data);
 				refreshTasks();
 			}
 		});
@@ -298,7 +255,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 							{task.flagged ? (
 								<button
 									className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
-									onClick={unflagTask}
+									onClick={flagTask}
 								>
 									Clear Flag
 								</button>
@@ -306,7 +263,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 								<>
 									<button
 										className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
-										onClick={unpauseTask}
+										onClick={pauseTask}
 									>
 										Resume
 									</button>
