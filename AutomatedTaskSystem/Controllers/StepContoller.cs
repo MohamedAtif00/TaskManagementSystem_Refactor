@@ -102,7 +102,7 @@ public class StepController : ControllerBase
         {
             Node = node,
             NodeId = node.Id,
-            Order = node.Steps.Count + 1,
+            Order = node.Steps.Where(s => !s.Archived).ToList().Count + 1,
             TaskBank = taskBankItem,
             TaskBankId = taskBankItem.Id,
             Archived = false,
