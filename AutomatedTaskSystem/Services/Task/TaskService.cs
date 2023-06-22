@@ -569,6 +569,13 @@ public class TaskService : ITaskService
         else
         {
             task.Flagged = true;
+
+            var status = await _context.Statuses.FindAsync(2);
+            if (status is null)
+                throw new Exception("Failed to find status");
+
+            task.Status = status;
+
             var flagEA = await _context.EndActivityTypes.FindAsync(1);
 
             if (flagEA != null)
@@ -625,6 +632,14 @@ public class TaskService : ITaskService
                     Message = "Task cannot be resumed if status is not 'To Do'"
                 }
             );
+
+        if (!task.Pause)
+        {
+            var status = await _context.Statuses.FindAsync(2);
+            if (status is null)
+                throw new Exception("Failed to find status");
+            task.Status = status;
+        }
 
         task.Pause = !task.Pause;
 
@@ -994,6 +1009,8 @@ public class TaskService : ITaskService
             var DoingStatus = await _context.Statuses.FindAsync(Statuses.Doing);
             task.Status = DoingStatus!;
             task.StatusId = Statuses.Doing;
+            if (task.LearningObjective.StartedAt is null)
+                task.LearningObjective.StartedAt = DateTime.Now;
 
             var startAct = await _context.ActivityTypes.FindAsync(1);
 
@@ -1149,6 +1166,9 @@ public class TaskService : ITaskService
 
             if (currentNode is not null)
             {
+                if (currentNode.Next.Count == 0)
+                    task.LearningObjective.DoneAt = DateTime.Now;
+
                 foreach (var nextNode in currentNode.Next)
                 {
                     var requiredIsComplete = true;

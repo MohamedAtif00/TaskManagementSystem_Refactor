@@ -20,7 +20,8 @@ const RollbackForm = (props: {
 
 	useEffect(() => {
 		const _active =
-			router.query.form === "rollback" && router.query.taskId !== undefined;
+			router.query.form === "rollback" &&
+			router.query.taskId !== undefined;
 		setActive(_active);
 		if (!_active) {
 			setStepId(0);
@@ -29,17 +30,19 @@ const RollbackForm = (props: {
 
 	useEffect(() => {
 		if (active && router.query.taskId) {
-			API.TASKS.PREVIOUS_TASKS(router.query.taskId.toString()).then((res) => {
-				if (res) {
-					setRollbackPoints(res);
-					if (res.length > 0) setStepId(res[0].id);
+			API.TASKS.PREVIOUS_TASKS(router.query.taskId.toString()).then(
+				(res) => {
+					if (res) {
+						setRollbackPoints(res);
+						if (res.length > 0) setStepId(res[0].id);
+					}
 				}
-			});
+			);
 		}
-	}, [active,  router.query.taskId]);
+	}, [active, router.query.taskId]);
 
 	useEffect(() => {
-		setSubmittable(!!stepId)
+		setSubmittable(!!stepId);
 	}, [stepId, setSubmittable]);
 
 	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -47,12 +50,9 @@ const RollbackForm = (props: {
 		if (submittable) {
 			const id = router.query.taskId;
 			id &&
-				API.TASKS.ROLLBACK({ currentTask: id, stepId }).then(
-					(res) => {
-						if (res && !res.error) props.update(res);
-					}
-				);
-
+				API.TASKS.ROLLBACK({ currentTask: id, stepId }).then((res) => {
+					if (res && !res.error) props.update(res.data);
+				});
 		}
 	};
 
@@ -76,9 +76,10 @@ const RollbackForm = (props: {
 							<input
 								type="submit"
 								value="Rollback"
-								className={[styles.submit, stepId ? "" : styles.inactive].join(
-									" "
-								)}
+								className={[
+									styles.submit,
+									stepId ? "" : styles.inactive,
+								].join(" ")}
 							/>
 						</div>
 					</form>

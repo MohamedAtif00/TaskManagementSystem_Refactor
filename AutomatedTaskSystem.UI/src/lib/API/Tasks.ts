@@ -102,7 +102,11 @@ const TASKS = {
 					...auth,
 				},
 			});
-			const data: ITask = await res.json();
+			const data: {
+				error: boolean;
+				message: string;
+				data: ITask;
+			} = await res.json();
 			return data;
 		} catch (error) {
 			console.error(error);
@@ -116,96 +120,41 @@ const TASKS = {
 				console.error("Unathorized");
 				return false;
 			}
-			const res = await fetch(`${url}/tasks/projects/${projectId}`, {
+			const res = await fetch(`${url}/projects/${projectId}/tasks`, {
 				headers: {
 					...auth,
 				},
 			});
-			const data: TaskInfo[] = await res.json();
+			const data: {
+				data: TaskInfo[];
+				error: boolean;
+				message: string;
+			} = await res.json();
 			return data;
 		} catch (error) {
 			console.error(error);
 			return false;
 		}
 	},
-	ADD_TODO: async (taskId: number) => {
+	PROCEED: async (taskId: number) => {
 		try {
 			const auth = authService.authHeader();
 			if (!auth) {
 				console.error("Unathorized");
 				return false;
 			}
-			const res = await fetch(`${url}/tasks/todo/${taskId}`, {
-				method: "POST",
+			const res = await fetch(`${url}/tasks/${taskId}/proceed`, {
+				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",
 					...auth,
 				},
 			});
-			const data: ITask | ErrorResponse = await res.json();
-			return data;
-		} catch (error) {
-			console.log(error);
-			return false;
-		}
-	},
-	DOING: async (taskId: number) => {
-		try {
-			const auth = authService.authHeader();
-			if (!auth) {
-				console.error("Unathorized");
-				return false;
-			}
-			const res = await fetch(`${url}/tasks/doing/${taskId}`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					...auth,
-				},
-			});
-			const data: ITask | ErrorResponse = await res.json();
-			return data;
-		} catch (error) {
-			console.log(error);
-			return false;
-		}
-	},
-	APPROVE: async (taskId: number) => {
-		try {
-			const auth = authService.authHeader();
-			if (!auth) {
-				console.error("Unathorized");
-				return false;
-			}
-			const res = await fetch(`${url}/tasks/approve/${taskId}`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					...auth,
-				},
-			});
-			const data: ITask | ErrorResponse = await res.json();
-			return data;
-		} catch (error) {
-			console.log(error);
-			return false;
-		}
-	},
-	COMPLETE: async (taskId: number) => {
-		try {
-			const auth = authService.authHeader();
-			if (!auth) {
-				console.error("Unathorized");
-				return false;
-			}
-			const res = await fetch(`${url}/tasks/done/${taskId}`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					...auth,
-				},
-			});
-			const data: ITask | ErrorResponse = await res.json();
+			const data: {
+				error: boolean;
+				message: string;
+				data: ITask;
+			} = await res.json();
 			return data;
 		} catch (error) {
 			console.log(error);
@@ -231,9 +180,13 @@ const TASKS = {
 					"Content-Type": "application/json",
 					...auth,
 				},
-				body: JSON.stringify({ taskId: currentTask, stepId }),
+				body: JSON.stringify({ stepId }),
 			});
-			const data: ITask | ErrorResponse = await res.json();
+			const data: {
+				data: ITask;
+				error: boolean;
+				message: string;
+			} = await res.json();
 			return data;
 		} catch (error) {
 			console.log(error);
@@ -242,28 +195,17 @@ const TASKS = {
 	},
 	FLAG_TASK: async (taskId: number) => {
 		try {
-			const res = await fetch(`${url}/tasks/flag/${taskId}`, {
-				method: "POST",
+			const res = await fetch(`${url}/tasks/${taskId}/flag`, {
+				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",
 				},
 			});
-			const data: ITask | ErrorResponse = await res.json();
-			return data;
-		} catch (error) {
-			console.log(error);
-			return false;
-		}
-	},
-	UNPAUSE: async (taskId: number) => {
-		try {
-			const res = await fetch(`${url}/tasks/${taskId}/unpause`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-			});
-			const data: ITask | ErrorResponse = await res.json();
+			const data: {
+				data: ITask;
+				error: boolean;
+				message: string;
+			} = await res.json();
 			return data;
 		} catch (error) {
 			console.log(error);
@@ -273,27 +215,16 @@ const TASKS = {
 	PAUSE: async (taskId: number) => {
 		try {
 			const res = await fetch(`${url}/tasks/${taskId}/pause`, {
-				method: "POST",
+				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",
 				},
 			});
-			const data: ITask | ErrorResponse = await res.json();
-			return data;
-		} catch (error) {
-			console.log(error);
-			return false;
-		}
-	},
-	UNFLAG_TASK: async (taskId: number) => {
-		try {
-			const res = await fetch(`${url}/tasks/unflag/${taskId}`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-			});
-			const data: ITask | ErrorResponse = await res.json();
+			const data: {
+				data: ITask;
+				error: boolean;
+				message: string;
+			} = await res.json();
 			return data;
 		} catch (error) {
 			console.log(error);
@@ -328,8 +259,12 @@ const TASKS = {
 			}
 			const res = await fetch(`${url}/tasks/${taskId}/assigned`);
 			const data: {
-				assignedUser?: { id: number; name: string };
-				assignableUsers: { id: number; name: string }[];
+				data: {
+					assignedUser?: { id: number; name: string };
+					assignableUsers: { id: number; name: string }[];
+				};
+				error: boolean;
+				message: string;
 			} = await res.json();
 			return data;
 		} catch (error) {
