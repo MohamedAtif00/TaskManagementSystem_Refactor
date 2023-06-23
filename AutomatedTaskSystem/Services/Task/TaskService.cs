@@ -1121,10 +1121,6 @@ public class TaskService : ITaskService
 
         if (nextStep is not null)
         {
-            for (int i = 0; i < 100; i++)
-            {
-                Console.WriteLine("Next Step is not Null");
-            }
             var foundTasks = await _context.Tasks
                 .Where(
                     t =>
@@ -1135,23 +1131,13 @@ public class TaskService : ITaskService
                 .Include(t => t.Status)
                 .ToListAsync();
             if (foundTasks.Count > 0)
-            {
                 foundTasks.ForEach(t => t.StatusId = Statuses.ToDo);
-
-                for (int i = 0; i < 100; i++)
-                {
-                    Console.WriteLine("Found Tasks");
-                    Console.WriteLine(foundTasks.Count);
-                }
-            }
             else
-            {
                 await createTask(
                     step: nextStep,
                     learningObjective: task.LearningObjective,
                     task.From
                 );
-            }
         }
         else
         {
