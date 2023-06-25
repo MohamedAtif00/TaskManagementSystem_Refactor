@@ -48,27 +48,55 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Unauthorized" }
             );
 
-        var user = await _context.Users
-            .Where(u => !u.Archived && u.Id == uid)
-            .FirstOrDefaultAsync();
-
-        if (user is null)
-            return new NotFoundObjectResult(
-                new BaseResponseService { Error = true, Message = "User is not found" }
-            );
-
         var task = await _context.Tasks.Where(t => !t.Archived && t.Id == id).FirstOrDefaultAsync();
         if (task is null)
             return new NotFoundObjectResult(
                 new BaseResponseService { Error = true, Message = "Task is not found" }
             );
 
-        if (user.GroupId != task.GroupId)
+        if (task.StatusId == 4 || task.StatusId == 5)
             return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = "Cannot assign user to task" }
+                new BaseResponseService { Error = true, Message = "Task is inoperable" }
             );
 
-        task.User = user;
+        if (uid != 0 && uid != task.UserId)
+        {
+            var user = await _context.Users
+                .Where(u => !u.Archived && u.Id == uid)
+                .FirstOrDefaultAsync();
+
+            if (user is null)
+                return new NotFoundObjectResult(
+                    new BaseResponseService { Error = true, Message = "User is not found" }
+                );
+
+            if (user.GroupId != task.GroupId)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Cannot assign user to task" }
+                );
+
+            var status = await _context.Statuses.FindAsync(2);
+            if (status is null)
+                throw new Exception("Status is not found");
+
+            task.User = user;
+            task.UserId = user.Id;
+
+            task.Status = status;
+            task.StatusId = status.Id;
+        }
+        else if (uid != task.Id)
+        {
+            var status = await _context.Statuses.FindAsync(1);
+            if (status is null)
+                throw new Exception("Status is not found");
+
+            task.User = null;
+            task.UserId = null;
+
+            task.Status = status;
+            task.StatusId = status.Id;
+        }
 
         await _context.SaveChangesAsync();
 

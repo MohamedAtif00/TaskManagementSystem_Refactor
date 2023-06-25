@@ -69,7 +69,7 @@ const AssignTask = (props: Props) => {
 					<div>
 						<input
 							type="submit"
-							value="Add"
+							value={selectedUser === 0 ? "Unassign" : "Assign"}
 							className={[styles.submit].join(" ")}
 						/>
 					</div>
