@@ -12,6 +12,7 @@ using AutomatedTaskSystem.Services.TokenService;
 using AutomatedTaskSystem.Services.UnitService;
 using AutomatedTaskSystem.Services.UserService;
 using AutomatedTaskSystem.Services.YearService;
+using AutomatedTaskSystem.Services.ReportService;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -21,6 +22,7 @@ public static class DependancyInjections
     {
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+        builder.Services.AddScoped<IReportService, ReportService>();
         builder.Services.AddScoped<ITokenService, TokenService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<IProjectService, ProjectService>();
