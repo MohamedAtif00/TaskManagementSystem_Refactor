@@ -65,9 +65,9 @@ const Sidebar = () => {
 				/>
 				<Navlink
 					activeCondition={path.includes("/reports")}
-					to="/reports"
+					to="/summaries"
 					icon="Project"
-					text="Report"
+					text="Summaries"
 				/>
 			</div>
 			<div className={styles.logoutButton} onClick={logoutHandler}>

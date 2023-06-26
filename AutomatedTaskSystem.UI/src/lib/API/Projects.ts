@@ -1,11 +1,11 @@
-import { IReport } from "../../pages/reports/[projectId]";
+import { IReport } from "../../pages/summaries/[projectId]";
 import authService from "../Auth";
 import { url } from "./";
 
 const PROJECTS = {
 	REPORT: async (projectId: string | string[]) => {
 		try {
-			const res = await fetch(`${url}/projects/${projectId}/report`);
+			const res = await fetch(`${url}/projects/${projectId}/summary`);
 			const data: IReport = await res.json();
 			return data;
 		} catch (error) {

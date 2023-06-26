@@ -115,22 +115,21 @@ const Report = () => {
 															<Link
 																key={t.id}
 																href={{
-																	pathname: `/reports/${report.id}`,
+																	pathname: `/summary/${report.id}`,
 																	query: {
 																		taskId: t.id,
 																	},
 																}}
 															>
 																<div
-																	className={`px-4 py-1 rounded-3xl ${
-																		t.statusId ===
-																		3
+																	className={`px-4 py-1 rounded-3xl ${t.statusId ===
+																			3
 																			? "bg-orange-600 text-white"
 																			: t.statusId ===
-																			  4
-																			? "bg-emerald-400 text-white"
-																			: "bg-slate-300"
-																	}`}
+																				4
+																				? "bg-emerald-400 text-white"
+																				: "bg-slate-300"
+																		}`}
 																	key={t.id}
 																>
 																	{t.name}

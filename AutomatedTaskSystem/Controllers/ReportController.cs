@@ -15,8 +15,8 @@ namespace AutomatedTaskSystem.Controllers
             _context = context;
         }
 
-        [HttpGet("{id}/report")]
-        public async Task<ActionResult<Responses.ReportDTO>> GetReport(int id)
+        [HttpGet("{id}/summary")]
+        public async Task<ActionResult<Responses.ReportDTO>> GetSummary(int id)
         {
             var project = await _context.Projects
                 .Where(p => p.Id == id && !p.Archived)
