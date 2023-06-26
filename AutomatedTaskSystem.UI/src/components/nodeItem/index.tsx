@@ -173,7 +173,7 @@ const TogglePriorityForm = (props: TogglePrioProps): React.JSX.Element => {
 			container.removeEventListener("scroll", handleScrollAndResize);
 			container.removeEventListener("resize", handleScrollAndResize);
 		};
-	}, []);
+	}, [props.parent]);
 
 	const updatePrio = (priority: number | null) => {
 		API.SCHEMAS.NODES.STEPS.UPDATE_PRIO({
@@ -251,14 +251,14 @@ const Step = ({
 	const rest =
 		deleting && editing
 			? () => {
-					setDeleting(false);
-					setEditng(false);
-			  }
+				setDeleting(false);
+				setEditng(false);
+			}
 			: deleting
-			? () => setDeleting(false)
-			: editing
-			? () => setEditng(false)
-			: undefined;
+				? () => setDeleting(false)
+				: editing
+					? () => setEditng(false)
+					: undefined;
 
 	return (
 		<tr key={id} className={styles.step} onMouseLeave={rest}>

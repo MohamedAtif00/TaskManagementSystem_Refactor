@@ -1,7 +1,6 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { ITask } from ".";
-import CommentIcon from "../../assets/Icons/Comment";
 import TaskIcon from "../../assets/Icons/Task";
 import API from "../../lib/API";
 import ExpansionPanel from "../expansionPanel";
@@ -14,36 +13,17 @@ interface Props {
 const NonActionableTaskDetails = ({ projectId }: Props) => {
 	const [task, setTask] = useState<ITask>();
 	const router = useRouter();
-	const [comment, setComment] = useState("");
 
 	useEffect(() => {
 		const id = router.query.taskId;
 		if (id)
 			API.TASKS.GET_ONE(id).then((res) => {
-				if (res) {
-					setTask(res);
+				if (res && !res.error) {
+					setTask(res.data);
 				}
 			});
 		else setTask(undefined);
 	}, [setTask, router.query.taskId]);
-
-	const postComment = (e: React.FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		task &&
-			API.TASKS.COMMENT(task.id, comment).then((res) => {
-				if (res) {
-					setTask((ps) => {
-						if (ps)
-							return {
-								...ps,
-								comments: [...ps!.comments, res],
-							};
-						return ps;
-					});
-					setComment("");
-				}
-			});
-	};
 
 	if (task === undefined) return <></>;
 
@@ -60,17 +40,16 @@ const NonActionableTaskDetails = ({ projectId }: Props) => {
 						<div>{task.name}</div>
 					</h1>
 					<div
-						className={`px-3 py-1 rounded-3xl ${
-							task.status === "Done"
+						className={`px-3 py-1 rounded-3xl ${task.status === "Done"
 								? "bg-emerald-500 text-white"
 								: task.status === "Doing"
-								? "bg-orange-500 text-white"
-								: task.status === "Rollback"
-								? "bg-black text-white"
-								: task.status === "To Do"
-								? "bg-blue-500 text-white"
-								: "border-2 border-black border-solid"
-						}`}
+									? "bg-orange-500 text-white"
+									: task.status === "Rollback"
+										? "bg-black text-white"
+										: task.status === "To Do"
+											? "bg-blue-500 text-white"
+											: "border-2 border-black border-solid"
+							}`}
 					>
 						{task.status}
 					</div>

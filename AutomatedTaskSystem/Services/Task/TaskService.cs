@@ -433,7 +433,10 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Invalid auth" }
             );
 
-        var task = await _context.Tasks.Where(t => t.Id == taskId).FirstOrDefaultAsync();
+        var task = await _context.Tasks
+            .Include(t => t.LearningObjective)
+            .Where(t => t.Id == taskId)
+            .FirstOrDefaultAsync();
 
         if (task is null)
             return new NotFoundObjectResult(
