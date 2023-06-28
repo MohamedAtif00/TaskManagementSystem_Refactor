@@ -33,7 +33,7 @@ interface _Unit {
 	lessons: _Lesson[];
 }
 
-export interface IReport {
+export interface ISummary {
 	id: number;
 	name: string;
 	description: string;
@@ -42,11 +42,11 @@ export interface IReport {
 
 const Report = () => {
 	const router = useRouter();
-	const [report, setReport] = useState<IReport>();
+	const [report, setReport] = useState<ISummary>();
 
 	useEffect(() => {
 		const id = router.query.projectId;
-		if (id) API.PROJECTS.REPORT(id).then((res) => res && setReport(res));
+		if (id) API.PROJECTS.SUMMARY(id).then((res) => res && setReport(res));
 	}, [router.query.projectId]);
 
 	if (!report) {
@@ -123,12 +123,12 @@ const Report = () => {
 															>
 																<div
 																	className={`px-4 py-1 rounded-3xl ${t.statusId ===
-																			3
-																			? "bg-orange-600 text-white"
-																			: t.statusId ===
-																				4
-																				? "bg-emerald-400 text-white"
-																				: "bg-slate-300"
+																		3
+																		? "bg-orange-600 text-white"
+																		: t.statusId ===
+																			4
+																			? "bg-emerald-400 text-white"
+																			: "bg-slate-300"
 																		}`}
 																	key={t.id}
 																>

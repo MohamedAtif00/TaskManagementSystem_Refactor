@@ -1,12 +1,14 @@
-import { IReport } from "../../pages/summaries/[projectId]";
+import { ISummary } from "../../pages/summaries/[projectId]";
 import authService from "../Auth";
 import { url } from "./";
+import REPORTS from './Reports'
 
 const PROJECTS = {
-	REPORT: async (projectId: string | string[]) => {
+	REPORTS,
+	SUMMARY: async (projectId: string | string[]) => {
 		try {
 			const res = await fetch(`${url}/projects/${projectId}/summary`);
-			const data: IReport = await res.json();
+			const data: ISummary = await res.json();
 			return data;
 		} catch (error) {
 			console.error(error);

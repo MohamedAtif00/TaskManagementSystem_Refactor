@@ -34,7 +34,7 @@ public class ReportService : IReportService
                 Name = project.Name,
                 Description = project.Description,
                 Year = project.Year.Number,
-                Term = project.Term ? "Term 1" : "Term 2"
+                Term = project.Term ? "Term 2" : "Term 1"
             };
             res.Add(report);
 
@@ -87,7 +87,7 @@ public class ReportService : IReportService
             Id = project.Id,
             Name = project.Name,
             Description = project.Description,
-            Term = project.Term ? "Term 1" : "Term 2",
+            Term = project.Term ? "Term 2" : "Term 1",
             Year = project.Year.Number
         };
 
