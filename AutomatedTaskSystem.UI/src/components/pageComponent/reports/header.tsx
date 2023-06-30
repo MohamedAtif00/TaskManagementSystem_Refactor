@@ -7,7 +7,7 @@ interface Props {
 }
 
 const ReportHeader = ({ name, running, done }: Props) => {
-	return <div className="flex items-center justify-between px-8 w-full h-20 border-b border-solid border-slate-500">
+	return <div className="shrink-0 flex items-center justify-between px-8 w-full h-20 border-b border-solid border-slate-500">
 		<div className="text-2xl font-bold">{name}</div>
 		<div className="flex gap-4">
 			<div className="text-orange-600">

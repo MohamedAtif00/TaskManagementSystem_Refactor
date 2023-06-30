@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import Loader from "../../components/loader";
 import ReportHeader from "../../components/pageComponent/reports/header";
 import Head from "next/head";
+import UnitReportItem from "../../components/pageComponent/reports/unitItem";
 
 const ProjectReport = () => {
 	const router = useRouter();
@@ -40,11 +41,21 @@ const ProjectReport = () => {
 		</div>;
 
 	return (
-		<div className="mx-auto w-10/12 bg-white flex">
+		<div className="mx-auto w-10/12 bg-white flex flex-col gap-1">
 			<Head>
 				<title>{`ATS - ${report.name} Report`}</title>
 			</Head>
 			<ReportHeader name={report.name} running={report.runningLearningObjectives} done={report.doneLearningObjectives} />
+			<div className="grow">
+				{report.units.map(u => (
+					<UnitReportItem
+						key={u.id}
+						name={u.name}
+						running={u.runningLearningObjectives}
+						done={u.doneLearningObjectives}
+					/>
+				))}
+			</div>
 		</div>
 	);
 }
