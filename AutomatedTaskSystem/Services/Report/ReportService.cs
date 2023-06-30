@@ -109,7 +109,7 @@ public class ReportService : IReportService
                 foreach (var learningObjective in lesson.LearningObjectives)
                     if (!learningObjective.Archived)
                     {
-                        if (learningObjective.DoneAt is null)
+                        if (learningObjective.DoneAt is not null)
                             lessonRes.DoneLearningObjectives++;
                         else
                             lessonRes.RunningLearningObjectives++;
