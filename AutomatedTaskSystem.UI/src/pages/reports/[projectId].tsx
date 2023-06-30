@@ -3,6 +3,7 @@ import API from "../../lib/API";
 import { useRouter } from "next/router";
 import Loader from "../../components/loader";
 import ReportHeader from "../../components/pageComponent/reports/header";
+import Head from "next/head";
 
 const ProjectReport = () => {
 	const router = useRouter();
@@ -24,16 +25,25 @@ const ProjectReport = () => {
 
 	if (loading)
 		return <div className="flex items-center justify-center mx-auto">
+			<Head>
+				<title>ATS - Loading</title>
+			</Head>
 			<Loader />
 		</div>;
 
 	if (report === undefined)
 		return <div className="flex items-center justify-center mx-auto">
-			<Loader />
+			<Head>
+				<title>ATS - Page not found</title>
+			</Head>
+			<div>Report is not found</div>
 		</div>;
 
 	return (
 		<div className="mx-auto w-10/12 bg-white flex">
+			<Head>
+				<title>{`ATS - ${report.name} Report`}</title>
+			</Head>
 			<ReportHeader name={report.name} running={report.runningLearningObjectives} done={report.doneLearningObjectives} />
 		</div>
 	);
