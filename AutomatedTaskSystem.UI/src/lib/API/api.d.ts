@@ -1,8 +1,8 @@
 interface LearningObjectiveReport {
 	id: number;
 	name: string;
-	started: string;
-	done: string;
+	started?: string;
+	done?: string;
 }
 
 interface LessonReport {
