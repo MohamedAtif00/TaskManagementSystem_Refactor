@@ -10,15 +10,17 @@ const Reports = {
 			console.error(error);
 			return false;
 		}
+	},
+	GET_ONE: async (id: number | string | string[]) => {
+		try {
+			const res = await fetch(`${url}/projects/${id}/reports`);
+			const data: ResponseService<DetailedReport> = await res.json();
+			return data;
+		} catch (error) {
+			console.error(error);
+			return false;
+		}
 	}
 }
-
-// public int Id { get; set; }
-// public string Name { get; set; } = string.Empty;
-// public string Description { get; set; } = string.Empty;
-// public string Term { get; set; } = string.Empty;
-// public string Year { get; set; } = string.Empty;
-// public int RunningLearningObjectives { get; set; }
-// public int DoneLearningObjectives { get; set; }
 
 export default Reports;
