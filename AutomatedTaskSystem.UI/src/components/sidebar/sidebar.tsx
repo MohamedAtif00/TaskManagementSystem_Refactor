@@ -53,6 +53,12 @@ const Sidebar = () => {
 							icon="Project"
 							text="Projects"
 						/>
+						<Navlink
+							activeCondition={path.includes("/reports")}
+							to="/reports"
+							icon="Project"
+							text="Reports"
+						/>
 					</>
 				) : (
 					""
@@ -64,7 +70,7 @@ const Sidebar = () => {
 					text="Tasks"
 				/>
 				<Navlink
-					activeCondition={path.includes("/reports")}
+					activeCondition={path.includes("/summaries")}
 					to="/summaries"
 					icon="Project"
 					text="Summaries"

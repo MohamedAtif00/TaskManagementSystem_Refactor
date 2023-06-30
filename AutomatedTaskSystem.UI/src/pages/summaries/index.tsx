@@ -1,18 +1,10 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
-import styles2 from "../../components/styles.module.scss";
-import styles from "../../styles/resources.module.scss";
 import Header from "../../components/header/header";
 import API from "../../lib/API";
 import { load } from "../../slices/projectSlice";
 import Link from "next/link";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
-
-interface Props {
-	id: number;
-	name: string;
-	description: string;
-}
 
 const columns: GridColDef[] = [
 	{ field: "col0", headerName: "ID", width: 90 },
@@ -25,19 +17,6 @@ const columns: GridColDef[] = [
 	{ field: "col3", headerName: "Year", width: 100 },
 	{ field: "col4", headerName: "Term", width: 100 },
 ];
-
-const ProjectItem = ({ id, name, description }: Props) => {
-	return (
-		<Link href={`/reports/${id}`}>
-			<div className={styles2.GridItem} style={{ padding: "0.5rem 1rem" }}>
-				<div>
-					<div>{name}</div>
-					<div className={styles2.info}>{description}</div>
-				</div>
-			</div>
-		</Link>
-	);
-};
 
 const Projects = () => {
 	const projects = useAppSelector((states) => states.projectSlice);
@@ -113,23 +92,6 @@ const Projects = () => {
 					})}
 					columns={columns}
 				/>
-			</div>
-		</div>
-	);
-	return (
-		<div className="w-full">
-			<Header text="Projects" icon="Project" />
-			<div className={styles.container}>
-				{projects.map((p) => {
-					return (
-						<ProjectItem
-							id={p.id}
-							description={p.description}
-							name={p.name}
-							key={p.id}
-						/>
-					);
-				})}
 			</div>
 		</div>
 	);
