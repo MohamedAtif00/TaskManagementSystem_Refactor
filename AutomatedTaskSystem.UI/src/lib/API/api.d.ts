@@ -9,6 +9,7 @@ interface LessonReport {
 	id: number;
 	name: string;
 	runningLearningObjectives: number;
+	idleLearningObjectives: number;
 	doneLearningObjectives: number;
 	learningObjectives: LearningObjectiveReport[];
 }
@@ -17,18 +18,12 @@ interface UnitReport {
 	id: number;
 	name: string;
 	runningLearningObjectives: number;
+	idleLearningObjectives: number;
 	doneLearningObjectives: number;
 	lessons: LessonReport[];
 }
 
-interface DetailedReport {
-	id: number;
-	name: string;
-	description: string;
-	term: string;
-	year: string;
-	runningLearningObjectives: number;
-	doneLearningObjectives: number;
+interface DetailedReport extends Report {
 	units: UnitReport[];
 }
 
@@ -40,6 +35,7 @@ interface Report {
 	year: string;
 	runningLearningObjectives: number;
 	doneLearningObjectives: number;
+	idleLearningObjectives: number;
 }
 
 interface ResponseService {

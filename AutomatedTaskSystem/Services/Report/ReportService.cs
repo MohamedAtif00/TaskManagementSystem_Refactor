@@ -55,8 +55,10 @@ public class ReportService : IReportService
 
                         if (lo.DoneAt is not null)
                             report.DoneLearningObjectives++;
-                        else
+                        else if (lo.StartedAt is not null)
                             report.RunningLearningObjectives++;
+                        else
+                            report.IdleLearningObjectives++;
                     }
                 }
             }
@@ -111,8 +113,10 @@ public class ReportService : IReportService
                     {
                         if (learningObjective.DoneAt is not null)
                             lessonRes.DoneLearningObjectives++;
-                        else
+                        else if (learningObjective.StartedAt is not null)
                             lessonRes.RunningLearningObjectives++;
+                        else
+                            lessonRes.IdleLearningObjectives++;
                         lessonRes.LearningObjectives.Add(
                             new GetLearningObjectiveDto
                             {
@@ -125,9 +129,11 @@ public class ReportService : IReportService
                     }
                 unitRes.RunningLearningObjectives += lessonRes.RunningLearningObjectives;
                 unitRes.DoneLearningObjectives += lessonRes.DoneLearningObjectives;
+                unitRes.IdleLearningObjectives += lessonRes.IdleLearningObjectives;
             }
             res.RunningLearningObjectives += unitRes.RunningLearningObjectives;
             res.DoneLearningObjectives += unitRes.DoneLearningObjectives;
+            res.IdleLearningObjectives += unitRes.IdleLearningObjectives;
         }
 
         return new ResponseService<GetProjectReportDto>

@@ -45,7 +45,12 @@ const ProjectReport = () => {
 			<Head>
 				<title>{`ATS - ${report.name} Report`}</title>
 			</Head>
-			<ReportHeader name={report.name} running={report.runningLearningObjectives} done={report.doneLearningObjectives} />
+			<ReportHeader
+				name={report.name}
+				idle={report.idleLearningObjectives}
+				running={report.runningLearningObjectives}
+				done={report.doneLearningObjectives}
+			/>
 			<div className="grow overflow-y-auto">
 				{report.units.map(u => (
 					<UnitReportItem
@@ -53,6 +58,7 @@ const ProjectReport = () => {
 						name={u.name}
 						running={u.runningLearningObjectives}
 						done={u.doneLearningObjectives}
+						idle={u.idleLearningObjectives}
 						lessons={u.lessons}
 					/>
 				))}

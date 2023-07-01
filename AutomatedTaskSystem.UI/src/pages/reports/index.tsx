@@ -12,11 +12,12 @@ const columns: GridColDef[] = [
 		headerName: "Name",
 		width: 300,
 	},
-	{ field: "col2", headerName: "Description", width: 300 },
+	{ field: "col2", headerName: "Description", width: 200 },
 	{ field: "col3", headerName: "Year", width: 100 },
 	{ field: "col4", headerName: "Term", width: 100 },
-	{ field: "col5", headerName: "Done", width: 100 },
-	{ field: "col6", headerName: "Running", width: 100 },
+	{ field: "col5", headerName: "Idle", width: 100 },
+	{ field: "col7", headerName: "Running", width: 100 },
+	{ field: "col6", headerName: "Done", width: 100 },
 ];
 
 const Reports = () => {
@@ -54,20 +55,6 @@ const Reports = () => {
 											className="group hover:bg-slate-50 flex border-solid border-b border-slate-200"
 										>
 											{r.visibleColumns.map((c: any) => {
-												if (c.field === "col1")
-													return (
-														<div
-															key={c.headerName}
-															style={{
-																minWidth: c.width,
-																maxWidth: c.width,
-															}}
-															className="px-[0.625rem] group-hover:pl-4 transition-all ease-in text-base flex items-center group-hover:text-blue-700"
-														>
-															{r.row[c.field]}
-														</div>
-													);
-
 												return (
 													<div
 														key={c.headerName}
@@ -94,8 +81,9 @@ const Reports = () => {
 								col2: p.description,
 								col3: p.year,
 								col4: p.term,
-								col5: p.doneLearningObjectives,
-								col6: p.runningLearningObjectives
+								col5: p.idleLearningObjectives,
+								col6: p.doneLearningObjectives,
+								col7: p.runningLearningObjectives
 							};
 						})}
 						columns={columns}
