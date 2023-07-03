@@ -7,5 +7,8 @@ namespace AutomatedTaskSystem.Services.ReportService;
 public interface IReportService
 {
     Task<ActionResult<ResponseService<GetProjectReportDto>>> GetProjectReport(int id);
-    Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllProjectsReports();
+    Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllProjectsReports(
+        DateTime? start,
+        DateTime? end
+    );
 }

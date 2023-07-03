@@ -1,5 +1,6 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.Report;
+using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,7 +15,10 @@ public class ReportService : IReportService
         _context = context;
     }
 
-    public async Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllProjectsReports()
+    public async Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllProjectsReports(
+        DateTime? start,
+        DateTime? end
+    )
     {
         var projects = await _context.Projects
             .Where(p => !p.Archived)
@@ -26,43 +30,17 @@ public class ReportService : IReportService
 
         var res = new List<GetReportDto> { };
 
-        foreach (var project in projects)
-        {
-            var report = new GetReportDto
-            {
-                Id = project.Id,
-                Name = project.Name,
-                Description = project.Description,
-                Year = project.Year.Number,
-                Term = project.Term ? "Term 2" : "Term 1"
-            };
-            res.Add(report);
-
-            foreach (var unit in project.Units)
-            {
-                if (unit.Archived)
-                    continue;
-
-                foreach (var lesson in unit.Lessons)
+        if (start is not null && end is not null && (start == end || start > end))
+            return new BadRequestObjectResult(
+                new BaseResponseService
                 {
-                    if (lesson.Archived)
-                        continue;
-
-                    foreach (var lo in lesson.LearningObjectives)
-                    {
-                        if (lo.Archived)
-                            continue;
-
-                        if (lo.DoneAt is not null)
-                            report.DoneLearningObjectives++;
-                        else if (lo.StartedAt is not null)
-                            report.RunningLearningObjectives++;
-                        else
-                            report.IdleLearningObjectives++;
-                    }
+                    Error = true,
+                    Message = "Start date cannot be earlier than or equal to End date"
                 }
-            }
-        }
+            );
+
+        foreach (var project in projects)
+            res.Add(createReport(project, start, end));
 
         return new ResponseService<List<GetReportDto>>
         {
@@ -142,5 +120,90 @@ public class ReportService : IReportService
             Error = false,
             Data = res
         };
+    }
+
+    private GetReportDto createReport(Project project, DateTime? start, DateTime? end)
+    {
+        var report = new GetReportDto
+        {
+            Id = project.Id,
+            Name = project.Name,
+            Description = project.Description,
+            Year = project.Year.Number,
+            Term = project.Term ? "Term 2" : "Term 1"
+        };
+
+        foreach (var unit in project.Units)
+        {
+            if (unit.Archived)
+                continue;
+
+            foreach (var lesson in unit.Lessons)
+            {
+                if (lesson.Archived)
+                    continue;
+
+                foreach (var lo in lesson.LearningObjectives)
+                {
+                    if (lo.Archived)
+                        continue;
+
+                    if (start is null && end is null)
+                        handleNoDate(report, lo);
+                    else if (start is null && end is not null)
+                        handleEndDate(report, lo, (DateTime)end);
+                    else if (start is not null && end is null)
+                        handleStartDate(report, lo, (DateTime)start);
+                    else
+                        handleStartAndEndDate(report, lo, (DateTime)start!, (DateTime)end!);
+                }
+            }
+        }
+
+        return report;
+    }
+
+    private void handleNoDate(GetReportDto report, LearningObjective lo)
+    {
+        if (lo.StartedAt is null)
+            report.IdleLearningObjectives++;
+        else if (lo.DoneAt is null)
+            report.RunningLearningObjectives++;
+        else
+            report.DoneLearningObjectives++;
+    }
+
+    private void handleStartAndEndDate(
+        GetReportDto report,
+        LearningObjective lo,
+        DateTime start,
+        DateTime end
+    )
+    {
+        if (lo.CreateAt < start)
+            return;
+
+        handleEndDate(report, lo, end);
+    }
+
+    private void handleStartDate(GetReportDto report, LearningObjective lo, DateTime start)
+    {
+        if (lo.CreateAt < start)
+            return;
+
+        handleNoDate(report, lo);
+    }
+
+    private void handleEndDate(GetReportDto report, LearningObjective lo, DateTime end)
+    {
+        if (lo.CreateAt >= end)
+            return;
+
+        if (lo.StartedAt is not null && lo.DoneAt is not null && lo.DoneAt < end)
+            report.DoneLearningObjectives++;
+        else if (lo.StartedAt is null || lo.StartedAt < end)
+            report.RunningLearningObjectives++;
+        else
+            report.IdleLearningObjectives++;
     }
 }

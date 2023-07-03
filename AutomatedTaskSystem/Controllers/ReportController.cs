@@ -21,7 +21,9 @@ namespace AutomatedTaskSystem.Controllers
             await _reportService.GetProjectReport(id);
 
         [HttpGet("reports")]
-        public async Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllReports() =>
-            await _reportService.GetAllProjectsReports();
+        public async Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllReports(
+            [FromQuery(Name = "start")] DateTime? start,
+            [FromQuery(Name = "end")] DateTime? end
+        ) => await _reportService.GetAllProjectsReports(start: start, end: end);
     }
 }
