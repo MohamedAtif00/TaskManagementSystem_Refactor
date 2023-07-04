@@ -334,6 +334,30 @@ const SCHEMAS = {
 			}
 		},
 		STEPS: {
+			UP: async (stepId: number | string | string[]) => {
+				try {
+					const res = await fetch(`${url}/steps/${stepId}/up`, {
+						method: "PATCH",
+					});
+					const data: { error: boolean; message: string } = await res.json();
+					return data;
+				} catch (error) {
+					console.error(error);
+					return false;
+				}
+			},
+			DOWN: async (stepId: number | string | string[]) => {
+				try {
+					const res = await fetch(`${url}/steps/${stepId}/down`, {
+						method: "PATCH",
+					});
+					const data: { error: boolean; message: string } = await res.json();
+					return data;
+				} catch (error) {
+					console.error(error);
+					return false;
+				}
+			},
 			GET_MULTIPLE: async (nodes: number[]) => {
 				try {
 					const res = await fetch(

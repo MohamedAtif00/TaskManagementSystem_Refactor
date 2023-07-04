@@ -157,6 +157,7 @@ const NodeItem = ({
 						{steps.map((s) => {
 							return (
 								<Step
+									updateNodes={updateNodes}
 									priority={s.priority}
 									key={s.id}
 									nodeId={id}
@@ -273,6 +274,7 @@ const Step = ({
 	name,
 	reviewable,
 	duration,
+	updateNodes
 }: {
 	priority: number | null;
 	nodeId: number;
@@ -282,6 +284,7 @@ const Step = ({
 	name: string;
 	group: { id: number; name: string };
 	duration: number;
+	updateNodes: () => void;
 }) => {
 	const router = useRouter();
 	const [deleting, setDeleting] = useState(false);
@@ -347,6 +350,35 @@ const Step = ({
 			<td>
 				{auth.role == 1 ? (
 					<>
+						<div className="flex gap-2 pr-2">
+							<div
+								onClick={() => API.SCHEMAS.NODES.STEPS.UP(id).then(res => res && !res.error && updateNodes())}
+							>
+								<svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg"
+									className="fill-slate-400 cursor-pointer hover:fill-cyan-600"
+								>
+									<path
+										fillRule="evenodd"
+										clipRule="evenodd"
+										d="M0.530109 5.10367L4.72891 0.568665C5.43091 -0.189555 6.56909 -0.189555 7.27109 0.568665L11.4699 5.10367C12.6023 6.32678 11.8003 8.41808 10.1988 8.41808H7.7976V13.0292C7.7976 13.5654 7.3952 14 6.8988 14H4.6518C4.1554 14 3.75301 13.5654 3.75301 13.0292V8.41808H1.8012C0.199712 8.41808 -0.602316 6.32678 0.530109 5.10367Z"
+									/>
+								</svg>
+							</div>
+							<div
+								className="rotate-180"
+								onClick={() => API.SCHEMAS.NODES.STEPS.DOWN(id).then(res => res && !res.error && updateNodes())}
+							>
+								<svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg"
+									className="fill-slate-400 cursor-pointer hover:fill-cyan-600"
+								>
+									<path
+										fillRule="evenodd"
+										clipRule="evenodd"
+										d="M0.530109 5.10367L4.72891 0.568665C5.43091 -0.189555 6.56909 -0.189555 7.27109 0.568665L11.4699 5.10367C12.6023 6.32678 11.8003 8.41808 10.1988 8.41808H7.7976V13.0292C7.7976 13.5654 7.3952 14 6.8988 14H4.6518C4.1554 14 3.75301 13.5654 3.75301 13.0292V8.41808H1.8012C0.199712 8.41808 -0.602316 6.32678 0.530109 5.10367Z"
+									/>
+								</svg>
+							</div>
+						</div>
 						<Link
 							href={`${router.asPath}?form=stepEdit&stepId=${id}`}
 						>

@@ -354,6 +354,8 @@ namespace AutomatedTaskSystem.Controllers
 
                 node.Steps.ForEach(_s =>
                 {
+                    if (_s.Archived)
+                        return;
                     var nodeStep = new Responses.NodeStepDTO
                     {
                         Priority = _s.Priority,
@@ -451,7 +453,7 @@ namespace AutomatedTaskSystem.Controllers
                 );
 
             var nodes = await _context.Nodes
-                .Where(n => n.SchemaId == node.SchemaId)
+                .Where(n => n.SchemaId == node.SchemaId && !n.Archived)
                 .Include(n => n.Previous)
                 .Include(n => n.Next)
                 .Include(n => n.Required)
@@ -483,7 +485,7 @@ namespace AutomatedTaskSystem.Controllers
                 );
 
             var nodes = await _context.Nodes
-                .Where(n => n.SchemaId == node.SchemaId)
+                .Where(n => n.SchemaId == node.SchemaId && !n.Archived)
                 .Include(n => n.Previous)
                 .Include(n => n.Next)
                 .Include(n => n.Required)
