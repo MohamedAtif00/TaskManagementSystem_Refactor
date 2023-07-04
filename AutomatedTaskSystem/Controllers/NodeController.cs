@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers
@@ -31,6 +32,7 @@ namespace AutomatedTaskSystem.Controllers
             var res = new Responses.NodeDTO
             {
                 Id = node.Id,
+                Order = node.Order,
                 isEnd = node.isEnd,
                 isStart = node.isStart,
                 Name = node.Name,
@@ -183,6 +185,7 @@ namespace AutomatedTaskSystem.Controllers
 
             var res = new Responses.NodeDTO
             {
+                Order = node.Order,
                 Id = node.Id,
                 Name = node.Name,
                 isEnd = node.isEnd,
@@ -313,6 +316,9 @@ namespace AutomatedTaskSystem.Controllers
                 .Include(_n => _n.Next)
                 .Include(_n => _n.Required)
                 .Include(_n => _n.Requires)
+                .Include(n => n.Steps)
+                .ThenInclude(s => s.TaskBank)
+                .ThenInclude(tb => tb.Group)
                 .ToListAsync();
 
             var res = new List<Responses.NodeDTO> { };
@@ -320,13 +326,6 @@ namespace AutomatedTaskSystem.Controllers
             for (int i = 0; i < nodes.Count; i++)
             {
                 var node = nodes[i];
-                // await _context.Nodes
-                //     .Where(_n => _n.Id == nodes[i].Id)
-                //     .Include(_n => _n.Previous)
-                //     .Include(_n => _n.Next)
-                //     .Include(_n => _n.Required)
-                //     .Include(_n => _n.Requires)
-                //     .FirstOrDefaultAsync();
 
                 if (node == null)
                     return BadRequest("An error poped up");
@@ -337,6 +336,7 @@ namespace AutomatedTaskSystem.Controllers
                     isEnd = node.isEnd,
                     isStart = node.isStart,
                     Name = node.Name,
+                    Order = node.Order
                 };
 
                 node.Previous.ForEach(
@@ -351,14 +351,11 @@ namespace AutomatedTaskSystem.Controllers
                 node.Requires.ForEach(
                     _n => nodeRes.Requires.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
                 );
-                var steps = await _context.Steps
-                    .Where(_s => _s.NodeId == node.Id && !_s.Archived)
-                    .Include(_s => _s.TaskBank)
-                    .ThenInclude(tb => tb.Group)
-                    .ToListAsync();
 
-                steps.ForEach(_s =>
+                node.Steps.ForEach(_s =>
                 {
+                    if (_s.Archived)
+                        return;
                     var nodeStep = new Responses.NodeStepDTO
                     {
                         Priority = _s.Priority,
@@ -443,6 +440,89 @@ namespace AutomatedTaskSystem.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new Responses.SuccessDTO("Node Delete"));
+        }
+
+        [HttpPatch("{nodeId}/up")]
+        public async Task<ActionResult<List<Responses.NodeDTO>>> OrderNodeUp(int nodeId)
+        {
+            var node = await _context.Nodes.Where(n => n.Id == nodeId).FirstOrDefaultAsync();
+
+            if (node is null)
+                return BadRequest(
+                    new BaseResponseService { Error = false, Message = "Node is not found" }
+                );
+
+            var nodes = await _context.Nodes
+                .Where(n => n.SchemaId == node.SchemaId && !n.Archived)
+                .Include(n => n.Previous)
+                .Include(n => n.Next)
+                .Include(n => n.Required)
+                .Include(n => n.Requires)
+                .ToListAsync();
+
+            if (node.Order > 1)
+            {
+                var prevNode = nodes.Where(n => n.Order + 1 == node.Order).FirstOrDefault();
+
+                if (prevNode is not null)
+                    prevNode.Order++;
+                node.Order--;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return await GetNodes(node.SchemaId);
+        }
+
+        [HttpPatch("{nodeId}/down")]
+        public async Task<ActionResult<List<Responses.NodeDTO>>> OrderNodeDown(int nodeId)
+        {
+            var node = await _context.Nodes.Where(n => n.Id == nodeId).FirstOrDefaultAsync();
+
+            if (node is null)
+                return BadRequest(
+                    new BaseResponseService { Error = false, Message = "Node is not found" }
+                );
+
+            var nodes = await _context.Nodes
+                .Where(n => n.SchemaId == node.SchemaId && !n.Archived)
+                .Include(n => n.Previous)
+                .Include(n => n.Next)
+                .Include(n => n.Required)
+                .Include(n => n.Requires)
+                .ToListAsync();
+
+            if (nodes.Any(n => n.Order > node.Order))
+            {
+                var prevNode = nodes.Where(n => n.Order - 1 == node.Order).FirstOrDefault();
+
+                if (prevNode is not null)
+                    prevNode.Order--;
+                node.Order++;
+            }
+            await _context.SaveChangesAsync();
+
+            return await GetNodes(node.SchemaId);
+        }
+
+        [HttpGet("/OTR")]
+        public async Task<ActionResult<BaseResponseService>> DeleteNode()
+        {
+            var schemas = await _context.Schemas
+                .Where(s => !s.Archived)
+                .Include(s => s.Nodes)
+                .ToListAsync();
+
+            foreach (var schema in schemas)
+            {
+                int count = 1;
+                foreach (var node in schema.Nodes)
+                    node.Order = count++;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new BaseResponseService { Error = false, Message = "Nodes ordered" });
         }
     }
 }

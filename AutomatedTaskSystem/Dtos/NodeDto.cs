@@ -28,6 +28,7 @@ namespace AutomatedTaskSystem.DTO
         public class NodeDTO
         {
             public int Id { get; set; }
+            public int Order { get; set; }
             public string Name { get; set; } = "";
             public List<NodeStepDTO> Steps { get; set; } = new List<NodeStepDTO> { };
             public List<IDName> Required { get; set; } = new List<IDName> { };

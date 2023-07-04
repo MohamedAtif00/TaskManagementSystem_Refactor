@@ -39,7 +39,49 @@ const NodeItem = ({
 		<div className={styles.node}>
 			<div className="p-2">
 				<div className={styles.nodeTitle}>
-					<div>{name}</div>
+					<div className="flex gap-2 items-center">
+						<div>{name}</div>
+						<div className="flex gap-4">
+							<div
+								onClick={() => API.SCHEMAS.NODES.UP(id)
+									.then(res => res && updateNodes())}
+							>
+								<svg
+									width="20"
+									height="22"
+									viewBox="0 0 20 22"
+									xmlns="http://www.w3.org/2000/svg"
+									className="fill-slate-400 cursor-pointer hover:fill-cyan-600"
+								>
+									<path
+										fillRule="evenodd"
+										clipRule="evenodd"
+										d="M0.883516 8.02006L7.88151 0.893616C9.05152 -0.297872 10.9485 -0.297872 12.1185 0.893616L19.1165 8.02006C21.0039 9.94208 19.6671 13.2284 16.998 13.2284H12.996V20.4745C12.996 21.317 12.3253 22 11.498 22H7.75301C6.92567 22 6.25501 21.317 6.25501 20.4745V13.2284H3.00201C0.332853 13.2284 -1.00386 9.94208 0.883516 8.02006Z"
+									/>
+								</svg>
+							</div>
+							<div
+								className="rotate-180"
+								onClick={() => API.SCHEMAS.NODES.DOWN(id)
+									.then(res => res && updateNodes())}
+							>
+								<svg
+									width="20"
+									height="22"
+									viewBox="0 0 20 22"
+									fill="none"
+									xmlns="http://www.w3.org/2000/svg"
+									className="fill-slate-400 cursor-pointer hover:fill-cyan-600"
+								>
+									<path
+										fillRule="evenodd"
+										clipRule="evenodd"
+										d="M0.883516 8.02006L7.88151 0.893616C9.05152 -0.297872 10.9485 -0.297872 12.1185 0.893616L19.1165 8.02006C21.0039 9.94208 19.6671 13.2284 16.998 13.2284H12.996V20.4745C12.996 21.317 12.3253 22 11.498 22H7.75301C6.92567 22 6.25501 21.317 6.25501 20.4745V13.2284H3.00201C0.332853 13.2284 -1.00386 9.94208 0.883516 8.02006Z"
+									/>
+								</svg>
+							</div>
+						</div>
+					</div>
 					{auth.role == 1 ? (
 						<div className="flex gap-2">
 							<div>
@@ -115,6 +157,7 @@ const NodeItem = ({
 						{steps.map((s) => {
 							return (
 								<Step
+									updateNodes={updateNodes}
 									priority={s.priority}
 									key={s.id}
 									nodeId={id}
@@ -231,6 +274,7 @@ const Step = ({
 	name,
 	reviewable,
 	duration,
+	updateNodes
 }: {
 	priority: number | null;
 	nodeId: number;
@@ -240,6 +284,7 @@ const Step = ({
 	name: string;
 	group: { id: number; name: string };
 	duration: number;
+	updateNodes: () => void;
 }) => {
 	const router = useRouter();
 	const [deleting, setDeleting] = useState(false);
@@ -305,6 +350,35 @@ const Step = ({
 			<td>
 				{auth.role == 1 ? (
 					<>
+						<div className="flex gap-2 pr-2">
+							<div
+								onClick={() => API.SCHEMAS.NODES.STEPS.UP(id).then(res => res && !res.error && updateNodes())}
+							>
+								<svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg"
+									className="fill-slate-400 cursor-pointer hover:fill-cyan-600"
+								>
+									<path
+										fillRule="evenodd"
+										clipRule="evenodd"
+										d="M0.530109 5.10367L4.72891 0.568665C5.43091 -0.189555 6.56909 -0.189555 7.27109 0.568665L11.4699 5.10367C12.6023 6.32678 11.8003 8.41808 10.1988 8.41808H7.7976V13.0292C7.7976 13.5654 7.3952 14 6.8988 14H4.6518C4.1554 14 3.75301 13.5654 3.75301 13.0292V8.41808H1.8012C0.199712 8.41808 -0.602316 6.32678 0.530109 5.10367Z"
+									/>
+								</svg>
+							</div>
+							<div
+								className="rotate-180"
+								onClick={() => API.SCHEMAS.NODES.STEPS.DOWN(id).then(res => res && !res.error && updateNodes())}
+							>
+								<svg width="12" height="14" viewBox="0 0 12 14" fill="none" xmlns="http://www.w3.org/2000/svg"
+									className="fill-slate-400 cursor-pointer hover:fill-cyan-600"
+								>
+									<path
+										fillRule="evenodd"
+										clipRule="evenodd"
+										d="M0.530109 5.10367L4.72891 0.568665C5.43091 -0.189555 6.56909 -0.189555 7.27109 0.568665L11.4699 5.10367C12.6023 6.32678 11.8003 8.41808 10.1988 8.41808H7.7976V13.0292C7.7976 13.5654 7.3952 14 6.8988 14H4.6518C4.1554 14 3.75301 13.5654 3.75301 13.0292V8.41808H1.8012C0.199712 8.41808 -0.602316 6.32678 0.530109 5.10367Z"
+									/>
+								</svg>
+							</div>
+						</div>
 						<Link
 							href={`${router.asPath}?form=stepEdit&stepId=${id}`}
 						>
