@@ -13,6 +13,8 @@ namespace AutomatedTaskSystem.Models
 
         // What the Node requires
         public List<Node> Requires { get; set; } = new List<Node> { };
+
+        public int Order { get; set; }
         public List<Node> Next { get; set; } = new List<Node> { };
         public List<Node> Previous { get; set; } = new List<Node> { };
         public bool isStart { get; set; } = false;

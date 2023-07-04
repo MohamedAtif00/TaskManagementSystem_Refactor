@@ -39,7 +39,49 @@ const NodeItem = ({
 		<div className={styles.node}>
 			<div className="p-2">
 				<div className={styles.nodeTitle}>
-					<div>{name}</div>
+					<div className="flex gap-2 items-center">
+						<div>{name}</div>
+						<div className="flex gap-4">
+							<div
+								onClick={() => API.SCHEMAS.NODES.UP(id)
+									.then(res => res && updateNodes())}
+							>
+								<svg
+									width="20"
+									height="22"
+									viewBox="0 0 20 22"
+									xmlns="http://www.w3.org/2000/svg"
+									className="fill-slate-400 cursor-pointer hover:fill-cyan-600"
+								>
+									<path
+										fillRule="evenodd"
+										clipRule="evenodd"
+										d="M0.883516 8.02006L7.88151 0.893616C9.05152 -0.297872 10.9485 -0.297872 12.1185 0.893616L19.1165 8.02006C21.0039 9.94208 19.6671 13.2284 16.998 13.2284H12.996V20.4745C12.996 21.317 12.3253 22 11.498 22H7.75301C6.92567 22 6.25501 21.317 6.25501 20.4745V13.2284H3.00201C0.332853 13.2284 -1.00386 9.94208 0.883516 8.02006Z"
+									/>
+								</svg>
+							</div>
+							<div
+								className="rotate-180"
+								onClick={() => API.SCHEMAS.NODES.DOWN(id)
+									.then(res => res && updateNodes())}
+							>
+								<svg
+									width="20"
+									height="22"
+									viewBox="0 0 20 22"
+									fill="none"
+									xmlns="http://www.w3.org/2000/svg"
+									className="fill-slate-400 cursor-pointer hover:fill-cyan-600"
+								>
+									<path
+										fillRule="evenodd"
+										clipRule="evenodd"
+										d="M0.883516 8.02006L7.88151 0.893616C9.05152 -0.297872 10.9485 -0.297872 12.1185 0.893616L19.1165 8.02006C21.0039 9.94208 19.6671 13.2284 16.998 13.2284H12.996V20.4745C12.996 21.317 12.3253 22 11.498 22H7.75301C6.92567 22 6.25501 21.317 6.25501 20.4745V13.2284H3.00201C0.332853 13.2284 -1.00386 9.94208 0.883516 8.02006Z"
+									/>
+								</svg>
+							</div>
+						</div>
+					</div>
 					{auth.role == 1 ? (
 						<div className="flex gap-2">
 							<div>

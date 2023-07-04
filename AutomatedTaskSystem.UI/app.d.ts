@@ -39,6 +39,7 @@ interface IStep {
 
 interface INode {
 	id: number;
+	order: number;
 	name: string;
 	previous: { name: string; id: number }[];
 	requires: { name: string; id: number }[];
