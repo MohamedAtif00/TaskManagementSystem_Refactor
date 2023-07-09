@@ -130,7 +130,7 @@ public class ReportService : IReportService
             Name = project.Name,
             Description = project.Description,
             Year = project.Year.Number,
-            Term = project.Term ? "Term 2" : "Term 1"
+            Term = project.Term ? "Term 2" : "Term 1",
         };
 
         foreach (var unit in project.Units)
@@ -147,6 +147,7 @@ public class ReportService : IReportService
                 {
                     if (lo.Archived)
                         continue;
+                    report.TotalLearningObjectives++;
 
                     if (start is null && end is null)
                         handleNoDate(report, lo);

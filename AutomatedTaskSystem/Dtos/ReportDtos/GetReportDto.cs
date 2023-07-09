@@ -10,4 +10,5 @@ public class GetReportDto
     public int IdleLearningObjectives { get; set; }
     public int RunningLearningObjectives { get; set; }
     public int DoneLearningObjectives { get; set; }
+    public int TotalLearningObjectives { get; set; }
 }

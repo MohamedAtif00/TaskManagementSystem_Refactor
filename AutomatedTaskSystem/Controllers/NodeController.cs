@@ -524,5 +524,57 @@ namespace AutomatedTaskSystem.Controllers
 
             return Ok(new BaseResponseService { Error = false, Message = "Nodes ordered" });
         }
+
+        [HttpPatch("/OTR")]
+        public async Task<ActionResult<BaseResponseService>> OTR()
+        {
+            var los = await _context.LearningObjectives
+                .Where(p => !p.Archived)
+                .Include(lo => lo.Tasks)
+                .ToListAsync();
+
+            var taskActivities = await _context.Activities.ToListAsync();
+
+            foreach (var lo in los)
+            {
+                var done = true;
+
+                DateTime latest = new DateTime();
+
+                foreach (var task in lo.Tasks)
+                {
+                    if (task.StatusId != 4 && !task.Archived)
+                        done = false;
+
+                    var acts = taskActivities
+                        .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 1)
+                        .ToList();
+                    foreach (var item in acts)
+                    {
+                        if (lo.StartedAt is null || item.TimeStamp < lo.StartedAt)
+                            lo.StartedAt = item.TimeStamp;
+                    }
+
+                    if (done)
+                    {
+                        acts = taskActivities
+                            .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 2)
+                            .ToList();
+                        foreach (var item in acts)
+                        {
+                            if (lo.StartedAt is null || item.TimeStamp < lo.StartedAt)
+                                latest = item.TimeStamp;
+                        }
+                    }
+                }
+
+                if (done)
+                    lo.DoneAt = latest;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
     }
 }

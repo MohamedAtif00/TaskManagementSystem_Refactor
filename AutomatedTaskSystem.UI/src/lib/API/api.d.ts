@@ -36,6 +36,7 @@ interface Report {
 	runningLearningObjectives: number;
 	doneLearningObjectives: number;
 	idleLearningObjectives: number;
+	totalLearningObjectives: number;
 }
 
 interface ResponseService {

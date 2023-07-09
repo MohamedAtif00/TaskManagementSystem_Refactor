@@ -29,8 +29,9 @@ const columns: GridColDef[] = [
 	{ field: "col3", headerName: "Year", width: 100 },
 	{ field: "col4", headerName: "Term", width: 100 },
 	{ field: "col5", headerName: "Idle", width: 100 },
-	{ field: "col7", headerName: "Running", width: 100 },
-	{ field: "col6", headerName: "Done", width: 100 },
+	{ field: "col6", headerName: "Running", width: 100 },
+	{ field: "col7", headerName: "Done", width: 100 },
+	{ field: "col8", headerName: "Total", width: 100 },
 ];
 
 const Reports = () => {
@@ -132,8 +133,9 @@ const Reports = () => {
 									col3: p.year,
 									col4: p.term,
 									col5: p.idleLearningObjectives,
-									col6: p.doneLearningObjectives,
-									col7: p.runningLearningObjectives
+									col6: p.runningLearningObjectives,
+									col7: p.doneLearningObjectives,
+									col8: p.totalLearningObjectives
 								};
 							})}
 							columns={columns}
