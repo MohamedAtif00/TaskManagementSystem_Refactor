@@ -26,7 +26,7 @@ const NavList: React.FC<Props> = ({ children, icon: Icon, label }) => {
             }}
         >
             <div
-                className="cursor-pointer group h-12 flex gap-5"
+                className="cursor-pointer group h-12 flex gap-4"
                 onClick={handleToggle}
             >
                 <div
@@ -34,14 +34,14 @@ const NavList: React.FC<Props> = ({ children, icon: Icon, label }) => {
                         toggle ? "bg-cyan-400" : ""
                     } h-12 rounded-r`}
                 ></div>
-                <div className="grow pr-7 flex justify-between items-center text-slate-400 group-hover:text-white">
-                    <div className="flex gap-3">
+                <div className="grow pr-6 flex justify-between items-center text-slate-400 group-hover:text-white">
+                    <div className="flex gap-3 items-center">
                         {Icon ? (
                             <Icon className="fill-slate-400 group-hover:fill-white h-7 w-7" />
                         ) : (
                             ""
                         )}
-                        <div>{label}</div>
+                        <div className="text-xs">{label}</div>
                     </div>
                     <div
                         className={`${

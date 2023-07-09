@@ -57,10 +57,12 @@ const Sidebar = () => {
                         />
                         <NavList label="Reports" icon={ChartIcon}>
                             <Navlink
-                                activeCondition={path.includes("/reports")}
-                                to="/reports"
+                                activeCondition={path.includes(
+                                    "/project-overview"
+                                )}
+                                to="/project-overview"
                                 icon="Project"
-                                text="Reports"
+                                text="Projects Overview"
                             />
                             <Navlink
                                 activeCondition={path.includes("/summaries")}
