@@ -1,78 +1,79 @@
 @import "../../styles/root";
 
 #sidebar {
-	height: 100vh;
-	background-color: $gunmetal;
-	color: $white;
-	display: flex;
-	flex-direction: column;
-	padding: 1.25rem 0;
-	width: 220px;
-	justify-content: space-between;
-	flex-shrink: 0;
-	position: fixed;
-	top: 0;
-	left: 0;
-	z-index: 15;
-	overflow-y: auto;
+    height: 100vh;
+    background-color: $gunmetal;
+    color: $white;
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem 0;
+    width: 220px;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 15;
+    overflow-y: auto;
 
-	h3 {
-		font-size: 0.875rem;
-		font-weight: 700;
-	}
+    h3 {
+        font-size: 0.875rem;
+        font-weight: 700;
+    }
 
-	h3,
-	.navlink,
-	.profile {
-		padding: 0 1.75rem;
-	}
+    h3,
+    .navlink,
+    .profile {
+        padding: 0 1.5rem;
+    }
 
-	.profile {
-		padding-top: 1rem;
-		font-size: 1.25rem;
+    .profile {
+        padding-top: 1rem;
+        font-size: 1.25rem;
 
-		.profileInfo {
-			font-size: 0.75rem;
-			padding-top: 0.5rem;
-			display: flex;
-			gap: 0.25rem;
-			opacity: 0.75;
-		}
-	}
+        .profileInfo {
+            font-size: 0.75rem;
+            padding-top: 0.5rem;
+            display: flex;
+            gap: 0.25rem;
+            opacity: 0.75;
+        }
+    }
 
-	.navlinks {
-		padding-top: 1.25rem;
-		flex-grow: 1;
+    .navlinks {
+        padding-top: 1.25rem;
+        flex-grow: 1;
 
-		.navlink {
-			display: flex;
-			height: 3rem;
-			align-items: center;
-			gap: 0.75rem;
-			cursor: pointer;
-			color: #97a6ba;
+        .navlink {
+            display: flex;
+            height: 3rem;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            color: #97a6ba;
+            font-size: 0.75rem;
 
-			&:hover {
-				color: $white;
-			}
+            &:hover {
+                color: $white;
+            }
 
-			&.active {
-				cursor: default;
-				background-color: #ffffff1a;
-				color: $white;
-				font-weight: bold;
-			}
-		}
-	}
+            &.active {
+                cursor: default;
+                background-color: #ffffff1a;
+                color: $white;
+                font-weight: bold;
+            }
+        }
+    }
 
-	.logoutButton {
-		padding: 0.5rem 1.75rem;
-		color: rgb(255, 68, 90);
-		user-select: none;
-		cursor: pointer;
+    .logoutButton {
+        padding: 0.5rem 1.75rem;
+        color: rgb(255, 68, 90);
+        user-select: none;
+        cursor: pointer;
 
-		&:hover {
-			text-decoration: underline;
-		}
-	}
+        &:hover {
+            text-decoration: underline;
+        }
+    }
 }
