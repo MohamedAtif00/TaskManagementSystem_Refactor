@@ -555,7 +555,6 @@ public class TaskService : ITaskService
                 TL = rollbackStep.TaskBank.TL,
                 Archived = false,
                 Attention = false,
-                Comments = new List<Comment> { },
                 CreatedAt = DateTime.Now,
                 Flagged = false,
                 From = task,
@@ -817,7 +816,6 @@ public class TaskService : ITaskService
             StatusId = status.Id,
             Flagged = false,
             Archived = false,
-            Comments = new List<Comment> { },
             IsReview = taskBank.TypeId == 3,
             Attention = false,
             CreatedAt = DateTime.Now,
@@ -879,7 +877,6 @@ public class TaskService : ITaskService
             StatusId = status.Id,
             Flagged = false,
             Archived = false,
-            Comments = new List<Comment> { },
             IsReview = step.TaskBank.TypeId == 3,
             Attention = false,
             CreatedAt = DateTime.Now,
@@ -900,7 +897,8 @@ public class TaskService : ITaskService
             .Include(t => t.Status)
             .Include(t => t.LearningObjective)
             .ThenInclude(t => t.Schema)
-            .Include(t => t.Comments)
+            .Include(t => t.LearningObjective)
+            .ThenInclude(t => t.Comments)
             .ThenInclude(c => c.User)
             .AsNoTracking()
             .FirstOrDefaultAsync();
@@ -925,7 +923,7 @@ public class TaskService : ITaskService
             Error = false,
             Data = new GetTaskDetailsDto
             {
-                Comments = task.Comments
+                Comments = task.LearningObjective.Comments
                     .Select(
                         c =>
                             new TaskCommentDto

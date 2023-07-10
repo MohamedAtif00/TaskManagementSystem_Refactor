@@ -26,17 +26,17 @@ namespace AutomatedTaskSystem.Controllers
             var lo = await _context.LearningObjectives
                 .Where(lo => lo.Id == id)
                 .Include(lo => lo.Tasks)
-                .ThenInclude(t => t.Comments)
+                .Include(lo => lo.Comments)
                 .FirstOrDefaultAsync();
 
             if (lo == null)
                 return NotFound(new Responses.BadRequestsDTO("Learning Objective not Found"));
 
+            foreach (var c in lo.Comments)
+                c.Archived = true;
+
             foreach (var t in lo.Tasks)
             {
-                foreach (var c in t.Comments)
-                    c.Archived = true;
-
                 t.Archived = true;
             }
 
