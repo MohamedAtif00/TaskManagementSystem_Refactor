@@ -56,7 +56,7 @@ const ProjectManagerDashboard = () => {
     });
 
     return (
-        <div className="grid grid-cols-12 gap-8 py-8 px-4 w-full">
+        <div className="grid grid-cols-12 gap-8 py-8 w-full">
             <DashboardCard label="Users" value={dashboard.numberOfUsers} />
             <DashboardCard label="Projects" value={dashboard.numberOfProject} />
             <DashboardCard label="Schemas" value={dashboard.numberOfSchemas} />
@@ -135,7 +135,7 @@ const ProjectManagerDashboard = () => {
                     </div>
                 </div>
             </div>
-            <div className="bg-white col-span-8">
+            <div className="bg-white col-span-8 rounded">
                 <Bar
                     data={{
                         labels: dashboard.groupsCount.map((g) => g.name),
@@ -167,7 +167,7 @@ const ProjectManagerDashboard = () => {
                     }}
                 />
             </div>
-            <div className="bg-white col-span-12 p-4 overflow-x-auto flex justify-center">
+            <div className="bg-white rounded col-span-12 p-4 overflow-x-auto flex justify-center">
                 <div className="w-[1000px] overflow-x-auto">
                     <Bar
                         style={{
