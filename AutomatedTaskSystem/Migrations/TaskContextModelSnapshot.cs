@@ -130,7 +130,7 @@ namespace AutomatedTaskSystem.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("TaskId")
+                    b.Property<int>("LearningObjectiveId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("Timestamp")
@@ -141,7 +141,7 @@ namespace AutomatedTaskSystem.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TaskId");
+                    b.HasIndex("LearningObjectiveId");
 
                     b.HasIndex("UserId");
 
@@ -352,6 +352,9 @@ namespace AutomatedTaskSystem.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
 
                     b.Property<int>("SchemaId")
                         .HasColumnType("int");
@@ -989,9 +992,9 @@ namespace AutomatedTaskSystem.Migrations
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.Comment", b =>
                 {
-                    b.HasOne("AutomatedTaskSystem.Models.Task", "Task")
+                    b.HasOne("AutomatedTaskSystem.Models.LearningObjective", "LearningObjective")
                         .WithMany("Comments")
-                        .HasForeignKey("TaskId")
+                        .HasForeignKey("LearningObjectiveId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1001,7 +1004,7 @@ namespace AutomatedTaskSystem.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Task");
+                    b.Navigation("LearningObjective");
 
                     b.Navigation("User");
                 });
@@ -1286,6 +1289,8 @@ namespace AutomatedTaskSystem.Migrations
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.LearningObjective", b =>
                 {
+                    b.Navigation("Comments");
+
                     b.Navigation("Tasks");
                 });
 
@@ -1319,11 +1324,6 @@ namespace AutomatedTaskSystem.Migrations
             modelBuilder.Entity("AutomatedTaskSystem.Models.Status", b =>
                 {
                     b.Navigation("Tasks");
-                });
-
-            modelBuilder.Entity("AutomatedTaskSystem.Models.Task", b =>
-                {
-                    b.Navigation("Comments");
                 });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.TaskBank", b =>

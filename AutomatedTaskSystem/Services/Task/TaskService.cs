@@ -285,7 +285,7 @@ public class TaskService : ITaskService
         }
 
         var project = await _context.Projects
-            .Where(p => p.Id == pid)
+            .Where(p => p.Id == pid && !p.Archived)
             .Include(p => p.Users)
             .FirstOrDefaultAsync();
 
@@ -304,7 +304,7 @@ public class TaskService : ITaskService
         if (user.RoleId == 2)
         {
             var section = await _context.Sections
-                .Where(s => s.HeadId == user.Id)
+                .Where(s => s.HeadId == user.Id && !s.Archived)
                 .Include(s => s.Groups)
                 .FirstOrDefaultAsync();
 
@@ -320,6 +320,7 @@ public class TaskService : ITaskService
                 t =>
                     groups.Contains(t.Group)
                     && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
+                    && !t.Archived
             );
         else
             query = _context.Tasks.Where(
@@ -327,6 +328,7 @@ public class TaskService : ITaskService
                     t.GroupId == user.GroupId
                     && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
                     && (t.UserId == user.Id || t.StatusId == 1)
+                    && !t.Archived
             );
         var _tasks = await query
             .Include(t => t.LearningObjective)
@@ -435,7 +437,7 @@ public class TaskService : ITaskService
 
         var task = await _context.Tasks
             .Include(t => t.LearningObjective)
-            .Where(t => t.Id == taskId)
+            .Where(t => t.Id == taskId && !t.Archived)
             .FirstOrDefaultAsync();
 
         if (task is null)
@@ -502,7 +504,7 @@ public class TaskService : ITaskService
         };
 
         var rollbackStep = await _context.Steps
-            .Where(s => s.Id == stepId)
+            .Where(s => s.Id == stepId && !s.Archived)
             .Include(s => s.Node)
             .Include(s => s.TaskBank)
             .ThenInclude(tb => tb.Group)
@@ -553,7 +555,6 @@ public class TaskService : ITaskService
                 TL = rollbackStep.TaskBank.TL,
                 Archived = false,
                 Attention = false,
-                Comments = new List<Comment> { },
                 CreatedAt = DateTime.Now,
                 Flagged = false,
                 From = task,
@@ -815,7 +816,6 @@ public class TaskService : ITaskService
             StatusId = status.Id,
             Flagged = false,
             Archived = false,
-            Comments = new List<Comment> { },
             IsReview = taskBank.TypeId == 3,
             Attention = false,
             CreatedAt = DateTime.Now,
@@ -877,7 +877,6 @@ public class TaskService : ITaskService
             StatusId = status.Id,
             Flagged = false,
             Archived = false,
-            Comments = new List<Comment> { },
             IsReview = step.TaskBank.TypeId == 3,
             Attention = false,
             CreatedAt = DateTime.Now,
@@ -898,7 +897,8 @@ public class TaskService : ITaskService
             .Include(t => t.Status)
             .Include(t => t.LearningObjective)
             .ThenInclude(t => t.Schema)
-            .Include(t => t.Comments)
+            .Include(t => t.LearningObjective)
+            .ThenInclude(t => t.Comments)
             .ThenInclude(c => c.User)
             .AsNoTracking()
             .FirstOrDefaultAsync();
@@ -923,7 +923,8 @@ public class TaskService : ITaskService
             Error = false,
             Data = new GetTaskDetailsDto
             {
-                Comments = task.Comments
+                Comments = task.LearningObjective.Comments
+                    .OrderByDescending(c => c.Timestamp)
                     .Select(
                         c =>
                             new TaskCommentDto
@@ -1173,7 +1174,7 @@ public class TaskService : ITaskService
         else
         {
             var currentNode = await _context.Nodes
-                .Where(n => n.Id == task.Step.NodeId)
+                .Where(n => n.Id == task.Step.NodeId && !n.Archived)
                 .Include(n => n.Next)
                 .ThenInclude(n => n.Steps)
                 .Include(n => n.Next)
@@ -1192,7 +1193,7 @@ public class TaskService : ITaskService
                     foreach (var nodeRequired in nextNode.Requires)
                     {
                         var lastStep = nodeRequired.Steps
-                            .Where(s => s.Order == nodeRequired.Steps.Count)
+                            .Where(s => s.Order == nodeRequired.Steps.Count && !s.Archived)
                             .FirstOrDefault();
                         if (lastStep is not null)
                         {
@@ -1202,6 +1203,7 @@ public class TaskService : ITaskService
                                     t =>
                                         t.StepId == lastStep.Id
                                         && t.LearningObjectiveId == task.LearningObjectiveId
+                                        && !t.Archived
                                 )
                                 .ToListAsync();
 
@@ -1219,7 +1221,7 @@ public class TaskService : ITaskService
                     if (requiredIsComplete)
                     {
                         var firstStep = await _context.Steps
-                            .Where(s => s.NodeId == nextNode.Id && s.Order == 1)
+                            .Where(s => s.NodeId == nextNode.Id && s.Order == 1 && !s.Archived)
                             .Include(s => s.TaskBank)
                             .ThenInclude(tb => tb.Group)
                             .FirstOrDefaultAsync();
@@ -1233,6 +1235,7 @@ public class TaskService : ITaskService
                                 t =>
                                     t.StepId == firstStep.Id
                                     && t.LearningObjectiveId == task.LearningObjectiveId
+                                    && !t.Archived
                             )
                             .ToListAsync();
 

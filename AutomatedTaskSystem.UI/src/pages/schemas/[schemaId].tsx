@@ -69,34 +69,23 @@ const Schema = () => {
 	useEffect(() => {
 		if (schema && schema.id > 0) {
 			API.SCHEMAS.NODES.GET_ALL(schema.id).then((res) => {
-				if (res) dispatch(load(res));
+				if (res) dispatch(load([...res].sort((a, b) => {
+					return a.order - b.order;
+				})));
 			});
 		}
 	}, [schema, dispatch]);
 
-	const updateSchema = ({
-		name,
-		description,
-	}: {
-		name: string;
-		description: string;
-	}) => {
-		setSchema((_) => {
-			return { id: _!.id, name, description };
-		});
-	};
-
 	const updateNodes = () => {
 		if (schema && schema.id > 0) {
 			API.SCHEMAS.NODES.GET_ALL(schema.id).then((res) => {
-				if (res) dispatch(load(res));
+				if (res) dispatch(load([...res].sort((a, b) => a.order - b.order)));
 			});
 		}
 	};
 
-	if (!schema) {
+	if (!schema)
 		return <></>;
-	}
 
 	return (
 		<div className="mainContainer">

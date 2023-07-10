@@ -12,6 +12,8 @@ using AutomatedTaskSystem.Services.TokenService;
 using AutomatedTaskSystem.Services.UnitService;
 using AutomatedTaskSystem.Services.UserService;
 using AutomatedTaskSystem.Services.YearService;
+using AutomatedTaskSystem.Services.ReportService;
+using AutomatedTaskSystem.Services.DashboardService;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -20,7 +22,9 @@ public static class DependancyInjections
     public static void Inject(WebApplicationBuilder builder)
     {
         builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<IDashboardService, DashboardService>();
         builder.Services.AddScoped<IEncryptionService, EncryptionService>();
+        builder.Services.AddScoped<IReportService, ReportService>();
         builder.Services.AddScoped<ITokenService, TokenService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<IProjectService, ProjectService>();

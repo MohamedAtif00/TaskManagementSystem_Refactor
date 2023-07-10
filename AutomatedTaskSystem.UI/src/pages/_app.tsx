@@ -9,21 +9,21 @@ import Auth from "../components/auth";
 import { Inter } from "next/font/google";
 
 const inter = Inter({
-	weight: ["400", "500", "700"],
-	subsets: ["latin"],
+    weight: ["400", "500", "700"],
+    subsets: ["latin"],
 });
 
 const MyApp = ({ Component, pageProps }: AppProps) => {
-	return (
-		<Provider store={store}>
-			<Auth>
-				<div id="app" className={inter.className}>
-					<Sidebar />
-					<Component {...pageProps} />
-				</div>
-			</Auth>
-		</Provider>
-	);
+    return (
+        <Provider store={store}>
+            <Auth>
+                <div id="app" className={inter.className}>
+                    <Sidebar />
+                    <Component {...pageProps} />
+                </div>
+            </Auth>
+        </Provider>
+    );
 };
 
 export default MyApp;

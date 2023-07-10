@@ -167,14 +167,14 @@ const SCHEMAS = {
 			});
 			const data:
 				| {
-						error: false;
-						message: string;
-				  }
+					error: false;
+					message: string;
+				}
 				| {
-						error: true;
-						message: string;
-						data: UnarchivableSchemaResponse[];
-				  } = await res.json();
+					error: true;
+					message: string;
+					data: UnarchivableSchemaResponse[];
+				} = await res.json();
 			return data;
 		} catch (error) {
 			console.error(error);
@@ -228,6 +228,30 @@ const SCHEMAS = {
 		}
 	},
 	NODES: {
+		DOWN: async (id: number | string | string[]) => {
+			try {
+				const res = await fetch(`${url}/nodes/${id}/down`, {
+					method: "PATCH",
+				});
+				const data: INode[] = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		},
+		UP: async (id: number | string | string[]) => {
+			try {
+				const res = await fetch(`${url}/nodes/${id}/up`, {
+					method: "PATCH",
+				});
+				const data: INode[] = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		},
 		EDIT: async ({
 			id,
 			name,
@@ -310,6 +334,30 @@ const SCHEMAS = {
 			}
 		},
 		STEPS: {
+			UP: async (stepId: number | string | string[]) => {
+				try {
+					const res = await fetch(`${url}/steps/${stepId}/up`, {
+						method: "PATCH",
+					});
+					const data: { error: boolean; message: string } = await res.json();
+					return data;
+				} catch (error) {
+					console.error(error);
+					return false;
+				}
+			},
+			DOWN: async (stepId: number | string | string[]) => {
+				try {
+					const res = await fetch(`${url}/steps/${stepId}/down`, {
+						method: "PATCH",
+					});
+					const data: { error: boolean; message: string } = await res.json();
+					return data;
+				} catch (error) {
+					console.error(error);
+					return false;
+				}
+			},
 			GET_MULTIPLE: async (nodes: number[]) => {
 				try {
 					const res = await fetch(

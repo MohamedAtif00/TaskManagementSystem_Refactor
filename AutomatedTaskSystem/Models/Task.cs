@@ -19,7 +19,6 @@ public class Task
     public User? User { get; set; }
     public int? UserId { get; set; }
     public LearningObjective LearningObjective { get; set; } = new LearningObjective { };
-    public List<Comment> Comments { get; set; } = new List<Comment> { };
     public int LearningObjectiveId { get; set; }
     public bool IsReview { get; set; } = false;
     public bool Flagged { get; set; } = false;

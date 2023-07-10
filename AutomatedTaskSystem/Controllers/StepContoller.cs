@@ -126,7 +126,7 @@ public class StepController : ControllerBase
         step.Archived = true;
 
         var nextSteps = await _context.Steps
-            .Where(s => s.NodeId == step.NodeId && s.Order > step.Order)
+            .Where(s => s.NodeId == step.NodeId && s.Order > step.Order && !s.Archived)
             .ToListAsync();
 
         nextSteps.ForEach(s =>
@@ -217,5 +217,66 @@ public class StepController : ControllerBase
         await _context.SaveChangesAsync();
 
         return await GetStep(step.Id);
+    }
+
+    [HttpPatch("{stepId}/up")]
+    public async Task<ActionResult<BaseResponseService>> StepUp(int stepId)
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId && !s.Archived)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return BadRequest(
+                new BaseResponseService { Error = true, Message = "Step is not found" }
+            );
+
+        var steps = await _context.Steps
+            .Where(s => s.NodeId == step.NodeId && !s.Archived)
+            .ToListAsync();
+
+        if (step.Order > 1)
+        {
+            var prevStep = steps.Where(n => n.Order + 1 == step.Order).FirstOrDefault();
+
+            if (prevStep is not null)
+                prevStep.Order++;
+            step.Order--;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new BaseResponseService { Error = false, Message = "Done" };
+
+        throw new NotImplementedException("");
+    }
+
+    [HttpPatch("{stepId}/down")]
+    public async Task<ActionResult<BaseResponseService>> StepDown(int stepId)
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId && !s.Archived)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return BadRequest(
+                new BaseResponseService { Error = true, Message = "Step is not found" }
+            );
+
+        var steps = await _context.Steps
+            .Where(s => s.NodeId == step.NodeId && !step.Archived)
+            .ToListAsync();
+
+        if (steps.Any(n => n.Order > step.Order))
+        {
+            var prevNode = steps.Where(n => n.Order - 1 == step.Order).FirstOrDefault();
+
+            if (prevNode is not null)
+                prevNode.Order--;
+            step.Order++;
+        }
+        await _context.SaveChangesAsync();
+
+        return new BaseResponseService { Error = false, Message = "Done" };
     }
 }

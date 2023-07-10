@@ -1,5 +1,6 @@
-using AutomatedTaskSystem.Data;
-using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.Report;
+using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Services.ReportService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers
@@ -8,80 +9,21 @@ namespace AutomatedTaskSystem.Controllers
     [ApiController]
     public class ReportController : ControllerBase
     {
-        private readonly DataContext _context;
+        private readonly IReportService _reportService;
 
-        public ReportController(DataContext context)
+        public ReportController(IReportService reportService)
         {
-            _context = context;
+            _reportService = reportService;
         }
 
-        [HttpGet("{id}/report")]
-        public async Task<ActionResult<Responses.ReportDTO>> GetReport(int id)
-        {
-            var project = await _context.Projects
-                .Where(p => p.Id == id && !p.Archived)
-                .Include(p => p.Units)
-                .ThenInclude(u => u.Lessons)
-                .ThenInclude(l => l.LearningObjectives)
-                .ThenInclude(lo => lo.Schema)
-                .Include(p => p.Units)
-                .ThenInclude(u => u.Lessons)
-                .ThenInclude(l => l.LearningObjectives)
-                .ThenInclude(lo => lo.Tasks)
-                .ThenInclude(t => t.Status)
-                .FirstOrDefaultAsync();
+        [HttpGet("{id}/reports")]
+        public async Task<ActionResult<ResponseService<GetProjectReportDto>>> GetReports(int id) =>
+            await _reportService.GetProjectReport(id);
 
-            if (project == null)
-                return NotFound(new Responses.BadRequestsDTO("Project not found"));
-
-            var response = new Responses.ReportDTO
-            {
-                Id = project.Id,
-                Name = project.Name,
-                Description = project.Description,
-            };
-            foreach (var u in project.Units)
-            {
-                var _unit = new Responses.Unit { Name = u.Name, Id = u.Id, };
-                foreach (var l in u.Lessons)
-                {
-                    var _lesson = new Responses.Lesson { Id = l.Id, Name = l.Name, };
-                    foreach (var lo in l.LearningObjectives)
-                    {
-                        var _lo = new Responses.LearningObjective
-                        {
-                            Name = lo.Name,
-                            Id = lo.Id,
-                            Tag = lo.Tag,
-                            Schema = new Responses.IDName
-                            {
-                                Name = lo.Schema.Name,
-                                Id = lo.Schema.Id
-                            },
-                            Template = lo.Template,
-                            Environment = lo.Environment
-                        };
-                        foreach (var task in lo.Tasks)
-                        {
-                            if (task.Archived)
-                                continue;
-                            var _task = new Responses.Task
-                            {
-                                Id = task.Id,
-                                Name = task.Name,
-                                Status = task.Status.Name,
-                                StatusId = task.StatusId
-                            };
-                            _lo.Tasks.Add(_task);
-                        }
-                        _lesson.LearningObjectives.Add(_lo);
-                    }
-                    _unit.Lessons.Add(_lesson);
-                }
-                response.Units.Add(_unit);
-            }
-
-            return response;
-        }
+        [HttpGet("reports")]
+        public async Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllReports(
+            [FromQuery(Name = "start")] DateTime? start,
+            [FromQuery(Name = "end")] DateTime? end
+        ) => await _reportService.GetAllProjectsReports(start: start, end: end);
     }
 }

@@ -2,6 +2,9 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using Microsoft.AspNetCore.Mvc;
 using AutomatedTaskSystem.Services.TaskService;
+using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Services.TokenService;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -11,11 +14,94 @@ namespace AutomatedTaskSystem.Controllers
     {
         private readonly DataContext _context;
         private readonly ITaskService _taskService;
+        private readonly ITokenService _tokenService;
 
-        public LearningObjectiveController(DataContext context, ITaskService taskService)
+        public LearningObjectiveController(
+            DataContext context,
+            ITaskService taskService,
+            ITokenService tokenService
+        )
         {
             _taskService = taskService;
+            _tokenService = tokenService;
             _context = context;
+        }
+
+        // POST:
+        // Add Comment to lo
+        [HttpPost("{id}/comment")]
+        public async Task<ActionResult<ResponseService<Responses.CommentDTO>>> AddComment(
+            int id,
+            Requests.CommentDTO req
+        )
+        {
+            var lo = await _context.LearningObjectives
+                .Where(lo => lo.Id == id && !lo.Archived)
+                .FirstOrDefaultAsync();
+
+            if (lo is null)
+                return BadRequest(
+                    new BaseResponseService { Error = true, Message = "Lo is not found" }
+                );
+
+            var authRes = _tokenService.GetUserIdFromToken();
+            if (authRes.Error)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = authRes.Message }
+                );
+
+            var statusUid = Int32.TryParse(authRes.Data, out int uid);
+            if (!statusUid)
+                return new UnauthorizedObjectResult(
+                    new BaseResponseService { Error = true, Message = "Invalid Request" }
+                );
+
+            var user = await _context.Users
+                .Where(u => u.Id == uid && !u.Archived)
+                .Include(u => u.Group)
+                .FirstOrDefaultAsync();
+            if (user is null)
+                return new UnauthorizedObjectResult(
+                    new BaseResponseService { Error = false, Message = "Invalid auth" }
+                );
+
+            if (req.Comment == "")
+                return BadRequest(
+                    new BaseResponseService { Error = false, Message = "Comment cannot be empty" }
+                );
+
+            var newComment = new Comment
+            {
+                Archived = false,
+                LearningObjective = lo,
+                LearningObjectiveId = lo.Id,
+                Content = req.Comment,
+                Timestamp = DateTime.Now,
+                User = user,
+                UserId = user.Id
+            };
+
+            lo.Comments.Add(newComment);
+            _context.Comments.Add(newComment);
+
+            await _context.SaveChangesAsync();
+
+            return new ResponseService<Responses.CommentDTO>
+            {
+                Error = false,
+                Message = "New Comment Added",
+                Data = new Responses.CommentDTO
+                {
+                    Id = newComment.Id,
+                    User = new Responses.IDName
+                    {
+                        Id = newComment.UserId,
+                        Name = newComment.User.Name
+                    },
+                    Timestamp = newComment.Timestamp,
+                    Content = newComment.Content
+                }
+            };
         }
 
         // DELETE:
@@ -26,17 +112,17 @@ namespace AutomatedTaskSystem.Controllers
             var lo = await _context.LearningObjectives
                 .Where(lo => lo.Id == id)
                 .Include(lo => lo.Tasks)
-                .ThenInclude(t => t.Comments)
+                .Include(lo => lo.Comments)
                 .FirstOrDefaultAsync();
 
             if (lo == null)
                 return NotFound(new Responses.BadRequestsDTO("Learning Objective not Found"));
 
+            foreach (var c in lo.Comments)
+                c.Archived = true;
+
             foreach (var t in lo.Tasks)
             {
-                foreach (var c in t.Comments)
-                    c.Archived = true;
-
                 t.Archived = true;
             }
 
