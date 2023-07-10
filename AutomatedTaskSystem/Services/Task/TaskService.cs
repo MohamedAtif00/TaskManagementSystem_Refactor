@@ -924,6 +924,7 @@ public class TaskService : ITaskService
             Data = new GetTaskDetailsDto
             {
                 Comments = task.LearningObjective.Comments
+                    .OrderByDescending(c => c.Timestamp)
                     .Select(
                         c =>
                             new TaskCommentDto
