@@ -19,8 +19,9 @@ const columns: GridColDef[] = [
         width: 300,
     },
     { field: "col2", headerName: "Description", width: 300 },
+    { field: "col3", headerName: "Type", width: 200 },
     {
-        field: "col3",
+        field: "col4",
         headerName: "Actions",
         width: 220,
         renderCell: (c) => (
@@ -120,6 +121,7 @@ const Schemas = () => {
                             col0: p.id,
                             col1: p.name,
                             col2: p.description,
+                            col3: p.type ? p.type.name : "None",
                         };
                     })}
                     columns={columns}

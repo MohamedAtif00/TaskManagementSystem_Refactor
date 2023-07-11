@@ -17,6 +17,7 @@ namespace AutomatedTaskSystem.DTO
             public int Id { get; set; }
             public string Name { get; set; } = "";
             public string Description { get; set; } = "";
+            public IDName? Type { get; set; } = null;
         }
 
         public class ActiveProjectDTO
@@ -54,6 +55,7 @@ namespace AutomatedTaskSystem.DTO
         {
             public string Name { get; set; } = "";
             public string Description { get; set; } = "";
+            public int TypeId { get; set; }
         }
 
         public class TaskBankDTO

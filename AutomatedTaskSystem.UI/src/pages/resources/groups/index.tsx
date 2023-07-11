@@ -9,6 +9,7 @@ import TableAction from "../../../components/TableComponents/TableActionButton";
 import AddGroup from "../../../components/pageComponent/resources/addGroup";
 import Link from "next/link";
 import EditGroup from "../../../components/pageComponent/resources/editGroup";
+import Head from "next/head";
 
 const columns: GridColDef[] = [
     { field: "col0", headerName: "ID", width: 100 },
@@ -50,19 +51,6 @@ const columns: GridColDef[] = [
                     }}
                     type="edit"
                 />
-                {/*
-				<TableAction
-					text="Archive"
-					url={{
-						pathname: "/resources/groups",
-						query: {
-							form: "remove-group",
-							groupId: c.id,
-						},
-					}}
-					type="archive"
-				/>
-				 */}
             </div>
         ),
         filterable: false,
@@ -92,6 +80,9 @@ const Groups = () => {
 
     return (
         <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
+            <Head>
+                <title>ATS - Groups</title>
+            </Head>
             <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
                 <div className="flex gap-2 items-center">
                     <ResourcesIcon color="black" />
