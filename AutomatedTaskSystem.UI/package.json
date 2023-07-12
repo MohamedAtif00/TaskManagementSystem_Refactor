@@ -24,6 +24,8 @@
 		"react-chartjs-2": "^5.2.0",
 		"react-dom": "^18.2.0",
 		"react-redux": "^8.0.2",
+		"react-widgets": "^5.8.4",
+		"react-widgets-tailwind": "^1.1.5",
 		"sass": "^1.54.0"
 	},
 	"devDependencies": {

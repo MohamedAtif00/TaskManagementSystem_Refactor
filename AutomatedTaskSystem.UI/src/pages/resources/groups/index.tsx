@@ -85,7 +85,9 @@ const Groups = () => {
             </Head>
             <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
                 <div className="flex gap-2 items-center">
-                    <ResourcesIcon color="black" />
+                    <div className="w-6">
+                        <ResourcesIcon color="black" />
+                    </div>
                     <h1 className="font-bold text-2xl ">Groups</h1>
                 </div>
                 <Link

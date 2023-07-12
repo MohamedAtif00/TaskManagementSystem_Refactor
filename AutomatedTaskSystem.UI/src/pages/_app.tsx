@@ -1,5 +1,6 @@
 import type { AppProps } from "next/app";
 import Sidebar from "../components/sidebar/sidebar";
+import "react-widgets/styles.css";
 import "../styles/reset.css";
 import "../styles/index.scss";
 import "../styles/index.css";

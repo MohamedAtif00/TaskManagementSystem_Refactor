@@ -7,6 +7,7 @@ import Dropdown from "../dropdown";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 import API from "../../../lib/API";
 import { load } from "../../../slices/schemaSlice";
+import Combobox from "react-widgets/cjs/Combobox";
 
 const AddLearningObjective = ({
     path,
@@ -32,7 +33,7 @@ const AddLearningObjective = ({
     const [tag, setTag] = useState("");
     const [template, setTemplate] = useState("");
     const [environment, setEnvironment] = useState("");
-    const [schemaId, setSchemaId] = useState(0);
+    const [schema, setSchema] = useState<ISchema>();
     const [active, setActive] = useState(false);
     const router = useRouter();
     const schemas = useAppSelector((s) => s.schemasSlice);
@@ -47,12 +48,12 @@ const AddLearningObjective = ({
     }, [dispatch]);
 
     useEffect(() => {
-        if (name === "" || schemaId == 0) {
+        if (name === "" || schema === undefined) {
             setSubmittable(false);
         } else {
             setSubmittable(true);
         }
-    }, [name, schemaId]);
+    }, [name, schema]);
 
     useEffect(() => {
         const _active = router.query.form === "learning-objective";
@@ -62,15 +63,14 @@ const AddLearningObjective = ({
             setTag("");
             setTemplate("");
             setEnvironment("");
-            setSchemaId(0);
+            setSchema(undefined);
         }
     }, [router]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (submittable) {
-            submit({ environment, name, schemaId, tag, template });
-        }
+        if (submittable && schema)
+            submit({ environment, name, schemaId: schema.id, tag, template });
     };
 
     if (active)
@@ -88,12 +88,22 @@ const AddLearningObjective = ({
                                 onChange={setName}
                                 value={name}
                             />
+                            <Combobox
+                                data={schemas}
+                                dataKey="id"
+                                textField="name"
+                                onChange={(e) => {
+                                    if (typeof e !== "string") setSchema(e);
+                                }}
+                            />
+                            {/* 
                             <Dropdown
                                 id={schemaId}
                                 label="Schema"
                                 options={schemas}
                                 handleChange={setSchemaId}
                             />
+							*/}
                             <FormField
                                 label="Tag"
                                 onChange={setTag}
