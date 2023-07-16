@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.SchemaTypesModel;
 using AutomatedTaskSystem.Models.YearModel;
 
 namespace AutomatedTaskSystem.Data
@@ -170,6 +171,7 @@ namespace AutomatedTaskSystem.Data
         public DbSet<Role> Roles => Set<Role>();
         public DbSet<Status> Statuses => Set<Status>();
         public DbSet<Schema> Schemas => Set<Schema>();
+        public DbSet<SchemaType> SchemaTypes => Set<SchemaType>();
         public DbSet<Section> Sections => Set<Section>();
         public DbSet<Step> Steps => Set<Step>();
         public DbSet<Unit> Units => Set<Unit>();
