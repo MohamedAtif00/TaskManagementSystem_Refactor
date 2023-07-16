@@ -1,5 +1,6 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.Steps;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TaskService;
@@ -116,6 +117,47 @@ public class StepController : ControllerBase
         await _context.SaveChangesAsync();
 
         return await GetStep(newStep.Id);
+    }
+
+    [HttpOptions("{id}/delete")]
+    public async Task<ActionResult<ResponseService<GetDeleteCheckDto>>> DeleteCheck(int id)
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == id && !s.Archived)
+            .Include(s => s.Tasks)
+            .Include(s => s.TaskBank)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return NotFound(
+                new BaseResponseService { Error = false, Message = "Step is not found" }
+            );
+
+        foreach (var task in step.Tasks)
+            if (task.StatusId != 4 && task.StatusId != 5)
+                return new ResponseService<GetDeleteCheckDto>
+                {
+                    Message = "Step contains active tasks",
+                    Error = false,
+                    Data = new GetDeleteCheckDto
+                    {
+                        Id = step.Id,
+                        Name = step.TaskBank.Name,
+                        isSafeToDelete = false
+                    }
+                };
+        return new ResponseService<GetDeleteCheckDto>
+        {
+            Message = "Step contains no active tasks",
+            Error = false,
+            Data = new GetDeleteCheckDto
+            {
+                Id = step.Id,
+                NodeId = step.NodeId,
+                Name = step.TaskBank.Name,
+                isSafeToDelete = true
+            }
+        };
     }
 
     [HttpDelete("{stepId}")]

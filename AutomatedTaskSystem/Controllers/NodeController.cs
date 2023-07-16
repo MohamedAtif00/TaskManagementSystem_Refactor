@@ -387,6 +387,32 @@ public class NodeController : ControllerBase
         return res;
     }
 
+    [HttpOptions("{id}/delete")]
+    public async Task<ActionResult<BaseResponseService>> CheckForDelete(int id)
+    {
+        var node = await _context.Nodes
+            .Where(n => n.Id == id && !n.Archived)
+            .Include(n => n.Steps)
+            .ThenInclude(s => s.Tasks)
+            .ThenInclude(t => t.LearningObjective)
+            .FirstOrDefaultAsync();
+
+        if (node is null)
+            return NotFound(
+                new BaseResponseService { Error = true, Message = "Node is not found" }
+            );
+
+        foreach (var step in node.Steps)
+            foreach (var task in step.Tasks)
+                if (task.StatusId != 4 && task.StatusId != 5 && !task.Archived)
+                    return new BaseResponseService
+                    {
+                        Error = false,
+                        Message = "Node contains active tasks"
+                    };
+        return new BaseResponseService { Error = false, Message = "Node contains no active tasks" };
+    }
+
     // DELETE:
     // Delete node
     [HttpDelete("{id}")]
@@ -425,7 +451,7 @@ public class NodeController : ControllerBase
         foreach (var step in node.Steps)
             foreach (var task in step.Tasks)
             {
-                if (task.StatusId != 4 && task.StatusId != 5)
+                if (task.StatusId != 4 && task.StatusId != 5 && !task.Archived)
                     await _taskService.CreateNextNode(node.Id, task.LearningObjectiveId);
                 task.Archived = true;
             }

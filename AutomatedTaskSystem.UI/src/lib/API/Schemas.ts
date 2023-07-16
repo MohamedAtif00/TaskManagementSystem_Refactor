@@ -448,6 +448,23 @@ const SCHEMAS = {
                     return false;
                 }
             },
+            DELETE_CHECK: async (stepId: string | string[]) => {
+                try {
+                    const res = await fetch(`${url}/steps/${stepId}/delete`, {
+                        method: "OPTIONS",
+                    });
+                    const data: ResponseService<{
+                        id: number;
+                        nodeId: number;
+                        name: string;
+                        isSafeToDelete: boolean;
+                    }> = await res.json();
+                    return data;
+                } catch (error) {
+                    console.error(error);
+                    return false;
+                }
+            },
             EDIT: async ({
                 stepId,
                 taskBankItem,
