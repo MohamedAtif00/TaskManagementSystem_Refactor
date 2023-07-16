@@ -12,6 +12,8 @@
 	"dependencies": {
 		"@emotion/react": "^11.11.1",
 		"@emotion/styled": "^11.11.0",
+		"@headlessui/react": "^1.7.15",
+		"@heroicons/react": "^2.0.18",
 		"@mui/material": "^5.13.6",
 		"@mui/x-data-grid": "^6.4.0",
 		"@mui/x-date-pickers": "^6.9.1",
@@ -24,8 +26,6 @@
 		"react-chartjs-2": "^5.2.0",
 		"react-dom": "^18.2.0",
 		"react-redux": "^8.0.2",
-		"react-widgets": "^5.8.4",
-		"react-widgets-tailwind": "^1.1.5",
 		"sass": "^1.54.0"
 	},
 	"devDependencies": {

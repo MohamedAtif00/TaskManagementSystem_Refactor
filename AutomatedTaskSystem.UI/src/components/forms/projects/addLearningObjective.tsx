@@ -3,11 +3,10 @@ import Backdrop from "../backdrop";
 import React, { useEffect, useState } from "react";
 import FormField from "../field";
 import { useRouter } from "next/router";
-import Dropdown from "../dropdown";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
-import API from "../../../lib/API";
+import API, { BasicInfo } from "../../../lib/API";
 import { load } from "../../../slices/schemaSlice";
-import Combobox from "react-widgets/cjs/Combobox";
+import CustomizedCombobox from "../../formComponents/Combobox";
 
 const AddLearningObjective = ({
     path,
@@ -33,7 +32,7 @@ const AddLearningObjective = ({
     const [tag, setTag] = useState("");
     const [template, setTemplate] = useState("");
     const [environment, setEnvironment] = useState("");
-    const [schema, setSchema] = useState<ISchema>();
+    const [schema, setSchema] = useState<BasicInfo>();
     const [active, setActive] = useState(false);
     const router = useRouter();
     const schemas = useAppSelector((s) => s.schemasSlice);
@@ -88,22 +87,14 @@ const AddLearningObjective = ({
                                 onChange={setName}
                                 value={name}
                             />
-                            <Combobox
-                                data={schemas}
-                                dataKey="id"
-                                textField="name"
-                                onChange={(e) => {
-                                    if (typeof e !== "string") setSchema(e);
-                                }}
-                            />
-                            {/* 
-                            <Dropdown
-                                id={schemaId}
-                                label="Schema"
-                                options={schemas}
-                                handleChange={setSchemaId}
-                            />
-							*/}
+                            <div>
+                                <div className="text-sm">Schema:</div>
+                                <CustomizedCombobox
+                                    value={schema}
+                                    onChange={(e) => setSchema(e)}
+                                    options={schemas}
+                                />
+                            </div>
                             <FormField
                                 label="Tag"
                                 onChange={setTag}
