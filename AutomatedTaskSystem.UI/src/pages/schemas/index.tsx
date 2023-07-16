@@ -99,18 +99,29 @@ const Schemas = () => {
                     </div>
                     <h1 className="font-bold text-2xl ">Schema</h1>
                 </div>
-                <Link
-                    href={{
-                        pathname: "/schemas",
-                        query: {
-                            form: "add-schema",
-                        },
-                    }}
-                >
-                    <button className="px-4 py-1 rounded bg-blue-600 text-white">
-                        Create Schema
-                    </button>
-                </Link>
+                <div className="flex gap-2">
+                    <Link
+                        href={{
+                            pathname: "/schemas/task-bank",
+                        }}
+                    >
+                        <button className="px-4 py-1 rounded bg-blue-600 text-white">
+                            Task Bank
+                        </button>
+                    </Link>
+                    <Link
+                        href={{
+                            pathname: "/schemas",
+                            query: {
+                                form: "add-schema",
+                            },
+                        }}
+                    >
+                        <button className="px-4 py-1 rounded bg-blue-600 text-white">
+                            Create Schema
+                        </button>
+                    </Link>
+                </div>
             </div>
             <div className="pb-4 mt-4">
                 <DataGrid
