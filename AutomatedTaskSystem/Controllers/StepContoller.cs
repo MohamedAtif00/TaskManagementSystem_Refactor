@@ -144,7 +144,6 @@ public class StepController : ControllerBase
         foreach (var task in tasks)
         {
             await _taskService.CreateNext(task.Id);
-
             task.Archived = true;
         }
 

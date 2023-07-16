@@ -30,4 +30,5 @@ public interface ITaskService
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ProceedTask(int taskId);
     Task<bool> CreateNext(Models.Task task);
     Task<bool> CreateNext(int taskId);
+    Task<bool> CreateNextNode(int nodeId, int loId);
 }
