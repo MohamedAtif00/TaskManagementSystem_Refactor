@@ -1139,7 +1139,25 @@ public class TaskService : ITaskService
         );
     }
 
-    private async Task<bool> CreateNext(Models.Task task)
+    public async Task<bool> CreateNext(int taskId)
+    {
+        var task = await _context.Tasks
+            .Where(t => t.Id == taskId)
+            .Include(t => t.Status)
+            .Include(t => t.User)
+            .Include(t => t.LearningObjective)
+            .Include(t => t.Step)
+            .FirstOrDefaultAsync();
+
+        if (task is null)
+            return false;
+
+        await CreateNext(task);
+
+        return true;
+    }
+
+    public async Task<bool> CreateNext(Models.Task task)
     {
         if (task.Step is null)
             return false;
