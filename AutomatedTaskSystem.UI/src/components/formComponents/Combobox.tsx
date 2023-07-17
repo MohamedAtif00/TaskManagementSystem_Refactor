@@ -56,7 +56,7 @@ const CustomizedCombobox: React.FC<Props> = ({ value, onChange, options }) => {
                                     className={({ active }) =>
                                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
                                             active
-                                                ? "bg-teal-600 text-white"
+                                                ? "bg-blue-600 text-white"
                                                 : "text-gray-900"
                                         }`
                                     }
@@ -78,7 +78,7 @@ const CustomizedCombobox: React.FC<Props> = ({ value, onChange, options }) => {
                                                     className={`absolute inset-y-0 left-0 flex items-center pl-3 ${
                                                         active
                                                             ? "text-white"
-                                                            : "text-teal-600"
+                                                            : "text-blue-600"
                                                     }`}
                                                 >
                                                     <CheckIcon

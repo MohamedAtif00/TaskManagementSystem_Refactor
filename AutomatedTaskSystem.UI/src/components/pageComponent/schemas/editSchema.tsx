@@ -113,7 +113,10 @@ const EditSchema = () => {
                                 />
                             </div>
                         </div>
-                        <FormConclusion submittable={true} />
+                        <FormConclusion
+                            pathname="/schemas"
+                            submittable={true}
+                        />
                     </form>
                 </motion.div>
             </motion.div>

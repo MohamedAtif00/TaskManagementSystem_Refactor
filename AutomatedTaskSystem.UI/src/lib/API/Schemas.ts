@@ -243,6 +243,22 @@ const SCHEMAS = {
         }
     },
     NODES: {
+        DELETE_CHECK: async (nodeId: string | string[]) => {
+            try {
+                const res = await fetch(`${url}/nodes/${nodeId}/delete`, {
+                    method: "OPTIONS",
+                });
+                const data: ResponseService<{
+                    id: number;
+                    name: string;
+                    isSafeToDelete: boolean;
+                }> = await res.json();
+                return data;
+            } catch (error) {
+                console.error(error);
+                return false;
+            }
+        },
         DOWN: async (id: number | string | string[]) => {
             try {
                 const res = await fetch(`${url}/nodes/${id}/down`, {
@@ -320,8 +336,10 @@ const SCHEMAS = {
                 const res = await fetch(`${url}/nodes/${id}`, {
                     method: "DELETE",
                 });
-                const data: { info: string; error: boolean }[] =
-                    await res.json();
+                const data: {
+                    error: boolean;
+                    message: string;
+                } = await res.json();
                 return data;
             } catch (error) {
                 console.error(error);
@@ -442,6 +460,23 @@ const SCHEMAS = {
                         error: boolean;
                         message: string;
                     } = await res.json();
+                    return data;
+                } catch (error) {
+                    console.error(error);
+                    return false;
+                }
+            },
+            DELETE_CHECK: async (stepId: string | string[]) => {
+                try {
+                    const res = await fetch(`${url}/steps/${stepId}/delete`, {
+                        method: "OPTIONS",
+                    });
+                    const data: ResponseService<{
+                        id: number;
+                        nodeId: number;
+                        name: string;
+                        isSafeToDelete: boolean;
+                    }> = await res.json();
                     return data;
                 } catch (error) {
                     console.error(error);

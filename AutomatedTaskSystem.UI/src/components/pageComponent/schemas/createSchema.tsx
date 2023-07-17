@@ -96,7 +96,10 @@ const CreateSchema = () => {
                                 }
                             />
                         </div>
-                        <FormConclusion submittable={true} />
+                        <FormConclusion
+                            pathname="/schemas"
+                            submittable={true}
+                        />
                     </form>
                 </motion.div>
             </motion.div>

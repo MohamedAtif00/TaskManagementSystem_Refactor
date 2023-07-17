@@ -11,5 +11,6 @@ namespace AutomatedTaskSystem.Models
         public int TaskBankId { get; set; }
         public int Duration { get; set; }
         public int? Priority { get; set; } = null;
+        public List<Models.Task> Tasks { get; set; } = new List<Task> { };
     }
 }

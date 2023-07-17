@@ -3,33 +3,40 @@ import { useEffect, useState } from "react";
 import FormConclusion from "../../formComponents/FormConclusion";
 import API from "../../../lib/API";
 import { motion } from "framer-motion";
-import { useAppDispatch } from "../../../app/hooks";
-import { remove } from "../../../slices/projectSlice";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
-const RemoveProject = () => {
-    const dispatch = useAppDispatch();
-    const { query, pathname, push: routerPush } = useRouter();
+interface Props {
+    OnSubmit: () => void;
+}
+
+const RemoveNode: React.FC<Props> = ({ OnSubmit }) => {
+    const { query, push: routerPush } = useRouter();
     const [active, setActive] = useState<boolean>(false);
-    const [project, setProject] = useState<IProject>();
+    const [step, setStep] = useState<{
+        id: number;
+        name: string;
+        isSafeToDelete: boolean;
+    }>();
 
     useEffect(() => {
-        if (query.form === "remove-project" && query.projectId) {
-            API.PROJECTS.GET_ONE(query.projectId.toString()).then((res) => {
-                if (res && !res.error) setProject(res.data);
+        if (query.form === "delete-node" && query.id) {
+            API.SCHEMAS.NODES.DELETE_CHECK(query.id).then((res) => {
+                if (res && !res.error) setStep(res.data);
             });
             return setActive(true);
         }
         setActive(false);
+        setStep(undefined);
     }, [query]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        project &&
-            API.PROJECTS.DELETE(project.id).then((res) => {
+        step &&
+            API.SCHEMAS.NODES.DELETE(step.id).then((res) => {
                 if (res && !res.error) {
-                    dispatch(remove(project));
-                    routerPush(pathname);
+                    OnSubmit;
+                    routerPush(`/schemas/${query.schemaId}`);
                 }
             });
     };
@@ -46,22 +53,31 @@ const RemoveProject = () => {
                     animate={{ opacity: 1, height: "12rem" }}
                     className="bg-white px-5 py-4 basis-80 rounded-lg flex flex-col justify-between"
                 >
-                    {project ? (
+                    {step ? (
                         <>
-                            <h2 className="text-lg">Delete Project</h2>
+                            <h2 className="text-lg">Delete Node</h2>
                             <div>
-                                About to delete{" "}
-                                <span className="font-bold text-red-700">
-                                    {project.name}
+                                About to Delete{" "}
+                                <span className="font-bold text-red-600">
+                                    {step.name}
                                 </span>
                             </div>
+                            {!step.isSafeToDelete && (
+                                <div className="flex items-center gap-2 text-red-600">
+                                    <ExclamationTriangleIcon
+                                        className="h-6 w-6"
+                                        aria-hidden="true"
+                                    />
+                                    <div>Node may have running tasks</div>
+                                </div>
+                            )}
                             <form onSubmit={handleSubmit}>
                                 <FormConclusion
-                                    pathname="/projects"
+                                    pathname={`/schemas/${query.schemaId}`}
                                     submittable={true}
                                     type="danger"
                                     text={{
-                                        save: "Archive",
+                                        save: "DELETE",
                                     }}
                                 />
                             </form>
@@ -76,4 +92,4 @@ const RemoveProject = () => {
     return <></>;
 };
 
-export default RemoveProject;
+export default RemoveNode;
