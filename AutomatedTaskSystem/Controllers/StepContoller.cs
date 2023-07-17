@@ -120,7 +120,7 @@ public class StepController : ControllerBase
     }
 
     [HttpOptions("{id}/delete")]
-    public async Task<ActionResult<ResponseService<GetDeleteCheckDto>>> DeleteCheck(int id)
+    public async Task<ActionResult<ResponseService<GetStepDeleteCheckDto>>> DeleteCheck(int id)
     {
         var step = await _context.Steps
             .Where(s => s.Id == id && !s.Archived)
@@ -134,23 +134,23 @@ public class StepController : ControllerBase
             );
 
         foreach (var task in step.Tasks)
-            if (task.StatusId != 4 && task.StatusId != 5)
-                return new ResponseService<GetDeleteCheckDto>
+            if (task.StatusId != 4 && task.StatusId != 5 && !task.Archived)
+                return new ResponseService<GetStepDeleteCheckDto>
                 {
                     Message = "Step contains active tasks",
                     Error = false,
-                    Data = new GetDeleteCheckDto
+                    Data = new GetStepDeleteCheckDto
                     {
                         Id = step.Id,
                         Name = step.TaskBank.Name,
                         isSafeToDelete = false
                     }
                 };
-        return new ResponseService<GetDeleteCheckDto>
+        return new ResponseService<GetStepDeleteCheckDto>
         {
             Message = "Step contains no active tasks",
             Error = false,
-            Data = new GetDeleteCheckDto
+            Data = new GetStepDeleteCheckDto
             {
                 Id = step.Id,
                 NodeId = step.NodeId,

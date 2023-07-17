@@ -1,9 +1,8 @@
-namespace AutomatedTaskSystem.Dtos.Steps;
+namespace AutomatedTaskSystem.Dtos.Nodes;
 
-public class GetStepDeleteCheckDto
+public class GetNodeDeleteCheckDto
 {
     public int Id { get; set; }
-    public int NodeId { get; set; }
     public string Name { get; set; } = string.Empty;
     public bool isSafeToDelete { get; set; }
 }

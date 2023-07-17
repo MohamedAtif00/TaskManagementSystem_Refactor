@@ -14,6 +14,7 @@ import { load } from "../../slices/nodesSlice";
 import styles from "../../styles/resources.module.scss";
 import EditSchema from "../../components/pageComponent/schemas/editSchema";
 import RemoveStep from "../../components/pageComponent/schemas/remoteStep";
+import RemoveNode from "../../components/pageComponent/schemas/removeNode";
 
 interface ISchemaLocal {
     description: string;
@@ -175,6 +176,7 @@ const Schema = () => {
                 <></>
             )}
             <RemoveStep />
+            <RemoveNode OnSubmit={updateNodes} />
         </div>
     );
 };

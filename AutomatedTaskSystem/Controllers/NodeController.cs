@@ -1,5 +1,6 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.Nodes;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TaskService;
@@ -388,7 +389,7 @@ public class NodeController : ControllerBase
     }
 
     [HttpOptions("{id}/delete")]
-    public async Task<ActionResult<BaseResponseService>> CheckForDelete(int id)
+    public async Task<ActionResult<ResponseService<GetNodeDeleteCheckDto>>> CheckForDelete(int id)
     {
         var node = await _context.Nodes
             .Where(n => n.Id == id && !n.Archived)
@@ -405,18 +406,34 @@ public class NodeController : ControllerBase
         foreach (var step in node.Steps)
             foreach (var task in step.Tasks)
                 if (task.StatusId != 4 && task.StatusId != 5 && !task.Archived)
-                    return new BaseResponseService
+                    return new ResponseService<GetNodeDeleteCheckDto>
                     {
                         Error = false,
-                        Message = "Node contains active tasks"
+                        Message = "Node contains active tasks",
+                        Data = new GetNodeDeleteCheckDto
+                        {
+                            isSafeToDelete = false,
+                            Name = node.Name,
+                            Id = node.Id
+                        }
                     };
-        return new BaseResponseService { Error = false, Message = "Node contains no active tasks" };
+        return new ResponseService<GetNodeDeleteCheckDto>
+        {
+            Error = false,
+            Message = "Node contains no active tasks",
+            Data = new GetNodeDeleteCheckDto
+            {
+                isSafeToDelete = true,
+                Name = node.Name,
+                Id = node.Id
+            }
+        };
     }
 
     // DELETE:
     // Delete node
     [HttpDelete("{id}")]
-    public async Task<ActionResult<Responses.SuccessDTO>> DeleteNode(int id)
+    public async Task<ActionResult<BaseResponseService>> DeleteNode(int id)
     {
         var node = await _context.Nodes
             .Where(n => n.Id == id && !n.Archived)
@@ -472,7 +489,7 @@ public class NodeController : ControllerBase
         node.Archived = true;
         await _context.SaveChangesAsync();
 
-        return Ok(new Responses.SuccessDTO("Node Delete"));
+        return new BaseResponseService { Error = false, Message = "Node has been archived" };
     }
 
     [HttpPatch("{nodeId}/up")]

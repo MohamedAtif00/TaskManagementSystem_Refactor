@@ -103,7 +103,7 @@ export const nodesSlice = createSlice({
         load: (state, action: PayloadAction<INode[]>) => {
             return [...action.payload];
         },
-        clear: (state) => {
+        clear: () => {
             return initialState;
         },
     },
