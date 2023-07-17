@@ -1001,13 +1001,9 @@ public class TaskService : ITaskService
 
         if (task.StatusId == 1)
         {
-            var status = await _context.Statuses.Where(s => s.Id == 2).FirstOrDefaultAsync();
-            if (status is null)
-                throw new Exception("To Do status is not found");
-
             task.User = user;
             task.UserId = user.Id;
-            task.Status = status;
+            task.StatusId = 2;
 
             var newAssignemt = new Assignment
             {
@@ -1038,8 +1034,6 @@ public class TaskService : ITaskService
             if (task.User is null)
                 task.User = user;
 
-            var DoingStatus = await _context.Statuses.FindAsync(Statuses.Doing);
-            task.Status = DoingStatus!;
             task.StatusId = Statuses.Doing;
             if (task.LearningObjective.StartedAt is null)
                 task.LearningObjective.StartedAt = DateTime.Now;
@@ -1083,8 +1077,6 @@ public class TaskService : ITaskService
                 return new BadRequestObjectResult(
                     new BaseResponseService { Error = true, Message = "Unauthorized" }
                 );
-            var DoneStatus = await _context.Statuses.FindAsync(Statuses.Done);
-            task.Status = DoneStatus!;
             task.StatusId = Statuses.Done;
 
             var doneAct = await _context.ActivityTypes.FindAsync(2);
@@ -1104,26 +1096,20 @@ public class TaskService : ITaskService
 
             _context.Activities.Add(newAct);
 
-            var completeEA = await _context.EndActivityTypes.FindAsync(3);
+            var currentEA = await _context.EndActivities
+                .Where(
+                    _ =>
+                        _.UserId == user.Id
+                        && _.TaskId == task.Id
+                        && _.EndDate == null
+                        && _.EndActivityTypeId == null
+                )
+                .FirstOrDefaultAsync();
 
-            if (completeEA != null)
+            if (currentEA is not null)
             {
-                var currentEA = await _context.EndActivities
-                    .Where(
-                        _ =>
-                            _.UserId == user.Id
-                            && _.TaskId == task.Id
-                            && _.EndDate == null
-                            && _.EndActivityTypeId == null
-                    )
-                    .FirstOrDefaultAsync();
-
-                if (currentEA != null)
-                {
-                    currentEA.EndActivityTypeId = completeEA.Id;
-                    currentEA.EndActivityType = completeEA;
-                    currentEA.EndDate = DateTime.Now;
-                }
+                currentEA.EndActivityTypeId = 3;
+                currentEA.EndDate = DateTime.Now;
             }
 
             await CreateNext(task);

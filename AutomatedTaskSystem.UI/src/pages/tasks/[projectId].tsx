@@ -125,7 +125,13 @@ const Tasks = () => {
     useEffect(() => {
         if (loFilter > 0) {
             setFilteredTasks(
-                tasks.filter((_) => _.learningObjective.id === loFilter)
+                tasks
+                    .filter((_) => _.learningObjective.id === loFilter)
+                    .sort((A, B) => {
+                        const a = A.learningObjective.name.toLowerCase(),
+                            b = B.learningObjective.name.toLowerCase();
+                        return a > b ? 1 : a < b ? -1 : 0;
+                    })
             );
             return;
         }
@@ -143,19 +149,7 @@ const Tasks = () => {
     useEffect(() => {
         project &&
             API.TASKS.GET_ALL(project.id.toString()).then(
-                (res) =>
-                    res &&
-                    !res.error &&
-                    setTasks(
-                        [...res.data].sort((a, b) =>
-                            a.learningObjective.name > b.learningObjective.name
-                                ? 1
-                                : a.learningObjective.name <
-                                  b.learningObjective.name
-                                ? -1
-                                : 0
-                        )
-                    )
+                (res) => res && !res.error && setTasks(res.data)
             );
     }, [project]);
 
@@ -163,20 +157,7 @@ const Tasks = () => {
         if (project) {
             const refreshInterval = setInterval(() => {
                 API.TASKS.GET_ALL(project.id.toString()).then(
-                    (res) =>
-                        res &&
-                        !res.error &&
-                        setTasks(
-                            [...res.data].sort((a, b) =>
-                                a.learningObjective.name >
-                                b.learningObjective.name
-                                    ? 1
-                                    : a.learningObjective.name <
-                                      b.learningObjective.name
-                                    ? -1
-                                    : 0
-                            )
-                        )
+                    (res) => res && !res.error && setTasks(res.data)
                 );
             }, 60000);
             return () => clearInterval(refreshInterval);
@@ -187,19 +168,7 @@ const Tasks = () => {
         const projectId = router.query.projectId;
         if (projectId) {
             API.TASKS.GET_ALL(projectId).then(
-                (res) =>
-                    res &&
-                    !res.error &&
-                    setTasks(
-                        [...res.data].sort((a, b) =>
-                            a.learningObjective.name > b.learningObjective.name
-                                ? 1
-                                : a.learningObjective.name <
-                                  b.learningObjective.name
-                                ? -1
-                                : 0
-                        )
-                    )
+                (res) => res && !res.error && setTasks(res.data)
             );
         }
     };
@@ -217,33 +186,11 @@ const Tasks = () => {
 
     const view = {
         backlog: filteredTasks.filter((t) => t.status === "Backlog"),
-        todo: filteredTasks
-            .filter((t) => t.status === "To Do")
-            .sort((a, b) =>
-                a.learningObjective.name > b.learningObjective.name
-                    ? 1
-                    : a.learningObjective.name < b.learningObjective.name
-                    ? -1
-                    : 0
-            ),
-        doing: filteredTasks
-            .filter((t) => t.status === "Doing")
-            .sort((a, b) =>
-                a.learningObjective.name > b.learningObjective.name
-                    ? 1
-                    : a.learningObjective.name < b.learningObjective.name
-                    ? -1
-                    : 0
-            ),
-        done: filteredTasks
-            .filter((t) => t.status === "Done" || t.status === "Rollback")
-            .sort((a, b) =>
-                a.learningObjective.name > b.learningObjective.name
-                    ? 1
-                    : a.learningObjective.name < b.learningObjective.name
-                    ? -1
-                    : 0
-            ),
+        todo: filteredTasks.filter((t) => t.status === "To Do"),
+        doing: filteredTasks.filter((t) => t.status === "Doing"),
+        done: filteredTasks.filter(
+            (t) => t.status === "Done" || t.status === "Rollback"
+        ),
     };
 
     return (
