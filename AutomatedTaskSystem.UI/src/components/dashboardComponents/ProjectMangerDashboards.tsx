@@ -40,7 +40,7 @@ const ProjectManagerDashboard = () => {
 
     if (dashboard === undefined) {
         return (
-            <div className="flex items-center justify-center mx-auto">
+            <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
                     <title>ATS - Loading</title>
                 </Head>

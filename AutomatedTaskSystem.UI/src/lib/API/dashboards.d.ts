@@ -20,3 +20,19 @@ interface ProjectManagerDashboard {
     numberOfSchemas: number;
     numberOfActiveTasks: number;
 }
+
+interface TeamLeaderDashboard {
+    members: number;
+    activeTasks: number;
+    projects: number;
+    projectsDetails: {
+        id: number;
+        name: string;
+        tasksCount: number;
+    }[];
+    tasksPerUser: {
+        id: number;
+        name: string;
+        tasksCount: number;
+    }[];
+}
