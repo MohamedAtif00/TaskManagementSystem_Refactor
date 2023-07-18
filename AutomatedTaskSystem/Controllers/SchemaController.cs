@@ -5,238 +5,240 @@ using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.SchemaService;
 using Microsoft.AspNetCore.Mvc;
 
-namespace AutomatedTaskSystem.Controllers
+namespace AutomatedTaskSystem.Controllers;
+
+[Route("schemas")]
+[ApiController]
+public class SchemaController : ControllerBase
 {
-    [Route("schemas")]
-    [ApiController]
-    public class SchemaController : ControllerBase
+    private readonly DataContext _context;
+    private readonly ISchemaService _schemaService;
+
+    public SchemaController(DataContext context, ISchemaService schemaService)
     {
-        private readonly DataContext _context;
-        private readonly ISchemaService _schemaService;
+        _context = context;
+        _schemaService = schemaService;
+    }
 
-        public SchemaController(DataContext context, ISchemaService schemaService)
+    // DELETE:
+    // Create Task Bank item
+    [HttpDelete("task-bank/{id}")]
+    public async Task<ActionResult<Responses.TaskBankDTO>> DeleteTaskBankItem(int id)
+    {
+        var item = await _context.TaskBank.FindAsync(id);
+        if (item == null)
+            return NotFound(new Responses.BadRequestsDTO("Task Bank Item not found"));
+
+        item.Active = false;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new Responses.SuccessDTO("Done"));
+    }
+
+    // PATCH:
+    // Edit Task Bank item
+    [HttpPatch("task-bank/{id}")]
+    public async Task<ActionResult<Responses.TaskBankDTO>> EditTBI(int id, Requests.TaskBankDTO req)
+    {
+        var item = await _context.TaskBank.FindAsync(id);
+        if (item == null)
+            return NotFound(new Responses.BadRequestsDTO("Task Bank Item not found"));
+
+        var type = await _context.Types.FindAsync(req.Type);
+        if (type == null)
+            return NotFound(new Responses.BadRequestsDTO("Type not found"));
+        var group = await _context.Groups.FindAsync(req.Group);
+        if (group == null)
+            return NotFound(new Responses.BadRequestsDTO("Group not found"));
+
+        item.Type = type;
+        item.TypeId = type.Id;
+        item.Group = group;
+        item.GroupId = group.Id;
+        item.TL = req.TL;
+        item.Name = req.Name;
+        item.Active = true;
+        item.Duration = req.Duration;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(
+            new Responses.TaskBankDTO
+            {
+                Id = item.Id,
+                Group = new Responses.IDName { Id = group.Id, Name = group.Name },
+                Type = new Responses.IDName { Id = type.Id, Name = type.Name },
+                Name = item.Name,
+                TL = item.TL,
+                Duration = item.Duration
+            }
+        );
+    }
+
+    // POST:
+    // Create Task Bank item
+    [HttpPost("task-bank")]
+    public async Task<ActionResult<Responses.TaskBankDTO>> CreateTBI(Requests.TaskBankDTO req)
+    {
+        var type = await _context.Types.FindAsync(req.Type);
+        if (type == null)
+            return NotFound(new Responses.BadRequestsDTO("Type not found"));
+        var group = await _context.Groups.FindAsync(req.Group);
+        if (group == null)
+            return NotFound(new Responses.BadRequestsDTO("Group not found"));
+
+        var newTaskBank = new TaskBank
         {
-            _context = context;
-            _schemaService = schemaService;
-        }
+            Type = type,
+            TypeId = type.Id,
+            Group = group,
+            GroupId = group.Id,
+            TL = req.TL,
+            Name = req.Name,
+            Active = true,
+            Duration = req.Duration
+        };
 
-        // DELETE:
-        // Create Task Bank item
-        [HttpDelete("task-bank/{id}")]
-        public async Task<ActionResult<Responses.TaskBankDTO>> DeleteTaskBankItem(int id)
-        {
-            var item = await _context.TaskBank.FindAsync(id);
-            if (item == null)
-                return NotFound(new Responses.BadRequestsDTO("Task Bank Item not found"));
+        _context.TaskBank.Add(newTaskBank);
+        await _context.SaveChangesAsync();
 
-            item.Active = false;
+        return Ok(
+            new Responses.TaskBankDTO
+            {
+                Id = newTaskBank.Id,
+                Group = new Responses.IDName { Id = group.Id, Name = group.Name },
+                Type = new Responses.IDName { Id = type.Id, Name = type.Name },
+                Name = newTaskBank.Name,
+                TL = newTaskBank.TL,
+                Duration = newTaskBank.Duration
+            }
+        );
+    }
 
-            await _context.SaveChangesAsync();
+    // GET:
+    // Get all TaskBanks
+    [HttpGet("task-bank")]
+    public async Task<ActionResult<List<Responses.TaskBankDTO>>> GetTaskBank()
+    {
+        var bank = await _context.TaskBank
+            .Include(tb => tb.Type)
+            .Include(_ => _.Group)
+            .Where(_ => _.Active)
+            .ToListAsync();
 
-            return Ok(new Responses.SuccessDTO("Done"));
-        }
+        var res = new List<Responses.TaskBankDTO> { };
 
-        // PATCH:
-        // Edit Task Bank item
-        [HttpPatch("task-bank/{id}")]
-        public async Task<ActionResult<Responses.TaskBankDTO>> EditTBI(
-            int id,
-            Requests.TaskBankDTO req
-        )
-        {
-            var item = await _context.TaskBank.FindAsync(id);
-            if (item == null)
-                return NotFound(new Responses.BadRequestsDTO("Task Bank Item not found"));
-
-            var type = await _context.Types.FindAsync(req.Type);
-            if (type == null)
-                return NotFound(new Responses.BadRequestsDTO("Type not found"));
-            var group = await _context.Groups.FindAsync(req.Group);
-            if (group == null)
-                return NotFound(new Responses.BadRequestsDTO("Group not found"));
-
-            item.Type = type;
-            item.TypeId = type.Id;
-            item.Group = group;
-            item.GroupId = group.Id;
-            item.TL = req.TL;
-            item.Name = req.Name;
-            item.Active = true;
-            item.Duration = req.Duration;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(
+        foreach (var item in bank)
+            res.Add(
                 new Responses.TaskBankDTO
                 {
-                    Id = item.Id,
-                    Group = new Responses.IDName { Id = group.Id, Name = group.Name },
-                    Type = new Responses.IDName { Id = type.Id, Name = type.Name },
                     Name = item.Name,
+                    Id = item.Id,
                     TL = item.TL,
+                    Type = new Responses.IDName { Id = item.Type.Id, Name = item.Type.Name },
+                    Group = new Responses.IDName { Id = item.Group.Id, Name = item.Group.Name },
                     Duration = item.Duration
                 }
             );
-        }
 
-        // POST:
-        // Create Task Bank item
-        [HttpPost("task-bank")]
-        public async Task<ActionResult<Responses.TaskBankDTO>> CreateTBI(Requests.TaskBankDTO req)
+        return res;
+    }
+
+    // GET:
+    // Get all schemas(Simplified)
+    [HttpGet("mini")]
+    public async Task<ActionResult<List<Responses.IDName>>> GetSchemasMini()
+    {
+        var schemas = await _context.Schemas.Where(s => !s.Archived).ToListAsync();
+
+        var res = new List<Responses.IDName> { };
+
+        for (int i = 0; i < schemas.Count; i++)
         {
-            var type = await _context.Types.FindAsync(req.Type);
-            if (type == null)
-                return NotFound(new Responses.BadRequestsDTO("Type not found"));
-            var group = await _context.Groups.FindAsync(req.Group);
-            if (group == null)
-                return NotFound(new Responses.BadRequestsDTO("Group not found"));
-
-            var newTaskBank = new TaskBank
-            {
-                Type = type,
-                TypeId = type.Id,
-                Group = group,
-                GroupId = group.Id,
-                TL = req.TL,
-                Name = req.Name,
-                Active = true,
-                Duration = req.Duration
-            };
-
-            _context.TaskBank.Add(newTaskBank);
-            await _context.SaveChangesAsync();
-
-            return Ok(
-                new Responses.TaskBankDTO
-                {
-                    Id = newTaskBank.Id,
-                    Group = new Responses.IDName { Id = group.Id, Name = group.Name },
-                    Type = new Responses.IDName { Id = type.Id, Name = type.Name },
-                    Name = newTaskBank.Name,
-                    TL = newTaskBank.TL,
-                    Duration = newTaskBank.Duration
-                }
-            );
-        }
-
-        // GET:
-        // Get all TaskBanks
-        [HttpGet("task-bank")]
-        public async Task<ActionResult<List<Responses.TaskBankDTO>>> GetTaskBank()
-        {
-            var bank = await _context.TaskBank
-                .Include(tb => tb.Type)
-                .Include(_ => _.Group)
-                .Where(_ => _.Active)
+            var schema = schemas[i];
+            var nodes = await _context.Nodes
+                .Include(n => n.Steps)
+                .Where(node => node.SchemaId == schema.Id && !node.Archived)
                 .ToListAsync();
 
-            var res = new List<Responses.TaskBankDTO> { };
-
-            foreach (var item in bank)
-                res.Add(
-                    new Responses.TaskBankDTO
-                    {
-                        Name = item.Name,
-                        Id = item.Id,
-                        TL = item.TL,
-                        Type = new Responses.IDName { Id = item.Type.Id, Name = item.Type.Name },
-                        Group = new Responses.IDName { Id = item.Group.Id, Name = item.Group.Name },
-                        Duration = item.Duration
-                    }
-                );
-
-            return res;
-        }
-
-        // GET:
-        // Get all schemas(Simplified)
-        [HttpGet("mini")]
-        public async Task<ActionResult<List<Responses.IDName>>> GetSchemasMini()
-        {
-            var schemas = await _context.Schemas.Where(s => !s.Archived).ToListAsync();
-
-            var res = new List<Responses.IDName> { };
-
-            for (int i = 0; i < schemas.Count; i++)
+            int tasksCount = 0;
+            nodes.ForEach(n =>
             {
-                var schema = schemas[i];
-                var nodes = await _context.Nodes
-                    .Include(n => n.Steps)
-                    .Where(node => node.SchemaId == schema.Id && !node.Archived)
-                    .ToListAsync();
+                tasksCount += n.Steps.Count;
+            });
 
-                int tasksCount = 0;
-                nodes.ForEach(n =>
-                {
-                    tasksCount += n.Steps.Count;
-                });
-
-                res.Add(new Responses.IDName { Id = schema.Id, Name = schema.Name });
-            }
-
-            return res;
+            res.Add(new Responses.IDName { Id = schema.Id, Name = schema.Name });
         }
 
-        // GET:
-        // Get all schemas(Simplified)
-        [HttpGet]
-        public async Task<ActionResult<List<Responses.SchemaDTO>>> GetSchemas()
-        {
-            var schemas = await _context.Schemas.Where(s => !s.Archived).ToListAsync();
-
-            var res = new List<Responses.SchemaDTO> { };
-
-            for (int i = 0; i < schemas.Count; i++)
-            {
-                var schema = schemas[i];
-
-                res.Add(
-                    new Responses.SchemaDTO
-                    {
-                        Description = schema.Description,
-                        Id = schema.Id,
-                        Name = schema.Name,
-                    }
-                );
-            }
-
-            return res;
-        }
-
-        // GET:
-        // Get schema Info
-        [HttpGet("{id}")]
-        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> GetSchemaDetailed(
-            int id
-        ) => await _schemaService.GetSchema(id);
-
-        // POST:
-        // Duplicate
-        [HttpPost("{id}/duplicate")]
-        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> DuplicateSchema(
-            int id
-        ) => await _schemaService.DuplicateSchema(id);
-
-        // POST:
-        // Create new Schema
-        [HttpPost]
-        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> CreateSchema(
-            Requests.SchemaDTO req
-        ) => await _schemaService.CreateSchema(req.Name, req.Description);
-
-        // PATCH:
-        // Update Schema
-        [HttpPatch("{id}")]
-        public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> UpdateSchema(
-            int id,
-            Requests.SchemaDTO req
-        ) => await _schemaService.EditSchema(id, req.Name, req.Description);
-
-        // DELETE:
-        // Archive Schema
-        // TODO: Archive dependant tables
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<BaseResponseService>> ArchiveSchema(int id) =>
-            await _schemaService.DeleteSchema(id);
+        return res;
     }
+
+    // GET:
+    // Get all schemas(Simplified)
+    [HttpGet]
+    public async Task<ActionResult<List<Responses.SchemaDTO>>> GetSchemas()
+    {
+        var schemas = await _context.Schemas
+            .Include(s => s.Type)
+            .Where(s => !s.Archived)
+            .ToListAsync();
+
+        var res = new List<Responses.SchemaDTO> { };
+
+        foreach (var schema in schemas)
+            res.Add(
+                new Responses.SchemaDTO
+                {
+                    Description = schema.Description,
+                    Id = schema.Id,
+                    Name = schema.Name,
+                    Type = schema.Type is null
+                        ? null
+                        : new Responses.IDName { Id = schema.Type.Id, Name = schema.Type.Name }
+                }
+            );
+
+        return res;
+    }
+
+    // GET:
+    // Get schema Info
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> GetSchemaDetailed(
+        int id
+    ) => await _schemaService.GetSchema(id);
+
+    // POST:
+    // Duplicate
+    [HttpPost("{id}/duplicate")]
+    public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> DuplicateSchema(int id) =>
+        await _schemaService.DuplicateSchema(id);
+
+    // POST:
+    // Create new Schema
+    [HttpPost]
+    public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> CreateSchema(
+        Requests.SchemaDTO req
+    ) => await _schemaService.CreateSchema(req.Name, req.Description, req.TypeId);
+
+    // PATCH:
+    // Update Schema
+    [HttpPatch("{id}")]
+    public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> UpdateSchema(
+        int id,
+        Requests.SchemaDTO req
+    ) => await _schemaService.EditSchema(id, req.Name, req.Description, req.TypeId);
+
+    // GET:
+    // Get Schema Types
+    [HttpGet("types")]
+    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetSchemaTypes() =>
+        await _schemaService.GetSchemaTypes();
+
+    // DELETE:
+    // Archive Schema
+    [HttpDelete("{id}")]
+    public async Task<ActionResult<BaseResponseService>> ArchiveSchema(int id) =>
+        await _schemaService.DeleteSchema(id);
 }

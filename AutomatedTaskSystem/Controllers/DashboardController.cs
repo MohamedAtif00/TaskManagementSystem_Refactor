@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.Dtos.Dashboard.GetProjectManagerDashboard;
+using AutomatedTaskSystem.Dtos.Dashboard.GetTeamLeaderDashboard;
 using AutomatedTaskSystem.Services.DashboardService;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Authorization;
@@ -19,4 +20,9 @@ public class DashboardContoller : ControllerBase
     [HttpGet("project-manager")]
     public async Task<ActionResult<ResponseService<GetProjectManagerDashboardDto>>> GetPMDB() =>
         await _dashboardService.GetProjectManagerDashboard();
+
+    [Authorize]
+    [HttpGet("team-leader")]
+    public async Task<ActionResult<ResponseService<GetTeamLeaderDashboardDto>>> GetTLDB() =>
+        await _dashboardService.GetTeamLeaderDashboard();
 }

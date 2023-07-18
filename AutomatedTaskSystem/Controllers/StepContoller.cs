@@ -1,7 +1,9 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.Steps;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Services.TaskService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers;
@@ -11,10 +13,12 @@ namespace AutomatedTaskSystem.Controllers;
 public class StepController : ControllerBase
 {
     private readonly DataContext _context;
+    private readonly ITaskService _taskService;
 
-    public StepController(DataContext context)
+    public StepController(DataContext context, ITaskService taskService)
     {
         _context = context;
+        _taskService = taskService;
     }
 
     private async Task<ActionResult<Responses.StepDTO>> GetStep(int id)
@@ -115,10 +119,53 @@ public class StepController : ControllerBase
         return await GetStep(newStep.Id);
     }
 
+    [HttpOptions("{id}/delete")]
+    public async Task<ActionResult<ResponseService<GetStepDeleteCheckDto>>> DeleteCheck(int id)
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == id && !s.Archived)
+            .Include(s => s.Tasks)
+            .Include(s => s.TaskBank)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return NotFound(
+                new BaseResponseService { Error = false, Message = "Step is not found" }
+            );
+
+        foreach (var task in step.Tasks)
+            if (task.StatusId != 4 && task.StatusId != 5 && !task.Archived)
+                return new ResponseService<GetStepDeleteCheckDto>
+                {
+                    Message = "Step contains active tasks",
+                    Error = false,
+                    Data = new GetStepDeleteCheckDto
+                    {
+                        Id = step.Id,
+                        Name = step.TaskBank.Name,
+                        isSafeToDelete = false
+                    }
+                };
+        return new ResponseService<GetStepDeleteCheckDto>
+        {
+            Message = "Step contains no active tasks",
+            Error = false,
+            Data = new GetStepDeleteCheckDto
+            {
+                Id = step.Id,
+                NodeId = step.NodeId,
+                Name = step.TaskBank.Name,
+                isSafeToDelete = true
+            }
+        };
+    }
+
     [HttpDelete("{stepId}")]
     public async Task<ActionResult<Responses.SuccessDTO>> DeleteStep(int stepId)
     {
-        var step = await _context.Steps.Where(s => s.Id == stepId).FirstOrDefaultAsync();
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId && !s.Archived)
+            .FirstOrDefaultAsync();
 
         if (step == null)
             return NotFound(new Responses.BadRequestsDTO("Step not found"));
@@ -129,10 +176,18 @@ public class StepController : ControllerBase
             .Where(s => s.NodeId == step.NodeId && s.Order > step.Order && !s.Archived)
             .ToListAsync();
 
-        nextSteps.ForEach(s =>
-        {
+        foreach (var s in nextSteps)
             s.Order = s.Order - 1;
-        });
+
+        var tasks = await _context.Tasks
+            .Where(t => !t.Archived && t.StepId == step.Id && t.StatusId != 4 && t.StatusId != 5)
+            .ToListAsync();
+
+        foreach (var task in tasks)
+        {
+            await _taskService.CreateNext(task.Id);
+            task.Archived = true;
+        }
 
         await _context.SaveChangesAsync();
 

@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.SchemaTypesModel;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,7 +18,8 @@ public class SchemaService : ISchemaService
 
     public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> CreateSchema(
         string Name,
-        string Description
+        string Description,
+        int? TypeId
     )
     {
         var doesExists = await CheckIfExists(Name);
@@ -27,13 +29,29 @@ public class SchemaService : ISchemaService
                 new BaseResponseService { Error = true, Message = "Schema already exists" }
             );
 
+        SchemaType? type;
+
+        if (TypeId != 0)
+        {
+            type = await _context.SchemaTypes.Where(t => t.Id == TypeId).FirstOrDefaultAsync();
+
+            if (type is null)
+                return new NotFoundObjectResult(
+                    new BaseResponseService { Error = true, Message = "Type is not found" }
+                );
+        }
+        else
+            type = null;
+
         var schema = new Schema
         {
             Archived = false,
             Name = Name,
             Description = Description,
             Nodes = { },
-            LearningObjectives = { }
+            LearningObjectives = { },
+            Type = type,
+            TypeId = type is null ? null : type.Id
         };
 
         _context.Schemas.Add(schema);
@@ -47,6 +65,9 @@ public class SchemaService : ISchemaService
                 Description = schema.Description,
                 Id = schema.Id,
                 Name = schema.Name,
+                Type = schema.Type is null
+                    ? null
+                    : new Responses.IDName { Id = schema.Type.Id, Name = schema.Type.Name }
             }
         };
     }
@@ -179,6 +200,7 @@ public class SchemaService : ISchemaService
             .ThenInclude(n => n.Previous)
             .Include(s => s.Nodes)
             .ThenInclude(n => n.Requires)
+            .Include(s => s.Type)
             .FirstOrDefaultAsync();
 
         if (schema is null)
@@ -191,6 +213,8 @@ public class SchemaService : ISchemaService
             Archived = false,
             Name = $"{schema.Name} - Duplicate",
             Description = schema.Description,
+            Type = schema.Type,
+            TypeId = schema.TypeId
         };
         _context.Schemas.Add(newSchema);
         var newNodes = new List<Node> { };
@@ -266,11 +290,13 @@ public class SchemaService : ISchemaService
     public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> EditSchema(
         int id,
         string Name,
-        string Description
+        string Description,
+        int? typeId
     )
     {
         var schema = await _context.Schemas
             .Where(s => !s.Archived && s.Id == id)
+            .Include(s => s.Type)
             .FirstOrDefaultAsync();
 
         if (schema is null)
@@ -282,6 +308,21 @@ public class SchemaService : ISchemaService
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Name cannot be empty" }
             );
+
+        if (typeId == 0)
+            schema.Type = null;
+        else
+        {
+            var type = await _context.SchemaTypes.Where(t => t.Id == typeId).FirstOrDefaultAsync();
+
+            if (type is null)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Type is not found" }
+                );
+
+            schema.Type = type;
+        }
+
         schema.Name = Name;
         schema.Description = Description;
 
@@ -293,17 +334,22 @@ public class SchemaService : ISchemaService
             {
                 Description = schema.Description,
                 Id = schema.Id,
-                Name = schema.Name
+                Name = schema.Name,
+                Type = schema.Type is not null
+                    ? new Responses.IDName { Id = schema.Type.Id, Name = schema.Type.Name }
+                    : null
             },
             Error = false,
             Message = "schema edited"
         };
-        throw new NotImplementedException();
     }
 
     public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> GetSchema(int id)
     {
-        var schema = await _context.Schemas.Where(s => s.Id == id).FirstOrDefaultAsync();
+        var schema = await _context.Schemas
+            .Include(s => s.Type)
+            .Where(s => s.Id == id)
+            .FirstOrDefaultAsync();
 
         if (schema is null)
             return new NotFoundObjectResult(
@@ -316,10 +362,24 @@ public class SchemaService : ISchemaService
             {
                 Description = schema.Description,
                 Id = schema.Id,
-                Name = schema.Name
+                Name = schema.Name,
+                Type = schema.Type is null
+                    ? null
+                    : new Responses.IDName { Id = schema.Type.Id, Name = schema.Type.Name }
             },
             Error = false,
             Message = "Schema found"
+        };
+    }
+
+    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetSchemaTypes()
+    {
+        var types = await _context.SchemaTypes.ToListAsync();
+        return new ResponseService<List<Responses.IDName>>
+        {
+            Message = "List of schema types",
+            Error = false,
+            Data = types.Select(t => new Responses.IDName { Name = t.Name, Id = t.Id }).ToList()
         };
     }
 

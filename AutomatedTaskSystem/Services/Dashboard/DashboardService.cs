@@ -1,5 +1,6 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.Dashboard.GetProjectManagerDashboard;
+using AutomatedTaskSystem.Dtos.Dashboard.GetTeamLeaderDashboard;
 using AutomatedTaskSystem.Services.ReportService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
@@ -103,6 +104,110 @@ public class DashboardService : IDashboardService
                 NumberOfProject = projects.Count,
                 NumberOfSchemas = schemas.Count,
                 GroupsCount = GroupsCount
+            }
+        };
+    }
+
+    public async Task<
+        ActionResult<ResponseService<GetTeamLeaderDashboardDto>>
+    > GetTeamLeaderDashboard()
+    {
+        var authRes = _tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = authRes.Message }
+            );
+
+        var statusUid = Int32.TryParse(authRes.Data, out int uid);
+        if (!statusUid)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Request" }
+            );
+
+        var user = await _context.Users
+            .Where(u => u.Id == uid && !u.Archived)
+            .Include(u => u.Group)
+            .Include(u => u.Projects)
+            .ThenInclude(u => u.Units)
+            .ThenInclude(u => u.Lessons)
+            .ThenInclude(u => u.LearningObjectives)
+            .ThenInclude(u => u.Tasks)
+            .FirstOrDefaultAsync();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = false, Message = "Invalid auth" }
+            );
+        if (user.RoleId != 3)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = false, Message = "Invalid auth" }
+            );
+
+        var members = await _context.Users
+            .Where(u => u.GroupId == user.GroupId && !u.Archived && u.RoleId == 4)
+            .Include(u => u.Tasks)
+            .ThenInclude(t => t.LearningObjective)
+            .ToListAsync();
+
+        var ProjectsDetails = new List<GetTasksPerItem> { };
+        var TasksPerUser = new List<GetTasksPerItem> { };
+
+        int activeTasks = 0;
+
+        foreach (var member in members)
+        {
+            TasksPerUser.Add(
+                new GetTasksPerItem
+                {
+                    Id = member.Id,
+                    Name = member.Name,
+                    TasksCount = member.Tasks
+                        .Where(t => !t.Archived && t.StatusId != 4 && t.StatusId != 5)
+                        .ToList()
+                        .Count,
+                }
+            );
+        }
+
+        foreach (var project in user.Projects)
+            foreach (var unit in project.Units)
+                foreach (var lesson in unit.Lessons)
+                    foreach (var lo in lesson.LearningObjectives)
+                        foreach (var task in lo.Tasks)
+                            if (
+                                !task.Archived
+                                && task.GroupId == user.GroupId
+                                && task.StatusId != 4
+                                && task.StatusId != 5
+                            )
+                            {
+                                var detail = ProjectsDetails.Find(p => p.Id == project.Id);
+                                if (detail is null)
+                                {
+                                    ProjectsDetails.Add(
+                                        new GetTasksPerItem
+                                        {
+                                            Id = project.Id,
+                                            Name = project.Name,
+                                            TasksCount = 1
+                                        }
+                                    );
+                                }
+                                else
+                                    detail.TasksCount++;
+                                activeTasks++;
+                            }
+
+        return new ResponseService<GetTeamLeaderDashboardDto>
+        {
+            Message = "Team Leader Dashboard",
+            Error = false,
+            Data = new GetTeamLeaderDashboardDto
+            {
+                Members = members.Count,
+                Projects = user.Projects.Count,
+                ActiveTasks = activeTasks,
+                ProjectsDetails = ProjectsDetails,
+                TasksPerUser = TasksPerUser
             }
         };
     }

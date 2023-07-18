@@ -1001,13 +1001,9 @@ public class TaskService : ITaskService
 
         if (task.StatusId == 1)
         {
-            var status = await _context.Statuses.Where(s => s.Id == 2).FirstOrDefaultAsync();
-            if (status is null)
-                throw new Exception("To Do status is not found");
-
             task.User = user;
             task.UserId = user.Id;
-            task.Status = status;
+            task.StatusId = 2;
 
             var newAssignemt = new Assignment
             {
@@ -1038,8 +1034,6 @@ public class TaskService : ITaskService
             if (task.User is null)
                 task.User = user;
 
-            var DoingStatus = await _context.Statuses.FindAsync(Statuses.Doing);
-            task.Status = DoingStatus!;
             task.StatusId = Statuses.Doing;
             if (task.LearningObjective.StartedAt is null)
                 task.LearningObjective.StartedAt = DateTime.Now;
@@ -1083,8 +1077,6 @@ public class TaskService : ITaskService
                 return new BadRequestObjectResult(
                     new BaseResponseService { Error = true, Message = "Unauthorized" }
                 );
-            var DoneStatus = await _context.Statuses.FindAsync(Statuses.Done);
-            task.Status = DoneStatus!;
             task.StatusId = Statuses.Done;
 
             var doneAct = await _context.ActivityTypes.FindAsync(2);
@@ -1104,26 +1096,20 @@ public class TaskService : ITaskService
 
             _context.Activities.Add(newAct);
 
-            var completeEA = await _context.EndActivityTypes.FindAsync(3);
+            var currentEA = await _context.EndActivities
+                .Where(
+                    _ =>
+                        _.UserId == user.Id
+                        && _.TaskId == task.Id
+                        && _.EndDate == null
+                        && _.EndActivityTypeId == null
+                )
+                .FirstOrDefaultAsync();
 
-            if (completeEA != null)
+            if (currentEA is not null)
             {
-                var currentEA = await _context.EndActivities
-                    .Where(
-                        _ =>
-                            _.UserId == user.Id
-                            && _.TaskId == task.Id
-                            && _.EndDate == null
-                            && _.EndActivityTypeId == null
-                    )
-                    .FirstOrDefaultAsync();
-
-                if (currentEA != null)
-                {
-                    currentEA.EndActivityTypeId = completeEA.Id;
-                    currentEA.EndActivityType = completeEA;
-                    currentEA.EndDate = DateTime.Now;
-                }
+                currentEA.EndActivityTypeId = 3;
+                currentEA.EndDate = DateTime.Now;
             }
 
             await CreateNext(task);
@@ -1139,7 +1125,23 @@ public class TaskService : ITaskService
         );
     }
 
-    private async Task<bool> CreateNext(Models.Task task)
+    public async Task<bool> CreateNext(int taskId)
+    {
+        var task = await _context.Tasks
+            .Where(t => t.Id == taskId)
+            .Include(t => t.Status)
+            .Include(t => t.User)
+            .Include(t => t.LearningObjective)
+            .Include(t => t.Step)
+            .FirstOrDefaultAsync();
+
+        if (task is null)
+            return false;
+
+        return await CreateNext(task);
+    }
+
+    public async Task<bool> CreateNext(Models.Task task)
     {
         if (task.Step is null)
             return false;
@@ -1252,6 +1254,94 @@ public class TaskService : ITaskService
                                 task.From
                             );
                         }
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public async Task<bool> CreateNextNode(int nodeId, int loId)
+    {
+        var lo = await _context.LearningObjectives.Where(lo => lo.Id == loId).FirstOrDefaultAsync();
+
+        if (lo is null)
+            return false;
+
+        var currentNode = await _context.Nodes
+            .Where(n => n.Id == nodeId && !n.Archived)
+            .Include(n => n.Next)
+            .ThenInclude(n => n.Steps)
+            .Include(n => n.Next)
+            .ThenInclude(n => n.Requires)
+            .ThenInclude(n => n.Steps)
+            .FirstOrDefaultAsync();
+
+        if (currentNode is not null)
+        {
+            if (currentNode.Next.Count == 0)
+                lo.DoneAt = DateTime.Now;
+
+            foreach (var nextNode in currentNode.Next)
+            {
+                var requiredIsComplete = true;
+                foreach (var nodeRequired in nextNode.Requires)
+                {
+                    var lastStep = nodeRequired.Steps
+                        .Where(s => s.Order == nodeRequired.Steps.Count && !s.Archived)
+                        .FirstOrDefault();
+                    if (lastStep is not null)
+                    {
+                        var lastTask = await _context.Tasks
+                            .Include(t => t.Status)
+                            .Where(
+                                t =>
+                                    t.StepId == lastStep.Id
+                                    && t.LearningObjectiveId == lo.Id
+                                    && !t.Archived
+                            )
+                            .ToListAsync();
+
+                        if (lastTask.Count == 0)
+                            requiredIsComplete = false;
+
+                        lastTask.ForEach(t =>
+                        {
+                            if (t.StatusId != Statuses.Done || t.StatusId == Statuses.Rollback)
+                                requiredIsComplete = false;
+                        });
+                    }
+                }
+
+                if (requiredIsComplete)
+                {
+                    var firstStep = await _context.Steps
+                        .Where(s => s.NodeId == nextNode.Id && s.Order == 1 && !s.Archived)
+                        .Include(s => s.TaskBank)
+                        .ThenInclude(tb => tb.Group)
+                        .FirstOrDefaultAsync();
+
+                    if (firstStep is null)
+                        return false;
+
+                    var foundTasks = await _context.Tasks
+                        .Include(t => t.Status)
+                        .Where(
+                            t =>
+                                t.StepId == firstStep.Id
+                                && t.LearningObjectiveId == lo.Id
+                                && !t.Archived
+                        )
+                        .ToListAsync();
+
+                    if (foundTasks.Count > 0)
+                        foundTasks.ForEach(t =>
+                        {
+                            t.StatusId = Statuses.Backlog;
+                        });
+                    else
+                    {
+                        await createTask(step: firstStep, learningObjective: lo, null);
                     }
                 }
             }
