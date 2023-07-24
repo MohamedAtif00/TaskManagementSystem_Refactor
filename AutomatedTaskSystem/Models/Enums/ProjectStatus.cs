@@ -1,8 +1,7 @@
-using System.Text.Json.Serialization;
+// using System.Text.Json.Serialization;
 
 namespace AutomatedTaskSystem.Models.Enums.ProjectStatus
 {
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ProjectStatus
     {
         Active = 1,
