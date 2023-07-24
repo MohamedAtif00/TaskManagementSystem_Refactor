@@ -1,3 +1,4 @@
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.YearModel;
 
 namespace AutomatedTaskSystem.Models;
@@ -13,4 +14,5 @@ public class Project
     public int YearId { get; set; }
     public bool Term { get; set; }
     public bool Archived { get; set; } = false;
+    public ProjectStatus Status { get; set; } = ProjectStatus.Active;
 }

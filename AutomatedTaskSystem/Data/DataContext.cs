@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.SchemaTypesModel;
 using AutomatedTaskSystem.Models.YearModel;
 
@@ -110,6 +111,11 @@ namespace AutomatedTaskSystem.Data
             modelBuilder.Entity<Models.TaskBank>().Property(t => t.TypeId).HasDefaultValue(1);
 
             modelBuilder.Entity<User>().Property(u => u.RoleId).HasDefaultValue(4);
+
+            modelBuilder
+                .Entity<Project>()
+                .Property(p => p.Status)
+                .HasDefaultValue(ProjectStatus.Active);
 
             modelBuilder
                 .Entity<Assignment>()

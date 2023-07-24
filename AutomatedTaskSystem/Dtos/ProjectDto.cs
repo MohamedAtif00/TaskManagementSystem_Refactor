@@ -1,3 +1,5 @@
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
+
 namespace AutomatedTaskSystem.DTO
 {
     public static partial class Responses
@@ -9,6 +11,7 @@ namespace AutomatedTaskSystem.DTO
             public string Description { get; set; } = "";
             public IDName Year { get; set; } = new IDName { };
             public bool Term { get; set; }
+            public ProjectStatus Status { get; set; } = ProjectStatus.Active;
         }
 
         public class DetailedProjectDTO
