@@ -81,11 +81,6 @@ public class ProjectService : IProjectService
         };
     }
 
-    public Task<ActionResult<ResponseService<Responses.ProjectDTO>>> CloseProject(int Id)
-    {
-        throw new NotImplementedException();
-    }
-
     public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> CreateProject(
         string Name,
         string Description,
@@ -111,7 +106,8 @@ public class ProjectService : IProjectService
             Description = Description,
             Term = Term,
             Year = year,
-            YearId = year.Id
+            YearId = year.Id,
+            Status = ProjectStatus.Active
         };
 
         _context.Projects.Add(newProject);
@@ -129,7 +125,8 @@ public class ProjectService : IProjectService
                     Id = newProject.YearId,
                     Name = newProject.Year.Number
                 },
-                Term = newProject.Term
+                Term = newProject.Term,
+                Status = newProject.Status
             },
             Error = false,
             Message = $"Project {Name} is created.",
@@ -224,7 +221,8 @@ public class ProjectService : IProjectService
                 Description = project.Description,
                 Name = project.Name,
                 Term = project.Term,
-                Year = new Responses.IDName { Name = project.Year.Number, Id = project.Year.Id, }
+                Year = new Responses.IDName { Name = project.Year.Number, Id = project.Year.Id, },
+                Status = project.Status
             },
             Error = false,
             Message = $"Project of id:{id} edited.",
@@ -250,7 +248,8 @@ public class ProjectService : IProjectService
                             Id = p.Id,
                             Name = p.Name,
                             Term = p.Term,
-                            Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number }
+                            Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number },
+                            Status = p.Status
                         }
                 )
                 .ToList(),
@@ -321,7 +320,8 @@ public class ProjectService : IProjectService
                 Name = project.Name,
                 Description = project.Description,
                 Term = project.Term,
-                Year = new Responses.IDName { Id = project.YearId, Name = project.Year.Number }
+                Year = new Responses.IDName { Id = project.YearId, Name = project.Year.Number },
+                Status = project.Status
             },
             Error = false,
             Message = "Project found"
@@ -502,7 +502,8 @@ public class ProjectService : IProjectService
                                 Name = p.Name,
                                 Description = p.Description,
                                 Term = p.Term,
-                                Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number }
+                                Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number },
+                                Status = p.Status
                             }
                     )
                     .ToList()
@@ -524,7 +525,8 @@ public class ProjectService : IProjectService
                         {
                             Id = project.YearId,
                             Name = project.Year.Number
-                        }
+                        },
+                        Status = project.Status
                     }
                 );
             }
@@ -535,11 +537,6 @@ public class ProjectService : IProjectService
             Message = $"Projects assigned to users of id:{user.Id}",
             Data = listOfProjects
         };
-    }
-
-    public Task<ActionResult<ResponseService<Responses.ProjectDTO>>> HoldProject(int Id)
-    {
-        throw new NotImplementedException();
     }
 
     public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> UnassignToProject(

@@ -5,6 +5,7 @@ using AutomatedTaskSystem.Services.AuthService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.ProjectService;
 using AutomatedTaskSystem.Services.YearService;
+using AutomatedTaskSystem.Dtos.Projects;
 
 namespace AutomatedTaskSystem.Controllers;
 
@@ -113,4 +114,12 @@ public class ProjectController : ControllerBase
     [HttpGet("years")]
     public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetActiveYears() =>
         await _yearService.GetActiveYears();
+
+    // PATCH:
+    // Update Project's status
+    [HttpPatch("{id}/status")]
+    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateStatus(
+        int id,
+        UpdateProjectStatusDto req
+    ) => await _projectService.UpdateProjectStatus(id, req.Status);
 }
