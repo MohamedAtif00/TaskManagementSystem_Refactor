@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -38,4 +39,8 @@ public interface IProjectService
     );
     Task<ActionResult<ResponseService<Responses.ProjectDTO>>> GetProject(int Id);
     Task<ActionResult<ResponseService<Responses.DetailedProjectDTO>>> GetProjectDetails(int Id);
+    Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateProjectStatus(
+        int id,
+        ProjectStatus status
+    );
 }

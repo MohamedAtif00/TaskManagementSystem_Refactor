@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Services.LearningObjectiveService;
 using AutomatedTaskSystem.Services.ProjectAssignmentService;
 using AutomatedTaskSystem.Services.ResponseService;
@@ -78,6 +79,11 @@ public class ProjectService : IProjectService
                 .ToList(),
             Message = user.Message
         };
+    }
+
+    public Task<ActionResult<ResponseService<Responses.ProjectDTO>>> CloseProject(int Id)
+    {
+        throw new NotImplementedException();
     }
 
     public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> CreateProject(
@@ -531,6 +537,11 @@ public class ProjectService : IProjectService
         };
     }
 
+    public Task<ActionResult<ResponseService<Responses.ProjectDTO>>> HoldProject(int Id)
+    {
+        throw new NotImplementedException();
+    }
+
     public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> UnassignToProject(
         int Id,
         List<int> UserIds
@@ -554,6 +565,78 @@ public class ProjectService : IProjectService
                 .ToList(),
             Error = false,
             Message = res.Message
+        };
+    }
+
+    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateProjectStatus(
+        int id,
+        ProjectStatus status
+    )
+    {
+        var project = await _context.Projects
+            .Where(p => !p.Archived && p.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (project is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService
+                {
+                    Error = true,
+                    Message = $"Project of id:{id} is not found"
+                }
+            );
+
+        if (status == ProjectStatus.Active)
+        {
+            if (project.Status == ProjectStatus.Active || project.Status == ProjectStatus.Reopened)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Project is already active" }
+                );
+
+            if (project.Status == ProjectStatus.Hold)
+                project.Status = ProjectStatus.Active;
+            else if (project.Status == ProjectStatus.Closed)
+                project.Status = ProjectStatus.Reopened;
+        }
+        else if (status == ProjectStatus.Hold)
+        {
+            if (project.Status == ProjectStatus.Hold)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Project is already on Hold" }
+                );
+
+            if (project.Status == ProjectStatus.Closed)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Project is Closed" }
+                );
+
+            project.Status = ProjectStatus.Hold;
+        }
+        else if (status == ProjectStatus.Closed)
+        {
+            if (project.Status == ProjectStatus.Closed)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Project is already closed" }
+                );
+
+            project.Status = ProjectStatus.Closed;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new ResponseService<Responses.ProjectDTO>
+        {
+            Message = "Project Status is updated",
+            Error = false,
+            Data = new Responses.ProjectDTO
+            {
+                Status = project.Status,
+                Id = project.Id,
+                Name = project.Name,
+                Term = project.Term,
+                Year = new Responses.IDName { Name = project.Name, Id = project.Id },
+                Description = project.Description
+            }
         };
     }
 
