@@ -20,6 +20,7 @@ namespace AutomatedTaskSystem.DTO
             public string Name { get; set; } = "";
             public string Description { get; set; } = "";
             public List<ProjectUnitDTO> Units { get; set; } = new List<ProjectUnitDTO> { };
+            public string Status { get; set; } = "";
         }
 
         public class ProjectUnitDTO
