@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.Report;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -21,7 +22,12 @@ public class ReportService : IReportService
     )
     {
         var projects = await _context.Projects
-            .Where(p => !p.Archived)
+            .Where(
+                p =>
+                    !p.Archived
+                    && p.Status != ProjectStatus.Closed
+                    && p.Status != ProjectStatus.Hold
+            )
             .Include(p => p.Year)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
@@ -53,7 +59,13 @@ public class ReportService : IReportService
     public async Task<ActionResult<ResponseService<GetProjectReportDto>>> GetProjectReport(int id)
     {
         var project = await _context.Projects
-            .Where(p => p.Id == id && !p.Archived)
+            .Where(
+                p =>
+                    p.Id == id
+                    && !p.Archived
+                    && p.Status != ProjectStatus.Closed
+                    && p.Status != ProjectStatus.Hold
+            )
             .Include(p => p.Year)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)

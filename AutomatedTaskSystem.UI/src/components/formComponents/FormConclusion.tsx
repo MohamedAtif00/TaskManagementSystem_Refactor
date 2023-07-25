@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-type ConclusionType = "danger" | "chill";
+type ConclusionType = "danger" | "chill" | "teal" | "orange" | "emerald";
 
 interface Props {
     submittable: boolean;
@@ -35,6 +35,12 @@ const FormConclusion: React.FC<Props> = ({
                         ? "bg-red-600"
                         : type === "chill"
                         ? "bg-cyan-600"
+                        : type === "teal"
+                        ? "bg-teal-600"
+                        : type === "orange"
+                        ? "bg-orange-500"
+                        : type === "emerald"
+                        ? "bg-emerald-500"
                         : "bg-black"
                 } py-2 flex items-center justify-center grow ${
                     submittable ? "text-white" : "opacity-50 text-gray-300"

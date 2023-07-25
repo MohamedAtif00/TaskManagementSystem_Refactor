@@ -1,158 +1,171 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Services.ResponseService;
 
 namespace AutomatedTaskSystem.Services.ProjectAssignmentService;
 
 public class ProjectAssignmentService : IProjectAssignmentService
 {
-	private readonly DataContext _context;
+    private readonly DataContext _context;
 
-	public ProjectAssignmentService(DataContext context)
-	{
-		_context = context;
-	}
-	public async Task<ResponseService<List<User>>> AssignUsersToProject(int Pid, List<int> userIds)
-	{
-		var project = await _context.Projects
-			.Where(p => !p.Archived && p.Id == Pid)
-			.FirstOrDefaultAsync();
+    public ProjectAssignmentService(DataContext context)
+    {
+        _context = context;
+    }
 
-		if (project is null)
-			return new ResponseService<List<User>>
-			{
-				Error = true,
-				Message = "Project is not found"
-			};
+    public async Task<ResponseService<List<User>>> AssignUsersToProject(int Pid, List<int> userIds)
+    {
+        var project = await _context.Projects
+            .Where(p => !p.Archived && p.Id == Pid)
+            .FirstOrDefaultAsync();
 
-		var users = await _context.Users
-			.Where(u => userIds.Contains(u.Id) && !u.Archived)
-			.ToListAsync();
+        if (project is null)
+            return new ResponseService<List<User>>
+            {
+                Error = true,
+                Message = "Project is not found"
+            };
 
-		foreach (var user in users)
-		{
-			user.Projects.Add(project);
-			project.Users.Add(user);
-		}
+        var users = await _context.Users
+            .Where(u => userIds.Contains(u.Id) && !u.Archived)
+            .ToListAsync();
 
-		await _context.SaveChangesAsync();
+        foreach (var user in users)
+        {
+            user.Projects.Add(project);
+            project.Users.Add(user);
+        }
 
-		return new ResponseService<List<User>>
-		{
-			Data = users,
-			Error = false,
-			Message = "List of users added to project"
-		};
-	}
+        await _context.SaveChangesAsync();
 
-	public async Task<ResponseService<List<User>>> GetAssignedUsersForProject(int Pid)
-	{
-		var project = await _context.Projects
-			.Where(p => p.Id == Pid && !p.Archived)
-			.Include(p => p.Users)
-			.ThenInclude(u => u.Group)
-			.Include(p => p.Users)
-			.ThenInclude(u => u.Role)
-			.FirstOrDefaultAsync();
+        return new ResponseService<List<User>>
+        {
+            Data = users,
+            Error = false,
+            Message = "List of users added to project"
+        };
+    }
 
-		if (project is null)
-			return new ResponseService<List<User>>
-			{
-				Error = true,
-				Message = "Project is not found"
-			};
+    public async Task<ResponseService<List<User>>> GetAssignedUsersForProject(int Pid)
+    {
+        var project = await _context.Projects
+            .Where(p => p.Id == Pid && !p.Archived)
+            .Include(p => p.Users)
+            .ThenInclude(u => u.Group)
+            .Include(p => p.Users)
+            .ThenInclude(u => u.Role)
+            .FirstOrDefaultAsync();
 
-		return new ResponseService<List<User>>
-		{
-			Data = project.Users,
-			Error = false,
-			Message = "List of users assigned to project"
-		};
-	}
+        if (project is null)
+            return new ResponseService<List<User>>
+            {
+                Error = true,
+                Message = "Project is not found"
+            };
 
-	public async Task<ResponseService<List<User>>> GetUnassignedUsersForProject(int Pid)
-	{
-		var project = await _context.Projects
-			.Where(p => !p.Archived && p.Id == Pid)
-			.FirstOrDefaultAsync();
+        return new ResponseService<List<User>>
+        {
+            Data = project.Users,
+            Error = false,
+            Message = "List of users assigned to project"
+        };
+    }
 
-		if (project is null)
-			return new ResponseService<List<User>>
-			{
-				Error = true,
-				Message = "Project is not found"
-			};
+    public async Task<ResponseService<List<User>>> GetUnassignedUsersForProject(int Pid)
+    {
+        var project = await _context.Projects
+            .Where(p => !p.Archived && p.Id == Pid)
+            .FirstOrDefaultAsync();
 
-		var users = await _context.Users
-			.Where(u => !u.Archived && !u.Projects.Contains(project))
-			.Include(u => u.Group)
-			.Include(u => u.Role)
-			.ToListAsync();
+        if (project is null)
+            return new ResponseService<List<User>>
+            {
+                Error = true,
+                Message = "Project is not found"
+            };
 
-		return new ResponseService<List<User>>
-		{
-			Data = users,
-			Error = false,
-			Message = $"List of unassigned Users from Project of id:{Pid}"
-		};
-	}
+        var users = await _context.Users
+            .Where(u => !u.Archived && !u.Projects.Contains(project))
+            .Include(u => u.Group)
+            .Include(u => u.Role)
+            .ToListAsync();
 
-	public async Task<ResponseService<List<Project>>> ProjectsAssignedToUser(int Uid)
-	{
-		var user = await _context.Users
-			.Where(u => !u.Archived && u.Id == Uid)
-			.Include(u => u.Projects)
-			.FirstOrDefaultAsync();
+        return new ResponseService<List<User>>
+        {
+            Data = users,
+            Error = false,
+            Message = $"List of unassigned Users from Project of id:{Pid}"
+        };
+    }
 
-		if (user is null)
-			return new ResponseService<List<Project>>
-			{
-				Error = true,
-				Message = $"User of id:{Uid} is not found"
-			};
+    public async Task<ResponseService<List<Project>>> ProjectsAssignedToUser(int Uid)
+    {
+        var user = await _context.Users
+            .Where(u => !u.Archived && u.Id == Uid)
+            .Include(u => u.Projects)
+            .FirstOrDefaultAsync();
 
-		return new ResponseService<List<Project>>
-		{
-			Data = user.RoleId == 1 ?
-				await _context.Projects.Where(p => !p.Archived).ToListAsync()
-				: user.Projects,
-			Error = false,
-			Message = $"List of projects assigned to User of id:{user.Id}"
-		};
-	}
+        if (user is null)
+            return new ResponseService<List<Project>>
+            {
+                Error = true,
+                Message = $"User of id:{Uid} is not found"
+            };
 
-	public async Task<ResponseService<List<User>>> UnassignUsersToProject(int Pid, List<int> userIds)
-	{
-		var project = await _context.Projects
-			.Where(p => !p.Archived && p.Id == Pid)
-			.Include(u => u.Users)
-			.FirstOrDefaultAsync();
+        return new ResponseService<List<Project>>
+        {
+            Data =
+                user.RoleId == 1
+                    ? await _context.Projects.Where(p => !p.Archived).ToListAsync()
+                    : user.Projects
+                        .Where(
+                            p =>
+                                !p.Archived
+                                && p.Status != ProjectStatus.Closed
+                                && p.Status != ProjectStatus.Hold
+                        )
+                        .ToList(),
+            Error = false,
+            Message = $"List of projects assigned to User of id:{user.Id}"
+        };
+    }
 
-		if (project is null)
-			return new ResponseService<List<User>>
-			{
-				Error = true,
-				Message = "Project is not found"
-			};
+    public async Task<ResponseService<List<User>>> UnassignUsersToProject(
+        int Pid,
+        List<int> userIds
+    )
+    {
+        var project = await _context.Projects
+            .Where(p => !p.Archived && p.Id == Pid)
+            .Include(u => u.Users)
+            .FirstOrDefaultAsync();
 
-		var users = new List<User> { };
+        if (project is null)
+            return new ResponseService<List<User>>
+            {
+                Error = true,
+                Message = "Project is not found"
+            };
 
-		foreach (var uid in userIds)
-		{
-			var user = project.Users.Find(u => u.Id == uid);
+        var users = new List<User> { };
 
-			if (user is not null)
-			{
-				users.Add(user);
-				project.Users.Remove(user);
-			}
-		}
+        foreach (var uid in userIds)
+        {
+            var user = project.Users.Find(u => u.Id == uid);
 
-		return new ResponseService<List<User>>
-		{
-			Data = users,
-			Error = false,
-			Message = $"List of users unassigned from project of id:{Pid}"
-		};
-	}
+            if (user is not null)
+            {
+                users.Add(user);
+                project.Users.Remove(user);
+            }
+        }
+
+        return new ResponseService<List<User>>
+        {
+            Data = users,
+            Error = false,
+            Message = $"List of users unassigned from project of id:{Pid}"
+        };
+    }
 }

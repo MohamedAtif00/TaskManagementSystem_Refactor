@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Services.LearningObjectiveService;
 using AutomatedTaskSystem.Services.ProjectAssignmentService;
 using AutomatedTaskSystem.Services.ResponseService;
@@ -105,7 +106,8 @@ public class ProjectService : IProjectService
             Description = Description,
             Term = Term,
             Year = year,
-            YearId = year.Id
+            YearId = year.Id,
+            Status = ProjectStatus.Active
         };
 
         _context.Projects.Add(newProject);
@@ -123,7 +125,8 @@ public class ProjectService : IProjectService
                     Id = newProject.YearId,
                     Name = newProject.Year.Number
                 },
-                Term = newProject.Term
+                Term = newProject.Term,
+                Status = newProject.Status
             },
             Error = false,
             Message = $"Project {Name} is created.",
@@ -218,7 +221,8 @@ public class ProjectService : IProjectService
                 Description = project.Description,
                 Name = project.Name,
                 Term = project.Term,
-                Year = new Responses.IDName { Name = project.Year.Number, Id = project.Year.Id, }
+                Year = new Responses.IDName { Name = project.Year.Number, Id = project.Year.Id, },
+                Status = project.Status
             },
             Error = false,
             Message = $"Project of id:{id} edited.",
@@ -244,7 +248,8 @@ public class ProjectService : IProjectService
                             Id = p.Id,
                             Name = p.Name,
                             Term = p.Term,
-                            Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number }
+                            Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number },
+                            Status = p.Status
                         }
                 )
                 .ToList(),
@@ -315,7 +320,8 @@ public class ProjectService : IProjectService
                 Name = project.Name,
                 Description = project.Description,
                 Term = project.Term,
-                Year = new Responses.IDName { Id = project.YearId, Name = project.Year.Number }
+                Year = new Responses.IDName { Id = project.YearId, Name = project.Year.Number },
+                Status = project.Status
             },
             Error = false,
             Message = "Project found"
@@ -339,6 +345,7 @@ public class ProjectService : IProjectService
                 new BaseResponseService { Error = true, Message = "Project is not found" }
             );
 
+        var status = project.Status;
         return new ResponseService<Responses.DetailedProjectDTO>
         {
             Data = new Responses.DetailedProjectDTO
@@ -346,6 +353,14 @@ public class ProjectService : IProjectService
                 Id = project.Id,
                 Name = project.Name,
                 Description = project.Description,
+                Status =
+                    status == ProjectStatus.Closed
+                        ? "Close"
+                        : status == ProjectStatus.Hold
+                            ? "On Hold"
+                            : status == ProjectStatus.Active
+                                ? "Active"
+                                : "Reopened",
                 Units = project.Units
                     .Where(u => !u.Archived)
                     .Select(
@@ -482,12 +497,9 @@ public class ProjectService : IProjectService
             {
                 Error = false,
                 Message = "List of all projects",
-                Data = (
-                    await _context.Projects
-                        .Where(p => !p.Archived)
-                        .Include(p => p.Year)
-                        .ToListAsync()
-                )
+                Data = await _context.Projects
+                    .Where(p => !p.Archived)
+                    .Include(p => p.Year)
                     .Select(
                         p =>
                             new Responses.ProjectDTO
@@ -496,17 +508,21 @@ public class ProjectService : IProjectService
                                 Name = p.Name,
                                 Description = p.Description,
                                 Term = p.Term,
-                                Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number }
+                                Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number },
+                                Status = p.Status
                             }
                     )
-                    .ToList()
+                    .ToListAsync()
             };
 
         var listOfProjects = new List<Responses.ProjectDTO> { };
 
         foreach (var project in user.Projects)
-            if (!project.Archived)
-            {
+            if (
+                !project.Archived
+                && project.Status != ProjectStatus.Hold
+                && project.Status != ProjectStatus.Closed
+            )
                 listOfProjects.Add(
                     new Responses.ProjectDTO
                     {
@@ -518,10 +534,10 @@ public class ProjectService : IProjectService
                         {
                             Id = project.YearId,
                             Name = project.Year.Number
-                        }
+                        },
+                        Status = project.Status
                     }
                 );
-            }
 
         return new ResponseService<List<Responses.ProjectDTO>>
         {
@@ -554,6 +570,79 @@ public class ProjectService : IProjectService
                 .ToList(),
             Error = false,
             Message = res.Message
+        };
+    }
+
+    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateProjectStatus(
+        int id,
+        ProjectStatus status
+    )
+    {
+        var project = await _context.Projects
+            .Where(p => !p.Archived && p.Id == id)
+            .Include(p => p.Year)
+            .FirstOrDefaultAsync();
+
+        if (project is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService
+                {
+                    Error = true,
+                    Message = $"Project of id:{id} is not found"
+                }
+            );
+
+        if (status == ProjectStatus.Active)
+        {
+            if (project.Status == ProjectStatus.Active || project.Status == ProjectStatus.Reopened)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Project is already active" }
+                );
+
+            if (project.Status == ProjectStatus.Hold)
+                project.Status = ProjectStatus.Active;
+            else if (project.Status == ProjectStatus.Closed)
+                project.Status = ProjectStatus.Reopened;
+        }
+        else if (status == ProjectStatus.Hold)
+        {
+            if (project.Status == ProjectStatus.Hold)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Project is already on Hold" }
+                );
+
+            if (project.Status == ProjectStatus.Closed)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Project is Closed" }
+                );
+
+            project.Status = ProjectStatus.Hold;
+        }
+        else if (status == ProjectStatus.Closed)
+        {
+            if (project.Status == ProjectStatus.Closed)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Project is already closed" }
+                );
+
+            project.Status = ProjectStatus.Closed;
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new ResponseService<Responses.ProjectDTO>
+        {
+            Message = "Project Status is updated",
+            Error = false,
+            Data = new Responses.ProjectDTO
+            {
+                Status = project.Status,
+                Id = project.Id,
+                Name = project.Name,
+                Term = project.Term,
+                Year = new Responses.IDName { Name = project.Year.Number, Id = project.YearId },
+                Description = project.Description
+            }
         };
     }
 

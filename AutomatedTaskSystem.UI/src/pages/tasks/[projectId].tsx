@@ -10,6 +10,7 @@ import Header from "../../components/header/header";
 import TaskDetails from "../../components/taskDetails";
 import API from "../../lib/API";
 import styles from "../../styles/tasks.module.scss";
+import ProjectIcon from "../../assets/Icons/Project";
 
 const Task = ({
     id,
