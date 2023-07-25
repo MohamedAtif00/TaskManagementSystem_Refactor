@@ -498,7 +498,12 @@ public class ProjectService : IProjectService
                 Error = false,
                 Message = "List of all projects",
                 Data = await _context.Projects
-                    .Where(p => !p.Archived)
+                    .Where(
+                        p =>
+                            !p.Archived
+                            && p.Status != ProjectStatus.Hold
+                            && p.Status != ProjectStatus.Closed
+                    )
                     .Include(p => p.Year)
                     .Select(
                         p =>
