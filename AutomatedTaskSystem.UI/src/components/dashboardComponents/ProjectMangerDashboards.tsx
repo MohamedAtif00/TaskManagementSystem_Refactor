@@ -56,7 +56,7 @@ const ProjectManagerDashboard = () => {
     });
 
     return (
-        <div className="grid grid-cols-12 gap-8 py-8 w-full">
+        <div className="grid grid-cols-12 gap-8 p-8 w-full">
             <DashboardCard label="Users" value={dashboard.numberOfUsers} />
             <DashboardCard label="Projects" value={dashboard.numberOfProject} />
             <DashboardCard label="Schemas" value={dashboard.numberOfSchemas} />
@@ -167,12 +167,9 @@ const ProjectManagerDashboard = () => {
                     }}
                 />
             </div>
-            <div className="bg-white rounded col-span-12 p-4 overflow-x-auto flex justify-center">
-                <div className="w-[1000px] overflow-x-auto">
+            <div className="bg-white rounded col-span-12 overflow-x-auto flex justify-center">
+                <div className="overflow-x-auto w-full p-4">
                     <Bar
-                        style={{
-                            width: 1000,
-                        }}
                         data={{
                             labels: dashboard.projectsReport.map((r) => r.name),
                             datasets: [

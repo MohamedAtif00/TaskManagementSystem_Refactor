@@ -54,6 +54,7 @@ interface IProject {
     name: string;
     year: { id: number; name: string };
     term: boolean;
+    status: 1 | 2 | 3 | 4;
 }
 
 interface ISection {
@@ -89,6 +90,7 @@ interface ProjectDetails {
     name: string;
     description: string;
     units: Unit[];
+    status: string;
 }
 
 type CommentInfo = {

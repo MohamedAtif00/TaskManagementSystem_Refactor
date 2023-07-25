@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.Dashboard.GetProjectManagerDashboard;
 using AutomatedTaskSystem.Dtos.Dashboard.GetTeamLeaderDashboard;
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Services.ReportService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
@@ -61,9 +62,27 @@ public class DashboardService : IDashboardService
             .ToListAsync();
         var schemas = await _context.Schemas.Where(g => !g.Archived).ToListAsync();
         var reports = await _reportService.GetAllProjectsReports(null, null);
-        var projects = await _context.Projects.Where(p => !p.Archived).ToListAsync();
+        var projects = await _context.Projects
+            .Where(
+                p =>
+                    !p.Archived
+                    && p.Status != ProjectStatus.Closed
+                    && p.Status != ProjectStatus.Hold
+            )
+            .ToListAsync();
         var tasks = await _context.Tasks
-            .Where(t => !t.Archived && t.StatusId != 4 && t.StatusId != 5)
+            .Where(
+                t =>
+                    !t.Archived
+                    && t.StatusId != 4
+                    && t.StatusId != 5
+                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatus.Closed
+                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatus.Hold
+            )
+            .Include(t => t.LearningObjective)
+            .ThenInclude(lo => lo.Lesson)
+            .ThenInclude(l => l.Unit)
+            .ThenInclude(u => u.Project)
             .ToListAsync();
 
         if (reports.Value is null || reports.Value.Data is null)
@@ -146,6 +165,9 @@ public class DashboardService : IDashboardService
             .Where(u => u.GroupId == user.GroupId && !u.Archived && u.RoleId == 4)
             .Include(u => u.Tasks)
             .ThenInclude(t => t.LearningObjective)
+            .ThenInclude(lo => lo.Lesson)
+            .ThenInclude(l => l.Unit)
+            .ThenInclude(u => u.Project)
             .ToListAsync();
 
         var ProjectsDetails = new List<GetTasksPerItem> { };
@@ -161,7 +183,16 @@ public class DashboardService : IDashboardService
                     Id = member.Id,
                     Name = member.Name,
                     TasksCount = member.Tasks
-                        .Where(t => !t.Archived && t.StatusId != 4 && t.StatusId != 5)
+                        .Where(
+                            t =>
+                                !t.Archived
+                                && t.StatusId != 4
+                                && t.StatusId != 5
+                                && t.LearningObjective.Lesson.Unit.Project.Status
+                                    != ProjectStatus.Closed
+                                && t.LearningObjective.Lesson.Unit.Project.Status
+                                    != ProjectStatus.Hold
+                        )
                         .ToList()
                         .Count,
                 }
@@ -169,6 +200,11 @@ public class DashboardService : IDashboardService
         }
 
         foreach (var project in user.Projects)
+        {
+            var s = project.Status;
+            if (s == ProjectStatus.Closed || s == ProjectStatus.Hold)
+                continue;
+
             foreach (var unit in project.Units)
                 foreach (var lesson in unit.Lessons)
                     foreach (var lo in lesson.LearningObjectives)
@@ -196,6 +232,7 @@ public class DashboardService : IDashboardService
                                     detail.TasksCount++;
                                 activeTasks++;
                             }
+        }
 
         return new ResponseService<GetTeamLeaderDashboardDto>
         {
@@ -204,7 +241,12 @@ public class DashboardService : IDashboardService
             Data = new GetTeamLeaderDashboardDto
             {
                 Members = members.Count,
-                Projects = user.Projects.Count,
+                Projects = user.Projects
+                    .Where(
+                        p => p.Status == ProjectStatus.Active || p.Status == ProjectStatus.Reopened
+                    )
+                    .ToList()
+                    .Count,
                 ActiveTasks = activeTasks,
                 ProjectsDetails = ProjectsDetails,
                 TasksPerUser = TasksPerUser
