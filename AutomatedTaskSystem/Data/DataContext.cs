@@ -83,10 +83,9 @@ namespace AutomatedTaskSystem.Data
             var mm = new Role { Id = 4, Name = "Member" };
 
             var creation = new Models.Type { Id = 1, Name = "Creation" };
-            var comment = new Models.Type { Id = 2, Name = "Comment" };
             var review = new Models.Type { Id = 3, Name = "Review" };
 
-            modelBuilder.Entity<Models.Type>().HasData(creation, comment, review);
+            modelBuilder.Entity<Models.Type>().HasData(creation, review);
 
             modelBuilder.Entity<Role>().HasData(pm, sh, tl, mm);
 
