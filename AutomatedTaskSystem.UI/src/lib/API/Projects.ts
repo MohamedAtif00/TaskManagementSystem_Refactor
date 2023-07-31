@@ -1,6 +1,6 @@
 import { ISummary } from "../../pages/summaries/[projectId]";
 import authService from "../Auth";
-import { url } from "./";
+import { BasicInfo, url } from "./";
 import REPORTS from "./Reports";
 
 const PROJECTS = {
@@ -279,6 +279,26 @@ const PROJECTS = {
                 return false;
             }
         },
+        EDIT: async ({ name, id }: { name: string; id: number }) => {
+            try {
+                const res = await fetch(`${url}/lessons/${id}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ name }),
+                });
+                const data: {
+                    data: BasicInfo;
+                    error: boolean;
+                    message: string;
+                } = await res.json();
+                return data;
+            } catch (error) {
+                console.error(error);
+                return false;
+            }
+        },
         REMOVE: async (id: number) => {
             try {
                 const res = await fetch(`${url}/units/${id}`, {
@@ -305,6 +325,22 @@ const PROJECTS = {
                         body: JSON.stringify({ name }),
                     });
                     const data: Lesson = await res.json();
+                    return data;
+                } catch (error) {
+                    console.error(error);
+                    return false;
+                }
+            },
+            EDIT: async ({ id, name }: { id: number; name: string }) => {
+                try {
+                    const res = await fetch(`${url}/lessons/${id}`, {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({ name }),
+                    });
+                    const data: ResponseService<BasicInfo> = await res.json();
                     return data;
                 } catch (error) {
                     console.error(error);

@@ -2,6 +2,7 @@ using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using Microsoft.AspNetCore.Mvc;
+using AutomatedTaskSystem.Services.ResponseService;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -27,9 +28,7 @@ namespace AutomatedTaskSystem.Controllers
             var unit = await _context.Units.Where(u => u.Id == id).FirstOrDefaultAsync();
 
             if (unit == null)
-            {
                 return NotFound(new Responses.BadRequestsDTO("Unit not found"));
-            }
 
             var newLesson = new Lesson
             {
@@ -44,6 +43,32 @@ namespace AutomatedTaskSystem.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new Responses.ProjectLessonDTO { Name = newLesson.Name, Id = newLesson.Id });
+        }
+
+        // PATCH:
+        // Edit Unit
+        [HttpPatch("{id}")]
+        public async Task<ActionResult<ResponseService<Responses.IDName>>> EditUnit(
+            int id,
+            Requests.NameDTO req
+        )
+        {
+            var unit = await _context.Units.Where(u => u.Id == id).FirstOrDefaultAsync();
+            if (unit == null)
+                return NotFound(
+                    new BaseResponseService { Message = "Unit is not found", Error = true }
+                );
+
+            unit.Name = req.Name;
+
+            await _context.SaveChangesAsync();
+
+            return new ResponseService<Responses.IDName>
+            {
+                Data = new Responses.IDName { Name = unit.Name, Id = unit.Id },
+                Error = false,
+                Message = "Unit updated"
+            };
         }
 
         // DELETE:

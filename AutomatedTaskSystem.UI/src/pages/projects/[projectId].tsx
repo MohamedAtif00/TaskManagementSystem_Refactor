@@ -12,6 +12,8 @@ import ProjectUnassign from "../../components/forms/projects/projectUnassign";
 import EditLearningObjective from "../../components/forms/projects/editLearningObjective";
 import Link from "next/link";
 import ProjectIcon from "../../assets/Icons/Project";
+import EditUnit from "../../components/pageComponent/projects/editUnit";
+import EditLesson from "../../components/pageComponent/projects/editLesson";
 
 const LearningObjective = (
     props: LearningObjective & {
@@ -39,7 +41,8 @@ const LearningObjective = (
                     href={{
                         pathname: `/projects/${router.query.projectId}`,
                         query: {
-                            learningObjective: props.id,
+                            "learning-objective": props.id,
+                            form: "edit-learning-objective",
                         },
                     }}
                 >
@@ -95,6 +98,18 @@ const Lesson = (
                     >
                         Delete
                     </button>
+                    <Link
+                        href={{
+                            pathname: `/projects/${router.query.projectId}`,
+                            query: {
+                                lesson: props.id,
+                                form: "edit-lesson",
+                            },
+                        }}
+                        className="text-base text-blue-600 font-normal px-3 rounded flex items-center justify-center py-1 hover:underline"
+                    >
+                        Edit
+                    </Link>
                     <QueryButton
                         iconLeft
                         iconRight={false}
@@ -166,6 +181,18 @@ const Unit = (
                     >
                         Delete
                     </button>
+                    <Link
+                        href={{
+                            pathname: `/projects/${router.query.projectId}`,
+                            query: {
+                                unit: props.id,
+                                form: "edit-unit",
+                            },
+                        }}
+                        className="text-base text-blue-600 font-normal px-3 rounded flex items-center justify-center py-1 hover:underline"
+                    >
+                        Edit
+                    </Link>
                     <QueryButton
                         iconLeft
                         iconRight={false}
@@ -199,6 +226,8 @@ const Project = () => {
     const [project, setProject] = useState<ProjectDetails>();
     const router = useRouter();
     const auth = useAppSelector((s) => s.authSlice);
+    const [activeUnit, setActiveUnit] = useState<Unit>();
+    const [activeLesson, setActiveLesson] = useState<Lesson>();
     const [activeLO, setActiveLO] = useState<LearningObjective>();
 
     if (!auth.isAuth || auth.role != 1) router.replace("/");
@@ -213,17 +242,39 @@ const Project = () => {
     }, [router.query]);
 
     useEffect(() => {
-        const idQuery = router.query.learningObjective;
-        if (idQuery && project) {
-            const id = parseInt(idQuery.toString());
+        if (!project) return;
+        const { form } = router.query;
+
+        const loId = router.query["learning-objective"];
+        if (loId && form === "edit-learning-objective") {
+            const id = parseInt(loId.toString());
             if (!isNaN(id))
                 for (const { lessons } of project.units)
                     for (const { learningObjectives } of lessons)
                         for (const lo of learningObjectives)
                             if (lo.id === id) return setActiveLO(lo);
         }
+
+        const unitId = router.query["unit"];
+        if (unitId && form === "edit-unit") {
+            const id = parseInt(unitId.toString());
+            if (!isNaN(id))
+                for (const unit of project.units)
+                    if (unit.id === id) return setActiveUnit(unit);
+        }
+
+        const lessonId = router.query["lesson"];
+        if (lessonId && form === "edit-lesson") {
+            const id = parseInt(lessonId.toString());
+            if (!isNaN(id))
+                for (const { lessons } of project.units)
+                    for (const lesson of lessons)
+                        if (lesson.id === id) return setActiveLesson(lesson);
+        }
         setActiveLO(undefined);
-    }, [router.query.learningObjective, project]);
+        setActiveUnit(undefined);
+        setActiveLesson(undefined);
+    }, [router.query, project]);
 
     const handlers = {
         project: {
@@ -281,6 +332,27 @@ const Project = () => {
                     });
                 }
             },
+            edit: (id: number, name: string) => {
+                if (project) {
+                    API.PROJECTS.UNITS.EDIT({ id, name }).then((res) => {
+                        if (res && !res.error) {
+                            setProject((ps) => {
+                                const newUnits: Unit[] = [];
+                                ps!.units.forEach((u) => {
+                                    if (u.id == res.data.id)
+                                        return newUnits.push({
+                                            ...u,
+                                            name: res.data.name,
+                                        });
+                                    newUnits.push(u);
+                                });
+                                return { ...ps!, units: newUnits };
+                            });
+                            router.push(`/projects/${project.id}`);
+                        }
+                    });
+                }
+            },
         },
         lesson: {
             add: (name: string) => {
@@ -306,6 +378,28 @@ const Project = () => {
                                 router.back();
                             }
                         });
+                }
+            },
+            edit: (id: number, name: string) => {
+                if (project) {
+                    API.PROJECTS.UNITS.LESSONS.EDIT({ id, name }).then(
+                        (res) => {
+                            if (res && !res.error) {
+                                setProject((ps) => {
+                                    const newUnits: Unit[] = [];
+                                    ps!.units.forEach((u) => {
+                                        const lesson = u.lessons.find(
+                                            (l) => l.id == res.data.id
+                                        );
+                                        if (lesson) lesson.name = res.data.name;
+                                        newUnits.push(u);
+                                    });
+                                    return { ...ps!, units: newUnits };
+                                });
+                                router.push(`/projects/${project.id}`);
+                            }
+                        }
+                    );
                 }
             },
             remove: (id: number) => {
@@ -583,13 +677,27 @@ const Project = () => {
                     />
                     <ProjectAssign handler={handlers.project.assign} />
                     <ProjectUnassign handler={handlers.project.unassign} />
-                    {activeLO ? (
+                    {activeLO && (
                         <EditLearningObjective
                             updateLo={handlers.learningObjective.edit}
                             {...activeLO}
                         />
-                    ) : (
-                        ""
+                    )}
+                    {activeUnit && (
+                        <EditUnit
+                            id={activeUnit.id}
+                            name={activeUnit.name}
+                            projectId={project.id}
+                            onSubmit={handlers.unit.edit}
+                        />
+                    )}
+                    {activeLesson && (
+                        <EditLesson
+                            id={activeLesson.id}
+                            name={activeLesson.name}
+                            projectId={project.id}
+                            onSubmit={handlers.lesson.edit}
+                        />
                     )}
                 </>
             </div>
