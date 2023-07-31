@@ -210,12 +210,13 @@ public class NodeController : ControllerBase
         Requests.NodeDTO req
     )
     {
-        var schema = await _context.Schemas.Where(_s => _s.Id == schemaId).FirstOrDefaultAsync();
+        var schema = await _context.Schemas
+            .Where(_s => _s.Id == schemaId)
+            .Include(s => s.Nodes)
+            .FirstOrDefaultAsync();
 
         if (schema == null)
-        {
             return NotFound(new Responses.BadRequestsDTO("Schema not found"));
-        }
 
         var previousNodes = new List<Node> { };
         var requiresNodes = new List<Node> { };
@@ -232,7 +233,8 @@ public class NodeController : ControllerBase
             Next = emptyNodes,
             Required = emptyNodes,
             Requires = requiresNodes,
-            Steps = new List<Step> { }
+            Steps = new List<Step> { },
+            Order = schema.Nodes.FindAll(n => !n.Archived).Count + 1
         };
 
         for (int i = 0; i < req.Previous.Count; i++)
