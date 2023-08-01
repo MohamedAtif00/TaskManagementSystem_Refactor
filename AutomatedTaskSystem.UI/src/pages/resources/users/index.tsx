@@ -18,6 +18,11 @@ const columns: GridColDef[] = [
         headerName: "Name",
         width: 200,
         cellClassName: "relative",
+        sortComparator: (A, B) => {
+            const a = A.toLowerCase(),
+                b = B.toLowerCase();
+            return a > b ? 1 : b > a ? -1 : 0;
+        },
     },
     { field: "col2", headerName: "Group", width: 200 },
     { field: "col3", headerName: "Role", width: 200 },
@@ -111,6 +116,11 @@ const Users = () => {
                         };
                     })}
                     columns={columns}
+                    initialState={{
+                        sorting: {
+                            sortModel: [{ field: "col1", sort: "asc" }],
+                        },
+                    }}
                 />
             </div>
             <AddUser />

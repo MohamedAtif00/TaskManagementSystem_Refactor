@@ -13,13 +13,18 @@ import RemoveSchema from "../../components/pageComponent/schemas/removeSchema";
 
 const columns: GridColDef[] = [
     { field: "col0", headerName: "ID", width: 100 },
+    { field: "col3", headerName: "Type", width: 200 },
     {
         field: "col1",
         headerName: "Name",
         width: 300,
+        sortComparator: (A, B) => {
+            const a = A.toLowerCase(),
+                b = B.toLowerCase();
+            return a > b ? 1 : b > a ? -1 : 0;
+        },
     },
     { field: "col2", headerName: "Description", width: 300 },
-    { field: "col3", headerName: "Type", width: 200 },
     {
         field: "col4",
         headerName: "Actions",
@@ -136,6 +141,11 @@ const Schemas = () => {
                         };
                     })}
                     columns={columns}
+                    initialState={{
+                        sorting: {
+                            sortModel: [{ field: "col3", sort: "asc" }],
+                        },
+                    }}
                 />
             </div>
             <CreateSchema />

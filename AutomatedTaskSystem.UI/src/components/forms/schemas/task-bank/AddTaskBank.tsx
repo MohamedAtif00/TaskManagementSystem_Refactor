@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import ArrowIcon from "../../../../assets/Icons/Arrow";
 import API, { BasicInfo } from "../../../../lib/API";
 import { ITaskBank } from "../../../../pages/schemas/task-bank";
 import Backdrop from "../../backdrop";
@@ -41,8 +40,15 @@ const AddTaskBank = (props: { complete: (response: ITaskBank) => void }) => {
             <div className={[styles.form, styles.center].join(" ")}>
                 <form onSubmit={handleSumbit}>
                     <div className={styles.inputs}>
-                        <FormField label="Name" value={name} onChange={setName} />
-                        <HoursMinutes value={duration} setValue={setDurations} />
+                        <FormField
+                            label="Name"
+                            value={name}
+                            onChange={setName}
+                        />
+                        <HoursMinutes
+                            value={duration}
+                            setValue={setDurations}
+                        />
                         <Dropdown
                             handleChange={setGroup}
                             id={group}
@@ -54,7 +60,6 @@ const AddTaskBank = (props: { complete: (response: ITaskBank) => void }) => {
                             id={type}
                             options={[
                                 { id: 1, name: "Creation" },
-                                { id: 2, name: "Comment" },
                                 { id: 3, name: "Review" },
                             ]}
                             label="Type"

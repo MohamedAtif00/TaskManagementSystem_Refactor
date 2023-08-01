@@ -4,6 +4,7 @@ import FormConclusion from "../../formComponents/FormConclusion";
 import API from "../../../lib/API";
 import { motion } from "framer-motion";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import {} from "../../../slices/nodesSlice";
 
 interface Props {
     OnSubmit: () => void;
@@ -12,7 +13,7 @@ interface Props {
 const RemoveNode: React.FC<Props> = ({ OnSubmit }) => {
     const { query, push: routerPush } = useRouter();
     const [active, setActive] = useState<boolean>(false);
-    const [step, setStep] = useState<{
+    const [node, setNode] = useState<{
         id: number;
         name: string;
         isSafeToDelete: boolean;
@@ -21,21 +22,21 @@ const RemoveNode: React.FC<Props> = ({ OnSubmit }) => {
     useEffect(() => {
         if (query.form === "delete-node" && query.id) {
             API.SCHEMAS.NODES.DELETE_CHECK(query.id).then((res) => {
-                if (res && !res.error) setStep(res.data);
+                if (res && !res.error) setNode(res.data);
             });
             return setActive(true);
         }
         setActive(false);
-        setStep(undefined);
+        setNode(undefined);
     }, [query]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        step &&
-            API.SCHEMAS.NODES.DELETE(step.id).then((res) => {
+        node &&
+            API.SCHEMAS.NODES.DELETE(node.id).then((res) => {
                 if (res && !res.error) {
-                    OnSubmit;
+                    OnSubmit();
                     routerPush(`/schemas/${query.schemaId}`);
                 }
             });
@@ -53,16 +54,16 @@ const RemoveNode: React.FC<Props> = ({ OnSubmit }) => {
                     animate={{ opacity: 1, height: "12rem" }}
                     className="bg-white px-5 py-4 basis-80 rounded-lg flex flex-col justify-between"
                 >
-                    {step ? (
+                    {node ? (
                         <>
                             <h2 className="text-lg">Delete Node</h2>
                             <div>
                                 About to Delete{" "}
                                 <span className="font-bold text-red-600">
-                                    {step.name}
+                                    {node.name}
                                 </span>
                             </div>
-                            {!step.isSafeToDelete && (
+                            {!node.isSafeToDelete && (
                                 <div className="flex items-center gap-2 text-red-600">
                                     <ExclamationTriangleIcon
                                         className="h-6 w-6"

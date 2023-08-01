@@ -3,6 +3,7 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using Microsoft.AspNetCore.Mvc;
 using AutomatedTaskSystem.Services.TaskService;
+using AutomatedTaskSystem.Services.ResponseService;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -86,6 +87,32 @@ namespace AutomatedTaskSystem.Controllers
                     Environment = newLO.Environment
                 }
             );
+        }
+
+        // PATCH:
+        // Edit Unit
+        [HttpPatch("{id}")]
+        public async Task<ActionResult<ResponseService<Responses.IDName>>> EditLesson(
+            int id,
+            Requests.NameDTO req
+        )
+        {
+            var lesson = await _context.Lessons.Where(u => u.Id == id).FirstOrDefaultAsync();
+            if (lesson == null)
+                return NotFound(
+                    new BaseResponseService { Message = "Lesson is not found", Error = true }
+                );
+
+            lesson.Name = req.Name;
+
+            await _context.SaveChangesAsync();
+
+            return new ResponseService<Responses.IDName>
+            {
+                Data = new Responses.IDName { Name = lesson.Name, Id = lesson.Id },
+                Error = false,
+                Message = "Lesson updated"
+            };
         }
 
         // DELETE:

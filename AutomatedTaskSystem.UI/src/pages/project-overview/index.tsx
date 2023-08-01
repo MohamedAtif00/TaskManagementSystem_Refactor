@@ -34,6 +34,12 @@ const columns: GridColDef[] = [
         field: "col1",
         headerName: "Name",
         width: 300,
+        sortComparator: (A, B) => {
+            const a = A.toLowerCase(),
+                b = B.toLowerCase();
+            console.log(a, b);
+            return a > b ? 1 : b > a ? -1 : 0;
+        },
     },
     { field: "col2", headerName: "Description", width: 200 },
     { field: "col3", headerName: "Year", width: 100 },
@@ -110,6 +116,11 @@ const Reports = () => {
                     <div>
                         <DataGrid
                             className="relative h-full"
+                            initialState={{
+                                sorting: {
+                                    sortModel: [{ field: "col1", sort: "asc" }],
+                                },
+                            }}
                             slots={{
                                 row: (r) => {
                                     return (
