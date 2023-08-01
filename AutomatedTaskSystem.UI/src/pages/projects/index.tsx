@@ -22,6 +22,11 @@ const columnsForDisabled: GridColDef[] = [
         field: "col1",
         headerName: "Name",
         width: 200,
+        sortComparator: (A, B) => {
+            const a = A.toLowerCase(),
+                b = B.toLowerCase();
+            return a > b ? 1 : b > a ? -1 : 0;
+        },
     },
     { field: "col2", headerName: "Description", width: 300 },
     { field: "col3", headerName: "Year", width: 100 },
@@ -261,6 +266,11 @@ const Projects = () => {
                                 };
                             })}
                         columns={columns}
+                        initialState={{
+                            sorting: {
+                                sortModel: [{ field: "col1", sort: "asc" }],
+                            },
+                        }}
                     />
                 ) : view === "closed" ? (
                     <DataGrid
@@ -278,6 +288,11 @@ const Projects = () => {
                                 };
                             })}
                         columns={columnsForDisabled}
+                        initialState={{
+                            sorting: {
+                                sortModel: [{ field: "col1", sort: "asc" }],
+                            },
+                        }}
                     />
                 ) : (
                     <DataGrid
@@ -295,6 +310,11 @@ const Projects = () => {
                                 };
                             })}
                         columns={columnsForDisabled}
+                        initialState={{
+                            sorting: {
+                                sortModel: [{ field: "col1", sort: "asc" }],
+                            },
+                        }}
                     />
                 )}
             </div>

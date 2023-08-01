@@ -32,7 +32,11 @@ const columns: GridColDef[] = [
             );
         },
         disableColumnMenu: true,
-        sortable: false,
+        sortComparator: (A, B) => {
+            const a = A.name.toLowerCase(),
+                b = B.name.toLowerCase();
+            return a > b ? 1 : b > a ? -1 : 0;
+        },
     },
     {
         field: "col2",
@@ -117,6 +121,11 @@ const Groups = () => {
                         };
                     })}
                     columns={columns}
+                    initialState={{
+                        sorting: {
+                            sortModel: [{ field: "col1", sort: "asc" }],
+                        },
+                    }}
                 />
             </div>
             <AddGroup />
