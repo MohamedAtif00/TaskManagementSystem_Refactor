@@ -14,6 +14,8 @@ import Link from "next/link";
 import ProjectIcon from "../../assets/Icons/Project";
 import EditUnit from "../../components/pageComponent/projects/editUnit";
 import EditLesson from "../../components/pageComponent/projects/editLesson";
+import Head from "next/head";
+import Loader from "../../components/loader";
 
 const LearningObjective = (
     props: LearningObjective & {
@@ -598,111 +600,123 @@ const Project = () => {
         },
     };
 
-    if (project)
+    if (project === undefined) {
         return (
-            <div className="w-full px-4">
-                <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="flex">
-                            <ProjectIcon color={"#29313d"} />
-                        </div>
-                        <div className="text-2xl font-bold text-slate-800">
-                            {project.name}
-                        </div>
-                        <div className="text-slate-500">{project.status}</div>
-                    </div>
-                    <div className="flex gap-2">
-                        <QueryButton
-                            icon={<PlusIcon />}
-                            text="Remove Users"
-                            url={{
-                                pathname: `/projects/${project.id}`,
-                                query: {
-                                    form: "unassign",
-                                },
-                            }}
-                        />
-                        <QueryButton
-                            icon={<PlusIcon />}
-                            text="Assign Users"
-                            url={{
-                                pathname: `/projects/${project.id}`,
-                                query: {
-                                    form: "assign",
-                                },
-                            }}
-                        />
-                    </div>
-                </div>
-                <div className="py-4 flex flex-col gap-4">
-                    <div className="flex justify-between">
-                        <h2 className="text-3xl">Units</h2>
-                        <QueryButton
-                            iconLeft
-                            iconRight={false}
-                            icon={<PlusIcon />}
-                            text="Unit"
-                            url={{
-                                pathname: `/projects/${project.id}`,
-                                query: {
-                                    form: "unit",
-                                },
-                            }}
-                        />
-                    </div>
-                    {project.units.map((u) => (
-                        <Unit
-                            key={u.id}
-                            {...u}
-                            removeLesson={handlers.lesson.remove}
-                            removeLearningObjective={
-                                handlers.learningObjective.remove
-                            }
-                            remove={handlers.unit.remove}
-                        />
-                    ))}
-                </div>
-                <>
-                    <AddUnit
-                        path={`/projects/${project.id}`}
-                        submit={handlers.unit.add}
-                    />
-                    <AddLesson
-                        path={`/projects/${project.id}`}
-                        submit={handlers.lesson.add}
-                    />
-                    <AddLearningObjective
-                        path={`/projects/${project.id}`}
-                        submit={handlers.learningObjective.add}
-                    />
-                    <ProjectAssign handler={handlers.project.assign} />
-                    <ProjectUnassign handler={handlers.project.unassign} />
-                    {activeLO && (
-                        <EditLearningObjective
-                            updateLo={handlers.learningObjective.edit}
-                            {...activeLO}
-                        />
-                    )}
-                    {activeUnit && (
-                        <EditUnit
-                            id={activeUnit.id}
-                            name={activeUnit.name}
-                            projectId={project.id}
-                            onSubmit={handlers.unit.edit}
-                        />
-                    )}
-                    {activeLesson && (
-                        <EditLesson
-                            id={activeLesson.id}
-                            name={activeLesson.name}
-                            projectId={project.id}
-                            onSubmit={handlers.lesson.edit}
-                        />
-                    )}
-                </>
+            <div className="flex items-center justify-center mx-auto h-full">
+                <Head>
+                    <title>ATS - Loading</title>
+                </Head>
+                <Loader />
             </div>
         );
-    return <div>loading</div>;
+    }
+
+    return (
+        <div className="w-full px-4">
+            <Head>
+                <title>ATS - {project.name}</title>
+            </Head>
+            <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="flex">
+                        <ProjectIcon color={"#29313d"} />
+                    </div>
+                    <div className="text-2xl font-bold text-slate-800">
+                        {project.name}
+                    </div>
+                    <div className="text-slate-500">{project.status}</div>
+                </div>
+                <div className="flex gap-2">
+                    <QueryButton
+                        icon={<PlusIcon />}
+                        text="Remove Users"
+                        url={{
+                            pathname: `/projects/${project.id}`,
+                            query: {
+                                form: "unassign",
+                            },
+                        }}
+                    />
+                    <QueryButton
+                        icon={<PlusIcon />}
+                        text="Assign Users"
+                        url={{
+                            pathname: `/projects/${project.id}`,
+                            query: {
+                                form: "assign",
+                            },
+                        }}
+                    />
+                </div>
+            </div>
+            <div className="py-4 flex flex-col gap-4">
+                <div className="flex justify-between">
+                    <h2 className="text-3xl">Units</h2>
+                    <QueryButton
+                        iconLeft
+                        iconRight={false}
+                        icon={<PlusIcon />}
+                        text="Unit"
+                        url={{
+                            pathname: `/projects/${project.id}`,
+                            query: {
+                                form: "unit",
+                            },
+                        }}
+                    />
+                </div>
+                {project.units.map((u) => (
+                    <Unit
+                        key={u.id}
+                        {...u}
+                        removeLesson={handlers.lesson.remove}
+                        removeLearningObjective={
+                            handlers.learningObjective.remove
+                        }
+                        remove={handlers.unit.remove}
+                    />
+                ))}
+            </div>
+            <>
+                <AddUnit
+                    path={`/projects/${project.id}`}
+                    submit={handlers.unit.add}
+                />
+                <AddLesson
+                    path={`/projects/${project.id}`}
+                    submit={handlers.lesson.add}
+                />
+                <AddLearningObjective
+                    path={`/projects/${project.id}`}
+                    submit={handlers.learningObjective.add}
+                />
+                <ProjectAssign handler={handlers.project.assign} />
+                <ProjectUnassign handler={handlers.project.unassign} />
+                {activeLO && (
+                    <EditLearningObjective
+                        updateLo={handlers.learningObjective.edit}
+                        {...activeLO}
+                    />
+                )}
+                {activeUnit && (
+                    <EditUnit
+                        id={activeUnit.id}
+                        name={activeUnit.name}
+                        projectId={project.id}
+                        onSubmit={handlers.unit.edit}
+                    />
+                )}
+                {activeLesson && (
+                    <EditLesson
+                        id={activeLesson.id}
+                        name={activeLesson.name}
+                        projectId={project.id}
+                        onSubmit={handlers.lesson.edit}
+                    />
+                )}
+            </>
+        </div>
+    );
 };
 
 export default Project;

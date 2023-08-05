@@ -281,7 +281,7 @@ const PROJECTS = {
         },
         EDIT: async ({ name, id }: { name: string; id: number }) => {
             try {
-                const res = await fetch(`${url}/lessons/${id}`, {
+                const res = await fetch(`${url}/units/${id}`, {
                     method: "PATCH",
                     headers: {
                         "Content-Type": "application/json",
