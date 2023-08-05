@@ -10,7 +10,8 @@ import Header from "../../components/header/header";
 import TaskDetails from "../../components/taskDetails";
 import API from "../../lib/API";
 import styles from "../../styles/tasks.module.scss";
-import ProjectIcon from "../../assets/Icons/Project";
+import Head from "next/head";
+import Loader from "../../components/loader";
 
 const Task = ({
     id,
@@ -116,7 +117,7 @@ const Task = ({
 };
 
 const Tasks = () => {
-    const [tasks, setTasks] = useState<TaskInfo[]>([]);
+    const [tasks, setTasks] = useState<TaskInfo[]>();
     const [filteredTasks, setFilteredTasks] = useState<TaskInfo[]>([]);
     const [project, setProject] = useState<IProject>();
     const [loFilter, setLoFilter] = useState(0);
@@ -124,7 +125,7 @@ const Tasks = () => {
     const router = useRouter();
 
     useEffect(() => {
-        if (loFilter > 0) {
+        if (loFilter > 0 && tasks !== undefined) {
             setFilteredTasks(
                 tasks
                     .filter((_) => _.learningObjective.id === loFilter)
@@ -136,7 +137,7 @@ const Tasks = () => {
             );
             return;
         }
-        setFilteredTasks(tasks);
+        tasks && setFilteredTasks(tasks);
     }, [loFilter, tasks, setFilteredTasks]);
 
     useEffect(() => {
@@ -164,6 +165,16 @@ const Tasks = () => {
             return () => clearInterval(refreshInterval);
         }
     }, [project]);
+
+    if (tasks === undefined)
+        return (
+            <div className="flex items-center justify-center mx-auto h-full">
+                <Head>
+                    <title>ATS - Loading</title>
+                </Head>
+                <Loader />
+            </div>
+        );
 
     const refreshTasks = () => {
         const projectId = router.query.projectId;
@@ -195,102 +206,59 @@ const Tasks = () => {
     };
 
     return (
-        <div className={["w-full", styles.container].join(" ")}>
-            <Header text="Task" icon="Task">
-                {auth.role === 1 ? (
-                    <QueryButton
-                        icon={<PlusIcon />}
-                        text="New Task"
-                        url={{
-                            pathname: `/tasks/${project.id}`,
-                            query: {
-                                form: "new-task",
-                            },
-                        }}
-                    />
-                ) : (
-                    <></>
-                )}
-                <div>
-                    <select
-                        className="text-base font-normal"
-                        value={loFilter}
-                        onChange={(e) => {
-                            const value = e.target.value;
-                            const id = parseInt(value);
+        <>
+            <Head>
+                <title>ATS - {project.name} Tasks</title>
+            </Head>
+            <div className={["w-full", styles.container].join(" ")}>
+                <Header text="Task" icon="Task">
+                    {auth.role === 1 ? (
+                        <QueryButton
+                            icon={<PlusIcon />}
+                            text="New Task"
+                            url={{
+                                pathname: `/tasks/${project.id}`,
+                                query: {
+                                    form: "new-task",
+                                },
+                            }}
+                        />
+                    ) : (
+                        <></>
+                    )}
+                    <div>
+                        <select
+                            className="text-base font-normal"
+                            value={loFilter}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                const id = parseInt(value);
 
-                            if (!isNaN(id)) {
-                                setLoFilter(id);
-                            } else {
-                                setLoFilter(0);
-                            }
-                        }}
-                    >
-                        <option value={0}>None</option>
-                        {los.map((lo) => (
-                            <option key={lo.id} value={lo.id}>
-                                {lo.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            </Header>
-            <div className={styles.tasks}>
-                <div className={styles.col}>
-                    <h3>Backlogs</h3>
-                    {[
-                        ...view.backlog.filter((t) => t.priority === 1),
-                        ...view.backlog.filter((t) => t.priority === 2),
-                        ...view.backlog.filter((t) => t.priority === 3),
-                        ...view.backlog.filter((t) => !t.priority),
-                    ].map((t) => (
-                        <Task
-                            priority={t.priority}
-                            attention={t.attention}
-                            id={t.id}
-                            key={t.id}
-                            name={t.name}
-                            lo={t.learningObjective.name}
-                            flagged={t.flagged}
-                            userName={t.user && t.user.name}
-                            from={t.from}
-                            isRollback={t.isRollback}
-                            rollbackCount={t.rollbackCount}
-                        />
-                    ))}
-                </div>
-                <div className={styles.col}>
-                    <h3>To Do</h3>
-                    {[
-                        ...view.todo.filter((t) => t.priority === 1),
-                        ...view.todo.filter((t) => t.priority === 2),
-                        ...view.todo.filter((t) => t.priority === 3),
-                        ...view.todo.filter((t) => !t.priority),
-                    ].map((t) => (
-                        <Task
-                            priority={t.priority}
-                            attention={t.attention}
-                            id={t.id}
-                            key={t.id}
-                            name={t.name}
-                            lo={t.learningObjective.name}
-                            flagged={t.flagged}
-                            userName={t.user && t.user.name}
-                            from={t.from}
-                            isRollback={t.isRollback}
-                            rollbackCount={t.rollbackCount}
-                        />
-                    ))}
-                </div>
-                <div className={styles.col}>
-                    <h3>Doing</h3>
-                    {[
-                        ...view.doing.filter((t) => t.priority === 1),
-                        ...view.doing.filter((t) => t.priority === 2),
-                        ...view.doing.filter((t) => t.priority === 3),
-                        ...view.doing.filter((t) => !t.priority),
-                    ].map((t) => {
-                        return (
+                                if (!isNaN(id)) {
+                                    setLoFilter(id);
+                                } else {
+                                    setLoFilter(0);
+                                }
+                            }}
+                        >
+                            <option value={0}>None</option>
+                            {los.map((lo) => (
+                                <option key={lo.id} value={lo.id}>
+                                    {lo.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </Header>
+                <div className={styles.tasks}>
+                    <div className={styles.col}>
+                        <h3>Backlogs</h3>
+                        {[
+                            ...view.backlog.filter((t) => t.priority === 1),
+                            ...view.backlog.filter((t) => t.priority === 2),
+                            ...view.backlog.filter((t) => t.priority === 3),
+                            ...view.backlog.filter((t) => !t.priority),
+                        ].map((t) => (
                             <Task
                                 priority={t.priority}
                                 attention={t.attention}
@@ -304,16 +272,20 @@ const Tasks = () => {
                                 isRollback={t.isRollback}
                                 rollbackCount={t.rollbackCount}
                             />
-                        );
-                    })}
-                </div>
-                <div className={styles.col}>
-                    <h3>Done</h3>
-                    {view.done.map((t) => {
-                        return (
+                        ))}
+                    </div>
+                    <div className={styles.col}>
+                        <h3>To Do</h3>
+                        {[
+                            ...view.todo.filter((t) => t.priority === 1),
+                            ...view.todo.filter((t) => t.priority === 2),
+                            ...view.todo.filter((t) => t.priority === 3),
+                            ...view.todo.filter((t) => !t.priority),
+                        ].map((t) => (
                             <Task
-                                id={t.id}
+                                priority={t.priority}
                                 attention={t.attention}
+                                id={t.id}
                                 key={t.id}
                                 name={t.name}
                                 lo={t.learningObjective.name}
@@ -323,27 +295,74 @@ const Tasks = () => {
                                 isRollback={t.isRollback}
                                 rollbackCount={t.rollbackCount}
                             />
-                        );
-                    })}
+                        ))}
+                    </div>
+                    <div className={styles.col}>
+                        <h3>Doing</h3>
+                        {[
+                            ...view.doing.filter((t) => t.priority === 1),
+                            ...view.doing.filter((t) => t.priority === 2),
+                            ...view.doing.filter((t) => t.priority === 3),
+                            ...view.doing.filter((t) => !t.priority),
+                        ].map((t) => {
+                            return (
+                                <Task
+                                    priority={t.priority}
+                                    attention={t.attention}
+                                    id={t.id}
+                                    key={t.id}
+                                    name={t.name}
+                                    lo={t.learningObjective.name}
+                                    flagged={t.flagged}
+                                    userName={t.user && t.user.name}
+                                    from={t.from}
+                                    isRollback={t.isRollback}
+                                    rollbackCount={t.rollbackCount}
+                                />
+                            );
+                        })}
+                    </div>
+                    <div className={styles.col}>
+                        <h3>Done</h3>
+                        {view.done.map((t) => {
+                            return (
+                                <Task
+                                    id={t.id}
+                                    attention={t.attention}
+                                    key={t.id}
+                                    name={t.name}
+                                    lo={t.learningObjective.name}
+                                    flagged={t.flagged}
+                                    userName={t.user && t.user.name}
+                                    from={t.from}
+                                    isRollback={t.isRollback}
+                                    rollbackCount={t.rollbackCount}
+                                />
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
-            <TaskDetails refreshTasks={refreshTasks} projectId={project.id} />
-            {router.query.form === "task-assign" && (
-                <AssignTask
-                    taskId={router.query.taskId!}
-                    refreshTask={refreshTasks}
-                />
-            )}
-            {router.query.form === "new-task" && (
-                <CreateTask
-                    refresh={() => {
-                        refreshTasks();
-                        router.back();
-                    }}
+                <TaskDetails
+                    refreshTasks={refreshTasks}
                     projectId={project.id}
                 />
-            )}
-        </div>
+                {router.query.form === "task-assign" && (
+                    <AssignTask
+                        taskId={router.query.taskId!}
+                        refreshTask={refreshTasks}
+                    />
+                )}
+                {router.query.form === "new-task" && (
+                    <CreateTask
+                        refresh={() => {
+                            refreshTasks();
+                            router.back();
+                        }}
+                        projectId={project.id}
+                    />
+                )}
+            </div>
+        </>
     );
 };
 

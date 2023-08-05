@@ -15,6 +15,8 @@ import styles from "../../styles/resources.module.scss";
 import EditSchema from "../../components/pageComponent/schemas/editSchema";
 import RemoveStep from "../../components/pageComponent/schemas/remoteStep";
 import RemoveNode from "../../components/pageComponent/schemas/removeNode";
+import Head from "next/head";
+import Loader from "../../components/loader";
 
 interface ISchemaLocal {
     description: string;
@@ -92,92 +94,108 @@ const Schema = () => {
         }
     };
 
-    if (!schema) return <></>;
+    if (schema === undefined)
+        return (
+            <div className="flex items-center justify-center mx-auto h-full">
+                <Head>
+                    <title>ATS - Loading</title>
+                </Head>
+                <Loader />
+            </div>
+        );
 
     return (
-        <div className="mainContainer">
-            <Header text={schema.name} icon="Schema">
+        <>
+            <Head>
+                <title>ATS - {schema.name} Schema</title>
+            </Head>
+            <div className="mainContainer">
+                <Header text={schema.name} icon="Schema">
+                    {auth.role === 1 ? (
+                        <>
+                            <QueryButton
+                                icon={<PlusIcon />}
+                                iconLeft
+                                iconRight={false}
+                                text="Edit"
+                                url={{
+                                    pathname: `/schemas/${schema.id}`,
+                                    query: {
+                                        form: "editSchema",
+                                    },
+                                }}
+                            />
+                            <QueryButton
+                                icon={<PlusIcon />}
+                                iconLeft
+                                iconRight={false}
+                                text="Node"
+                                url={{
+                                    pathname: `/schemas/${schema.id}`,
+                                    query: {
+                                        form: "node",
+                                    },
+                                }}
+                            />
+                        </>
+                    ) : (
+                        <></>
+                    )}
+                </Header>
+                <div className={styles.container}>
+                    {nodes.map((n) => {
+                        return (
+                            <NodeItem
+                                updateNodes={updateNodes}
+                                schemaId={schema.id}
+                                id={n.id}
+                                key={n.id}
+                                name={n.name}
+                                isStart={n.isStart}
+                                previous={n.previous}
+                                requires={n.requires}
+                                steps={n.steps}
+                            />
+                        );
+                    })}
+                </div>
                 {auth.role === 1 ? (
                     <>
-                        <QueryButton
-                            icon={<PlusIcon />}
-                            iconLeft
-                            iconRight={false}
-                            text="Edit"
-                            url={{
-                                pathname: `/schemas/${schema.id}`,
-                                query: {
-                                    form: "editSchema",
-                                },
-                            }}
+                        <EditSchema />
+                        <AddNode
+                            updateList={updateNodes}
+                            schemaId={schema.id}
+                            nodes={nodes.map((n) => ({
+                                name: n.name,
+                                id: n.id,
+                            }))}
                         />
-                        <QueryButton
-                            icon={<PlusIcon />}
-                            iconLeft
-                            iconRight={false}
-                            text="Node"
-                            url={{
-                                pathname: `/schemas/${schema.id}`,
-                                query: {
-                                    form: "node",
-                                },
-                            }}
-                        />
+                        <AddStep schemaId={schema.id} />
+                        {editStep ? (
+                            <EditStep step={editStep} schemaId={schema.id} />
+                        ) : (
+                            ""
+                        )}
+                        {editNode ? (
+                            <EditNode
+                                updateList={updateNodes}
+                                node={editNode}
+                                nodes={nodes
+                                    .filter((n) => n.id !== editNode.id)
+                                    .map(({ id, name }) => ({ id, name }))}
+                                schemaId={schema.id}
+                            />
+                        ) : (
+                            ""
+                        )}
                     </>
                 ) : (
                     <></>
                 )}
-            </Header>
-            <div className={styles.container}>
-                {nodes.map((n) => {
-                    return (
-                        <NodeItem
-                            updateNodes={updateNodes}
-                            schemaId={schema.id}
-                            id={n.id}
-                            key={n.id}
-                            name={n.name}
-                            isStart={n.isStart}
-                            previous={n.previous}
-                            requires={n.requires}
-                            steps={n.steps}
-                        />
-                    );
-                })}
+                <RemoveStep />
+                <RemoveNode OnSubmit={updateNodes} />
             </div>
-            {auth.role === 1 ? (
-                <>
-                    <EditSchema />
-                    <AddNode
-                        updateList={updateNodes}
-                        schemaId={schema.id}
-                        nodes={nodes.map((n) => ({ name: n.name, id: n.id }))}
-                    />
-                    <AddStep schemaId={schema.id} />
-                    {editStep ? (
-                        <EditStep step={editStep} schemaId={schema.id} />
-                    ) : (
-                        ""
-                    )}
-                    {editNode ? (
-                        <EditNode
-                            updateList={updateNodes}
-                            node={editNode}
-                            nodes={nodes
-                                .filter((n) => n.id !== editNode.id)
-                                .map(({ id, name }) => ({ id, name }))}
-                            schemaId={schema.id}
-                        />
-                    ) : (
-                        ""
-                    )}
-                </>
-            ) : (
-                <></>
-            )}
-            <RemoveStep />
-            <RemoveNode OnSubmit={updateNodes} />
-        </div>
+        </>
     );
 };
 

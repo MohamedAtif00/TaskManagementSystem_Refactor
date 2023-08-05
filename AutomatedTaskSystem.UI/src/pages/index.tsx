@@ -10,7 +10,7 @@ const Home: NextPage = () => {
     return (
         <div className="grow overflow-y-auto">
             <Head>
-                <title>ATS</title>
+                <title>ATS - Home</title>
                 <meta
                     name="description"
                     content="Selah El Telmeez Project Management System"

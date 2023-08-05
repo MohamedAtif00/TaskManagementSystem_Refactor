@@ -88,7 +88,7 @@ const Reports = () => {
     return (
         <>
             <Head>
-                <title>ATS - Reports</title>
+                <title>ATS - Project Overview</title>
             </Head>
             <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
                 <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
@@ -97,7 +97,7 @@ const Reports = () => {
                             <ProjectIcon color={"#29313d"} />
                         </div>
                         <div className="text-2xl font-bold text-slate-800">
-                            Reports
+                            Projects Overview
                         </div>
                     </div>
                 </div>

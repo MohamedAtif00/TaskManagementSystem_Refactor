@@ -10,6 +10,7 @@ import EditUser from "../../../components/pageComponent/users/editUser";
 import RemoveUser from "../../../components/pageComponent/users/removeUser";
 import ResourcesIcon from "../../../assets/Icons/Resources";
 import TableAction from "../../../components/TableComponents/TableActionButton";
+import Head from "next/head";
 
 const columns: GridColDef[] = [
     { field: "col0", headerName: "ID", width: 100 },
@@ -82,51 +83,56 @@ const Users = () => {
     }, [dispatch]);
 
     return (
-        <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
-            <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
-                <div className="flex gap-2 items-center">
-                    <div className="basis-6 h-6">
-                        <ResourcesIcon />
+        <>
+            <Head>
+                <title>ATS - Users</title>
+            </Head>
+            <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
+                <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
+                    <div className="flex gap-2 items-center">
+                        <div className="basis-6 h-6">
+                            <ResourcesIcon />
+                        </div>
+                        <h1 className="font-bold text-2xl ">Users</h1>
                     </div>
-                    <h1 className="font-bold text-2xl ">Users</h1>
+                    <Link
+                        href={{
+                            pathname: "/resources/users",
+                            query: {
+                                form: "add-user",
+                            },
+                        }}
+                    >
+                        <button className="px-4 py-1 rounded bg-blue-600 text-white">
+                            Add User
+                        </button>
+                    </Link>
                 </div>
-                <Link
-                    href={{
-                        pathname: "/resources/users",
-                        query: {
-                            form: "add-user",
-                        },
-                    }}
-                >
-                    <button className="px-4 py-1 rounded bg-blue-600 text-white">
-                        Add User
-                    </button>
-                </Link>
+                <div className="pb-4 mt-4">
+                    <DataGrid
+                        className="bg-white relative h-full"
+                        rows={users.map((u) => {
+                            return {
+                                id: u.id,
+                                col0: u.id,
+                                col1: u.name,
+                                col2: u.group.name,
+                                col3: u.role.name,
+                            };
+                        })}
+                        columns={columns}
+                        initialState={{
+                            sorting: {
+                                sortModel: [{ field: "col1", sort: "asc" }],
+                            },
+                        }}
+                    />
+                </div>
+                <AddUser />
+                <RemoveUser />
+                <EditUser />
             </div>
-            <div className="pb-4 mt-4">
-                <DataGrid
-                    className="bg-white relative h-full"
-                    rows={users.map((u) => {
-                        return {
-                            id: u.id,
-                            col0: u.id,
-                            col1: u.name,
-                            col2: u.group.name,
-                            col3: u.role.name,
-                        };
-                    })}
-                    columns={columns}
-                    initialState={{
-                        sorting: {
-                            sortModel: [{ field: "col1", sort: "asc" }],
-                        },
-                    }}
-                />
-            </div>
-            <AddUser />
-            <RemoveUser />
-            <EditUser />
-        </div>
+        </>
     );
 };
 

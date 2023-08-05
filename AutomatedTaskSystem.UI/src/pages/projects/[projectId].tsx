@@ -600,7 +600,7 @@ const Project = () => {
         },
     };
 
-    if (project === undefined) {
+    if (project === undefined)
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
@@ -609,7 +609,6 @@ const Project = () => {
                 <Loader />
             </div>
         );
-    }
 
     return (
         <div className="w-full px-4">
