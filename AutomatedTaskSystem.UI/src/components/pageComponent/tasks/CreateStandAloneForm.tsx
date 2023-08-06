@@ -49,6 +49,9 @@ const CreateStandAloneTaskForm: React.FC<Props> = (props) => {
             return;
         }
 
+        setUser(undefined);
+        setTaskBank(undefined);
+        setLo(undefined);
         setLists(undefined);
         return setActive(false);
     }, [query, props.projectId]);

@@ -123,5 +123,5 @@ type TaskInfo = {
     isRollback: boolean;
     rollbackCount: number;
     from: string;
-    priority?: number;
+    priority: number | null;
 };
