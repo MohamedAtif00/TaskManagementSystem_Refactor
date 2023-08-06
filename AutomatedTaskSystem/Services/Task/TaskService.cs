@@ -203,6 +203,7 @@ public class TaskService : ITaskService
         var user = await _context.Users
             .Where(u => u.Id == uid && !u.Archived)
             .Include(u => u.Group)
+            .Include(u => u.Projects)
             .FirstOrDefaultAsync();
         if (user is null)
             return new UnauthorizedObjectResult(
@@ -284,10 +285,7 @@ public class TaskService : ITaskService
             };
         }
 
-        var project = await _context.Projects
-            .Where(p => p.Id == pid && !p.Archived)
-            .Include(p => p.Users)
-            .FirstOrDefaultAsync();
+        var project = user.Projects.Where(p => !p.Archived && p.Id == pid).FirstOrDefault();
 
         if (project is null)
             return new NotFoundObjectResult(
@@ -337,6 +335,7 @@ public class TaskService : ITaskService
             .Include(t => t.User)
             .Include(t => t.Group)
             .Include(t => t.Status)
+            .Include(t => t.From)
             .ToListAsync();
 
         return new ResponseService<List<GetTaskCardDto>>

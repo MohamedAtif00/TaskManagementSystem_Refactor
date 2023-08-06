@@ -47,70 +47,73 @@ const Task = ({
                     taskId: id,
                 },
             }}
+            className="relative"
         >
             <div
                 className={[
-                    styles.task,
+                    "rounded-lg bg-white flex flex-col pb-4 hover:scale-105 transition ease-in group",
                     flagged
-                        ? styles.flagged
+                        ? "border-2 border-solid border-red-600"
                         : attention
-                        ? "border border-solid border-emerald-600"
+                        ? "border-2 border-solid border-emerald-600"
                         : "",
                 ].join(" ")}
             >
                 {isRollback ? (
-                    <div className="flex px-1 items-end justify-between bg-orange-800 text-white rounded-t-md">
+                    <div className="flex px-6 pb-1 items-end justify-between bg-orange-700 text-white rounded-t-md">
                         <div className="text-xl font-bold pt-2">Rollback</div>
                         <div>{`#${rollbackCount}`}</div>
                     </div>
                 ) : (
                     ""
                 )}
-                <div className={styles.info}>
-                    <div>{name}</div>
-                </div>
-                {priority && (
-                    <div className="flex justify-end">
-                        <div className="flex gap-2 items-center">
-                            <div className="text-sm">Priority:</div>
-                            {priority === 1 ? (
-                                <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-red-600">
-                                    High
-                                </div>
-                            ) : priority === 2 ? (
-                                <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-orange-500">
-                                    Medium
-                                </div>
-                            ) : priority === 3 ? (
-                                <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-blue-600">
-                                    Low
-                                </div>
-                            ) : (
-                                ""
-                            )}
-                        </div>
+                <div className="px-6 flex flex-col gap-4 pt-4">
+                    <div className="text-lg text-black group-hover:text-2xl transition-all ease-out">
+                        <div>{name}</div>
                     </div>
-                )}
-                {from && (
-                    <div className="flex justify-end">
-                        <div>
-                            <div className="text-xs opacity-60 text-orange-600 flex justify-end">
-                                From
+                    {priority && (
+                        <div className="flex justify-end">
+                            <div className="flex gap-2 items-center">
+                                <div className="text-sm">Priority:</div>
+                                {priority === 1 ? (
+                                    <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-red-600">
+                                        High
+                                    </div>
+                                ) : priority === 2 ? (
+                                    <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-orange-500">
+                                        Medium
+                                    </div>
+                                ) : priority === 3 ? (
+                                    <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-blue-600">
+                                        Low
+                                    </div>
+                                ) : (
+                                    ""
+                                )}
                             </div>
-                            <div className="text-sm opacity-60">{from}</div>
                         </div>
+                    )}
+                    {from && (
+                        <div className="flex justify-end">
+                            <div>
+                                <div className="text-xs opacity-60 text-orange-600 flex justify-end">
+                                    From
+                                </div>
+                                <div className="text-sm opacity-60">{from}</div>
+                            </div>
+                        </div>
+                    )}
+                    <div className="font-medium whitespace-normal">
+                        <div>{lo}</div>
                     </div>
-                )}
-                <div className={styles.details}>
-                    <div>{lo}</div>
+                    {userName ? (
+                        <div className="text-slate-500">
+                            <div>{userName}</div>
+                        </div>
+                    ) : (
+                        ""
+                    )}
                 </div>
-                {userName ? (
-                    <div className={styles.details}>
-                        <div>{userName}</div>
-                    </div>
-                ) : (
-                    ""
-                )}
             </div>
         </Link>
     );
@@ -137,7 +140,14 @@ const Tasks = () => {
             );
             return;
         }
-        tasks && setFilteredTasks(tasks);
+        tasks &&
+            setFilteredTasks(
+                tasks.sort((A, B) => {
+                    const a = A.learningObjective.name.toLowerCase(),
+                        b = B.learningObjective.name.toLowerCase();
+                    return a > b ? 1 : a < b ? -1 : 0;
+                })
+            );
     }, [loFilter, tasks, setFilteredTasks]);
 
     useEffect(() => {
