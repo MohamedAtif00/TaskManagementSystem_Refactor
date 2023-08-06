@@ -358,24 +358,28 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                             )}
                         </div>
                     </div>
-                    <div className="flex items-center justify-end">
-                        <div className="min-w-[10rem]">
-                            <PriorityDropDown
-                                value={
-                                    prio === 1
-                                        ? { id: 1, name: "High" }
-                                        : prio === 2
-                                        ? { id: 2, name: "Medium" }
-                                        : prio === 3
-                                        ? { id: 3, name: "Low" }
-                                        : { id: 4, name: "None" }
-                                }
-                                handleChange={(e) => {
-                                    updatePrio(e.id);
-                                }}
-                            />
+                    {auth.role === 1 || auth.role === 2 || auth.role === 3 ? (
+                        <div className="flex items-center justify-end">
+                            <div className="min-w-[10rem]">
+                                <PriorityDropDown
+                                    value={
+                                        prio === 1
+                                            ? { id: 1, name: "High" }
+                                            : prio === 2
+                                            ? { id: 2, name: "Medium" }
+                                            : prio === 3
+                                            ? { id: 3, name: "Low" }
+                                            : { id: 4, name: "None" }
+                                    }
+                                    handleChange={(e) => {
+                                        updatePrio(e.id);
+                                    }}
+                                />
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <></>
+                    )}
                     <ExpansionPanel header="Template" content={task.template} />
                     <ExpansionPanel header="Tag" content={task.tag} />
                     <ExpansionPanel

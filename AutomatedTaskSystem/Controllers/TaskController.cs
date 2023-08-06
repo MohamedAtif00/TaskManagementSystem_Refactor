@@ -25,6 +25,11 @@ public class TaskController : ControllerBase
         _taskService = taskService;
     }
 
+    [HttpGet("/creatables/{projectId}")]
+    public async Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(
+        int projectId
+    ) => await _taskService.CreatableTasks(projectId);
+
     [HttpPatch("{id}/priority")]
     public async Task<ActionResult<ResponseService<Responses.ITaskDTO>>> EditTask(
         int id,

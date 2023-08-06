@@ -10,7 +10,9 @@ import Header from "../../components/header/header";
 import TaskDetails from "../../components/taskDetails";
 import API from "../../lib/API";
 import styles from "../../styles/tasks.module.scss";
-import ProjectIcon from "../../assets/Icons/Project";
+import Head from "next/head";
+import Loader from "../../components/loader";
+import CreateStandAloneTaskForm from "../../components/pageComponent/tasks/CreateStandAloneForm";
 
 const Task = ({
     id,
@@ -33,7 +35,7 @@ const Task = ({
     from: string;
     isRollback: boolean;
     rollbackCount: number;
-    priority?: number | null;
+    priority?: number;
 }) => {
     const router = useRouter();
     const projectId = router.query.projectId;
@@ -46,77 +48,100 @@ const Task = ({
                     taskId: id,
                 },
             }}
+            className="relative"
         >
             <div
                 className={[
-                    styles.task,
+                    "rounded-lg bg-white flex flex-col transition ease-in group",
                     flagged
-                        ? styles.flagged
+                        ? "border-2 border-solid border-red-200"
                         : attention
-                        ? "border border-solid border-emerald-600"
-                        : "",
+                        ? "border-2 border-solid border-emerald-200"
+                        : "border-2 border-solid border-blue-200",
                 ].join(" ")}
             >
                 {isRollback ? (
-                    <div className="flex px-1 items-end justify-between bg-orange-800 text-white rounded-t-md">
-                        <div className="text-xl font-bold pt-2">Rollback</div>
-                        <div>{`#${rollbackCount}`}</div>
+                    <div className="flex px-2 pt-4 justify-end">
+                        <div className="py-1 text-white px-4 rounded-full bg-orange-600 flex gap-2 items-end border-solid border-2 border-orange-400">
+                            <div className="text-xl font-bold">Rollback</div>
+                            <div>{`#${rollbackCount}`}</div>
+                        </div>
                     </div>
                 ) : (
                     ""
                 )}
-                <div className={styles.info}>
-                    <div>{name}</div>
-                </div>
-                {priority && (
-                    <div className="flex justify-end">
-                        <div className="flex gap-2 items-center">
-                            <div className="text-sm">Priority:</div>
-                            {priority === 1 ? (
-                                <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-red-600">
-                                    High
-                                </div>
-                            ) : priority === 2 ? (
-                                <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-orange-500">
-                                    Medium
-                                </div>
-                            ) : priority === 3 ? (
-                                <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-blue-600">
-                                    Low
-                                </div>
-                            ) : (
-                                ""
-                            )}
-                        </div>
+                <div
+                    className={`px-6 flex flex-col${
+                        isRollback || priority === undefined ? "" : " pt-4"
+                    }`}
+                >
+                    <div className="text-lg text-black group-hover:text-2xl transition-all ease-out">
+                        <div>{name}</div>
                     </div>
-                )}
-                {from && (
-                    <div className="flex justify-end">
-                        <div>
-                            <div className="text-xs opacity-60 text-orange-600 flex justify-end">
-                                From
+                    <div
+                        className={`flex ${
+                            priority ? "justify-between" : "justify-end"
+                        } mt-2`}
+                    >
+                        {priority && (
+                            <div className="flex flex-col items-start">
+                                <div className="text-xs opacity-60 flex justify-end">
+                                    Priority:
+                                </div>
+                                {priority === 1 ? (
+                                    <div className="font-bold text-red-600">
+                                        High
+                                    </div>
+                                ) : priority === 2 ? (
+                                    <div className="font-bold text-orange-500">
+                                        Medium
+                                    </div>
+                                ) : priority === 3 ? (
+                                    <div className="font-bold text-blue-600">
+                                        Low
+                                    </div>
+                                ) : (
+                                    ""
+                                )}
                             </div>
-                            <div className="text-sm opacity-60">{from}</div>
-                        </div>
+                        )}
+                        {from && (
+                            <div>
+                                <div className="text-xs opacity-60 text-orange-600 flex justify-end">
+                                    From:
+                                </div>
+                                <div className="text-sm opacity-60">{from}</div>
+                            </div>
+                        )}
                     </div>
-                )}
-                <div className={styles.details}>
-                    <div>{lo}</div>
                 </div>
-                {userName ? (
-                    <div className={styles.details}>
-                        <div>{userName}</div>
+                <div
+                    className={`${
+                        flagged
+                            ? "bg-red-200"
+                            : attention
+                            ? "bg-emerald-200"
+                            : "bg-blue-200"
+                    } mt-4 px-6 flex flex-col gap-4 py-4 rounded-b-md`}
+                >
+                    <div className="font-medium whitespace-normal">
+                        <div>{lo}</div>
                     </div>
-                ) : (
-                    ""
-                )}
+                    {userName ? (
+                        <div className="text-slate-600">
+                            <div>{userName}</div>
+                        </div>
+                    ) : (
+                        ""
+                    )}
+                </div>
             </div>
         </Link>
     );
 };
 
 const Tasks = () => {
-    const [tasks, setTasks] = useState<TaskInfo[]>([]);
+    const [tasks, setTasks] = useState<TaskInfo[]>();
     const [filteredTasks, setFilteredTasks] = useState<TaskInfo[]>([]);
     const [project, setProject] = useState<IProject>();
     const [loFilter, setLoFilter] = useState(0);
@@ -124,7 +149,7 @@ const Tasks = () => {
     const router = useRouter();
 
     useEffect(() => {
-        if (loFilter > 0) {
+        if (loFilter > 0 && tasks !== undefined) {
             setFilteredTasks(
                 tasks
                     .filter((_) => _.learningObjective.id === loFilter)
@@ -136,7 +161,14 @@ const Tasks = () => {
             );
             return;
         }
-        setFilteredTasks(tasks);
+        tasks &&
+            setFilteredTasks(
+                tasks.sort((A, B) => {
+                    const a = A.learningObjective.name.toLowerCase(),
+                        b = B.learningObjective.name.toLowerCase();
+                    return a > b ? 1 : a < b ? -1 : 0;
+                })
+            );
     }, [loFilter, tasks, setFilteredTasks]);
 
     useEffect(() => {
@@ -164,6 +196,16 @@ const Tasks = () => {
             return () => clearInterval(refreshInterval);
         }
     }, [project]);
+
+    if (tasks === undefined)
+        return (
+            <div className="flex items-center justify-center mx-auto h-full">
+                <Head>
+                    <title>ATS - Loading</title>
+                </Head>
+                <Loader />
+            </div>
+        );
 
     const refreshTasks = () => {
         const projectId = router.query.projectId;
@@ -195,102 +237,56 @@ const Tasks = () => {
     };
 
     return (
-        <div className={["w-full", styles.container].join(" ")}>
-            <Header text="Task" icon="Task">
-                {auth.role === 1 ? (
-                    <QueryButton
-                        icon={<PlusIcon />}
-                        text="New Task"
-                        url={{
-                            pathname: `/tasks/${project.id}`,
-                            query: {
-                                form: "new-task",
-                            },
-                        }}
-                    />
-                ) : (
-                    <></>
-                )}
-                <div>
-                    <select
-                        className="text-base font-normal"
-                        value={loFilter}
-                        onChange={(e) => {
-                            const value = e.target.value;
-                            const id = parseInt(value);
+        <>
+            <Head>
+                <title>ATS - {project.name} Tasks</title>
+            </Head>
+            <div className={["w-full", styles.container].join(" ")}>
+                <Header text={project.name} icon="Task">
+                    {auth.role !== 4 ? (
+                        <QueryButton
+                            icon={<PlusIcon />}
+                            text="New Task"
+                            url={{
+                                pathname: `/tasks/${project.id}`,
+                                query: {
+                                    form: "new-task",
+                                },
+                            }}
+                        />
+                    ) : (
+                        <></>
+                    )}
+                    <div>
+                        <select
+                            className="text-base font-normal"
+                            value={loFilter}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                const id = parseInt(value);
 
-                            if (!isNaN(id)) {
-                                setLoFilter(id);
-                            } else {
-                                setLoFilter(0);
-                            }
-                        }}
-                    >
-                        <option value={0}>None</option>
-                        {los.map((lo) => (
-                            <option key={lo.id} value={lo.id}>
-                                {lo.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            </Header>
-            <div className={styles.tasks}>
-                <div className={styles.col}>
-                    <h3>Backlogs</h3>
-                    {[
-                        ...view.backlog.filter((t) => t.priority === 1),
-                        ...view.backlog.filter((t) => t.priority === 2),
-                        ...view.backlog.filter((t) => t.priority === 3),
-                        ...view.backlog.filter((t) => !t.priority),
-                    ].map((t) => (
-                        <Task
-                            priority={t.priority}
-                            attention={t.attention}
-                            id={t.id}
-                            key={t.id}
-                            name={t.name}
-                            lo={t.learningObjective.name}
-                            flagged={t.flagged}
-                            userName={t.user && t.user.name}
-                            from={t.from}
-                            isRollback={t.isRollback}
-                            rollbackCount={t.rollbackCount}
-                        />
-                    ))}
-                </div>
-                <div className={styles.col}>
-                    <h3>To Do</h3>
-                    {[
-                        ...view.todo.filter((t) => t.priority === 1),
-                        ...view.todo.filter((t) => t.priority === 2),
-                        ...view.todo.filter((t) => t.priority === 3),
-                        ...view.todo.filter((t) => !t.priority),
-                    ].map((t) => (
-                        <Task
-                            priority={t.priority}
-                            attention={t.attention}
-                            id={t.id}
-                            key={t.id}
-                            name={t.name}
-                            lo={t.learningObjective.name}
-                            flagged={t.flagged}
-                            userName={t.user && t.user.name}
-                            from={t.from}
-                            isRollback={t.isRollback}
-                            rollbackCount={t.rollbackCount}
-                        />
-                    ))}
-                </div>
-                <div className={styles.col}>
-                    <h3>Doing</h3>
-                    {[
-                        ...view.doing.filter((t) => t.priority === 1),
-                        ...view.doing.filter((t) => t.priority === 2),
-                        ...view.doing.filter((t) => t.priority === 3),
-                        ...view.doing.filter((t) => !t.priority),
-                    ].map((t) => {
-                        return (
+                                if (isNaN(id)) setLoFilter(0);
+                                else setLoFilter(id);
+                            }}
+                        >
+                            <option value={0}>None</option>
+                            {los.map((lo) => (
+                                <option key={lo.id} value={lo.id}>
+                                    {lo.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </Header>
+                <div className={styles.tasks}>
+                    <div className={styles.col}>
+                        <h3>Backlogs</h3>
+                        {[
+                            ...view.backlog.filter((t) => t.priority === 1),
+                            ...view.backlog.filter((t) => t.priority === 2),
+                            ...view.backlog.filter((t) => t.priority === 3),
+                            ...view.backlog.filter((t) => !t.priority),
+                        ].map((t) => (
                             <Task
                                 priority={t.priority}
                                 attention={t.attention}
@@ -304,16 +300,20 @@ const Tasks = () => {
                                 isRollback={t.isRollback}
                                 rollbackCount={t.rollbackCount}
                             />
-                        );
-                    })}
-                </div>
-                <div className={styles.col}>
-                    <h3>Done</h3>
-                    {view.done.map((t) => {
-                        return (
+                        ))}
+                    </div>
+                    <div className={styles.col}>
+                        <h3>To Do</h3>
+                        {[
+                            ...view.todo.filter((t) => t.priority === 1),
+                            ...view.todo.filter((t) => t.priority === 2),
+                            ...view.todo.filter((t) => t.priority === 3),
+                            ...view.todo.filter((t) => !t.priority),
+                        ].map((t) => (
                             <Task
-                                id={t.id}
+                                priority={t.priority}
                                 attention={t.attention}
+                                id={t.id}
                                 key={t.id}
                                 name={t.name}
                                 lo={t.learningObjective.name}
@@ -323,27 +323,69 @@ const Tasks = () => {
                                 isRollback={t.isRollback}
                                 rollbackCount={t.rollbackCount}
                             />
-                        );
-                    })}
+                        ))}
+                    </div>
+                    <div className={styles.col}>
+                        <h3>Doing</h3>
+                        {[
+                            ...view.doing.filter((t) => t.priority === 1),
+                            ...view.doing.filter((t) => t.priority === 2),
+                            ...view.doing.filter((t) => t.priority === 3),
+                            ...view.doing.filter((t) => !t.priority),
+                        ].map((t) => {
+                            return (
+                                <Task
+                                    priority={t.priority}
+                                    attention={t.attention}
+                                    id={t.id}
+                                    key={t.id}
+                                    name={t.name}
+                                    lo={t.learningObjective.name}
+                                    flagged={t.flagged}
+                                    userName={t.user && t.user.name}
+                                    from={t.from}
+                                    isRollback={t.isRollback}
+                                    rollbackCount={t.rollbackCount}
+                                />
+                            );
+                        })}
+                    </div>
+                    <div className={styles.col}>
+                        <h3>Done</h3>
+                        {view.done.map((t) => {
+                            return (
+                                <Task
+                                    id={t.id}
+                                    attention={t.attention}
+                                    key={t.id}
+                                    name={t.name}
+                                    lo={t.learningObjective.name}
+                                    flagged={t.flagged}
+                                    userName={t.user && t.user.name}
+                                    from={t.from}
+                                    isRollback={t.isRollback}
+                                    rollbackCount={t.rollbackCount}
+                                />
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
-            <TaskDetails refreshTasks={refreshTasks} projectId={project.id} />
-            {router.query.form === "task-assign" && (
-                <AssignTask
-                    taskId={router.query.taskId!}
-                    refreshTask={refreshTasks}
-                />
-            )}
-            {router.query.form === "new-task" && (
-                <CreateTask
-                    refresh={() => {
-                        refreshTasks();
-                        router.back();
-                    }}
+                <TaskDetails
+                    refreshTasks={refreshTasks}
                     projectId={project.id}
                 />
-            )}
-        </div>
+                {router.query.form === "task-assign" && (
+                    <AssignTask
+                        taskId={router.query.taskId!}
+                        refreshTask={refreshTasks}
+                    />
+                )}
+                <CreateStandAloneTaskForm
+                    refreshTasks={refreshTasks}
+                    projectId={project.id}
+                />
+            </div>
+        </>
     );
 };
 
