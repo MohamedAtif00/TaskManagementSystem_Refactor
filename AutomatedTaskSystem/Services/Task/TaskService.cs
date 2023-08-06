@@ -923,6 +923,7 @@ public class TaskService : ITaskService
             Data = new GetTaskDetailsDto
             {
                 Comments = task.LearningObjective.Comments
+                    .FindAll(t => !t.Archived)
                     .OrderByDescending(c => c.Timestamp)
                     .Select(
                         c =>
