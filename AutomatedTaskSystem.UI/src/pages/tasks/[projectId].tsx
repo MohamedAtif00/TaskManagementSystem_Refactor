@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useAppSelector } from "../../app/hooks";
 import PlusIcon from "../../assets/Icons/Plus";
 import QueryButton from "../../components/button/queryButton";
-import CreateTask from "../../components/forms/projects/addTask";
 import AssignTask from "../../components/forms/tasks/assignToTask";
 import Header from "../../components/header/header";
 import TaskDetails from "../../components/taskDetails";
@@ -35,7 +34,7 @@ const Task = ({
     from: string;
     isRollback: boolean;
     rollbackCount: number;
-    priority?: number;
+    priority: number | null;
 }) => {
     const router = useRouter();
     const projectId = router.query.projectId;
@@ -72,11 +71,11 @@ const Task = ({
                 )}
                 <div
                     className={`px-6 flex flex-col${
-                        isRollback || priority === undefined ? "" : " pt-4"
+                        isRollback || priority ? "" : " pt-4"
                     }`}
                 >
-                    <div className="text-lg text-black group-hover:text-2xl transition-all ease-out">
-                        <div>{name}</div>
+                    <div className="text-lg text-black group-hover:text-2xl group-hover:mt-1 mt-0 transition-all ease-out">
+                        <div>{lo}</div>
                     </div>
                     <div
                         className={`flex ${
@@ -125,7 +124,7 @@ const Task = ({
                     } mt-4 px-6 flex flex-col gap-4 py-4 rounded-b-md`}
                 >
                     <div className="font-medium whitespace-normal">
-                        <div>{lo}</div>
+                        <div>{name}</div>
                     </div>
                     {userName ? (
                         <div className="text-slate-600">
@@ -355,6 +354,7 @@ const Tasks = () => {
                         {view.done.map((t) => {
                             return (
                                 <Task
+                                    priority={null}
                                     id={t.id}
                                     attention={t.attention}
                                     key={t.id}
