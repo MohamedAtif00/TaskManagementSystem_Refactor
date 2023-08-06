@@ -1347,4 +1347,125 @@ public class TaskService : ITaskService
         }
         return true;
     }
+
+    public async Task<ActionResult<ResponseService<GetCreatableTasks>>> CreatableTasks(
+        int projectId
+    )
+    {
+        var authRes = _tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = authRes.Message }
+            );
+
+        var statusUid = Int32.TryParse(authRes.Data, out int uid);
+        if (!statusUid)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Request" }
+            );
+
+        var user = await _context.Users
+            .Where(u => u.Id == uid && !u.Archived)
+            .Include(u => u.Group)
+            .FirstOrDefaultAsync();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid auth" }
+            );
+
+        var project = await _context.Projects
+            .Where(p => p.Id == projectId)
+            .Include(p => p.Users)
+            .Include(p => p.Units)
+            .ThenInclude(p => p.Lessons)
+            .ThenInclude(p => p.LearningObjectives)
+            .FirstOrDefaultAsync();
+
+        if (project is null)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Project is not found" }
+            );
+
+        var los = new List<BasicInfoDto> { };
+
+        foreach (var u in project.Units)
+            foreach (var l in u.Lessons)
+                foreach (var lo in l.LearningObjectives)
+                    if (!lo.Archived)
+                        los.Add(new BasicInfoDto { Id = lo.Id, Name = lo.Name });
+
+        los.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
+
+        if (user.RoleId == 3)
+        {
+            var _taskBankItems = await _context.TaskBank
+                .Include(tb => tb.Group)
+                .Where(tb => tb.Active && tb.GroupId == user.GroupId)
+                .ToListAsync();
+
+            _taskBankItems.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
+            return new ResponseService<GetCreatableTasks>
+            {
+                Error = false,
+                Message = "Creatable tasks List",
+                Data = new GetCreatableTasks
+                {
+                    LearningObjectives = los,
+                    Assignees = project.Users
+                        .Where(u => !u.Archived && u.GroupId == user.GroupId)
+                        .Select(i => new BasicInfoDto { Name = i.Name, Id = i.Id })
+                        .ToList(),
+                    Options = _taskBankItems
+                        .Select(
+                            tb =>
+                                new TaskOption
+                                {
+                                    Name = tb.Name,
+                                    Id = tb.Id,
+                                    TeamLead = tb.TL,
+                                    Group = new BasicInfoDto
+                                    {
+                                        Id = tb.Group.Id,
+                                        Name = tb.Group.Name
+                                    }
+                                }
+                        )
+                        .ToList()
+                }
+            };
+        }
+
+        var taskBankItems = await _context.TaskBank
+            .Include(tb => tb.Group)
+            .Where(tb => tb.Active)
+            .ToListAsync();
+
+        taskBankItems.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
+
+        return new ResponseService<GetCreatableTasks>
+        {
+            Error = false,
+            Message = "Creatable tasks List",
+            Data = new GetCreatableTasks
+            {
+                LearningObjectives = los,
+                Assignees = project.Users
+                    .Where(u => !u.Archived)
+                    .Select(i => new BasicInfoDto { Name = i.Name, Id = i.Id })
+                    .ToList(),
+                Options = taskBankItems
+                    .Select(
+                        tb =>
+                            new TaskOption
+                            {
+                                Name = tb.Name,
+                                Id = tb.Id,
+                                TeamLead = tb.TL,
+                                Group = new BasicInfoDto { Id = tb.Group.Id, Name = tb.Group.Name }
+                            }
+                    )
+                    .ToList()
+            }
+        };
+    }
 }

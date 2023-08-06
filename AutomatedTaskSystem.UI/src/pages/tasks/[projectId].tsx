@@ -34,7 +34,7 @@ const Task = ({
     from: string;
     isRollback: boolean;
     rollbackCount: number;
-    priority?: number | null;
+    priority?: number;
 }) => {
     const router = useRouter();
     const projectId = router.query.projectId;
@@ -51,63 +51,83 @@ const Task = ({
         >
             <div
                 className={[
-                    "rounded-lg bg-white flex flex-col pb-4 hover:scale-105 transition ease-in group",
+                    "rounded-lg bg-white flex flex-col transition ease-in group",
                     flagged
-                        ? "border-2 border-solid border-red-600"
+                        ? "border-2 border-solid border-red-200"
                         : attention
-                        ? "border-2 border-solid border-emerald-600"
-                        : "",
+                        ? "border-2 border-solid border-emerald-200"
+                        : "border-2 border-solid border-blue-200",
                 ].join(" ")}
             >
                 {isRollback ? (
-                    <div className="flex px-6 pb-1 items-end justify-between bg-orange-700 text-white rounded-t-md">
-                        <div className="text-xl font-bold pt-2">Rollback</div>
-                        <div>{`#${rollbackCount}`}</div>
+                    <div className="flex px-2 pt-4 justify-end">
+                        <div className="py-1 text-white px-4 rounded-full bg-orange-600 flex gap-2 items-end border-solid border-2 border-orange-400">
+                            <div className="text-xl font-bold">Rollback</div>
+                            <div>{`#${rollbackCount}`}</div>
+                        </div>
                     </div>
                 ) : (
                     ""
                 )}
-                <div className="px-6 flex flex-col gap-4 pt-4">
+                <div
+                    className={`px-6 flex flex-col${
+                        isRollback || priority === undefined ? "" : " pt-4"
+                    }`}
+                >
                     <div className="text-lg text-black group-hover:text-2xl transition-all ease-out">
                         <div>{name}</div>
                     </div>
-                    {priority && (
-                        <div className="flex justify-end">
-                            <div className="flex gap-2 items-center">
-                                <div className="text-sm">Priority:</div>
+                    <div
+                        className={`flex ${
+                            priority ? "justify-between" : "justify-end"
+                        } mt-2`}
+                    >
+                        {priority && (
+                            <div className="flex flex-col items-start">
+                                <div className="text-xs opacity-60 flex justify-end">
+                                    Priority:
+                                </div>
                                 {priority === 1 ? (
-                                    <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-red-600">
+                                    <div className="font-bold text-red-600">
                                         High
                                     </div>
                                 ) : priority === 2 ? (
-                                    <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-orange-500">
+                                    <div className="font-bold text-orange-500">
                                         Medium
                                     </div>
                                 ) : priority === 3 ? (
-                                    <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-blue-600">
+                                    <div className="font-bold text-blue-600">
                                         Low
                                     </div>
                                 ) : (
                                     ""
                                 )}
                             </div>
-                        </div>
-                    )}
-                    {from && (
-                        <div className="flex justify-end">
+                        )}
+                        {from && (
                             <div>
                                 <div className="text-xs opacity-60 text-orange-600 flex justify-end">
-                                    From
+                                    From:
                                 </div>
                                 <div className="text-sm opacity-60">{from}</div>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
+                </div>
+                <div
+                    className={`${
+                        flagged
+                            ? "bg-red-200"
+                            : attention
+                            ? "bg-emerald-200"
+                            : "bg-blue-200"
+                    } mt-4 px-6 flex flex-col gap-4 py-4 rounded-b-md`}
+                >
                     <div className="font-medium whitespace-normal">
                         <div>{lo}</div>
                     </div>
                     {userName ? (
-                        <div className="text-slate-500">
+                        <div className="text-slate-600">
                             <div>{userName}</div>
                         </div>
                     ) : (
@@ -221,7 +241,7 @@ const Tasks = () => {
                 <title>ATS - {project.name} Tasks</title>
             </Head>
             <div className={["w-full", styles.container].join(" ")}>
-                <Header text="Task" icon="Task">
+                <Header text={project.name} icon="Task">
                     {auth.role === 1 ? (
                         <QueryButton
                             icon={<PlusIcon />}

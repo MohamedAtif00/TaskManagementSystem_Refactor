@@ -1,8 +1,23 @@
 import { ITask } from "../../components/taskDetails";
 import authService from "../Auth";
-import { CommonResponse, ErrorResponse, url } from "./";
+import { CommonResponse, url } from "./";
 
 const TASKS = {
+    GET_CREATABLE_TASKS: async (projectId: string | string[]) => {
+        try {
+            const authHeader = authService.authHeader();
+            const res = await fetch(`${url}/creatable/${projectId}`, {
+                headers: {
+                    ...authHeader,
+                },
+            });
+            const data: ResponseService<{}> = await res.json();
+            return data;
+        } catch (err) {
+            console.error(err);
+            return false;
+        }
+    },
     UPDATE_PRIORITY: async (id: number, priority: number | null) => {
         try {
             const res = await fetch(`${url}/tasks/${id}/priority`, {
