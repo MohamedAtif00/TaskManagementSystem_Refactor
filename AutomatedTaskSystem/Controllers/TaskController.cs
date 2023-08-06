@@ -25,8 +25,8 @@ public class TaskController : ControllerBase
         _taskService = taskService;
     }
 
-    [HttpGet("/creatable-tasks/{projectId}")]
-    public async Task<ActionResult<ResponseService<GetCreatableTasks>>> CreatableTasks(
+    [HttpGet("/creatables/{projectId}")]
+    public async Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(
         int projectId
     ) => await _taskService.CreatableTasks(projectId);
 

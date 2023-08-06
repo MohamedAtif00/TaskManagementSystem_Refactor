@@ -1,11 +1,11 @@
 import { Combobox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
 import { BasicInfo } from "../../lib/API";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 interface Props {
     value: BasicInfo | undefined;
-    onChange: (v: BasicInfo) => void;
+    onChange: (v: any) => void;
     options: BasicInfo[];
 }
 
@@ -21,8 +21,13 @@ const CustomizedCombobox: React.FC<Props> = ({ value, onChange, options }) => {
                       .replace(/\s+/g, "")
                       .includes(query.toLowerCase().replace(/\s+/g, ""))
               );
+
+    useEffect(() => {
+        value && setQuery(value.name);
+    }, [value]);
+
     return (
-        <Combobox value={value} onChange={onChange}>
+        <Combobox value={value ? value : ""} onChange={onChange}>
             <div className="relative mt-1">
                 <div className="relative w-full cursor-default overflow-hidden border-solid border border-slate-300 rounded-lg bg-white text-left  focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
                     <Combobox.Input
@@ -44,7 +49,7 @@ const CustomizedCombobox: React.FC<Props> = ({ value, onChange, options }) => {
                     leaveTo="opacity-0"
                     afterLeave={() => setQuery("")}
                 >
-                    <Combobox.Options className="absolute mt-1 max-h-60 w-full border-slate-300 border-solid border overflow-auto rounded-md bg-white py-1 text-base ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                    <Combobox.Options className="absolute z-10 mt-1 max-h-60 w-full border-slate-300 border-solid border overflow-auto rounded-md bg-white py-1 text-base ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
                         {filteredOptions.length === 0 && query !== "" ? (
                             <div className="relative cursor-default select-none py-2 px-4 text-gray-700">
                                 Nothing found.

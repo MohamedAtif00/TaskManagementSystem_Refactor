@@ -1348,7 +1348,7 @@ public class TaskService : ITaskService
         return true;
     }
 
-    public async Task<ActionResult<ResponseService<GetCreatableTasks>>> CreatableTasks(
+    public async Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(
         int projectId
     )
     {
@@ -1376,6 +1376,7 @@ public class TaskService : ITaskService
         var project = await _context.Projects
             .Where(p => p.Id == projectId)
             .Include(p => p.Users)
+            .ThenInclude(u => u.Group)
             .Include(p => p.Units)
             .ThenInclude(p => p.Lessons)
             .ThenInclude(p => p.LearningObjectives)
@@ -1404,16 +1405,28 @@ public class TaskService : ITaskService
                 .ToListAsync();
 
             _taskBankItems.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
-            return new ResponseService<GetCreatableTasks>
+            return new ResponseService<GetCreatableTasksDto>
             {
                 Error = false,
                 Message = "Creatable tasks List",
-                Data = new GetCreatableTasks
+                Data = new GetCreatableTasksDto
                 {
                     LearningObjectives = los,
                     Assignees = project.Users
                         .Where(u => !u.Archived && u.GroupId == user.GroupId)
-                        .Select(i => new BasicInfoDto { Name = i.Name, Id = i.Id })
+                        .Select(
+                            i =>
+                                new UserDto
+                                {
+                                    Name = i.Name,
+                                    Id = i.Id,
+                                    Group = new BasicInfoDto
+                                    {
+                                        Name = i.Group.Name,
+                                        Id = i.Group.Id
+                                    }
+                                }
+                        )
                         .ToList(),
                     Options = _taskBankItems
                         .Select(
@@ -1442,16 +1455,24 @@ public class TaskService : ITaskService
 
         taskBankItems.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
 
-        return new ResponseService<GetCreatableTasks>
+        return new ResponseService<GetCreatableTasksDto>
         {
             Error = false,
             Message = "Creatable tasks List",
-            Data = new GetCreatableTasks
+            Data = new GetCreatableTasksDto
             {
                 LearningObjectives = los,
                 Assignees = project.Users
                     .Where(u => !u.Archived)
-                    .Select(i => new BasicInfoDto { Name = i.Name, Id = i.Id })
+                    .Select(
+                        i =>
+                            new UserDto
+                            {
+                                Name = i.Name,
+                                Id = i.Id,
+                                Group = new BasicInfoDto { Name = i.Group.Name, Id = i.Group.Id }
+                            }
+                    )
                     .ToList(),
                 Options = taskBankItems
                     .Select(

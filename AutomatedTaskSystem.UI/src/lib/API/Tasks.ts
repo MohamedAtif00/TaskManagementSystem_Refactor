@@ -1,17 +1,30 @@
 import { ITask } from "../../components/taskDetails";
 import authService from "../Auth";
-import { CommonResponse, url } from "./";
+import { BasicInfo, CommonResponse, url } from "./";
 
 const TASKS = {
-    GET_CREATABLE_TASKS: async (projectId: string | string[]) => {
+    GET_CREATABLE_TASKS: async (projectId: string | string[] | number) => {
         try {
             const authHeader = authService.authHeader();
-            const res = await fetch(`${url}/creatable/${projectId}`, {
+            const res = await fetch(`${url}/creatables/${projectId}`, {
                 headers: {
                     ...authHeader,
                 },
             });
-            const data: ResponseService<{}> = await res.json();
+            const data: ResponseService<{
+                learningObjectives: BasicInfo[];
+                assignees: {
+                    id: number;
+                    name: string;
+                    group: BasicInfo;
+                }[];
+                options: {
+                    id: number;
+                    name: string;
+                    group: BasicInfo;
+                    teamLead: boolean;
+                }[];
+            }> = await res.json();
             return data;
         } catch (err) {
             console.error(err);

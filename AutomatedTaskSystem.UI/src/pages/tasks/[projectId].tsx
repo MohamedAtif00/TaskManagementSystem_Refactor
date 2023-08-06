@@ -12,6 +12,7 @@ import API from "../../lib/API";
 import styles from "../../styles/tasks.module.scss";
 import Head from "next/head";
 import Loader from "../../components/loader";
+import CreateStandAloneTaskForm from "../../components/pageComponent/tasks/CreateStandAloneForm";
 
 const Task = ({
     id,
@@ -242,7 +243,7 @@ const Tasks = () => {
             </Head>
             <div className={["w-full", styles.container].join(" ")}>
                 <Header text={project.name} icon="Task">
-                    {auth.role === 1 ? (
+                    {auth.role !== 4 ? (
                         <QueryButton
                             icon={<PlusIcon />}
                             text="New Task"
@@ -264,11 +265,8 @@ const Tasks = () => {
                                 const value = e.target.value;
                                 const id = parseInt(value);
 
-                                if (!isNaN(id)) {
-                                    setLoFilter(id);
-                                } else {
-                                    setLoFilter(0);
-                                }
+                                if (isNaN(id)) setLoFilter(0);
+                                else setLoFilter(id);
                             }}
                         >
                             <option value={0}>None</option>
@@ -382,15 +380,10 @@ const Tasks = () => {
                         refreshTask={refreshTasks}
                     />
                 )}
-                {router.query.form === "new-task" && (
-                    <CreateTask
-                        refresh={() => {
-                            refreshTasks();
-                            router.back();
-                        }}
-                        projectId={project.id}
-                    />
-                )}
+                <CreateStandAloneTaskForm
+                    refreshTasks={refreshTasks}
+                    projectId={project.id}
+                />
             </div>
         </>
     );
