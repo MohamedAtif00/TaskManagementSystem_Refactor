@@ -70,12 +70,10 @@ const Task = ({
                     ""
                 )}
                 <div
-                    className={`px-6 flex flex-col${
-                        isRollback || priority ? "" : " pt-4"
-                    }`}
+                    className={`px-6 flex flex-col${isRollback ? "" : " pt-4"}`}
                 >
                     <div className="text-lg text-black group-hover:text-2xl group-hover:mt-1 mt-0 transition-all ease-out">
-                        <div>{lo}</div>
+                        <div className="whitespace-normal">{lo}</div>
                     </div>
                     <div
                         className={`flex ${
