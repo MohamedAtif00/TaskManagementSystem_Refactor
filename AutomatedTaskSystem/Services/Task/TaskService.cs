@@ -346,9 +346,10 @@ public class TaskService : ITaskService
             query = _context.Tasks.Where(
                 t =>
                     t.GroupId == user.GroupId
+                    && !t.Archived
                     && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
                     && (t.UserId == user.Id || t.StatusId == 1)
-                    && !t.Archived
+                    && !t.TL
             );
         var _tasks = await query
             .Include(t => t.LearningObjective)
