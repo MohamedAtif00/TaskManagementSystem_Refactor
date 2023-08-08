@@ -1,0 +1,127 @@
+import Link from "next/link";
+import { useRouter } from "next/router";
+
+const TaskCard = ({
+    id,
+    name,
+    lo,
+    flagged = false,
+    attention,
+    userName,
+    from,
+    isRollback,
+    rollbackCount,
+    priority,
+}: {
+    id: number;
+    name: string;
+    lo: string;
+    flagged: boolean;
+    attention: boolean;
+    userName?: string;
+    from: string;
+    isRollback: boolean;
+    rollbackCount: number;
+    priority: number | null;
+}) => {
+    const router = useRouter();
+    const projectId = router.query.projectId;
+
+    return (
+        <Link
+            href={{
+                pathname: `/tasks/${projectId}`,
+                query: {
+                    taskId: id,
+                },
+            }}
+            className="relative"
+        >
+            <div
+                className={[
+                    flagged
+                        ? "bg-red-300"
+                        : attention
+                        ? "bg-emerald-200"
+                        : "bg-blue-200",
+                    "rounded-lg flex flex-col transition ease-in group",
+                    flagged
+                        ? "border-2 border-solid border-red-200"
+                        : attention
+                        ? "border-2 border-solid border-emerald-200"
+                        : "border-2 border-solid border-blue-200",
+                ].join(" ")}
+            >
+                {isRollback ? (
+                    <div className="flex px-2 pt-4 justify-end">
+                        <div className="py-1 text-white px-4 rounded-full bg-orange-600 flex gap-2 items-end border-solid border-2 border-orange-400">
+                            <div className="text-xl font-bold">Rollback</div>
+                            <div>{`#${rollbackCount}`}</div>
+                        </div>
+                    </div>
+                ) : (
+                    ""
+                )}
+                <div
+                    className={`px-6 flex flex-col${isRollback ? "" : " pt-4"}`}
+                >
+                    <div className="text-lg text-black group-hover:text-2xl group-hover:mt-1 mt-0 transition-all ease-out">
+                        <div className="whitespace-normal">{lo}</div>
+                    </div>
+                    <div
+                        className={`flex ${
+                            priority ? "justify-between" : "justify-end"
+                        } mt-2`}
+                    >
+                        {priority && (
+                            <div className="flex flex-col items-start">
+                                <div className="text-xs opacity-60 flex justify-end">
+                                    Priority:
+                                </div>
+                                {priority === 1 ? (
+                                    <div className="font-bold text-red-600">
+                                        High
+                                    </div>
+                                ) : priority === 2 ? (
+                                    <div className="font-bold text-orange-500">
+                                        Medium
+                                    </div>
+                                ) : priority === 3 ? (
+                                    <div className="font-bold text-blue-600">
+                                        Low
+                                    </div>
+                                ) : (
+                                    ""
+                                )}
+                            </div>
+                        )}
+                        {from && (
+                            <div>
+                                <div className="text-xs opacity-60 text-orange-600 flex justify-end">
+                                    From:
+                                </div>
+                                <div className="text-sm opacity-60">{from}</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div
+                    className={`bg-white mt-4 px-6 flex flex-col gap-4 py-4 rounded-b-md`}
+                >
+                    <div className="font-medium whitespace-normal">
+                        <div>{name}</div>
+                    </div>
+                    {userName ? (
+                        <div className="text-slate-600">
+                            <div>{userName}</div>
+                        </div>
+                    ) : (
+                        ""
+                    )}
+                </div>
+            </div>
+        </Link>
+    );
+};
+
+export default TaskCard;
