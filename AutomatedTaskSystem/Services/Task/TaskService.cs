@@ -84,8 +84,19 @@ public class TaskService : ITaskService
 
             task.Status = status;
             task.StatusId = status.Id;
+
+            var newAssignment = new Assignment
+            {
+                By = authedUser,
+                ById = authedUser.Id,
+                To = user,
+                ToId = user.Id,
+                Task = task,
+                TaskId = task.Id
+            };
+            _context.Assignments.Add(newAssignment);
         }
-        else if (uid != task.Id)
+        else if (uid == 0)
         {
             var status = await _context.Statuses.FindAsync(1);
             if (status is null)
@@ -96,6 +107,17 @@ public class TaskService : ITaskService
 
             task.Status = status;
             task.StatusId = status.Id;
+
+            var newAssignment = new Assignment
+            {
+                By = authedUser,
+                ById = authedUser.Id,
+                To = null,
+                ToId = null,
+                Task = task,
+                TaskId = task.Id
+            };
+            _context.Assignments.Add(newAssignment);
         }
 
         await _context.SaveChangesAsync();
