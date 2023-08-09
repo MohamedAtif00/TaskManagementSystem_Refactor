@@ -11,15 +11,13 @@ const TaskCol: React.FC<Props> = ({ items, label }) => {
     const lowPrio = items.filter((t) => t.priority === 1);
     const nonePrio = items.filter((t) => t.priority === null);
 
-    console.log({ items, label });
-
     return (
         <div
             className={
                 "relative overflow-y-auto pb-6 w-96 box-content shrink-0 flex flex-col gap-6 bg-slate-200 px-4"
             }
         >
-            <div className="sticky top-0 left-0 z-10 px-2">
+            <div className="sticky top-0 left-0 z-10 px-2 pt-2">
                 <h3 className="px-4 font-bold text-lg bg-white bg-opacity-10 backdrop-blur border border-white border-solid rounded border-opacity-50">
                     {label}
                 </h3>

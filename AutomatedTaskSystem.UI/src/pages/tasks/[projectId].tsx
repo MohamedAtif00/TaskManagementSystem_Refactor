@@ -10,7 +10,6 @@ import API from "../../lib/API";
 import Head from "next/head";
 import Loader from "../../components/loader";
 import CreateStandAloneTaskForm from "../../components/pageComponent/tasks/CreateStandAloneForm";
-import TaskCard from "../../components/pageComponent/tasks/TaskCard";
 import TaskCol from "../../components/pageComponent/tasks/TasksCol";
 
 const Tasks = () => {
@@ -109,18 +108,12 @@ const Tasks = () => {
         ),
     };
 
-    console.log(view);
-
     return (
         <>
             <Head>
                 <title>ATS - {project.name} Tasks</title>
             </Head>
-            <div
-                className={
-                    "w-full h-screen overflow-hidden flex flex-col gap-4"
-                }
-            >
+            <div className="w-full h-screen overflow-hidden flex flex-col">
                 <div className="px-8">
                     <Header text={project.name} icon="Task">
                         {auth.role !== 4 ? (
@@ -161,13 +154,7 @@ const Tasks = () => {
                 </div>
                 <div className="px-8 overflow-x-auto flex grow">
                     <div className="flex gap-1 bg-slate-50">
-                        <TaskCol
-                            label="Backlog"
-                            items={(() => {
-                                console.log(view.backlog);
-                                return view.backlog;
-                            })()}
-                        />
+                        <TaskCol label="Backlog" items={view.backlog} />
                         <TaskCol label="To Do" items={view.todo} />
                         <TaskCol label="Doing" items={view.doing} />
                         <TaskCol label="Done" items={view.done} />
