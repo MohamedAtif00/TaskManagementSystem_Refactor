@@ -10,6 +10,10 @@ import ExpansionPanel from "../expansionPanel";
 import Backdrop from "../forms/backdrop";
 import RollbackForm from "../forms/tasks/rollback";
 import PriorityDropDown from "../formComponents/PriorityDropDown";
+import { AnimatePresence, motion } from "framer-motion";
+import CrossIcon from "../../assets/Icons/Cross";
+import StatusBadge from "./StatusBadge";
+import LoBadge from "./LoBadge";
 
 const dateHandler = (params: string) => {
     const date = new Date(params);
@@ -127,310 +131,136 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
         }
     }, [setTask, router.query.taskId]);
 
-    if (task === undefined) return <></>;
-
-    const mainAction = () => {
-        API.TASKS.PROCEED(task.id).then((res) => {
-            if (res) {
-                refreshTasks();
-                if (!res.error) setTask(res.data);
-            }
-        });
+    const proceedTask = () => {
+        task &&
+            API.TASKS.PROCEED(task.id).then((res) => {
+                if (res) {
+                    refreshTasks();
+                    if (!res.error) setTask(res.data);
+                }
+            });
     };
     const flagTask = () => {
-        API.TASKS.FLAG_TASK(task.id).then((res) => {
-            if (res) {
-                if (!res.error) setTask(res.data);
-                refreshTasks();
-            }
-        });
+        task &&
+            API.TASKS.FLAG_TASK(task.id).then((res) => {
+                if (res) {
+                    if (!res.error) setTask(res.data);
+                    refreshTasks();
+                }
+            });
     };
     const pauseTask = () => {
-        API.TASKS.PAUSE(task.id).then((res) => {
-            if (res) {
-                if (!res.error) setTask(res.data);
-                refreshTasks();
-            }
-        });
+        task &&
+            API.TASKS.PAUSE(task.id).then((res) => {
+                if (res) {
+                    if (!res.error) setTask(res.data);
+                    refreshTasks();
+                }
+            });
     };
     const updatePrio = (value: null | number) => {
         setPrio(value);
-        API.TASKS.UPDATE_PRIORITY(
-            task.id,
-            value === 1 || value === 2 || value === 3 ? value : null
-        ).then((res) => {
-            if (res && !res.error) {
-                setTask(res.data);
-                refreshTasks();
-            }
-        });
+        task &&
+            API.TASKS.UPDATE_PRIORITY(
+                task.id,
+                value === 1 || value === 2 || value === 3 ? value : null
+            ).then((res) => {
+                if (res && !res.error) {
+                    setTask(res.data);
+                    refreshTasks();
+                }
+            });
     };
     const handleAddComment = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        API.TASKS.COMMENT(task.learningObjective.id, comment).then((res) => {
-            if (res && !res.error) {
-                setTask((ps) => {
-                    return {
-                        ...ps!,
-                        comments: [res.data, ...ps!.comments],
-                    };
-                });
-                setComment("");
-            }
-        });
+        task &&
+            API.TASKS.COMMENT(task.learningObjective.id, comment).then(
+                (res) => {
+                    if (res && !res.error) {
+                        setTask((ps) => {
+                            return {
+                                ...ps!,
+                                comments: [res.data, ...ps!.comments],
+                            };
+                        });
+                        setComment("");
+                    }
+                }
+            );
     };
 
+    const exit = () => router.push(`/tasks/${projectId}`);
+
     return (
-        <>
-            <Backdrop mainRoute={`/tasks/${projectId}`}>
-                <div className="bg-white px-8 py-8 rounded-lg cursor-default w-[35rem] max-h-screen overflow-y-auto">
-                    <div className="text-slate-500 flex justify-between">
-                        <div>{task.learningObjective.name}</div>
-                        <div>{task.schema.name}</div>
-                    </div>
-                    <div className="flex justify-between">
-                        {task.startedAt ? (
-                            <div className="text-sm text-slate-600">
-                                Start Date: {dateHandler(task.startedAt)}
-                            </div>
-                        ) : (
-                            ""
-                        )}
-                        {task.doneAt ? (
-                            <div className="text-sm text-slate-600">
-                                End Date: {dateHandler(task.doneAt)}
-                            </div>
-                        ) : (
-                            ""
-                        )}
-                    </div>
-                    <div className="select-none mt-2 flex justify-start items-center gap-4">
-                        <h1 className="text-xl grow flex items-center gap-2">
-                            <div>
-                                <TaskIcon color="black" />
-                            </div>
-                            <div>
-                                <div className="text-lg max-w-[10rem]">
-                                    {task.name}
-                                </div>
-                            </div>
-                        </h1>
-                        <div
-                            className={`px-3 py-1 rounded-3xl ${
-                                task.status === "Done"
-                                    ? "bg-emerald-500 text-white"
-                                    : task.status === "Doing"
-                                    ? "bg-orange-500 text-white"
-                                    : task.status === "Rollback"
-                                    ? "bg-black text-white"
-                                    : task.status === "To Do"
-                                    ? "bg-blue-500 text-white"
-                                    : "border-2 border-black border-solid"
-                            }`}
-                        >
-                            {task.status}
-                        </div>
-                    </div>
-                    {task.priority && (
-                        <div className="flex justify-end">
-                            <div className="flex gap-2 items-center">
-                                <div className="text-sm">Priority:</div>
-                                {task.priority === 1 ? (
-                                    <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-red-600">
-                                        High
-                                    </div>
-                                ) : task.priority === 2 ? (
-                                    <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-orange-500">
-                                        Medium
-                                    </div>
-                                ) : task.priority === 3 ? (
-                                    <div className="rounded-full border-2 border-solid border-white border-opacity-30 py-1 px-4 text-lg font-bold text-white bg-blue-600">
-                                        Low
-                                    </div>
-                                ) : (
-                                    ""
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    <div>
-                        <h1 className="text-xl mt-4 flex items-center gap-2">
-                            <HandPointingIcon className="stroke-black" />
-                            <div>Actions</div>
-                        </h1>
-                        <div className="flex gap-2">
-                            {!task.pause && task.status === "Doing" ? (
-                                <button
-                                    className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
-                                    onClick={pauseTask}
-                                >
-                                    Pause
-                                </button>
-                            ) : (
-                                <></>
-                            )}
-                            {task.flagged ? (
-                                <button
-                                    className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
-                                    onClick={flagTask}
-                                >
-                                    Clear Flag
-                                </button>
-                            ) : task.pause ? (
-                                <>
-                                    <button
-                                        className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
-                                        onClick={pauseTask}
-                                    >
-                                        Resume
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    {task.status === "Doing" &&
-                                    task.isReview ? (
-                                        <>
-                                            <Link
-                                                href={`/tasks/${router.query.projectId}?form=rollback&taskId=${task.id}`}
-                                            >
-                                                <button className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1">
-                                                    Rollback
-                                                </button>
-                                            </Link>
-                                            <button
-                                                className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
-                                                onClick={mainAction}
-                                            >
-                                                Approve
-                                            </button>
-                                        </>
-                                    ) : (
-                                        task.status !== "Done" &&
-                                        task.status !== "Rollback" && (
-                                            <button
-                                                className="px-3 rounded bg-blue-500 text-white flex items-center justify-center py-1"
-                                                onClick={mainAction}
-                                            >
-                                                {task.status === "Backlog"
-                                                    ? "Add"
-                                                    : task.status === "To Do"
-                                                    ? "Start"
-                                                    : "Complete"}
-                                            </button>
-                                        )
-                                    )}
-                                    {task.status !== "Done" &&
-                                    task.status !== "Rollback" ? (
-                                        <>
-                                            {auth.role == 1 ||
-                                            auth.role == 2 ||
-                                            auth.role == 3 ? (
-                                                <>
-                                                    <QueryButton
-                                                        text="Re-assign"
-                                                        url={{
-                                                            pathname: `/tasks/${router.query.projectId}`,
-                                                            query: {
-                                                                form: "task-assign",
-                                                                taskId: task.id,
-                                                            },
-                                                        }}
-                                                    />
-                                                </>
-                                            ) : (
-                                                ""
-                                            )}
-                                        </>
-                                    ) : (
-                                        ""
-                                    )}
-                                    {task.status !== "Backlog" &&
-                                        task.status !== "Done" &&
-                                        task.status !== "Rollback" && (
-                                            <button
-                                                className="px-3 rounded bg-red-600 text-white flex items-center justify-center py-1"
-                                                onClick={flagTask}
-                                            >
-                                                Flag
-                                            </button>
-                                        )}
-                                </>
-                            )}
-                        </div>
-                    </div>
-                    {auth.role === 1 || auth.role === 2 || auth.role === 3 ? (
-                        <div className="flex items-center justify-end">
-                            <div className="min-w-[10rem]">
-                                <PriorityDropDown
-                                    value={
-                                        prio === 1
-                                            ? { id: 1, name: "High" }
-                                            : prio === 2
-                                            ? { id: 2, name: "Medium" }
-                                            : prio === 3
-                                            ? { id: 3, name: "Low" }
-                                            : { id: 4, name: "None" }
-                                    }
-                                    handleChange={(e) => {
-                                        updatePrio(e.id);
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    ) : (
-                        <></>
-                    )}
-                    <ExpansionPanel header="Template" content={task.template} />
-                    <ExpansionPanel header="Tag" content={task.tag} />
-                    <ExpansionPanel
-                        header="Environment"
-                        content={task.environment}
-                    />
-                    <div className="flex flex-col justify-center gap-4 mt-4 p-2 bg-slate-300">
-                        <form className="block" onSubmit={handleAddComment}>
-                            <div className="flex gap-2 rounded">
-                                <textarea
-                                    className="grow resize-none bg-white"
-                                    value={comment}
-                                    onChange={(e) => setComment(e.target.value)}
-                                ></textarea>
-                                <button
-                                    type="submit"
-                                    className="px-2 py-1 bg-blue-500 text-white"
-                                >
-                                    Send
-                                </button>
-                            </div>
-                        </form>
-                        {task.comments.map((c) => (
-                            <div
-                                key={c.id}
-                                className="flex flex-col items-start"
-                            >
-                                <div>
-                                    <div>{c.user.name}</div>
-                                </div>
-                                <div className=" w-full text-sm grow bg-white">
-                                    {c.content}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </Backdrop>
-            {task.isReview ? (
-                <RollbackForm
-                    name={task.name}
-                    update={(res) => {
-                        setTask(res);
-                        refreshTasks();
-                        router.back();
+        <AnimatePresence>
+            {task && (
+                <motion.div
+                    initial={{
+                        backgroundColor: "#00000000",
                     }}
-                />
-            ) : (
-                ""
+                    animate={{
+                        backgroundColor: "#00000066",
+                    }}
+                    exit={{
+                        backgroundColor: "#00000000",
+                    }}
+                    className="p-12 fixed top-0 left-0 right-0 bottom-0 z-40 flex justify-end"
+                >
+                    <motion.div
+                        initial={{
+                            translateY: "50%",
+                            opacity: 0,
+                        }}
+                        animate={{
+                            translateY: 0,
+                            opacity: 1,
+                        }}
+                        transition={{
+                            type: "tween",
+                        }}
+                        exit={{
+                            opacity: 0,
+                            translateY: "100%",
+                        }}
+                        className="rounded-lg bg-white flex flex-col gap-2 grow"
+                    >
+                        <div className="flex items-center justify-between border-b border-solid border-slate-200 px-6">
+                            <div className="py-4">
+                                <StatusBadge status={task.status} />
+                            </div>
+                            <button className="p-1 box-content" onClick={exit}>
+                                <CrossIcon className="stroke-black" />
+                            </button>
+                        </div>
+                        <div className="flex items-center justify-start text-xl px-6 mt-3">
+                            <TaskIcon className="w-7 h-7 stroke-black mr-2" />
+                            <div className="font-bold mr-2">{task.name}</div>
+                            <div className="p-1 bg-slate-400 rounded-full"></div>
+                            <div className="ml-2 font-bold">
+                                {task.learningObjective.name}
+                            </div>
+                        </div>
+                        <div className="flex gap-2 text-slate-600 mt-4 px-6">
+                            {task.environment !== "" && (
+                                <LoBadge
+                                    text={task.environment}
+                                    label="Environment"
+                                />
+                            )}
+                            {task.tag !== "" && (
+                                <LoBadge text={task.tag} label="Tag" />
+                            )}
+                            {task.template !== "" && (
+                                <LoBadge
+                                    text={task.template}
+                                    label="Template"
+                                />
+                            )}
+                        </div>
+                    </motion.div>
+                </motion.div>
             )}
-        </>
+        </AnimatePresence>
     );
 };
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
+import RotatingArrowsIcon from "../../../assets/Icons/RotatingArrows";
 
 const TaskCard = ({
     id,
@@ -54,9 +55,11 @@ const TaskCard = ({
             >
                 {isRollback ? (
                     <div className="flex px-2 pt-4 justify-end">
-                        <div className="py-1 text-white px-4 rounded-full bg-orange-600 flex gap-2 items-end border-solid border-2 border-orange-400">
-                            <div className="text-xl font-bold">Rollback</div>
-                            <div>{`#${rollbackCount}`}</div>
+                        <div className="flex relative items-center justify-center pr-2">
+                            <RotatingArrowsIcon className="fill-red-600 w-8 h-8" />
+                            <div className="absolute text-red-600">
+                                {rollbackCount}
+                            </div>
                         </div>
                     </div>
                 ) : (
