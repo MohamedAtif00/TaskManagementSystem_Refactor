@@ -25,6 +25,7 @@ const TaskCol: React.FC<Props> = ({ items, label }) => {
             {[...highPrio, ...medPrio, ...lowPrio, ...nonePrio].map((t) => {
                 return (
                     <TaskCard
+                        paused={t.paused}
                         priority={null}
                         id={t.id}
                         attention={t.attention}

@@ -271,6 +271,7 @@ public class TaskService : ITaskService
                                 tasks.Add(
                                     new GetTaskCardDto
                                     {
+                                        Paused = task.Pause,
                                         Attention = task.Attention,
                                         Flagged = task.Flagged,
                                         From = task.From is null ? "" : task.From.Name,
@@ -368,6 +369,7 @@ public class TaskService : ITaskService
                     t =>
                         new GetTaskCardDto
                         {
+                            Paused = t.Pause,
                             Attention = t.Attention,
                             Flagged = t.Flagged,
                             From = t.From is null ? "" : t.From.Name,
@@ -687,18 +689,24 @@ public class TaskService : ITaskService
                 }
             );
 
-        if (!task.Pause)
+        if (task.Pause)
+        {
+            if (task.UserId is not null)
+            {
+                var status = await _context.Statuses.FindAsync(3);
+                if (status is null)
+                    throw new Exception("Failed to find status");
+                task.Status = status;
+            }
+            task.Pause = false;
+        }
+        else
         {
             var status = await _context.Statuses.FindAsync(2);
             if (status is null)
                 throw new Exception("Failed to find status");
             task.Status = status;
-        }
 
-        task.Pause = !task.Pause;
-
-        if (task.Pause)
-        {
             var pauseEA = await _context.EndActivityTypes.FindAsync(2);
             if (pauseEA is not null)
             {
@@ -719,6 +727,7 @@ public class TaskService : ITaskService
                     currentEA.EndDate = DateTime.Now;
                 }
             }
+            task.Pause = true;
         }
 
         await _context.SaveChangesAsync();
@@ -902,7 +911,7 @@ public class TaskService : ITaskService
             IsReview = step.TaskBank.TypeId == 3,
             Attention = false,
             CreatedAt = DateTime.Now,
-            RollbackCount = prevTasks,
+            RollbackCount = 1,
             IsRollback = from is null ? false : true
         };
 
@@ -914,8 +923,32 @@ public class TaskService : ITaskService
 
     private async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> getTaskDetails(int id)
     {
+        var authRes = _tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = authRes.Message }
+            );
+
+        var statusUid = Int32.TryParse(authRes.Data, out int uid);
+
+        if (!statusUid)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Request" }
+            );
+
+        var user = await _context.Users
+            .Where(u => u.Id == uid && !u.Archived)
+            .Include(u => u.Group)
+            .ThenInclude(g => g.Section)
+            .FirstOrDefaultAsync();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = false, Message = "Invalid auth" }
+            );
+
         var task = await _context.Tasks
             .Where(t => !t.Archived && t.Id == id)
+            .Include(t => t.User)
             .Include(t => t.Status)
             .Include(t => t.LearningObjective)
             .ThenInclude(t => t.Schema)
@@ -940,11 +973,61 @@ public class TaskService : ITaskService
             .OrderBy(a => a.TimeStamp)
             .LastOrDefaultAsync();
 
+        var access = TaskAccess.None;
+
+        if (task.StatusId != 4 && task.StatusId != 5)
+        {
+            if (user.RoleId == 1)
+            {
+                if (task.StatusId == 1 || task.UserId == user.Id)
+                    access = TaskAccess.WorkOnAndManage;
+                else
+                    access = TaskAccess.Manage;
+            }
+            else if (user.RoleId == 2)
+            {
+                if (user.GroupId == task.GroupId && (task.UserId == user.Id || task.StatusId == 1))
+                    access = TaskAccess.WorkOnAndManage;
+                else if (task.UserId != null && task.GroupId == user.GroupId)
+                    access = TaskAccess.Manage;
+                else
+                {
+                    var section = await _context.Sections
+                        .Where(s => s.HeadId == user.Id)
+                        .Include(s => s.Groups)
+                        .FirstOrDefaultAsync();
+
+                    if (section is not null && section.Groups.Any(g => g.Id == task.GroupId))
+                    {
+                        if (task.UserId == user.Id || task.StatusId == 1)
+                            access = TaskAccess.WorkOnAndManage;
+                        else
+                            access = TaskAccess.Manage;
+                    }
+                }
+            }
+            else if (user.RoleId == 3)
+            {
+                if (task.GroupId == user.GroupId)
+                {
+                    if (task.UserId == user.Id || task.StatusId == 1)
+                        access = TaskAccess.WorkOnAndManage;
+                    else
+                        access = TaskAccess.Manage;
+                }
+            }
+            else if (user.RoleId == 4)
+                if (task.GroupId == user.GroupId)
+                    if (task.UserId == user.Id || task.StatusId == 1)
+                        access = TaskAccess.WorkOn;
+        }
+
         return new ResponseService<GetTaskDetailsDto>
         {
             Error = false,
             Data = new GetTaskDetailsDto
             {
+                CreatedAt = task.CreatedAt,
                 Comments = task.LearningObjective.Comments
                     .FindAll(t => !t.Archived)
                     .OrderByDescending(c => c.Timestamp)
@@ -959,6 +1042,9 @@ public class TaskService : ITaskService
                             }
                     )
                     .ToList(),
+                User = task.User is not null
+                    ? new BasicInfoDto { Id = task.User.Id, Name = task.User.Name }
+                    : null,
                 DoneAt = done is null ? null : done.TimeStamp,
                 Environment = task.LearningObjective.Environment,
                 Flagged = task.Flagged,
@@ -980,7 +1066,8 @@ public class TaskService : ITaskService
                 StartedAt = started is null ? null : started.TimeStamp,
                 Status = task.Status.Name,
                 Tag = task.LearningObjective.Tag,
-                Template = task.LearningObjective.Template
+                Template = task.LearningObjective.Template,
+                Access = access
             },
             Message = "Task found"
         };
@@ -994,6 +1081,7 @@ public class TaskService : ITaskService
             .Include(t => t.User)
             .Include(t => t.LearningObjective)
             .Include(t => t.Step)
+            .Include(t => t.From)
             .FirstOrDefaultAsync();
 
         if (task is null)
@@ -1156,6 +1244,7 @@ public class TaskService : ITaskService
             .Include(t => t.User)
             .Include(t => t.LearningObjective)
             .Include(t => t.Step)
+            .Include(t => t.From)
             .FirstOrDefaultAsync();
 
         if (task is null)
@@ -1188,7 +1277,13 @@ public class TaskService : ITaskService
                 .Include(t => t.Status)
                 .ToListAsync();
             if (foundTasks.Count > 0)
-                foundTasks.ForEach(t => t.StatusId = Statuses.ToDo);
+                foundTasks.ForEach(t =>
+                {
+                    t.StatusId = Statuses.ToDo;
+                    t.From = task.From;
+                    t.IsRollback = task.From is not null;
+                    t.RollbackCount = task.From is null ? t.RollbackCount : t.RollbackCount + 1;
+                });
             else
                 await createTask(
                     step: nextStep,
@@ -1268,6 +1363,11 @@ public class TaskService : ITaskService
                             foundTasks.ForEach(t =>
                             {
                                 t.StatusId = Statuses.ToDo;
+                                t.From = task.From;
+                                t.IsRollback = task.From is not null;
+                                t.RollbackCount = task.From is null
+                                    ? t.RollbackCount
+                                    : t.RollbackCount + 1;
                             });
                         else
                         {

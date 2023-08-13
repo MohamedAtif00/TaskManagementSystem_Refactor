@@ -170,7 +170,7 @@ public class TaskController : ControllerBase
     ) => await _taskService.AssignUser(id, req.UserId);
 
     // PATCH:
-    // Toggle Pause Route
+    // Toggle Flag Route
     [HttpPatch("{id}/flag")]
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ToggleFlat(int id) =>
         await _taskService.ToggleFlag(id);

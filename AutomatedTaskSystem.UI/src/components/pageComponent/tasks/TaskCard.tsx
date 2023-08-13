@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import RotatingArrowsIcon from "../../../assets/Icons/RotatingArrows";
+import { PauseIcon } from "@heroicons/react/24/solid";
 
 const TaskCard = ({
     id,
@@ -13,6 +14,7 @@ const TaskCard = ({
     isRollback,
     rollbackCount,
     priority,
+    paused,
 }: {
     id: number;
     name: string;
@@ -24,6 +26,7 @@ const TaskCard = ({
     isRollback: boolean;
     rollbackCount: number;
     priority: number | null;
+    paused: boolean;
 }) => {
     const router = useRouter();
     const projectId = router.query.projectId;
@@ -53,20 +56,33 @@ const TaskCard = ({
                         : "border-2 border-solid border-blue-200",
                 ].join(" ")}
             >
-                {isRollback ? (
-                    <div className="flex px-2 pt-4 justify-end">
-                        <div className="flex relative items-center justify-center pr-2">
-                            <RotatingArrowsIcon className="fill-red-600 w-8 h-8" />
-                            <div className="absolute text-red-600">
-                                {rollbackCount}
+                {isRollback || paused ? (
+                    <div
+                        className={`flex px-4 pt-4 pb-2 ${
+                            paused ? "justify-between" : "justify-end"
+                        }`}
+                    >
+                        {paused && (
+                            <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full border-black border-solid border-2">
+                                <PauseIcon className="w-6 h-6" />
                             </div>
-                        </div>
+                        )}
+                        {isRollback && (
+                            <div className="w-8 h-8 shrink-0 flex relative items-center justify-center">
+                                <RotatingArrowsIcon className="fill-red-600 w-full h-full" />
+                                <div className="absolute text-red-600">
+                                    {rollbackCount}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     ""
                 )}
                 <div
-                    className={`px-6 flex flex-col${isRollback ? "" : " pt-4"}`}
+                    className={`px-6 flex flex-col${
+                        isRollback || paused ? "" : " pt-4"
+                    }`}
                 >
                     <div className="text-lg text-black group-hover:text-2xl group-hover:mt-1 mt-0 transition-all ease-out">
                         <div className="whitespace-normal">{lo}</div>

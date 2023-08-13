@@ -124,4 +124,5 @@ type TaskInfo = {
     rollbackCount: number;
     from: string;
     priority: number | null;
+    paused: boolean;
 };

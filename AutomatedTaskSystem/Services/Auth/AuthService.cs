@@ -80,41 +80,6 @@ public class AuthService : IAuthService
         };
     }
 
-    // public ResponseService<string> GenerateToken(User user)
-    // => new ResponseService<string>
-    // {
-    // 	Data = _tokenService.CreateToken(user),
-    // 	Error = false,
-    // 	Message = $"Generated Token for user of id:{user.Id}"
-    // };
-    // public async Task<ResponseService<Responses.AuthDTO>> Login(string Code, HttpRequest request)
-    // {
-    // 	var user = await _context.Users
-    // 		.Where(u => u.Code == Code)
-    // 		.FirstOrDefaultAsync();
-
-    // 	if (user is null)
-    // 		return new ResponseService<Responses.AuthDTO>
-    // 		{
-    // 			Error = false,
-    // 			Message = "Invalid User Code"
-    // 		};
-
-    // 	var accessToken = _tokenService.CreateToken(user);
-    // 	var refreshToken = await RefreshToken(user);
-
-
-    // 	return new ResponseService<Responses.AuthDTO>
-    // 	{
-    // 		Data = new Responses.AuthDTO
-    // 		{
-    // 			AccessToken = accessToken,
-    // 		},
-    // 		Error = false,
-    // 		Message = "Authenticated User"
-    // 	};
-    // }
-
     public async Task<ActionResult<BaseResponseService>> Logout(
         HttpRequest request,
         HttpResponse response
