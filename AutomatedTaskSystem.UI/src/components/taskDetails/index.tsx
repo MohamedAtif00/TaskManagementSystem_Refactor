@@ -39,7 +39,7 @@ export interface ITask {
     comments: IComment[];
     startedAt?: string;
     doneAt?: string;
-    priority?: number;
+    priority: number | null;
 }
 
 interface Props {
@@ -49,7 +49,6 @@ interface Props {
 
 const TaskDetails = ({ projectId, refreshTasks }: Props) => {
     const [task, setTask] = useState<ITask>();
-    // const [prio, setPrio] = useState<number | null>(null);
     const router = useRouter();
 
     useEffect(() => {
@@ -63,19 +62,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
         else setTask(undefined);
     }, [setTask, router.query.taskId]);
 
-    // const updatePrio = (value: null | number) => {
-    //     setPrio(value);
-    //     task &&
-    //         API.TASKS.UPDATE_PRIORITY(
-    //             task.id,
-    //             value === 1 || value === 2 || value === 3 ? value : null
-    //         ).then((res) => {
-    //             if (res && !res.error) {
-    //                 setTask(res.data);
-    //                 refreshTasks();
-    //             }
-    //         });
-    // };
+    console.log(task);
 
     const handleUpdate = (res: ITask) => {
         setTask(res);
@@ -122,6 +109,29 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                 <div className="py-4 flex">
                                     <StatusBadge status={task.status} />
                                 </div>
+                                {task.priority !== null && (
+                                    <>
+                                        <div className="pl-[1px] bg-slate-200"></div>
+                                        <div className="text-sm flex flex-col justify-center items-start text-slate-600">
+                                            <div>Priority:</div>
+                                            <div
+                                                className={`text-base font-bold ${
+                                                    task.priority === 1
+                                                        ? "text-rose-400"
+                                                        : task.priority === 2
+                                                        ? "text-orange-400"
+                                                        : "text-blue-400"
+                                                }`}
+                                            >
+                                                {task.priority === 1
+                                                    ? "High"
+                                                    : task.priority === 2
+                                                    ? "Medium"
+                                                    : "Low"}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                                 <div className="pl-[1px] bg-slate-200"></div>
                                 <DateLabel
                                     label="Created"
@@ -187,6 +197,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                     </div>
                                 )}
                                 <TaskAction
+                                    priority={task.priority}
                                     projectId={projectId}
                                     isReview={task.isReview}
                                     pause={task.pause}

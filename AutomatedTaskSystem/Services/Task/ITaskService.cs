@@ -16,7 +16,7 @@ public interface ITaskService
         int loId,
         int userId
     );
-    Task<ActionResult<ResponseService<Responses.ITaskDTO>>> UpdateTaskPriority(
+    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> UpdateTaskPriority(
         int TaskId,
         int? Priority
     );

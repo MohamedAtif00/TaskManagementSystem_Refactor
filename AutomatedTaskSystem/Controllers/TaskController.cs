@@ -32,7 +32,7 @@ public class TaskController : ControllerBase
     ) => await _taskService.CreatableTasks(projectId);
 
     [HttpPatch("{id}/priority")]
-    public async Task<ActionResult<ResponseService<Responses.ITaskDTO>>> EditTask(
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> EditTask(
         int id,
         Requests.PriorityUpdateDto req
     ) => await _taskService.UpdateTaskPriority(id, req.Priority);

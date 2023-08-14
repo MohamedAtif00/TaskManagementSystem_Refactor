@@ -33,10 +33,12 @@ const TASKS = {
     },
     UPDATE_PRIORITY: async (id: number, priority: number | null) => {
         try {
+            const authHeader = authService.authHeader();
             const res = await fetch(`${url}/tasks/${id}/priority`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
+                    ...authHeader,
                 },
                 body: JSON.stringify({ priority }),
             });

@@ -735,23 +735,13 @@ public class TaskService : ITaskService
         return await getTaskDetails(task.Id);
     }
 
-    public async Task<ActionResult<ResponseService<Responses.ITaskDTO>>> UpdateTaskPriority(
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> UpdateTaskPriority(
         int TaskId,
         int? Priority
     )
     {
         var task = await _context.Tasks
             .Where(t => t.Id == TaskId && !t.Archived)
-            .Include(t => t.From)
-            .Include(t => t.Group)
-            .Include(t => t.User)
-            .Include(t => t.Status)
-            .Include(t => t.LearningObjective)
-            .ThenInclude(lo => lo.Schema)
-            .Include(t => t.LearningObjective)
-            .ThenInclude(lo => lo.Lesson)
-            .ThenInclude(l => l.Unit)
-            .ThenInclude(u => u.Project)
             .FirstOrDefaultAsync();
 
         if (task is null)
@@ -768,46 +758,7 @@ public class TaskService : ITaskService
 
         await _context.SaveChangesAsync();
 
-        var started = await _context.Activities
-            .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 1)
-            .OrderBy(a => a.TimeStamp)
-            .LastOrDefaultAsync();
-
-        var done = await _context.Activities
-            .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 2)
-            .OrderBy(a => a.TimeStamp)
-            .LastOrDefaultAsync();
-
-        return new ResponseService<Responses.ITaskDTO>
-        {
-            Error = false,
-            Message = "Task Priority edited",
-            Data = new Responses.ITaskDTO
-            {
-                Environment = task.LearningObjective.Environment,
-                Tag = task.LearningObjective.Tag,
-                Template = task.LearningObjective.Template,
-                Flagged = task.Flagged,
-                Id = task.Id,
-                IsReview = task.IsReview,
-                LearningObjective = new Responses.IDName
-                {
-                    Id = task.LearningObjective.Id,
-                    Name = task.LearningObjective.Name
-                },
-                Name = task.Name,
-                Status = task.Status.Name,
-                Pause = task.Pause,
-                Schema = new Responses.IDName
-                {
-                    Name = task.LearningObjective.Schema.Name,
-                    Id = task.LearningObjective.SchemaId
-                },
-                StartedAt = started is null ? null : started.TimeStamp,
-                DoneAt = done is null ? null : done.TimeStamp,
-                Priority = task.Priority
-            }
-        };
+        return await getTaskDetails(task.Id);
     }
 
     private async Task<Models.Task> createTask(

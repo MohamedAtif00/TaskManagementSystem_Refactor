@@ -38,9 +38,10 @@ const TaskComments: React.FC<Props> = (props) => {
     const comments: JSX.Element[] = [];
 
     props.comments.forEach((c) => {
-        comments.push(<div></div>);
+        comments.push(<div key={`${c.id}-hr`}></div>);
         comments.push(
             <Comment
+                key={c.id}
                 date={c.timestamp}
                 content={c.content}
                 user={c.user.name}
