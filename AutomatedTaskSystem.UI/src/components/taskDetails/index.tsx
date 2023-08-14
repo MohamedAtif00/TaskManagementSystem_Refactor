@@ -1,15 +1,24 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { useAppSelector } from "../../app/hooks";
 import TaskIcon from "../../assets/Icons/Task";
 import API, { BasicInfo } from "../../lib/API";
-import PriorityDropDown from "../formComponents/PriorityDropDown";
 import { AnimatePresence, motion } from "framer-motion";
 import CrossIcon from "../../assets/Icons/Cross";
 import StatusBadge from "./StatusBadge";
 import LoBadge from "./LoBadge";
 import TaskAction from "./TaskActions";
 import DateLabel from "./DateLabel";
+import TaskComments from "./TaskComments";
+
+export interface IComment {
+    user: {
+        id: number;
+        name: string;
+    };
+    id: number;
+    content: string;
+    timestamp: string;
+}
 
 export interface ITask {
     createdAt: string;
@@ -27,15 +36,7 @@ export interface ITask {
     isReview: boolean;
     status: "Backlog" | "To Do" | "Doing" | "Done" | "Rollback";
     flagged: boolean;
-    comments: {
-        user: {
-            id: number;
-            name: string;
-        };
-        id: number;
-        content: string;
-        timestamp: string;
-    }[];
+    comments: IComment[];
     startedAt?: string;
     doneAt?: string;
     priority?: number;
@@ -48,10 +49,8 @@ interface Props {
 
 const TaskDetails = ({ projectId, refreshTasks }: Props) => {
     const [task, setTask] = useState<ITask>();
-    const [prio, setPrio] = useState<number | null>(null);
+    // const [prio, setPrio] = useState<number | null>(null);
     const router = useRouter();
-    const auth = useAppSelector((s) => s.authSlice);
-    const [comment, setComment] = useState("");
 
     useEffect(() => {
         const id = router.query.taskId;
@@ -59,45 +58,24 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
             API.TASKS.GET_ONE(id).then((res) => {
                 if (res && !res.error) {
                     setTask(res.data);
-                    setPrio(res.data.priority ? res.data.priority : null);
                 }
             });
-        else {
-            setTask(undefined);
-            setPrio(null);
-        }
+        else setTask(undefined);
     }, [setTask, router.query.taskId]);
 
-    const updatePrio = (value: null | number) => {
-        setPrio(value);
-        task &&
-            API.TASKS.UPDATE_PRIORITY(
-                task.id,
-                value === 1 || value === 2 || value === 3 ? value : null
-            ).then((res) => {
-                if (res && !res.error) {
-                    setTask(res.data);
-                    refreshTasks();
-                }
-            });
-    };
-    const handleAddComment = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        task &&
-            API.TASKS.COMMENT(task.learningObjective.id, comment).then(
-                (res) => {
-                    if (res && !res.error) {
-                        setTask((ps) => {
-                            return {
-                                ...ps!,
-                                comments: [res.data, ...ps!.comments],
-                            };
-                        });
-                        setComment("");
-                    }
-                }
-            );
-    };
+    // const updatePrio = (value: null | number) => {
+    //     setPrio(value);
+    //     task &&
+    //         API.TASKS.UPDATE_PRIORITY(
+    //             task.id,
+    //             value === 1 || value === 2 || value === 3 ? value : null
+    //         ).then((res) => {
+    //             if (res && !res.error) {
+    //                 setTask(res.data);
+    //                 refreshTasks();
+    //             }
+    //         });
+    // };
 
     const handleUpdate = (res: ITask) => {
         setTask(res);
@@ -118,6 +96,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                     }}
                     exit={{
                         backgroundColor: "#00000000",
+                        scale: 1.1,
                     }}
                     className="p-12 fixed top-0 left-0 right-0 bottom-0 z-40 flex justify-end"
                 >
@@ -135,11 +114,10 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                         }}
                         exit={{
                             opacity: 0,
-                            scale: 0,
                         }}
                         className="rounded-lg bg-white flex flex-col grow"
                     >
-                        <div className="flex items-center justify-between border-b border-solid border-slate-200 px-6">
+                        <div className="flex items-center justify-between border-b border-solid border-slate-200 px-6 shrink-0">
                             <div className="flex gap-4">
                                 <div className="py-4 flex">
                                     <StatusBadge status={task.status} />
@@ -172,8 +150,8 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                 <CrossIcon className="stroke-black" />
                             </button>
                         </div>
-                        <div className="grid grid-cols-1 grow">
-                            <div>
+                        <div className="grid grid-cols-1 grow overflow-y-hidden">
+                            <div className="flex flex-col overflow-y-auto">
                                 <div className="flex items-center justify-start text-xl px-6 mt-3">
                                     <TaskIcon className="w-7 h-7 stroke-black mr-2" />
                                     <div className="font-bold mr-2">
@@ -184,23 +162,30 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                         {task.learningObjective.name}
                                     </div>
                                 </div>
-                                <div className="flex gap-2 text-slate-600 mt-4 px-6">
-                                    {task.environment !== "" && (
-                                        <LoBadge
-                                            text={task.environment}
-                                            label="Environment"
-                                        />
-                                    )}
-                                    {task.tag !== "" && (
-                                        <LoBadge text={task.tag} label="Tag" />
-                                    )}
-                                    {task.template !== "" && (
-                                        <LoBadge
-                                            text={task.template}
-                                            label="Template"
-                                        />
-                                    )}
-                                </div>
+                                {(task.environment !== "" ||
+                                    task.tag !== "" ||
+                                    task.template) && (
+                                    <div className="flex gap-2 text-slate-600 mt-6 px-6">
+                                        {task.environment !== "" && (
+                                            <LoBadge
+                                                text={task.environment}
+                                                label="Environment"
+                                            />
+                                        )}
+                                        {task.tag !== "" && (
+                                            <LoBadge
+                                                text={task.tag}
+                                                label="Tag"
+                                            />
+                                        )}
+                                        {task.template !== "" && (
+                                            <LoBadge
+                                                text={task.template}
+                                                label="Template"
+                                            />
+                                        )}
+                                    </div>
+                                )}
                                 <TaskAction
                                     projectId={projectId}
                                     isReview={task.isReview}
@@ -211,6 +196,11 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                     user={task.user}
                                     status={task.status}
                                     access={task.access}
+                                />
+                                <TaskComments
+                                    loId={task.learningObjective.id}
+                                    updateTask={setTask}
+                                    comments={task.comments}
                                 />
                             </div>
                         </div>

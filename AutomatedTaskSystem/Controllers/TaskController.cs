@@ -7,6 +7,7 @@ using AutomatedTaskSystem.Services.TaskService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using AutomatedTaskSystem.Dtos.Tasks;
+using AutomatedTaskSystem.Dtos.Common;
 
 namespace AutomatedTaskSystem.Controllers;
 
@@ -90,10 +91,10 @@ public class TaskController : ControllerBase
     ) => await _taskService.RollbackTask(taskId: id, stepId: req.StepId);
 
     // GET:
-    // Returns list of previous nodes and steps
+    // Returns list of and steps
     [Authorize]
     [HttpGet("previous/{taskId}")]
-    public async Task<ActionResult<List<Responses.IDName>>> GetPreviousTasks(int taskId)
+    public async Task<ActionResult<List<BasicInfoDto>>> GetPreviousTasks(int taskId)
     {
         var task = await _context.Tasks
             .Where(t => t.Id == taskId)
@@ -103,10 +104,22 @@ public class TaskController : ControllerBase
         if (task == null)
             return BadRequest(new Responses.BadRequestsDTO("Task not found"));
 
-        var res = new List<Responses.IDName> { };
+        var res = new List<BasicInfoDto> { };
 
         if (task.Step is null)
             return Ok(res);
+
+        var taskStep = await _context.Steps
+            .Where(s => !s.Archived && s.Id == task.Step.Id)
+            .Include(s => s.Rollbacks)
+            .ThenInclude(s => s.TaskBank)
+            .FirstOrDefaultAsync();
+
+        if (taskStep is not null && taskStep.Rollbacks.Count > 0)
+        {
+            foreach (var step in taskStep.Rollbacks)
+                res.Add(new BasicInfoDto { Id = step.Id, Name = step.TaskBank.Name });
+        }
 
         var schema = await _context.Schemas
             .Include(s => s.Nodes)
@@ -155,7 +168,7 @@ public class TaskController : ControllerBase
                         || (step.NodeId == task.Step.NodeId && step.Order < task.Step.Order)
                     )
                 )
-                    res.Add(new Responses.IDName { Id = step.Id, Name = step.TaskBank.Name });
+                    res.Add(new BasicInfoDto { Id = step.Id, Name = step.TaskBank.Name });
 
         return Ok(res);
     }

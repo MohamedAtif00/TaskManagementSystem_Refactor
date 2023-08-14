@@ -31,6 +31,12 @@ namespace AutomatedTaskSystem.Data
                 .UsingEntity(j => j.ToTable("NodeDependencies"));
 
             modelBuilder
+                .Entity<Step>()
+                .HasMany(n => n.Rollbacks)
+                .WithMany(n => n.From)
+                .UsingEntity(j => j.ToTable("RSteps"));
+
+            modelBuilder
                 .Entity<LearningObjective>()
                 .HasOne(lo => lo.Schema)
                 .WithMany(s => s.LearningObjectives);
