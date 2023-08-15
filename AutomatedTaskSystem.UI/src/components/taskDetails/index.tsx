@@ -37,8 +37,8 @@ export interface ITask {
     status: "Backlog" | "To Do" | "Doing" | "Done" | "Rollback";
     flagged: boolean;
     comments: IComment[];
-    startedAt?: string;
-    doneAt?: string;
+    startedAt: string | null;
+    doneAt: string | null;
     priority: number | null;
 }
 
@@ -137,7 +137,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                     label="Created"
                                     date={task.createdAt}
                                 />
-                                {task.startedAt !== undefined && (
+                                {task.startedAt !== null && (
                                     <>
                                         <div className="pl-[1px] bg-slate-200"></div>
                                         <DateLabel
@@ -146,7 +146,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                         />
                                     </>
                                 )}
-                                {task.doneAt !== undefined && (
+                                {task.doneAt !== null && (
                                     <>
                                         <div className="pl-[1px] bg-slate-200"></div>
                                         <DateLabel
@@ -175,7 +175,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                 {(task.environment !== "" ||
                                     task.tag !== "" ||
                                     task.template) && (
-                                    <div className="flex gap-2 text-slate-600 mt-6 px-6">
+                                    <div className="flex gap-2 text-slate-600 mt-4 px-6">
                                         {task.environment !== "" && (
                                             <LoBadge
                                                 text={task.environment}
