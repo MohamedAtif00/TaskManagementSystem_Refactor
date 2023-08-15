@@ -1,5 +1,6 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Dtos.Steps;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
@@ -333,5 +334,97 @@ public class StepController : ControllerBase
         await _context.SaveChangesAsync();
 
         return new BaseResponseService { Error = false, Message = "Done" };
+    }
+
+    [HttpGet("{stepId}/rollback-points")]
+    public async Task<ActionResult<ResponseService<List<BasicInfoDto>>>> GetRollbackPoints(
+        int stepId
+    )
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId && !s.Archived)
+            .Include(s => s.Rollbacks)
+            .ThenInclude(s => s.TaskBank)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return BadRequest(
+                new BaseResponseService { Error = true, Message = "Step is not found" }
+            );
+
+        var list = new List<BasicInfoDto> { };
+
+        foreach (var s in step.Rollbacks)
+            list.Add(new BasicInfoDto { Id = s.Id, Name = s.TaskBank.Name });
+
+        return new ResponseService<List<BasicInfoDto>>
+        {
+            Error = false,
+            Message = "List of rollback points",
+            Data = list
+        };
+    }
+
+    [HttpPatch("{stepId}/add-rollback-points")]
+    public async Task<ActionResult<BaseResponseService>> AddToRollbacks(
+        int stepId,
+        UpdateRollbackStepsDto req
+    )
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId && !s.Archived)
+            .Include(s => s.Rollbacks)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return BadRequest(
+                new BaseResponseService { Error = true, Message = "Step is not found" }
+            );
+
+        var steps = await _context.Steps
+            .Where(s => !s.Archived && req.ids.Contains(s.Id))
+            .ToListAsync();
+
+        foreach (var s in steps)
+        {
+            if (!s.Rollbacks.Any(_ => _.Id == s.Id))
+            {
+                step.Rollbacks.Add(s);
+                s.From.Add(step);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new BaseResponseService { Error = false, Message = "Step added rollback points" };
+    }
+
+    [HttpPatch("{stepId}/remove-rollback-points")]
+    public async Task<ActionResult<BaseResponseService>> RemoveFromRollbacks(
+        int stepId,
+        UpdateRollbackStepsDto req
+    )
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId && !s.Archived)
+            .Include(s => s.Rollbacks)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return BadRequest(
+                new BaseResponseService { Error = true, Message = "Step is not found" }
+            );
+
+        var steps = step.Rollbacks.Where(s => !s.Archived && req.ids.Contains(s.Id)).ToList();
+
+        foreach (var s in steps)
+        {
+            step.Rollbacks.Remove(s);
+            s.From.Remove(step);
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new BaseResponseService { Error = false, Message = "Step remove rollback points" };
     }
 }

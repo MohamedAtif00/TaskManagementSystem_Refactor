@@ -1,4 +1,3 @@
-using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;

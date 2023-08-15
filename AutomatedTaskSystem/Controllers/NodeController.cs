@@ -111,9 +111,7 @@ public class NodeController : ControllerBase
             .FirstOrDefaultAsync();
 
         if (node == null)
-        {
             return NotFound(new Responses.BadRequestsDTO("Node not found"));
-        }
 
         var prevNodes = await _context.Nodes
             .Where(n => req.Previous.Contains(n.Id) && !n.Archived)
@@ -245,11 +243,10 @@ public class NodeController : ControllerBase
                 .FirstOrDefaultAsync();
 
             if (_pn == null)
-            {
                 return NotFound(
                     new Responses.BadRequestsDTO($"Node of ID {req.Previous[i]} is not found")
                 );
-            }
+
             _pn.isEnd = false;
             _pn.Next.Add(newNode);
 
@@ -263,11 +260,9 @@ public class NodeController : ControllerBase
                 .FirstOrDefaultAsync();
 
             if (_pn == null)
-            {
                 return NotFound(
                     new Responses.BadRequestsDTO($"Node of ID {req.Requires[i]} is not found")
                 );
-            }
 
             _pn.Required.Add(newNode);
 

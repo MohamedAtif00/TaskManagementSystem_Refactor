@@ -150,20 +150,12 @@ public class ProjectService : IProjectService
 
         foreach (var unit in project.Units)
         {
-            if (unit.Archived)
-                continue;
             foreach (var lesson in unit.Lessons)
             {
-                if (lesson.Archived)
-                    continue;
                 foreach (var lo in lesson.LearningObjectives)
                 {
-                    if (lo.Archived)
-                        continue;
                     foreach (var task in lo.Tasks)
                     {
-                        if (task.Archived)
-                            continue;
                         task.Archived = true;
                     }
                     lo.Archived = true;

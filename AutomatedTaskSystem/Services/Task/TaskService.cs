@@ -825,20 +825,6 @@ public class TaskService : ITaskService
         if (status is null)
             throw new Exception($"Unable to find status of id {(step.TaskBank.TL ? 2 : 1)}");
 
-        var prevTasks =
-            from == null
-                ? 0
-                : (
-                    await _context.Tasks
-                        .Where(
-                            t =>
-                                t.StepId == step.Id
-                                && t.LearningObjectiveId == learningObjective.Id
-                                && !t.Archived
-                        )
-                        .ToListAsync()
-                ).Count;
-
         var newTask = new Models.Task
         {
             Priority = step.Priority,
@@ -930,16 +916,19 @@ public class TaskService : ITaskService
         {
             if (user.RoleId == 1)
             {
-                if (task.StatusId == 1 || task.UserId == user.Id)
+                if (task.StatusId == 1 || task.UserId == user.Id || task.UserId == null)
                     access = TaskAccess.WorkOnAndManage;
                 else
                     access = TaskAccess.Manage;
             }
             else if (user.RoleId == 2)
             {
-                if (user.GroupId == task.GroupId && (task.UserId == user.Id || task.StatusId == 1))
+                if (
+                    user.GroupId == task.GroupId
+                    && (task.UserId == user.Id || task.StatusId == 1 || task.UserId == null)
+                )
                     access = TaskAccess.WorkOnAndManage;
-                else if (task.UserId != null && task.GroupId == user.GroupId)
+                else if (task.UserId != user.Id && task.GroupId == user.GroupId)
                     access = TaskAccess.Manage;
                 else
                 {
@@ -950,7 +939,7 @@ public class TaskService : ITaskService
 
                     if (section is not null && section.Groups.Any(g => g.Id == task.GroupId))
                     {
-                        if (task.UserId == user.Id || task.StatusId == 1)
+                        if (task.UserId == user.Id || task.StatusId == 1 || task.UserId == null)
                             access = TaskAccess.WorkOnAndManage;
                         else
                             access = TaskAccess.Manage;
@@ -961,7 +950,7 @@ public class TaskService : ITaskService
             {
                 if (task.GroupId == user.GroupId)
                 {
-                    if (task.UserId == user.Id || task.StatusId == 1)
+                    if (task.UserId == user.Id || task.StatusId == 1 || task.UserId == null)
                         access = TaskAccess.WorkOnAndManage;
                     else
                         access = TaskAccess.Manage;

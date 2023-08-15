@@ -104,6 +104,29 @@ public class TaskController : ControllerBase
         if (task == null)
             return BadRequest(new Responses.BadRequestsDTO("Task not found"));
 
+        var authRes = _tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = authRes.Message }
+            );
+
+        var statusUid = Int32.TryParse(authRes.Data, out int uid);
+
+        if (!statusUid)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Request" }
+            );
+
+        var user = await _context.Users
+            .Where(u => u.Id == uid && !u.Archived)
+            .Include(u => u.Group)
+            .Include(u => u.Projects)
+            .FirstOrDefaultAsync();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = false, Message = "Invalid auth" }
+            );
+
         var res = new List<BasicInfoDto> { };
 
         if (task.Step is null)
@@ -115,10 +138,11 @@ public class TaskController : ControllerBase
             .ThenInclude(s => s.TaskBank)
             .FirstOrDefaultAsync();
 
-        if (taskStep is not null && taskStep.Rollbacks.Count > 0)
+        if (taskStep is not null && taskStep.Rollbacks.Count > 0 && user.RoleId != 1)
         {
             foreach (var step in taskStep.Rollbacks)
                 res.Add(new BasicInfoDto { Id = step.Id, Name = step.TaskBank.Name });
+            return res;
         }
 
         var schema = await _context.Schemas
