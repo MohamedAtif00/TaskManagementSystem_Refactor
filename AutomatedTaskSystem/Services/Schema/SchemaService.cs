@@ -94,7 +94,7 @@ public class SchemaService : ISchemaService
 
         foreach (var lo in schema.LearningObjectives)
             foreach (var task in lo.Tasks)
-                if (!task.Archived || task.StatusId != 4 || task.StatusId != 5)
+                if (!task.Archived && (task.StatusId != 4 || task.StatusId != 5))
                     activeTasks.Add(task);
 
         if (activeTasks.Count == 0)
@@ -121,6 +121,7 @@ public class SchemaService : ISchemaService
         {
             if (!projects.Any(p => task.LearningObjective.Lesson.Unit.ProjectId == p.Id))
                 projects.Add(task.LearningObjective.Lesson.Unit.Project);
+
             if (!units.Any(u => task.LearningObjective.Lesson.UnitId == u.Id))
                 units.Add(task.LearningObjective.Lesson.Unit);
             if (!lessons.Any(u => task.LearningObjective.LessonId == u.Id))
@@ -223,6 +224,7 @@ public class SchemaService : ISchemaService
         {
             var nn = new Node
             {
+                Order = n.Order,
                 Schema = newSchema,
                 SchemaId = newSchema.Id,
                 isEnd = n.isEnd,

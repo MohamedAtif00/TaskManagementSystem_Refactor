@@ -47,6 +47,7 @@ const TASKS = {
                 error: boolean;
                 message: string;
             } = await res.json();
+
             return data;
         } catch (err) {
             console.error(err);
