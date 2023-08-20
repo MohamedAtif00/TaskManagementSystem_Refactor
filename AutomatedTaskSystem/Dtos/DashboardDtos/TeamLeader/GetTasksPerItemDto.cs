@@ -1,6 +1,6 @@
 namespace AutomatedTaskSystem.Dtos.Dashboard.GetTeamLeaderDashboard;
 
-public class GetTasksPerItem
+public class GetTasksPerItemDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;

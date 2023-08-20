@@ -1,17 +1,16 @@
 @import "./root";
 
 #app {
-	background-color: #e2e8f0;
-	display: flex;
-	flex-direction: row;
-	height: 100vh;
-	width: 100vw;
-	padding-left: 220px;
-	overflow-y: auto;
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+    width: 100vw;
+    padding-left: 220px;
+    overflow-y: auto;
 }
 
 .mainContainer {
-	padding: 0 1.25rem;
-	flex-grow: 1;
-	overflow-y: auto;
+    padding: 0 1.25rem;
+    flex-grow: 1;
+    overflow-y: auto;
 }

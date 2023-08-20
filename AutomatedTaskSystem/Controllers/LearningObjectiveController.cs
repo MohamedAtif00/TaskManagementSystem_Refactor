@@ -140,9 +140,6 @@ namespace AutomatedTaskSystem.Controllers
             Requests.EditLearningObjectiveDTO req
         )
         {
-            if (req.Steps.Count == 0)
-                return BadRequest(new Responses.BadRequestsDTO("Please supply steps"));
-
             var lo = await _context.LearningObjectives
                 .Where(lo => lo.Id == id)
                 .FirstOrDefaultAsync();
@@ -152,6 +149,8 @@ namespace AutomatedTaskSystem.Controllers
 
             if (lo.SchemaId != req.SchemaId)
             {
+                if (req.Steps.Count == 0)
+                    return BadRequest(new Responses.BadRequestsDTO("Please supply steps"));
                 var schema = await _context.Schemas
                     .Where(s => s.Id == req.SchemaId)
                     .FirstOrDefaultAsync();

@@ -1,5 +1,6 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Dtos.Steps;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
@@ -333,5 +334,199 @@ public class StepController : ControllerBase
         await _context.SaveChangesAsync();
 
         return new BaseResponseService { Error = false, Message = "Done" };
+    }
+
+    [HttpGet("{stepId}/rollback-points")]
+    public async Task<ActionResult<ResponseService<List<BasicInfoDto>>>> GetRollbackPoints(
+        int stepId
+    )
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId && !s.Archived)
+            .Include(s => s.Rollbacks)
+            .ThenInclude(s => s.TaskBank)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return BadRequest(
+                new BaseResponseService { Error = true, Message = "Step is not found" }
+            );
+
+        var list = new List<BasicInfoDto> { };
+
+        foreach (var s in step.Rollbacks)
+            list.Add(new BasicInfoDto { Id = s.Id, Name = s.TaskBank.Name });
+
+        return new ResponseService<List<BasicInfoDto>>
+        {
+            Error = false,
+            Message = "List of rollback points",
+            Data = list
+        };
+    }
+
+    [HttpPatch("{stepId}/add-rollback-point")]
+    public async Task<ActionResult<BaseResponseService>> AddToRollbacks(
+        int stepId,
+        UpdateRollbackStepDto req
+    )
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId && !s.Archived)
+            .Include(s => s.Rollbacks)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return BadRequest(
+                new BaseResponseService { Error = true, Message = "Step is not found" }
+            );
+
+        var steps = await _context.Steps.Where(s => !s.Archived && s.Id == req.Id).ToListAsync();
+
+        foreach (var s in steps)
+        {
+            if (!s.Rollbacks.Any(_ => _.Id == s.Id))
+            {
+                step.Rollbacks.Add(s);
+                s.From.Add(step);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new BaseResponseService { Error = false, Message = "Step added rollback points" };
+    }
+
+    [HttpPatch("{stepId}/remove-rollback-point")]
+    public async Task<ActionResult<BaseResponseService>> RemoveFromRollbacks(
+        int stepId,
+        UpdateRollbackStepDto req
+    )
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId && !s.Archived)
+            .Include(s => s.Rollbacks)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return BadRequest(
+                new BaseResponseService { Error = true, Message = "Step is not found" }
+            );
+
+        var stepToBeRemoved = step.Rollbacks.Where(s => !s.Archived && req.Id == s.Id).FirstOrDefault();
+
+		if (stepToBeRemoved is not null)
+		{
+		    step.Rollbacks.Remove(stepToBeRemoved);
+			stepToBeRemoved.From.Remove(step);
+		}
+
+        await _context.SaveChangesAsync();
+
+        return new BaseResponseService { Error = false, Message = "Step remove rollback points" };
+    }
+
+    [HttpGet("{stepId}/available-rollback-points")]
+    public async Task<ActionResult<ResponseService<List<BasicInfoDto>>>> GetAvailableRollbackPoints(
+        int stepId
+    )
+    {
+        var step = await _context.Steps
+            .Where(s => s.Id == stepId)
+            .Include(s => s.Node)
+            .ThenInclude(n => n.Steps)
+            .ThenInclude(s => s.TaskBank)
+            .Include(s => s.Rollbacks)
+            .FirstOrDefaultAsync();
+
+        if (step is null)
+            return NotFound(
+                new BaseResponseService { Error = true, Message = "Step is not found" }
+            );
+
+        var res = new ResponseService<BasicInfoDto>
+        {
+            Message = "List of available previous steps",
+            Error = false
+        };
+
+        var steps = new List<Step> { };
+
+        var previousNodes = await getPreviousNodes(step.NodeId);
+        previousNodes.Sort(
+            (a, b) =>
+                a.Order < b.Order
+                    ? 1
+                    : a.Order > b.Order
+                        ? -1
+                        : 0
+        );
+
+        var currentNodeSteps = step.Node.Steps.Where(
+            s => !s.Archived && s.Order < step.Order && s.TaskBank.TypeId != 3
+        );
+
+        foreach (var s in currentNodeSteps)
+            if (!step.Rollbacks.Any(_ => s.Id == _.Id))
+                steps.Add(s);
+
+        foreach (var n in previousNodes)
+        {
+            n.Steps.Sort(
+                (a, b) =>
+                    a.Order < b.Order
+                        ? 1
+                        : b.Order < a.Order
+                            ? -1
+                            : 0
+            );
+            foreach (var s in n.Steps)
+                if (!s.Archived && s.TaskBank.TypeId != 3 && !step.Rollbacks.Any(_ => s.Id == _.Id))
+                    steps.Add(s);
+        }
+
+        return new ResponseService<List<BasicInfoDto>>
+        {
+            Error = false,
+            Message = "List of available steps",
+            Data = steps
+                .Select(s => new BasicInfoDto { Id = s.Id, Name = s.TaskBank.Name })
+                .ToList()
+        };
+    }
+
+    private async Task<List<Node>> getPreviousNodes(int nodeId)
+    {
+        var nodes = new List<Node> { };
+
+        var node = await _context.Nodes
+            .Where(n => nodeId == n.Id && !n.Archived)
+            .Include(n => n.Previous)
+            .Include(n => n.Steps)
+            .ThenInclude(s => s.TaskBank)
+            .FirstOrDefaultAsync();
+
+        if (node is null)
+            return nodes;
+
+        foreach (var n in node.Previous)
+        {
+            if (n.Archived)
+                continue;
+
+            nodes.Add(n);
+
+            var pn = await getPreviousNodes(n.Id);
+
+            foreach (var nn in pn)
+            {
+                if (nn.Archived || nodes.Any(_ => _.Id == nn.Id))
+                    continue;
+
+                nodes.Add(nn);
+            }
+        }
+
+        return nodes;
     }
 }

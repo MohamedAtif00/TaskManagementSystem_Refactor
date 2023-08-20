@@ -170,15 +170,15 @@ public class DashboardService : IDashboardService
             .ThenInclude(u => u.Project)
             .ToListAsync();
 
-        var ProjectsDetails = new List<GetTasksPerItem> { };
-        var TasksPerUser = new List<GetTasksPerItem> { };
+        var ProjectsDetails = new List<GetTasksPerItemDto> { };
+        var TasksPerUser = new List<GetTasksPerItemDto> { };
 
         int activeTasks = 0;
 
         foreach (var member in members)
         {
             TasksPerUser.Add(
-                new GetTasksPerItem
+                new GetTasksPerItemDto
                 {
                     Id = member.Id,
                     Name = member.Name,
@@ -220,7 +220,7 @@ public class DashboardService : IDashboardService
                                 if (detail is null)
                                 {
                                     ProjectsDetails.Add(
-                                        new GetTasksPerItem
+                                        new GetTasksPerItemDto
                                         {
                                             Id = project.Id,
                                             Name = project.Name,

@@ -12,6 +12,7 @@ public class GetTaskCardDto
     public BasicInfoDto LearningObjective { get; set; } = new BasicInfoDto { };
     public bool IsReview { get; set; }
     public bool Flagged { get; set; }
+    public bool Paused { get; set; }
     public bool Attention { get; set; }
     public bool IsRollback { get; set; }
     public int RollbackCount { get; set; }

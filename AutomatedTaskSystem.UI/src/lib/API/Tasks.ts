@@ -33,10 +33,12 @@ const TASKS = {
     },
     UPDATE_PRIORITY: async (id: number, priority: number | null) => {
         try {
+            const authHeader = authService.authHeader();
             const res = await fetch(`${url}/tasks/${id}/priority`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
+                    ...authHeader,
                 },
                 body: JSON.stringify({ priority }),
             });
@@ -45,6 +47,7 @@ const TASKS = {
                 error: boolean;
                 message: string;
             } = await res.json();
+
             return data;
         } catch (err) {
             console.error(err);
@@ -226,10 +229,12 @@ const TASKS = {
     },
     FLAG_TASK: async (taskId: number) => {
         try {
+            const authHeader = authService.authHeader();
             const res = await fetch(`${url}/tasks/${taskId}/flag`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
+                    ...authHeader,
                 },
             });
             const data: {
@@ -245,10 +250,12 @@ const TASKS = {
     },
     PAUSE: async (taskId: number) => {
         try {
+            const authHeader = authService.authHeader();
             const res = await fetch(`${url}/tasks/${taskId}/pause`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
+                    ...authHeader,
                 },
             });
             const data: {

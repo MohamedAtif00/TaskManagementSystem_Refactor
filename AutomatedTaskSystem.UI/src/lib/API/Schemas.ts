@@ -367,6 +367,84 @@ const SCHEMAS = {
             }
         },
         STEPS: {
+            ADD_ROLLBACK_POINT: async (
+                stepId: number,
+                rollbackPointId: number
+            ) => {
+                try {
+                    const res = await fetch(
+                        `${url}/steps/${stepId}/add-rollback-point`,
+                        {
+                            method: "PATCH",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                id: rollbackPointId,
+                            }),
+                        }
+                    );
+                    const data: {
+                        error: boolean;
+                        message: string;
+                    } = await res.json();
+                    return data;
+                } catch (error) {
+                    console.error(error);
+                    return false;
+                }
+            },
+            REMOVE_ROLLBACK_POINT: async (
+                stepId: number,
+                rollbackPointId: number
+            ) => {
+                try {
+                    const res = await fetch(
+                        `${url}/steps/${stepId}/remove-rollback-point`,
+                        {
+                            method: "PATCH",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                id: rollbackPointId,
+                            }),
+                        }
+                    );
+                    const data: {
+                        error: boolean;
+                        message: string;
+                    } = await res.json();
+                    return data;
+                } catch (error) {
+                    console.error(error);
+                    return false;
+                }
+            },
+            GET_ROLLBACK_POINTS: async (stepId: number) => {
+                try {
+                    const res = await fetch(
+                        `${url}/steps/${stepId}/rollback-points`
+                    );
+                    const data: ResponseService<BasicInfo[]> = await res.json();
+                    return data;
+                } catch (error) {
+                    console.error(error);
+                    return false;
+                }
+            },
+            AVAILABLE_ROLLBACK_OPTIONS: async (stepId: number) => {
+                try {
+                    const res = await fetch(
+                        `${url}/steps/${stepId}/available-rollback-points`
+                    );
+                    const data: ResponseService<BasicInfo[]> = await res.json();
+                    return data;
+                } catch (error) {
+                    console.error(error);
+                    return false;
+                }
+            },
             UP: async (stepId: number | string | string[]) => {
                 try {
                     const res = await fetch(`${url}/steps/${stepId}/up`, {

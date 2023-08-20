@@ -1,4 +1,3 @@
-using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
@@ -16,7 +15,7 @@ public interface ITaskService
         int loId,
         int userId
     );
-    Task<ActionResult<ResponseService<Responses.ITaskDTO>>> UpdateTaskPriority(
+    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> UpdateTaskPriority(
         int TaskId,
         int? Priority
     );

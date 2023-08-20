@@ -17,7 +17,10 @@ const MyApp = ({ Component, pageProps }: AppProps) => {
     return (
         <Provider store={store}>
             <Auth>
-                <div id="app" className={inter.className}>
+                <div
+                    id="app"
+                    className={[inter.className, "bg-slate-200"].join(" ")}
+                >
                     <Sidebar />
                     <Component {...pageProps} />
                 </div>
