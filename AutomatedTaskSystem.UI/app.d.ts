@@ -36,6 +36,7 @@ interface IStep {
     group: { name: string; id: number };
     duration: number;
     priority: number | null;
+	taskBankItemId: number;
 }
 
 interface INode {

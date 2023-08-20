@@ -76,7 +76,8 @@ public class NodeController : ControllerBase
                     Id = _s.TaskBank.GroupId,
                 },
                 Duration = _s.Duration,
-                Priority = _s.Priority
+                Priority = _s.Priority,
+				TaskBankItemId = _s.TaskBankId
             };
 
             res.Steps.Add(nodeStep);
@@ -162,7 +163,9 @@ public class NodeController : ControllerBase
                         Id = item.TaskBank.Id
                     },
                     Reviewable = item.TaskBank.TypeId == 3,
-                    Duration = item.Duration
+                    Duration = item.Duration,
+					TaskBankItemId = item.TaskBankId
+
                 }
             );
         }
@@ -364,7 +367,8 @@ public class NodeController : ControllerBase
                         Name = _s.TaskBank.Group.Name,
                         Id = _s.TaskBank.Group.Id
                     },
-                    Duration = _s.Duration
+                    Duration = _s.Duration,
+					TaskBankItemId = _s.TaskBankId
                 };
 
                 nodeRes.Steps.Add(nodeStep);

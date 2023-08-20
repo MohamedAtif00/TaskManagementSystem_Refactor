@@ -11,7 +11,6 @@ import Header from "../../components/header/header";
 import NodeItem from "../../components/nodeItem";
 import API from "../../lib/API";
 import { load } from "../../slices/nodesSlice";
-import styles from "../../styles/resources.module.scss";
 import EditSchema from "../../components/pageComponent/schemas/editSchema";
 import RemoveStep from "../../components/pageComponent/schemas/remoteStep";
 import RemoveNode from "../../components/pageComponent/schemas/removeNode";
@@ -39,7 +38,7 @@ const Schema = () => {
             router.query.form === "stepEdit" &&
             id !== undefined &&
             !isNaN(parseInt(id.toString()))
-        ) {
+        )
             nodes.forEach((n) => {
                 n.steps.forEach((s) => {
                     if (s.id === parseInt(id.toString())) {
@@ -47,9 +46,7 @@ const Schema = () => {
                     }
                 });
             });
-        } else {
-            setEditStep(undefined);
-        }
+        else setEditStep(undefined);
     }, [router.query.form, router.query.stepId, nodes]);
 
     useEffect(() => {
@@ -142,7 +139,7 @@ const Schema = () => {
                         <></>
                     )}
                 </Header>
-                <div className={styles.container}>
+                <div className="pt-4 flex flex-col gap-4">
                     {nodes.map((n) => {
                         return (
                             <NodeItem

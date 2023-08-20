@@ -49,6 +49,7 @@ namespace AutomatedTaskSystem.DTO
             public bool Reviewable { get; set; } = false;
             public int Duration { get; set; }
             public int? Priority { get; set; } = null;
+            public int TaskBankItemId { get; set; }
         }
 
         public class NodeWithStepsDTO

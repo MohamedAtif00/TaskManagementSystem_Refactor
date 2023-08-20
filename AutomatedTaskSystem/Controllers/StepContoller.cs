@@ -463,7 +463,7 @@ public class StepController : ControllerBase
         );
 
         var currentNodeSteps = step.Node.Steps.Where(
-            s => !s.Archived && s.Order < step.Order && s.TaskBank.TypeId == 3
+            s => !s.Archived && s.Order < step.Order && s.TaskBank.TypeId != 3
         );
 
         foreach (var s in currentNodeSteps)
