@@ -62,8 +62,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
         else setTask(undefined);
     }, [setTask, router.query.taskId]);
 
-    console.log(task);
-
     const handleUpdate = (res: ITask) => {
         setTask(res);
         refreshTasks();
@@ -172,30 +170,27 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                         {task.learningObjective.name}
                                     </div>
                                 </div>
-                                {(task.environment !== "" ||
-                                    task.tag !== "" ||
-                                    task.template) && (
-                                    <div className="flex gap-2 text-slate-600 mt-4 px-6">
-                                        {task.environment !== "" && (
-                                            <LoBadge
-                                                text={task.environment}
-                                                label="Environment"
-                                            />
-                                        )}
-                                        {task.tag !== "" && (
-                                            <LoBadge
-                                                text={task.tag}
-                                                label="Tag"
-                                            />
-                                        )}
-                                        {task.template !== "" && (
-                                            <LoBadge
-                                                text={task.template}
-                                                label="Template"
-                                            />
-                                        )}
-                                    </div>
-                                )}
+                                <div className="flex gap-2 text-slate-600 mt-4 px-6">
+                                    <LoBadge
+                                        text={task.schema.name}
+                                        label="Schema"
+                                    />
+                                    {task.environment !== "" && (
+                                        <LoBadge
+                                            text={task.environment}
+                                            label="Environment"
+                                        />
+                                    )}
+                                    {task.tag !== "" && (
+                                        <LoBadge text={task.tag} label="Tag" />
+                                    )}
+                                    {task.template !== "" && (
+                                        <LoBadge
+                                            text={task.template}
+                                            label="Template"
+                                        />
+                                    )}
+                                </div>
                                 <TaskAction
                                     priority={task.priority}
                                     projectId={projectId}

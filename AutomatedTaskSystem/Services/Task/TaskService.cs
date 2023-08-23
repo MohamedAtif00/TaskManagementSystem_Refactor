@@ -1220,9 +1220,6 @@ public class TaskService : ITaskService
                 foundTasks.ForEach(t =>
                 {
                     t.StatusId = Statuses.ToDo;
-                    t.From = task.From;
-                    t.IsRollback = task.From is not null;
-                    t.RollbackCount = task.From is null ? t.RollbackCount : t.RollbackCount + 1;
                 });
             else
                 await createTask(
@@ -1303,11 +1300,6 @@ public class TaskService : ITaskService
                             foundTasks.ForEach(t =>
                             {
                                 t.StatusId = Statuses.ToDo;
-                                t.From = task.From;
-                                t.IsRollback = task.From is not null;
-                                t.RollbackCount = task.From is null
-                                    ? t.RollbackCount
-                                    : t.RollbackCount + 1;
                             });
                         else
                         {
