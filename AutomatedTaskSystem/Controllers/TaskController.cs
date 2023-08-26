@@ -217,4 +217,10 @@ public class TaskController : ControllerBase
     [HttpPatch("{id}/pause")]
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> TogglePause(int id) =>
         await _taskService.TogglePause(id);
+
+	// POST:
+	// Skip task
+	[HttpPost("{id}/skip")]
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> SkipTask(int id) =>
+		await _taskService.SkipTask(id);
 }
