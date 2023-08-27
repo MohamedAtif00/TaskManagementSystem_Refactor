@@ -248,6 +248,27 @@ const TASKS = {
             return false;
         }
     },
+    SKIP: async (taskId: number) => {
+        try {
+            const authHeader = authService.authHeader();
+            const res = await fetch(`${url}/tasks/${taskId}/skip`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...authHeader,
+                },
+            });
+            const data: {
+                data: ITask;
+                error: boolean;
+                message: string;
+            } = await res.json();
+            return data;
+        } catch (error) {
+            console.log(error);
+            return false;
+        }
+    },
     PAUSE: async (taskId: number) => {
         try {
             const authHeader = authService.authHeader();

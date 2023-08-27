@@ -161,6 +161,8 @@ public class ProjectAssignmentService : IProjectAssignmentService
             }
         }
 
+		await _context.SaveChangesAsync();
+
         return new ResponseService<List<User>>
         {
             Data = users,

@@ -6,6 +6,7 @@ import {
     FlagIcon,
     UserIcon,
     ExclamationCircleIcon,
+    ForwardIcon,
 } from "@heroicons/react/24/outline";
 import { PlayIcon, CheckIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
 import { useAppSelector } from "../../app/hooks";
@@ -66,6 +67,11 @@ const TaskAction: React.FC<Props> = ({
     };
     const pauseTask = () => {
         API.TASKS.PAUSE(taskId).then((res) => {
+            if (res && !res.error) handleUpdate(res.data);
+        });
+    };
+    const skipTask = () => {
+        API.TASKS.SKIP(taskId).then((res) => {
             if (res && !res.error) handleUpdate(res.data);
         });
     };
@@ -182,57 +188,65 @@ const TaskAction: React.FC<Props> = ({
                         )}
                     </button>
                 )}
-                <div
-                    onFocusCapture={() => setPriorityFocus(true)}
-                    onBlurCapture={() => setPriorityFocus(false)}
-                    className="flex justify-end items-center relative"
-                >
-                    <button className="flex gap-1 px-3 py-1 rounded border-2 border-solid text-white border-blue-400 bg-blue-500 ">
-                        <ExclamationCircleIcon className="w-6 h-6" />
-                        <div>Change Priority</div>
+                {(access === "WorkOnAndManage" || access === "Manage") && (
+                    <div
+                        onFocusCapture={() => setPriorityFocus(true)}
+                        onBlurCapture={() => setPriorityFocus(false)}
+                        className="flex justify-end items-center relative"
+                    >
+                        <button className="flex gap-1 px-3 py-1 rounded border-2 border-solid text-white border-blue-400 bg-blue-500 ">
+                            <ExclamationCircleIcon className="w-6 h-6" />
+                            <div>Change Priority</div>
+                        </button>
+                        <AnimatePresence>
+                            {priorityFocus && (
+                                <motion.div
+                                    initial={{
+                                        opacity: 0,
+                                    }}
+                                    animate={{
+                                        opacity: 1,
+                                    }}
+                                    exit={{
+                                        opacity: 0,
+                                    }}
+                                    className="left-full absolute p-2 rounded-md bg-white border-2 border-solid border-slate-100 z-20 flex flex-col gap-2 ml-1"
+                                >
+                                    <button
+                                        className="flex justify-center gap-1 px-3 py-1 rounded border-2 border-solid text-white border-rose-400 bg-rose-500"
+                                        onClick={() => updatePrio(1)}
+                                    >
+                                        High
+                                    </button>
+                                    <button
+                                        className="flex justify-center gap-1 px-3 py-1 rounded border-2 border-solid text-white border-orange-400 bg-orange-500"
+                                        onClick={() => updatePrio(2)}
+                                    >
+                                        Medium
+                                    </button>
+                                    <button
+                                        className="flex justify-center gap-1 px-3 py-1 rounded border-2 border-solid text-white border-sky-400 bg-sky-500"
+                                        onClick={() => updatePrio(3)}
+                                    >
+                                        Low
+                                    </button>
+                                    <button
+                                        className="flex justify-center gap-1 px-3 py-1 rounded border-2 border-solid text-black border-slate-300 bg-white"
+                                        onClick={() => updatePrio(null)}
+                                    >
+                                        None
+                                    </button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                )}
+                {auth.role === 1 && (
+                    <button onClick={skipTask} className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-cyan-400 bg-cyan-500 text-white">
+                        <ForwardIcon className="w-6 h-6" />
+                        <div>Skip</div>
                     </button>
-                    <AnimatePresence>
-                        {priorityFocus && (
-                            <motion.div
-                                initial={{
-                                    opacity: 0,
-                                }}
-                                animate={{
-                                    opacity: 1,
-                                }}
-                                exit={{
-                                    opacity: 0,
-                                }}
-                                className="left-full absolute p-2 rounded-md bg-white border-2 border-solid border-slate-100 z-20 flex flex-col gap-2 ml-1"
-                            >
-                                <button
-                                    className="flex justify-center gap-1 px-3 py-1 rounded border-2 border-solid text-white border-rose-400 bg-rose-500"
-                                    onClick={() => updatePrio(1)}
-                                >
-                                    High
-                                </button>
-                                <button
-                                    className="flex justify-center gap-1 px-3 py-1 rounded border-2 border-solid text-white border-orange-400 bg-orange-500"
-                                    onClick={() => updatePrio(2)}
-                                >
-                                    Medium
-                                </button>
-                                <button
-                                    className="flex justify-center gap-1 px-3 py-1 rounded border-2 border-solid text-white border-sky-400 bg-sky-500"
-                                    onClick={() => updatePrio(3)}
-                                >
-                                    Low
-                                </button>
-                                <button
-                                    className="flex justify-center gap-1 px-3 py-1 rounded border-2 border-solid text-black border-slate-300 bg-white"
-                                    onClick={() => updatePrio(null)}
-                                >
-                                    None
-                                </button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                )}
             </div>
         </div>
     ) : (

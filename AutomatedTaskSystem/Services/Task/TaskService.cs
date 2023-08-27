@@ -1545,4 +1545,84 @@ public class TaskService : ITaskService
             }
         };
     }
+
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> SkipTask(int id)
+    {
+        var authRes = _tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = authRes.Message }
+            );
+
+        var statusUid = Int32.TryParse(authRes.Data, out int resId);
+        if (!statusUid)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Request" }
+            );
+
+        var user = await _context.Users
+            .Where(u => u.Id == resId && !u.Archived)
+            .Include(u => u.Group)
+            .FirstOrDefaultAsync();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid auth" }
+            );
+
+        var task = await _context.Tasks
+            .Where(t => t.Id == id)
+            .Include(t => t.LearningObjective)
+            .ThenInclude(t => t.Schema)
+            .Include(t => t.LearningObjective)
+            .ThenInclude(t => t.Comments)
+            .ThenInclude(t => t.User)
+            .FirstOrDefaultAsync();
+
+        if (task is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not found" }
+            );
+
+        task.StatusId = 4;
+
+        var doneAct = await _context.ActivityTypes.FindAsync(2);
+
+        if (doneAct == null)
+            throw new Exception("Not Found activity");
+
+        var newAct = new Activity
+        {
+            Task = task,
+            User = user,
+            TaskId = task.Id,
+            UserId = user.Id,
+            ActivityType = doneAct,
+            ActivityTypeId = doneAct.Id
+        };
+
+        _context.Activities.Add(newAct);
+
+        var currentEA = await _context.EndActivities
+            .Where(
+                _ =>
+                    _.UserId == user.Id
+                    && _.TaskId == task.Id
+                    && _.EndDate == null
+                    && _.EndActivityTypeId == null
+            )
+            .FirstOrDefaultAsync();
+
+        if (currentEA is not null)
+        {
+            currentEA.EndActivityTypeId = 3;
+            currentEA.EndDate = DateTime.Now;
+        }
+
+
+		await CreateNext(task.Id);
+
+        await _context.SaveChangesAsync();
+
+        return await GetTaskDetails(id);
+    }
 }
