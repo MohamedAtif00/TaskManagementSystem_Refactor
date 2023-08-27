@@ -1504,6 +1504,70 @@ public class TaskService : ITaskService
             };
         }
 
+        if (user.RoleId == 2)
+        {
+            var section = await _context.Sections
+                .Where(s => s.HeadId == user.Id)
+                .Include(s => s.Groups)
+                .FirstOrDefaultAsync();
+
+			var groups = new List<Group>{
+				user.Group
+			};
+
+			if (section is not null)
+				foreach (var group in section.Groups)
+					groups.Add(group);
+
+            var _taskBankItems = await _context.TaskBank
+                .Include(tb => tb.Group)
+                .Where(tb => tb.Active && groups.Contains(tb.Group))
+                .ToListAsync();
+
+            _taskBankItems.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
+            return new ResponseService<GetCreatableTasksDto>
+            {
+                Error = false,
+                Message = "Creatable tasks List",
+                Data = new GetCreatableTasksDto
+                {
+                    LearningObjectives = los,
+                    Assignees = project.Users
+                        .Where(u => !u.Archived && u.GroupId == user.GroupId)
+                        .Select(
+                            i =>
+                                new UserDto
+                                {
+                                    Name = i.Name,
+                                    Id = i.Id,
+                                    Group = new BasicInfoDto
+                                    {
+                                        Name = i.Group.Name,
+                                        Id = i.Group.Id
+                                    }
+                                }
+                        )
+                        .ToList(),
+                    Options = _taskBankItems
+                        .Select(
+                            tb =>
+                                new TaskOption
+                                {
+                                    Name = tb.Name,
+                                    Id = tb.Id,
+                                    TeamLead = tb.TL,
+                                    Group = new BasicInfoDto
+                                    {
+                                        Id = tb.Group.Id,
+                                        Name = tb.Group.Name
+                                    }
+                                }
+                        )
+                        .ToList()
+                }
+            };
+        }
+
         var taskBankItems = await _context.TaskBank
             .Include(tb => tb.Group)
             .Where(tb => tb.Active)
@@ -1618,8 +1682,7 @@ public class TaskService : ITaskService
             currentEA.EndDate = DateTime.Now;
         }
 
-
-		await CreateNext(task.Id);
+        await CreateNext(task.Id);
 
         await _context.SaveChangesAsync();
 
