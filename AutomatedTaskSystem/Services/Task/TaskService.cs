@@ -1618,11 +1618,107 @@ public class TaskService : ITaskService
             currentEA.EndDate = DateTime.Now;
         }
 
-
-		await CreateNext(task.Id);
+        await CreateNext(task.Id);
 
         await _context.SaveChangesAsync();
 
         return await GetTaskDetails(id);
+    }
+
+    public async Task<ActionResult<ResponseService<List<GetNodeAheadDto>>>> GetSchemaSteps(int id)
+    {
+        var task = await _context.Tasks
+            .Where(t => !t.Archived && t.Id == id)
+            .Include(t => t.LearningObjective)
+            .FirstOrDefaultAsync();
+
+        if (task is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not found" }
+            );
+
+        var schema = await _context.Schemas
+            .Where(s => s.Id == task.LearningObjective.SchemaId && !s.Archived)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Previous)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Next)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Steps)
+            .ThenInclude(s => s.TaskBank)
+            .ThenInclude(s => s.Group)
+            .FirstOrDefaultAsync();
+
+        if (schema is null)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Schema is not active" }
+            );
+
+        var nodesRes = new List<GetNodeAheadDto> { };
+
+        var nodesAhead = (
+            from node in schema.Nodes
+            where !node.Archived
+            orderby node.Order
+            select node
+        ).ToList();
+
+        var tasks = await _context.Tasks
+            .Where(t => t.LearningObjectiveId == task.LearningObjectiveId && !t.Archived)
+            .Include(t => t.Step)
+            .ToListAsync();
+
+        foreach (var node in nodesAhead)
+        {
+            var nodeTasks = tasks
+                .Where(t => t.Step is not null && t.Step.NodeId == node.Id)
+                .ToList();
+
+            nodesRes.Add(
+                new GetNodeAheadDto
+                {
+                    PreviousNodes = node.Previous
+                        .Where(n => !n.Archived)
+                        .Select(s => new BasicInfoDto { Id = s.Id, Name = s.Name })
+                        .ToList(),
+                    NextNodes = node.Next
+                        .Where(n => !n.Archived)
+                        .Select(s => new BasicInfoDto { Id = s.Id, Name = s.Name })
+                        .ToList(),
+                    Id = node.Id,
+                    Name = node.Name,
+                    Order = node.Order,
+                    IsComplete =
+                        nodeTasks.All(t => t.StatusId == 4)
+                        && nodeTasks.Count == node.Steps.Where(s => !s.Archived).Count(),
+                    Steps = node.Steps
+                        .Where(s => !s.Archived)
+                        .OrderBy(s => s.Order)
+                        .Select(s =>
+                        {
+                            return new GetStepAheadDto
+                            {
+                                Id = s.Id,
+                                Name = s.TaskBank.Name,
+                                Group = new BasicInfoDto
+                                {
+                                    Name = s.TaskBank.Group.Name,
+                                    Id = s.TaskBank.Group.Id
+                                },
+                                IsComplete = nodeTasks.Any(t => t.StepId == s.Id && t.StatusId == 4)
+                            };
+                        })
+                        .ToList(),
+                }
+            );
+        }
+
+        return new ResponseService<List<GetNodeAheadDto>>
+        {
+            Data = nodesRes,
+            Message = "List of All Nodes"
+        };
+
+        throw new NotImplementedException();
     }
 }

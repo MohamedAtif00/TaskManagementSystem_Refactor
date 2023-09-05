@@ -29,6 +29,7 @@ public interface ITaskService
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ProceedTask(int taskId);
     Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(int projectId);
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> SkipTask(int id);
+    Task<ActionResult<ResponseService<List<GetNodeAheadDto>>>> GetSchemaSteps(int id);
     Task<bool> CreateNext(Models.Task task);
     Task<bool> CreateNext(int taskId);
     Task<bool> CreateNextNode(int nodeId, int loId);

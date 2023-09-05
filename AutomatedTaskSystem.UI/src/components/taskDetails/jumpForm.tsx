@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 const JumpForm = () => {
     const router = useRouter();
 
-    if (router.query.form !== "jump") return <></>;
+    if (router.query.form !== "jump" && router.query.taskId) return <></>;
 
     return (
         <motion.div

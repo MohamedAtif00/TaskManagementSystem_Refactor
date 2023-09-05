@@ -223,4 +223,10 @@ public class TaskController : ControllerBase
 	[HttpPost("{id}/skip")]
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> SkipTask(int id) =>
 		await _taskService.SkipTask(id);
+
+	// GET:
+	// Get Jump Point
+	[HttpGet("{id}/jump-points")]
+    public async Task<ActionResult<ResponseService<List<GetNodeAheadDto>>>> GetJumpPoints(int id) =>
+		await _taskService.GetSchemaSteps(id);
 }
