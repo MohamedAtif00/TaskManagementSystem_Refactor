@@ -251,11 +251,11 @@ const TaskAction: React.FC<Props> = ({
                 {auth.role === 1 && (
                     <Link
                         href={{
-                            pathname: `/tasks/${taskId}`,
-							query: {
-								taskId: taskId,
-								form: "jump"
-							}
+                            pathname: `/tasks/${projectId}`,
+                            query: {
+                                taskId: taskId,
+                                form: "jump",
+                            },
                         }}
                     >
                         <button className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-cyan-400 bg-cyan-500 text-white">
@@ -265,7 +265,7 @@ const TaskAction: React.FC<Props> = ({
                     </Link>
                 )}
             </div>
-			<JumpForm />
+                <JumpForm taskId={taskId} projectId={projectId} />
         </div>
     ) : (
         <></>
