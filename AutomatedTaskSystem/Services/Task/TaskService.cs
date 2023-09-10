@@ -1985,8 +1985,6 @@ public class TaskService : ITaskService
         await _context.SaveChangesAsync();
 
         return await getTaskDetails(task.Id);
-
-        throw new NotImplementedException();
     }
 
     private int GetReversedNodeDepth(Node currentNode, Schema schema, int currentDepth = 0)

@@ -88,11 +88,6 @@ public class ProjectService : IProjectService
         bool Term
     )
     {
-        if (await CheckIfProjectExists(Name))
-            return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = "Project already exists." }
-            );
-
         var year = await _context.Years.Where(y => y.Id == YearId).FirstOrDefaultAsync();
 
         if (year is null)
@@ -642,7 +637,4 @@ public class ProjectService : IProjectService
             }
         };
     }
-
-    private async Task<bool> CheckIfProjectExists(string Name) =>
-        await _context.Projects.AnyAsync(p => p.Name.ToLower() == Name.ToLower() && !p.Archived);
 }
