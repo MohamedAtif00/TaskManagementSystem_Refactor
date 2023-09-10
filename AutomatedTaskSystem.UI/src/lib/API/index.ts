@@ -1,7 +1,7 @@
 import PROJECTS from "./Projects";
 import RESOURCES from "./Resouces";
 import SCHEMAS from "./Schemas";
-import TASKS from "./Tasks";
+import TASKS from "./tasks";
 import DASHBOARDS from "./dashboard";
 
 export const url = "http://localhost:5238";

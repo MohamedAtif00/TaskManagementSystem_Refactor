@@ -7,6 +7,7 @@ import {
     UserIcon,
     ExclamationCircleIcon,
     ForwardIcon,
+    ArrowUturnDownIcon,
 } from "@heroicons/react/24/outline";
 import { PlayIcon, CheckIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
 import { useAppSelector } from "../../app/hooks";
@@ -15,6 +16,7 @@ import { ITask } from ".";
 import Link from "next/link";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import JumpForm from "./jumpForm";
 
 interface Props {
     access: "WorkOn" | "Manage" | "WorkOnAndManage" | "None";
@@ -55,26 +57,22 @@ const TaskAction: React.FC<Props> = ({
         });
     };
 
-    const proceedTask = () => {
+    const proceedTask = () =>
         API.TASKS.PROCEED(taskId).then((res) => {
             if (res && !res.error) handleUpdate(res.data);
         });
-    };
-    const flagTask = () => {
+    const flagTask = () =>
         API.TASKS.FLAG_TASK(taskId).then((res) => {
             if (res && !res.error) handleUpdate(res.data);
         });
-    };
-    const pauseTask = () => {
+    const pauseTask = () =>
         API.TASKS.PAUSE(taskId).then((res) => {
             if (res && !res.error) handleUpdate(res.data);
         });
-    };
-    const skipTask = () => {
+    const skipTask = () =>
         API.TASKS.SKIP(taskId).then((res) => {
             if (res && !res.error) handleUpdate(res.data);
         });
-    };
 
     return access !== "None" && status !== "Rollback" && status !== "Done" ? (
         <div className="px-6 mt-6">
@@ -242,12 +240,32 @@ const TaskAction: React.FC<Props> = ({
                     </div>
                 )}
                 {auth.role === 1 && (
-                    <button onClick={skipTask} className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-cyan-400 bg-cyan-500 text-white">
+                    <button
+                        onClick={skipTask}
+                        className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-cyan-400 bg-cyan-500 text-white"
+                    >
                         <ForwardIcon className="w-6 h-6" />
                         <div>Skip</div>
                     </button>
                 )}
+                {auth.role === 1 && (
+                    <Link
+                        href={{
+                            pathname: `/tasks/${projectId}`,
+                            query: {
+                                taskId: taskId,
+                                form: "jump",
+                            },
+                        }}
+                    >
+                        <button className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-cyan-400 bg-cyan-500 text-white">
+                            <ArrowUturnDownIcon className="w-6 h-6 -scale-x-100" />
+                            <div>Jump</div>
+                        </button>
+                    </Link>
+                )}
             </div>
+                <JumpForm taskId={taskId} projectId={projectId} updateTask={handleUpdate} />
         </div>
     ) : (
         <></>
