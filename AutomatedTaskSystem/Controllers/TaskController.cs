@@ -229,4 +229,10 @@ public class TaskController : ControllerBase
 	[HttpGet("{id}/jump-points")]
     public async Task<ActionResult<ResponseService<List<GetNodeAheadDto>>>> GetJumpPoints(int id) =>
 		await _taskService.GetSchemaSteps(id);
+
+	// PUT:
+	// Jump Task
+	[HttpPut("{id}/jump")]
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> JumpTask(int id, List<PutJumpedTaskDto> req) =>
+		await _taskService.JumpTask(id, req);
 }

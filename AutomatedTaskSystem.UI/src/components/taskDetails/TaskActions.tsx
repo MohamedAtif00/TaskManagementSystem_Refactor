@@ -265,7 +265,7 @@ const TaskAction: React.FC<Props> = ({
                     </Link>
                 )}
             </div>
-                <JumpForm taskId={taskId} projectId={projectId} />
+                <JumpForm taskId={taskId} projectId={projectId} updateTask={handleUpdate} />
         </div>
     ) : (
         <></>

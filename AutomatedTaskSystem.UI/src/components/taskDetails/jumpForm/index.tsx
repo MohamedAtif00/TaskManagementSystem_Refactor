@@ -7,13 +7,15 @@ import Link from "next/link";
 import useMeasure from "react-use-measure";
 import StepCard from "./stepCard";
 import NodeCards from "./selectedNode";
+import { ITask } from "..";
 
 interface Props {
     taskId: number;
     projectId: number;
+	updateTask: (value: ITask) => void;
 }
 
-const JumpForm: React.FC<Props> = ({ taskId, projectId }) => {
+const JumpForm: React.FC<Props> = ({ taskId, projectId, updateTask }) => {
     const [points, setPoints] = useState<NodeAhead[]>();
     const router = useRouter();
     const [selectedNodes, setSelectedNode] = useState<NodeAhead[]>([]);
@@ -54,11 +56,21 @@ const JumpForm: React.FC<Props> = ({ taskId, projectId }) => {
         setSelectedSteps((ps) => {
             const newState: { nodeId: number; stepId: number }[] = [];
             for (const step of ps) {
-				if (value.some(n => n.id === step.nodeId))
-					newState.push(step)
+                if (value.some((n) => n.id === step.nodeId))
+                    newState.push(step);
             }
             return newState;
         });
+    };
+
+    const handleSubmit = () => {
+        selectedSteps.length > 0 &&
+            selectedSteps.length === selectedNodes.length &&
+            API.TASKS.JUMP_TASK(taskId, selectedSteps).then(res => {
+				if (res && !res.error) {
+					updateTask(res.data);
+				}
+			});
     };
 
     return (
@@ -120,7 +132,10 @@ const JumpForm: React.FC<Props> = ({ taskId, projectId }) => {
                         </div>
                         {selectedNodes.length > 0 && (
                             <div className="flex justify-end">
-                                <button className="px-3 py-1 bg-blue-500 text-white rounded-md border-2 border-solid border-blue-300">
+                                <button
+                                    onClick={handleSubmit}
+                                    className="px-3 py-1 bg-blue-500 text-white rounded-md border-2 border-solid border-blue-300"
+                                >
                                     Submit
                                 </button>
                             </div>

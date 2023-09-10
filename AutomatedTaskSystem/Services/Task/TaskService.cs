@@ -10,6 +10,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Services.TaskService;
 
+class NodeWithRevDepth
+{
+    public int ReversedDepth { get; set; }
+    public Node Node { get; set; } = new Node { };
+}
+
 public class TaskService : ITaskService
 {
     private readonly DataContext _context;
@@ -877,6 +883,7 @@ public class TaskService : ITaskService
             .Where(u => u.Id == uid && !u.Archived)
             .Include(u => u.Group)
             .ThenInclude(g => g.Section)
+			.AsNoTracking()
             .FirstOrDefaultAsync();
         if (user is null)
             return new UnauthorizedObjectResult(
@@ -1720,5 +1727,229 @@ public class TaskService : ITaskService
         };
 
         throw new NotImplementedException();
+    }
+
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> JumpTask(
+        int id,
+        List<PutJumpedTaskDto> options
+    )
+    {
+        var task = await _context.Tasks
+            .Where(t => t.Id == id && !t.Archived)
+            .Include(t => t.LearningObjective)
+            .ThenInclude(lo => lo.Tasks)
+            .FirstOrDefaultAsync();
+        if (task is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not found" }
+            );
+
+        if (options.Count == 0)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Please provide jump points" }
+            );
+
+        var schema = await _context.Schemas
+            .Where(s => !s.Archived && s.Id == task.LearningObjective.SchemaId)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Next)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Previous)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Steps)
+            .ThenInclude(s => s.TaskBank)
+            .ThenInclude(tb => tb.Group)
+            .AsNoTracking()
+            .FirstOrDefaultAsync();
+
+        if (schema is null)
+            throw new Exception("Schema is not found for the found node");
+
+        var nodes = schema.Nodes
+            .Where(n => !n.Archived && options.Select(o => o.NodeId).ToArray().Contains(n.Id))
+            .ToList();
+
+        if (nodes.Count() != options.Count || !nodes.All(n => nodes.First().SchemaId == n.SchemaId))
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Nodes Selected" }
+            );
+
+        var steps = new List<Step> { };
+
+        foreach (var option in options)
+        {
+            var node = nodes.Where(n => n.Id == option.NodeId).FirstOrDefault();
+            if (node is not null)
+            {
+                var step = node.Steps
+                    .Where(s => !s.Archived && option.StepId == s.Id)
+                    .FirstOrDefault();
+
+                if (step is not null)
+                    steps.Add(step);
+            }
+        }
+
+        if (steps.Count() != options.Count())
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Steps Selected" }
+            );
+
+        List<NodeWithRevDepth> depths = new List<NodeWithRevDepth> { };
+        foreach (var node in nodes)
+            depths.Add(
+                new NodeWithRevDepth
+                {
+                    ReversedDepth = GetReversedNodeDepth(node, schema),
+                    Node = node
+                }
+            );
+
+        var stepsToCreate = new Stack<Step> { };
+        var nodesToHandle = new Stack<Node> { };
+
+        depths.Sort((a, b) => b.ReversedDepth - a.ReversedDepth);
+
+        depths.ForEach(d => nodesToHandle.Push(d.Node));
+
+        while (nodesToHandle.Count > 0)
+        {
+            var node = nodesToHandle.Pop();
+            if (options.Any(opt => opt.NodeId == node.Id))
+            {
+                var opt = options.Where(o => o.NodeId == node.Id).First();
+                var mainStep = node.Steps.Where(s => s.Id == opt.StepId).First();
+                foreach (var step in node.Steps)
+                {
+                    if (
+                        step.Archived
+                        || step.Order > mainStep.Order
+                        || stepsToCreate.Any(s => s.Id == step.Id)
+                    )
+                        continue;
+                    stepsToCreate.Push(step);
+                }
+                foreach (var n in node.Previous)
+                {
+                    if (nodesToHandle.Any(_ => _.Id == n.Id))
+                        continue;
+                    var foundNode = schema.Nodes.Where(nd => nd.Id == n.Id && !nd.Archived).First();
+                    nodesToHandle.Push(foundNode);
+                }
+                continue;
+            }
+            foreach (var step in node.Steps)
+            {
+                if (step.Archived || stepsToCreate.Any(s => s.Id == step.Id))
+                    continue;
+                stepsToCreate.Push(step);
+            }
+            foreach (var n in node.Previous)
+            {
+                if (nodesToHandle.Any(_ => _.Id == n.Id))
+                    continue;
+                var foundNode = schema.Nodes.Where(nd => nd.Id == n.Id && !nd.Archived).First();
+                nodesToHandle.Push(foundNode);
+            }
+        }
+
+        while (stepsToCreate.Count > 0)
+        {
+            var step = stepsToCreate.Pop();
+            var t = await _context.Tasks
+                .Where(
+                    loTask =>
+                        loTask.StepId == step.Id
+                        && !loTask.Archived
+                        && loTask.LearningObjectiveId == task.LearningObjectiveId
+                )
+                .FirstOrDefaultAsync();
+
+            if (t is not null)
+            {
+                Console.WriteLine($"{t.Name}: {t.StatusId}");
+                if (options.Any(o => o.StepId == step.Id))
+                    t.StatusId = 1;
+                else
+                    t.StatusId = 4;
+            }
+            else
+            {
+                var s = await _context.Steps
+                    .Include(s => s.TaskBank)
+                    .ThenInclude(tb => tb.Group)
+                    .Where(ss => ss.Id == step.Id)
+                    .FirstAsync();
+
+                var check = options.Any(o => o.StepId == s.Id);
+
+                var status = await _context.Statuses
+                    .Where(stat => check ? (s.TaskBank.TL ? stat.Id == 2: stat.Id == 1) : stat.Id == 4)
+                    .FirstAsync();
+
+                var newTask = new Models.Task
+                {
+                    Priority = step.Priority,
+                    Step = s,
+                    StepId = s.Id,
+                    LearningObjective = task.LearningObjective,
+                    LearningObjectiveId = task.LearningObjective.Id,
+                    TL = s.TaskBank.TL,
+                    From = null,
+                    FromId = null,
+                    Name = s.TaskBank.Name,
+                    User = null,
+                    UserId = null,
+                    Group = s.TaskBank.Group,
+                    GroupId = s.TaskBank.GroupId,
+                    Pause = false,
+                    Status = status,
+                    StatusId = status.Id,
+                    Flagged = false,
+                    Archived = false,
+                    IsReview = s.TaskBank.TypeId == 3,
+                    Attention = false,
+                    CreatedAt = DateTime.Now,
+                    RollbackCount = 1,
+                    IsRollback = false
+                };
+
+                _context.Tasks.Add(newTask);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        return await getTaskDetails(task.Id);
+
+        throw new NotImplementedException();
+    }
+
+    private int GetReversedNodeDepth(Node currentNode, Schema schema, int currentDepth = 0)
+    {
+        if (currentNode.SchemaId != schema.Id)
+            throw new Exception("Node is not related to Schema");
+
+        if (currentNode.Archived)
+            throw new Exception("Cannot measure depth of archived Nodes");
+
+        if (currentNode.isEnd)
+            return currentDepth;
+
+        if (currentNode.Next.Count < 0)
+            return int.MinValue;
+
+        int depth = currentDepth;
+
+        foreach (var n in currentNode.Next)
+        {
+            var node = schema.Nodes.Where(_ => n.Id == _.Id).First();
+            int tempDepth = GetReversedNodeDepth(node, schema, currentDepth + 1);
+
+            if (tempDepth > depth && tempDepth > 0)
+                depth = tempDepth;
+        }
+
+        return depth;
     }
 }
