@@ -4,7 +4,7 @@ import SCHEMAS from "./Schemas";
 import TASKS from "./tasks";
 import DASHBOARDS from "./dashboard";
 
-export const url = "http://localhost:5238";
+export const url = "/api";
 
 export interface BasicInfo {
     id: number;
