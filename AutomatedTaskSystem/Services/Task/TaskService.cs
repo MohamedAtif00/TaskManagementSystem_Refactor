@@ -592,7 +592,7 @@ public class TaskService : ITaskService
                 IsRollback = true,
                 Pause = false,
                 Priority = rollbackStep.Priority,
-                RollbackCount = 0,
+                RollbackCount = 1,
                 Status = status,
                 StatusId = status.Id,
             };
