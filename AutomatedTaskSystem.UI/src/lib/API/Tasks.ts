@@ -359,6 +359,48 @@ const TASKS = {
             return false;
         }
     },
+    GET_JUMP_POINTS: async (taskId: number) => {
+        try {
+            const auth = authService.authHeader();
+            if (!auth) {
+                console.error("Unathorized");
+                return false;
+            }
+            const res = await fetch(`${url}/tasks/${taskId}/jump-points`, {
+                method: "GET",
+                headers: {
+                    ...auth,
+                },
+            });
+            const data: ResponseService<NodeAhead[]> = await res.json();
+            return data;
+        } catch (error) {
+            console.log(error);
+            return false;
+        }
+    },
+    JUMP_TASK: async (taskId: number, options: {nodeId: number, stepId: number}[]) => {
+        try {
+            const authHeader = authService.authHeader();
+            const res = await fetch(`${url}/tasks/${taskId}/jump`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...authHeader,
+                },
+                body: JSON.stringify(options),
+            });
+            const data: {
+                data: ITask;
+                error: boolean;
+                message: string;
+            } = await res.json();
+            return data;
+        } catch (error) {
+            console.log(error);
+            return false;
+        }
+    },
 };
 
 export default TASKS;

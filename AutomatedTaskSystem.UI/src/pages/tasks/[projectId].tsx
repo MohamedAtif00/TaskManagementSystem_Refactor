@@ -11,7 +11,6 @@ import Head from "next/head";
 import Loader from "../../components/loader";
 import CreateStandAloneTaskForm from "../../components/pageComponent/tasks/CreateStandAloneForm";
 import TaskCol from "../../components/pageComponent/tasks/TasksCol";
-import RollbackForm from "../../components/forms/tasks/rollback";
 
 const Tasks = () => {
     const [tasks, setTasks] = useState<TaskInfo[]>();
@@ -175,7 +174,6 @@ const Tasks = () => {
                     refreshTasks={refreshTasks}
                     projectId={project.id}
                 />
-                <RollbackForm update={refreshTasks} />
             </div>
         </>
     );
