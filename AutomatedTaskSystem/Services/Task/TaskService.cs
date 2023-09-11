@@ -592,7 +592,7 @@ public class TaskService : ITaskService
                 IsRollback = true,
                 Pause = false,
                 Priority = rollbackStep.Priority,
-                RollbackCount = 1,
+                RollbackCount = 0,
                 Status = status,
                 StatusId = status.Id,
             };
@@ -854,7 +854,7 @@ public class TaskService : ITaskService
             IsReview = step.TaskBank.TypeId == 3,
             Attention = false,
             CreatedAt = DateTime.Now,
-            RollbackCount = 1,
+            RollbackCount = 0,
             IsRollback = from is null ? false : true
         };
 
@@ -1974,7 +1974,7 @@ public class TaskService : ITaskService
                     IsReview = s.TaskBank.TypeId == 3,
                     Attention = false,
                     CreatedAt = DateTime.Now,
-                    RollbackCount = 1,
+                    RollbackCount = 0,
                     IsRollback = false
                 };
 

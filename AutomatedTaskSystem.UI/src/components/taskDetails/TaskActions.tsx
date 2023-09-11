@@ -108,26 +108,6 @@ const TaskAction: React.FC<Props> = ({
                             )}
                         </button>
                     )}
-                {(access === "WorkOnAndManage" || access == "WorkOn") &&
-                    !pause &&
-                    !flag &&
-                    isReview &&
-                    status === "Doing" && (
-                        <Link
-                            href={{
-                                pathname: `/tasks/${projectId}`,
-                                query: {
-                                    form: "rollback",
-                                    taskId: taskId,
-                                },
-                            }}
-                        >
-                            <button className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-orange-400 bg-orange-500 text-white">
-                                <ArrowPathIcon className="w-6 h-6" />
-                                <div>Rollback</div>
-                            </button>
-                        </Link>
-                    )}
                 {!flag && user && user.id === auth.id && pause ? (
                     <button
                         onClick={pauseTask}
@@ -239,6 +219,26 @@ const TaskAction: React.FC<Props> = ({
                         </AnimatePresence>
                     </div>
                 )}
+                {(access === "WorkOnAndManage" || access == "WorkOn") &&
+                    !pause &&
+                    !flag &&
+                    isReview &&
+                    status === "Doing" && (
+                        <Link
+                            href={{
+                                pathname: `/tasks/${projectId}`,
+                                query: {
+                                    form: "rollback",
+                                    taskId: taskId,
+                                },
+                            }}
+                        >
+                            <button className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-orange-400 bg-orange-500 text-white">
+                                <ArrowPathIcon className="w-6 h-6" />
+                                <div>Rollback</div>
+                            </button>
+                        </Link>
+                    )}
                 {auth.role === 1 && (
                     <button
                         onClick={skipTask}
