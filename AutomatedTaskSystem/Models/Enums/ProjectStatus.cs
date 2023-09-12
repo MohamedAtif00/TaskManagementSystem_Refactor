@@ -1,12 +1,9 @@
-// using System.Text.Json.Serialization;
+namespace AutomatedTaskSystem.Models.Enums.ProjectStatus;
 
-namespace AutomatedTaskSystem.Models.Enums.ProjectStatus
+public enum ProjectStatus
 {
-    public enum ProjectStatus
-    {
-        Active = 1,
-        Closed = 2,
-        Hold = 3,
-        Reopened = 4
-    }
+    Active = 1,
+    Closed = 2,
+    Hold = 3,
+    Reopened = 4
 }

@@ -1,3 +1,5 @@
+using AutomatedTaskSystem.Models.Enums.TaskPriority;
+
 namespace AutomatedTaskSystem.Models;
 
 public class Task
@@ -25,5 +27,5 @@ public class Task
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public int RollbackCount { get; set; }
     public bool IsRollback { get; set; } = false;
-    public int? Priority { get; set; } = null;
+    public TaskPriority Priority { get; set; } = TaskPriority.None;
 }
