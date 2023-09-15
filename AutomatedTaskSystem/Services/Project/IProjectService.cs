@@ -41,6 +41,6 @@ public interface IProjectService
     Task<ActionResult<ResponseService<Responses.DetailedProjectDTO>>> GetProjectDetails(int Id);
     Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateProjectStatus(
         int id,
-        ProjectStatus status
+        ProjectStatusEnum priority
     );
 }

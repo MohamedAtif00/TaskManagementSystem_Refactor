@@ -2,6 +2,7 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.Nodes;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TaskService;
 using Microsoft.AspNetCore.Mvc;
@@ -77,7 +78,7 @@ public class NodeController : ControllerBase
                 },
                 Duration = _s.Duration,
                 Priority = _s.Priority,
-				TaskBankItemId = _s.TaskBankId
+                TaskBankItemId = _s.TaskBankId
             };
 
             res.Steps.Add(nodeStep);
@@ -164,8 +165,7 @@ public class NodeController : ControllerBase
                     },
                     Reviewable = item.TaskBank.TypeId == 3,
                     Duration = item.Duration,
-					TaskBankItemId = item.TaskBankId
-
+                    TaskBankItemId = item.TaskBankId
                 }
             );
         }
@@ -368,7 +368,7 @@ public class NodeController : ControllerBase
                         Id = _s.TaskBank.Group.Id
                     },
                     Duration = _s.Duration,
-					TaskBankItemId = _s.TaskBankId
+                    TaskBankItemId = _s.TaskBankId
                 };
 
                 nodeRes.Steps.Add(nodeStep);
@@ -406,7 +406,11 @@ public class NodeController : ControllerBase
 
         foreach (var step in node.Steps)
             foreach (var task in step.Tasks)
-                if (task.StatusId != 4 && task.StatusId != 5 && !task.Archived)
+                if (
+                    task.Status != TaskStatusEnum.Done
+                    && task.Status != TaskStatusEnum.Rollback
+                    && !task.Archived
+                )
                     return new ResponseService<GetNodeDeleteCheckDto>
                     {
                         Error = false,
@@ -469,7 +473,11 @@ public class NodeController : ControllerBase
         foreach (var step in node.Steps)
             foreach (var task in step.Tasks)
             {
-                if (task.StatusId != 4 && task.StatusId != 5 && !task.Archived)
+                if (
+                    task.Status != TaskStatusEnum.Done
+                    && task.Status != TaskStatusEnum.Rollback
+                    && !task.Archived
+                )
                     await _taskService.CreateNextNode(node.Id, task.LearningObjectiveId);
                 task.Archived = true;
             }
@@ -554,77 +562,5 @@ public class NodeController : ControllerBase
         await _context.SaveChangesAsync();
 
         return await GetNodes(node.SchemaId);
-    }
-
-    [HttpGet("/OTR")]
-    public async Task<ActionResult<BaseResponseService>> DeleteNode()
-    {
-        var schemas = await _context.Schemas
-            .Where(s => !s.Archived)
-            .Include(s => s.Nodes)
-            .ToListAsync();
-
-        foreach (var schema in schemas)
-        {
-            int count = 1;
-            foreach (var node in schema.Nodes)
-                node.Order = count++;
-        }
-
-        await _context.SaveChangesAsync();
-
-        return Ok(new BaseResponseService { Error = false, Message = "Nodes ordered" });
-    }
-
-    [HttpPatch("/OTR")]
-    public async Task<ActionResult<BaseResponseService>> OTR()
-    {
-        var los = await _context.LearningObjectives
-            .Where(p => !p.Archived)
-            .Include(lo => lo.Tasks)
-            .ToListAsync();
-
-        var taskActivities = await _context.Activities.ToListAsync();
-
-        foreach (var lo in los)
-        {
-            var done = true;
-
-            DateTime latest = new DateTime();
-
-            foreach (var task in lo.Tasks)
-            {
-                if (task.StatusId != 4 && !task.Archived)
-                    done = false;
-
-                var acts = taskActivities
-                    .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 1)
-                    .ToList();
-                foreach (var item in acts)
-                {
-                    if (lo.StartedAt is null || item.TimeStamp < lo.StartedAt)
-                        lo.StartedAt = item.TimeStamp;
-                }
-
-                if (done)
-                {
-                    acts = taskActivities
-                        .Where(a => a.TaskId == task.Id && a.ActivityTypeId == 2)
-                        .ToList();
-                    foreach (var item in acts)
-                    {
-                        if (lo.StartedAt is null || item.TimeStamp < lo.StartedAt)
-                            latest = item.TimeStamp;
-                    }
-                }
-            }
-
-            if (done)
-                lo.DoneAt = latest;
-        }
-
-        await _context.SaveChangesAsync();
-
-        return Ok();
     }
 }

@@ -122,8 +122,8 @@ public class ProjectAssignmentService : IProjectAssignmentService
                         .Where(
                             p =>
                                 !p.Archived
-                                && p.Status != ProjectStatus.Closed
-                                && p.Status != ProjectStatus.Hold
+                                && p.Status != ProjectStatusEnum.Closed
+                                && p.Status != ProjectStatusEnum.Hold
                         )
                         .ToList(),
             Error = false,

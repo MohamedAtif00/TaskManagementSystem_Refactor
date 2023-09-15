@@ -11,9 +11,6 @@ import DateLabel from "./DateLabel";
 import TaskComments from "./TaskComments";
 import RollbackForm from "../../components/forms/tasks/rollback";
 import { ClockIcon } from "@heroicons/react/24/solid";
-import { ClockIcon as ClockIconOutline } from "@heroicons/react/24/outline";
-import { CalendarIcon, DocumentPlusIcon } from "@heroicons/react/24/outline";
-import dateHandler from "../../lib/DateHandler";
 import CreatedActivity from "./RecentActivity/createdActivity";
 
 export interface IComment {
@@ -40,12 +37,12 @@ export interface ITask {
     environment: string;
     schema: { id: number; name: string };
     isReview: boolean;
-    status: "Backlog" | "To Do" | "Doing" | "Done" | "Rollback";
+    status: TaskStatus;
     flagged: boolean;
     comments: IComment[];
     startedAt: string | null;
     doneAt: string | null;
-    priority: number | null;
+    priority: TaskPriority;
 }
 
 interface Props {
@@ -113,7 +110,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                 <div className="py-4 flex">
                                     <StatusBadge status={task.status} />
                                 </div>
-                                {task.priority !== null && (
+                                {task.priority !== 0 && (
                                     <>
                                         <div className="pl-[1px] bg-slate-200"></div>
                                         <div className="text-sm flex flex-col justify-center items-start text-slate-600">
@@ -230,12 +227,17 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                     <div>Recent Activity</div>
                                 </h1>
                                 <div className="grow flex items-center flex-col overflow-y-auto px-6 py-4">
-									<CreatedActivity date={task.createdAt} name={task.name} />
-									<div className="justify-center items-center flex flex-col gap-2">
-										<div className="pl-1 h-8 rounded-full bg-slate-300"></div>
-										<div className="text-sm text-slate-500">2 Hours</div>
-										<div className="pl-1 h-8 rounded-full bg-slate-300"></div>
-									</div>
+                                    <CreatedActivity
+                                        date={task.createdAt}
+                                        name={task.name}
+                                    />
+                                    <div className="justify-center items-center flex flex-col gap-2">
+                                        <div className="pl-1 h-8 rounded-b-full bg-slate-300"></div>
+                                        <div className="text-sm text-slate-500">
+                                            2 Hours
+                                        </div>
+                                        <div className="pl-1 h-8 rounded-full bg-slate-300"></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

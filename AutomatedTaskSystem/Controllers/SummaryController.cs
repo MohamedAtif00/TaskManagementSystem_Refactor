@@ -28,7 +28,6 @@ namespace AutomatedTaskSystem.Controllers
                 .ThenInclude(u => u.Lessons)
                 .ThenInclude(l => l.LearningObjectives)
                 .ThenInclude(lo => lo.Tasks)
-                .ThenInclude(t => t.Status)
                 .FirstOrDefaultAsync();
 
             if (project == null)
@@ -42,12 +41,18 @@ namespace AutomatedTaskSystem.Controllers
             };
             foreach (var u in project.Units)
             {
+                if (u.Archived)
+                    continue;
                 var _unit = new Responses.Unit { Name = u.Name, Id = u.Id, };
                 foreach (var l in u.Lessons)
                 {
+                    if (l.Archived)
+                        continue;
                     var _lesson = new Responses.Lesson { Id = l.Id, Name = l.Name, };
                     foreach (var lo in l.LearningObjectives)
                     {
+                        if (lo.Archived)
+                            continue;
                         var _lo = new Responses.LearningObjective
                         {
                             Name = lo.Name,
@@ -69,8 +74,7 @@ namespace AutomatedTaskSystem.Controllers
                             {
                                 Id = task.Id,
                                 Name = task.Name,
-                                Status = task.Status.Name,
-                                StatusId = task.StatusId
+                                Status = task.Status
                             };
                             _lo.Tasks.Add(_task);
                         }

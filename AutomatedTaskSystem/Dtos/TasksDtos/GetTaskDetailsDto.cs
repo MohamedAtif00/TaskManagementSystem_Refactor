@@ -1,4 +1,6 @@
 using AutomatedTaskSystem.Dtos.Common;
+using AutomatedTaskSystem.Models.Enums.TaskPriority;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 
 namespace AutomatedTaskSystem.Dtos.Tasks;
 
@@ -14,12 +16,12 @@ public class GetTaskDetailsDto
     public BasicInfoDto Schema { get; set; } = new BasicInfoDto { };
     public BasicInfoDto? User { get; set; } = null;
     public bool IsReview { get; set; }
-    public string Status { get; set; } = "";
+    public TaskStatusEnum Status { get; set; } = TaskStatusEnum.Backlog;
     public bool Flagged { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? DoneAt { get; set; }
     public DateTime CreatedAt { get; set; }
-    public int? Priority { get; set; }
+    public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
     public List<TaskCommentDto> Comments { get; set; } = new List<TaskCommentDto> { };
     public TaskAccess Access { get; set; } = TaskAccess.WorkOn;
 }

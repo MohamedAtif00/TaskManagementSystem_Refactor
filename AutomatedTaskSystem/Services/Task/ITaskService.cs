@@ -1,5 +1,6 @@
 using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.TaskPriority;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,7 +18,7 @@ public interface ITaskService
     );
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> UpdateTaskPriority(
         int TaskId,
-        int? Priority
+        TaskPriorityEnum Priority
     );
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id);
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> TogglePause(int id);

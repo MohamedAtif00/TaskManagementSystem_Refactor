@@ -5,6 +5,7 @@ using AutomatedTaskSystem.Services.TaskService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.TokenService;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -168,15 +169,10 @@ namespace AutomatedTaskSystem.Controllers
                 var COSEA = await _context.EndActivityTypes.FindAsync(6);
                 if (COSEA != null)
                 {
-                    var status = await _context.Statuses.FindAsync(4);
-                    if (status == null)
-                        return NotFound(new Responses.BadRequestsDTO("Done status not Found"));
-
                     foreach (var task in tasks)
                     {
                         task.Archived = true;
-                        task.Status = status;
-                        task.StatusId = status.Id;
+                        task.Status = TaskStatusEnum.Done;
 
                         var currentEA = await _context.EndActivities
                             .Where(

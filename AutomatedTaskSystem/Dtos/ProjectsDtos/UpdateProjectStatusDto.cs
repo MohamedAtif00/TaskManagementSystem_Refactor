@@ -4,5 +4,5 @@ namespace AutomatedTaskSystem.Dtos.Projects;
 
 public class UpdateProjectStatusDto
 {
-    public ProjectStatus Status { get; set; } = ProjectStatus.Active;
+    public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
 }

@@ -1,6 +1,6 @@
 namespace AutomatedTaskSystem.Models.Enums.TaskActivityType;
 
-public enum TaskActivityType
+public enum TaskActivityTypeEnum
 {
     None,
     Created,

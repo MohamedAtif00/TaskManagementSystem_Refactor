@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.SchemaTypesModel;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
@@ -94,7 +95,7 @@ public class SchemaService : ISchemaService
 
         foreach (var lo in schema.LearningObjectives)
             foreach (var task in lo.Tasks)
-                if (!task.Archived && (task.StatusId != 4 || task.StatusId != 5))
+                if (!task.Archived && (task.Status != TaskStatusEnum.Done || task.Status != TaskStatusEnum.Rollback))
                     activeTasks.Add(task);
 
         if (activeTasks.Count == 0)

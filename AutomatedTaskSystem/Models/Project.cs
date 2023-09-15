@@ -14,5 +14,5 @@ public class Project
     public int YearId { get; set; }
     public bool Term { get; set; }
     public bool Archived { get; set; } = false;
-    public ProjectStatus Status { get; set; } = ProjectStatus.Active;
+    public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
 }

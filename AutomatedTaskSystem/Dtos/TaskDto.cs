@@ -1,3 +1,5 @@
+using AutomatedTaskSystem.Models.Enums.TaskPriority;
+
 namespace AutomatedTaskSystem.DTO
 {
     public static partial class Responses
@@ -64,7 +66,7 @@ namespace AutomatedTaskSystem.DTO
     {
         public class PriorityUpdateDto
         {
-            public int? Priority { get; set; } = null;
+            public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
         }
 
         public class NewTaskDTO

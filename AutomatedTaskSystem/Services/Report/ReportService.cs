@@ -25,8 +25,8 @@ public class ReportService : IReportService
             .Where(
                 p =>
                     !p.Archived
-                    && p.Status != ProjectStatus.Closed
-                    && p.Status != ProjectStatus.Hold
+                    && p.Status != ProjectStatusEnum.Closed
+                    && p.Status != ProjectStatusEnum.Hold
             )
             .Include(p => p.Year)
             .Include(p => p.Units)
@@ -63,8 +63,8 @@ public class ReportService : IReportService
                 p =>
                     p.Id == id
                     && !p.Archived
-                    && p.Status != ProjectStatus.Closed
-                    && p.Status != ProjectStatus.Hold
+                    && p.Status != ProjectStatusEnum.Closed
+                    && p.Status != ProjectStatusEnum.Hold
             )
             .Include(p => p.Year)
             .Include(p => p.Units)

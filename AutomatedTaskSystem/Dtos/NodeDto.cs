@@ -1,3 +1,5 @@
+using AutomatedTaskSystem.Models.Enums.TaskPriority;
+
 namespace AutomatedTaskSystem.DTO
 {
     public static partial class Requests
@@ -48,7 +50,7 @@ namespace AutomatedTaskSystem.DTO
             public IDName Group { get; set; } = new IDName { };
             public bool Reviewable { get; set; } = false;
             public int Duration { get; set; }
-            public int? Priority { get; set; } = null;
+            public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
             public int TaskBankItemId { get; set; }
         }
 

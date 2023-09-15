@@ -1,6 +1,6 @@
 namespace AutomatedTaskSystem.Models.Enums.ProjectStatus;
 
-public enum ProjectStatus
+public enum ProjectStatusEnum
 {
     Active = 1,
     Closed = 2,

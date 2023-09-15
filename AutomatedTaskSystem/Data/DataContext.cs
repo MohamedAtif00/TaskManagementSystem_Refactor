@@ -67,22 +67,6 @@ public class DataContext : DbContext
             .WithMany(u => u.RefreshTokens)
             .OnDelete(DeleteBehavior.Cascade);
 
-        modelBuilder
-            .Entity<Status>()
-            .HasMany(s => s.Tasks)
-            .WithOne(t => t.Status)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder
-            .Entity<Status>()
-            .HasData(
-                new Status { Id = 1, Name = "Backlog" },
-                new Status { Id = 2, Name = "To Do" },
-                new Status { Id = 3, Name = "Doing" },
-                new Status { Id = 4, Name = "Done" },
-                new Status { Id = 5, Name = "Rollback" }
-            );
-
         var pm = new Role { Id = 1, Name = "Project Manager" };
         var sh = new Role { Id = 2, Name = "Section Head" };
         var tl = new Role { Id = 3, Name = "Team Leader" };
@@ -120,7 +104,7 @@ public class DataContext : DbContext
         modelBuilder
             .Entity<Project>()
             .Property(p => p.Status)
-            .HasDefaultValue(ProjectStatus.Active);
+            .HasDefaultValue(ProjectStatusEnum.Active);
 
         modelBuilder
             .Entity<Assignment>()
@@ -180,7 +164,6 @@ public class DataContext : DbContext
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<Role> Roles => Set<Role>();
-    public DbSet<Status> Statuses => Set<Status>();
     public DbSet<Schema> Schemas => Set<Schema>();
     public DbSet<SchemaType> SchemaTypes => Set<SchemaType>();
     public DbSet<Section> Sections => Set<Section>();

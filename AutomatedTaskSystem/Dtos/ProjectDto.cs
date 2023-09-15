@@ -11,7 +11,7 @@ namespace AutomatedTaskSystem.DTO
             public string Description { get; set; } = "";
             public IDName Year { get; set; } = new IDName { };
             public bool Term { get; set; }
-            public ProjectStatus Status { get; set; } = ProjectStatus.Active;
+            public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
         }
 
         public class DetailedProjectDTO
@@ -20,7 +20,7 @@ namespace AutomatedTaskSystem.DTO
             public string Name { get; set; } = "";
             public string Description { get; set; } = "";
             public List<ProjectUnitDTO> Units { get; set; } = new List<ProjectUnitDTO> { };
-            public string Status { get; set; } = "";
+            public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
         }
 
         public class ProjectUnitDTO

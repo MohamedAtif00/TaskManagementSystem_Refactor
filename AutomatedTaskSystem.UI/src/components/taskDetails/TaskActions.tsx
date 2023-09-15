@@ -21,14 +21,14 @@ import JumpForm from "./jumpForm";
 interface Props {
     access: "WorkOn" | "Manage" | "WorkOnAndManage" | "None";
     user: BasicInfo | null;
-    status: "Backlog" | "To Do" | "Doing" | "Done" | "Rollback";
+    status: TaskStatus;
     taskId: number;
     handleUpdate: (res: ITask) => void;
     flag: boolean;
     pause: boolean;
     isReview: boolean;
     projectId: number;
-    priority: number | null;
+    priority: TaskPriority;
 }
 
 const TaskAction: React.FC<Props> = ({
@@ -48,7 +48,7 @@ const TaskAction: React.FC<Props> = ({
     const updatePrio = (value: null | number) => {
         API.TASKS.UPDATE_PRIORITY(
             taskId,
-            value === 1 || value === 2 || value === 3 ? value : null
+            value === 1 || value === 2 || value === 3 ? value : 0
         ).then((res) => {
             console.log(res);
             if (res && !res.error) {
@@ -74,7 +74,7 @@ const TaskAction: React.FC<Props> = ({
             if (res && !res.error) handleUpdate(res.data);
         });
 
-    return access !== "None" && status !== "Rollback" && status !== "Done" ? (
+    return access !== "None" && status !== 4 && status !==  3 ? (
         <div className="px-6 mt-6">
             <div className="flex items-center gap-2">
                 <div>
@@ -90,12 +90,12 @@ const TaskAction: React.FC<Props> = ({
                             onClick={proceedTask}
                             className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-blue-400 bg-blue-500 text-white"
                         >
-                            {status === "Backlog" ? (
+                            {status === 0 ? (
                                 <>
                                     <PlusIcon className="w-6 h-6" />
                                     <div>Add</div>
                                 </>
-                            ) : status === "To Do" ? (
+                            ) : status === 1 ? (
                                 <>
                                     <PlayIcon className="w-6 h-6" />
                                     <div>Start</div>
@@ -116,7 +116,7 @@ const TaskAction: React.FC<Props> = ({
                         <PlayIcon className="w-6 h-6" />
                         <div>Resume</div>
                     </button>
-                ) : !flag && status === "Doing" ? (
+                ) : !flag && status === 2 ? (
                     <button
                         onClick={pauseTask}
                         className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-blue-400 bg-blue-500 text-white"
@@ -144,7 +144,7 @@ const TaskAction: React.FC<Props> = ({
                             </button>
                         </Link>
                     )}
-                {status !== "Backlog" && (
+                {status !== 0 && (
                     <button
                         onClick={flagTask}
                         className={`flex gap-1 px-3 py-1 rounded border-2 border-solid ${
@@ -223,7 +223,7 @@ const TaskAction: React.FC<Props> = ({
                     !pause &&
                     !flag &&
                     isReview &&
-                    status === "Doing" && (
+                    status === 2 && (
                         <Link
                             href={{
                                 pathname: `/tasks/${projectId}`,

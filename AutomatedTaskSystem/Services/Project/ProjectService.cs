@@ -102,7 +102,7 @@ public class ProjectService : IProjectService
             Term = Term,
             Year = year,
             YearId = year.Id,
-            Status = ProjectStatus.Active
+            Status = ProjectStatusEnum.Active
         };
 
         _context.Projects.Add(newProject);
@@ -332,7 +332,6 @@ public class ProjectService : IProjectService
                 new BaseResponseService { Error = true, Message = "Project is not found" }
             );
 
-        var status = project.Status;
         return new ResponseService<Responses.DetailedProjectDTO>
         {
             Data = new Responses.DetailedProjectDTO
@@ -340,14 +339,7 @@ public class ProjectService : IProjectService
                 Id = project.Id,
                 Name = project.Name,
                 Description = project.Description,
-                Status =
-                    status == ProjectStatus.Closed
-                        ? "Close"
-                        : status == ProjectStatus.Hold
-                            ? "On Hold"
-                            : status == ProjectStatus.Active
-                                ? "Active"
-                                : "Reopened",
+                Status = project.Status,
                 Units = project.Units
                     .Where(u => !u.Archived)
                     .Select(
@@ -488,8 +480,8 @@ public class ProjectService : IProjectService
                     .Where(
                         p =>
                             !p.Archived
-                            && p.Status != ProjectStatus.Hold
-                            && p.Status != ProjectStatus.Closed
+                            && p.Status != ProjectStatusEnum.Hold
+                            && p.Status != ProjectStatusEnum.Closed
                     )
                     .Include(p => p.Year)
                     .Select(
@@ -512,8 +504,8 @@ public class ProjectService : IProjectService
         foreach (var project in user.Projects)
             if (
                 !project.Archived
-                && project.Status != ProjectStatus.Hold
-                && project.Status != ProjectStatus.Closed
+                && project.Status != ProjectStatusEnum.Hold
+                && project.Status != ProjectStatusEnum.Closed
             )
                 listOfProjects.Add(
                     new Responses.ProjectDTO
@@ -567,7 +559,7 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateProjectStatus(
         int id,
-        ProjectStatus status
+        ProjectStatusEnum status
     )
     {
         var project = await _context.Projects
@@ -584,40 +576,40 @@ public class ProjectService : IProjectService
                 }
             );
 
-        if (status == ProjectStatus.Active)
+        if (status == ProjectStatusEnum.Active)
         {
-            if (project.Status == ProjectStatus.Active || project.Status == ProjectStatus.Reopened)
+            if (project.Status == ProjectStatusEnum.Active || project.Status == ProjectStatusEnum.Reopened)
                 return new BadRequestObjectResult(
                     new BaseResponseService { Error = true, Message = "Project is already active" }
                 );
 
-            if (project.Status == ProjectStatus.Hold)
-                project.Status = ProjectStatus.Active;
-            else if (project.Status == ProjectStatus.Closed)
-                project.Status = ProjectStatus.Reopened;
+            if (project.Status == ProjectStatusEnum.Hold)
+                project.Status = ProjectStatusEnum.Active;
+            else if (project.Status == ProjectStatusEnum.Closed)
+                project.Status = ProjectStatusEnum.Reopened;
         }
-        else if (status == ProjectStatus.Hold)
+        else if (status == ProjectStatusEnum.Hold)
         {
-            if (project.Status == ProjectStatus.Hold)
+            if (project.Status == ProjectStatusEnum.Hold)
                 return new BadRequestObjectResult(
                     new BaseResponseService { Error = true, Message = "Project is already on Hold" }
                 );
 
-            if (project.Status == ProjectStatus.Closed)
+            if (project.Status == ProjectStatusEnum.Closed)
                 return new BadRequestObjectResult(
                     new BaseResponseService { Error = true, Message = "Project is Closed" }
                 );
 
-            project.Status = ProjectStatus.Hold;
+            project.Status = ProjectStatusEnum.Hold;
         }
-        else if (status == ProjectStatus.Closed)
+        else if (status == ProjectStatusEnum.Closed)
         {
-            if (project.Status == ProjectStatus.Closed)
+            if (project.Status == ProjectStatusEnum.Closed)
                 return new BadRequestObjectResult(
                     new BaseResponseService { Error = true, Message = "Project is already closed" }
                 );
 
-            project.Status = ProjectStatus.Closed;
+            project.Status = ProjectStatusEnum.Closed;
         }
 
         await _context.SaveChangesAsync();

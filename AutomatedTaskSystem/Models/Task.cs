@@ -1,4 +1,6 @@
 using AutomatedTaskSystem.Models.Enums.TaskPriority;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
+using System.ComponentModel.DataAnnotations;
 
 namespace AutomatedTaskSystem.Models;
 
@@ -9,8 +11,8 @@ public class Task
     public bool Attention { get; set; } = false;
     public int Id { get; set; }
     public string Name { get; set; } = "";
-    public Status Status { get; set; } = new Status { };
-    public int StatusId { get; set; }
+	[Range(0, 4)]
+	public TaskStatusEnum Status { get; set; } = TaskStatusEnum.Backlog;
     public Step? Step { get; set; }
     public int? StepId { get; set; }
     public bool TL { get; set; } = false;
@@ -27,5 +29,6 @@ public class Task
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public int RollbackCount { get; set; }
     public bool IsRollback { get; set; } = false;
-    public TaskPriority Priority { get; set; } = TaskPriority.None;
+	[Range(0, 3)]
+    public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
 }

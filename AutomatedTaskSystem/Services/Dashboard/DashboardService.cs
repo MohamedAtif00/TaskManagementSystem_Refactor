@@ -2,6 +2,7 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.Dashboard.GetProjectManagerDashboard;
 using AutomatedTaskSystem.Dtos.Dashboard.GetTeamLeaderDashboard;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Services.ReportService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
@@ -66,18 +67,18 @@ public class DashboardService : IDashboardService
             .Where(
                 p =>
                     !p.Archived
-                    && p.Status != ProjectStatus.Closed
-                    && p.Status != ProjectStatus.Hold
+                    && p.Status != ProjectStatusEnum.Closed
+                    && p.Status != ProjectStatusEnum.Hold
             )
             .ToListAsync();
         var tasks = await _context.Tasks
             .Where(
                 t =>
                     !t.Archived
-                    && t.StatusId != 4
-                    && t.StatusId != 5
-                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatus.Closed
-                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatus.Hold
+                    && t.Status != TaskStatusEnum.Done
+                    && t.Status != TaskStatusEnum.Rollback
+                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Closed
+                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
             )
             .Include(t => t.LearningObjective)
             .ThenInclude(lo => lo.Lesson)
@@ -186,12 +187,12 @@ public class DashboardService : IDashboardService
                         .Where(
                             t =>
                                 !t.Archived
-                                && t.StatusId != 4
-                                && t.StatusId != 5
+                                && t.Status != TaskStatusEnum.Done
+                                && t.Status != TaskStatusEnum.Rollback
                                 && t.LearningObjective.Lesson.Unit.Project.Status
-                                    != ProjectStatus.Closed
+                                    != ProjectStatusEnum.Closed
                                 && t.LearningObjective.Lesson.Unit.Project.Status
-                                    != ProjectStatus.Hold
+                                    != ProjectStatusEnum.Hold
                         )
                         .ToList()
                         .Count,
@@ -202,7 +203,7 @@ public class DashboardService : IDashboardService
         foreach (var project in user.Projects)
         {
             var s = project.Status;
-            if (s == ProjectStatus.Closed || s == ProjectStatus.Hold)
+            if (s == ProjectStatusEnum.Closed || s == ProjectStatusEnum.Hold)
                 continue;
 
             foreach (var unit in project.Units)
@@ -212,8 +213,8 @@ public class DashboardService : IDashboardService
                             if (
                                 !task.Archived
                                 && task.GroupId == user.GroupId
-                                && task.StatusId != 4
-                                && task.StatusId != 5
+                                && task.Status != TaskStatusEnum.Done
+                                && task.Status != TaskStatusEnum.Rollback
                             )
                             {
                                 var detail = ProjectsDetails.Find(p => p.Id == project.Id);
@@ -243,7 +244,7 @@ public class DashboardService : IDashboardService
                 Members = members.Count,
                 Projects = user.Projects
                     .Where(
-                        p => p.Status == ProjectStatus.Active || p.Status == ProjectStatus.Reopened
+                        p => p.Status == ProjectStatusEnum.Active || p.Status == ProjectStatusEnum.Reopened
                     )
                     .ToList()
                     .Count,

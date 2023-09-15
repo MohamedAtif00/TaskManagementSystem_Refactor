@@ -31,7 +31,7 @@ const TASKS = {
             return false;
         }
     },
-    UPDATE_PRIORITY: async (id: number, priority: number | null) => {
+    UPDATE_PRIORITY: async (id: number, priority: TaskPriority) => {
         try {
             const authHeader = authService.authHeader();
             const res = await fetch(`${url}/tasks/${id}/priority`, {

@@ -100,11 +100,11 @@ const Tasks = () => {
     if (!project) return <div>Loading</div>;
 
     const view = {
-        backlog: filteredTasks.filter((t) => t.status === "Backlog"),
-        todo: filteredTasks.filter((t) => t.status === "To Do"),
-        doing: filteredTasks.filter((t) => t.status === "Doing"),
+        backlog: filteredTasks.filter((t) => t.status === 0),
+        todo: filteredTasks.filter((t) => t.status === 1),
+        doing: filteredTasks.filter((t) => t.status === 2),
         done: filteredTasks.filter(
-            (t) => t.status === "Done" || t.status === "Rollback"
+            (t) => t.status === 3 || t.status === 4
         ),
     };
 
