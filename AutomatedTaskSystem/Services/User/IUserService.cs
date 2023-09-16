@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,13 +11,13 @@ public interface IUserService
     Task<ActionResult<ResponseService<Responses.UserAddedDTO>>> CreateUser(
         string Name,
         int GroupId,
-        int RoleId
+        UserRoleEnum Role
     );
     Task<ActionResult<ResponseService<Responses.UserDTO>>> EditUser(
         int id,
         string Name,
         int GroupId,
-        int RoleId
+        UserRoleEnum Role
     );
     Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetUsers();
     Task<ActionResult<BaseResponseService>> ArchiveUser(int id);

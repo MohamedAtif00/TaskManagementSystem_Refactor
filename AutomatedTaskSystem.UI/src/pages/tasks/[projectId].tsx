@@ -116,7 +116,7 @@ const Tasks = () => {
             <div className="w-full h-screen overflow-hidden flex flex-col">
                 <div className="px-8">
                     <Header text={project.name} icon="Task">
-                        {auth.role !== 4 ? (
+                        {auth.role !== 3 ? (
                             <QueryButton
                                 icon={<PlusIcon />}
                                 text="New Task"

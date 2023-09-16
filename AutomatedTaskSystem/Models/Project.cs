@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.YearModel;
 
@@ -14,5 +15,6 @@ public class Project
     public int YearId { get; set; }
     public bool Term { get; set; }
     public bool Archived { get; set; } = false;
+	[Range(0,3)]
     public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
 }

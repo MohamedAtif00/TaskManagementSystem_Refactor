@@ -17,9 +17,9 @@ const Home: NextPage = () => {
                 />
                 <link rel="icon" href="/favicon.ico" />
             </Head>
-            {role === 1 ? (
+            {role === 0 ? (
                 <ProjectManagerDashboard />
-            ) : role === 3 ? (
+            ) : role === 2 ? (
                 <TeamLeaderDashboard />
             ) : (
                 ""

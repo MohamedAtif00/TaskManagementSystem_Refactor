@@ -8,6 +8,7 @@ using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Dtos.Common;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 
 namespace AutomatedTaskSystem.Controllers;
 
@@ -138,7 +139,7 @@ public class TaskController : ControllerBase
             .ThenInclude(s => s.TaskBank)
             .FirstOrDefaultAsync();
 
-        if (taskStep is not null && taskStep.Rollbacks.Count > 0 && user.RoleId != 1)
+        if (taskStep is not null && taskStep.Rollbacks.Count > 0 && user.Role != UserRoleEnum.ProjectManger)
         {
             foreach (var step in taskStep.Rollbacks)
                 res.Add(new BasicInfoDto { Id = step.Id, Name = step.TaskBank.Name });

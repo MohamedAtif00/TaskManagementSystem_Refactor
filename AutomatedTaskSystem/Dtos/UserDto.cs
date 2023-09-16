@@ -1,3 +1,5 @@
+using AutomatedTaskSystem.Models.Enums.UserRole;
+
 namespace AutomatedTaskSystem.DTO
 {
 	public static partial class Responses
@@ -7,7 +9,7 @@ namespace AutomatedTaskSystem.DTO
 			public int Id { get; set; }
 			public string Name { get; set; } = "";
 			public IDName Group { get; set; } = new IDName { };
-			public IDName Role { get; set; } = new IDName { };
+			public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
 		}
 		public class UserAddedDTO
 		{
@@ -22,7 +24,7 @@ namespace AutomatedTaskSystem.DTO
 		{
 			public string Name { get; set; } = "";
 			public int GroupId { get; set; }
-			public int RoleId { get; set; }
+			public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
 		}
 	}
 }

@@ -45,7 +45,7 @@ public class AuthService : IAuthService
             {
                 Id = user.Id,
                 Group = user.Group.Name,
-                Role = user.RoleId,
+                Role = user.Role,
                 Name = user.Name
             },
             Error = false,

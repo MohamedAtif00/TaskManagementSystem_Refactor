@@ -41,13 +41,13 @@ const NonActionableTaskDetails = ({ projectId }: Props) => {
                     </h1>
                     <div
                         className={`px-3 py-1 rounded-3xl ${
-                            task.status === "Done"
+                            task.status === 0
                                 ? "bg-emerald-500 text-white"
-                                : task.status === "Doing"
+                                : task.status === 1
                                 ? "bg-orange-500 text-white"
-                                : task.status === "Rollback"
+                                : task.status === 4
                                 ? "bg-black text-white"
-                                : task.status === "To Do"
+                                : task.status === 2
                                 ? "bg-blue-500 text-white"
                                 : "border-2 border-black border-solid"
                         }`}
@@ -61,35 +61,6 @@ const NonActionableTaskDetails = ({ projectId }: Props) => {
                     header="Environment"
                     content={task.environment}
                 />
-                {/* 
-				<div className="select-none mt-2 gap-4">
-					<h1 className="text-xl flex items-center gap-2">
-						<CommentIcon color="black" />
-						<div>Comments</div>
-					</h1>
-					<form onSubmit={postComment}>
-						<div className="flex gap-4">
-							<textarea
-								className="overflow-hidden resize-none h-8 max-h-16 py-1 px-4 focus:border-blue-200 grow border rounded-lg border-solid border-slate-400"
-								onChange={(e) => {
-									const element = e.currentTarget;
-									element.style.height = "2rem";
-									element.style.height =
-										element.scrollHeight + "px";
-									setComment(e.target.value);
-								}}
-								value={comment}
-							/>
-							<button
-								className="px-4 py-1 bg-blue-500 text-white rounded-md"
-								type="submit"
-							>
-								Send
-							</button>
-						</div>
-					</form>
-				</div>
-				*/}
             </div>
         </Backdrop>
     );

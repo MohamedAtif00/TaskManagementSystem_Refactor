@@ -2,6 +2,7 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.LearningObjectiveService;
 using AutomatedTaskSystem.Services.ProjectAssignmentService;
 using AutomatedTaskSystem.Services.ResponseService;
@@ -253,7 +254,6 @@ public class ProjectService : IProjectService
             .Include(p => p.Users)
             .ThenInclude(u => u.Group)
             .Include(p => p.Users)
-            .ThenInclude(u => u.Role)
             .FirstOrDefaultAsync();
 
         if (project is null)
@@ -275,7 +275,7 @@ public class ProjectService : IProjectService
                         Id = user.Id,
                         Name = user.Name,
                         Group = new Responses.IDName { Id = user.GroupId, Name = user.Group.Name },
-                        Role = new Responses.IDName { Id = user.Role.Id, Name = user.Role.Name }
+                        Role = user.Role
                     }
                 );
 
@@ -421,7 +421,6 @@ public class ProjectService : IProjectService
             .Where(u => !u.Archived && !u.Projects.Any(p => p.Id == project.Id))
             .Include(u => u.Projects)
             .Include(u => u.Group)
-            .Include(u => u.Role)
             .ToListAsync();
 
         return new ResponseService<List<Responses.UserDTO>>
@@ -434,7 +433,7 @@ public class ProjectService : IProjectService
                             Id = u.Id,
                             Name = u.Name,
                             Group = { Id = u.GroupId, Name = u.Group.Name },
-                            Role = { Id = u.RoleId, Name = u.Role.Name },
+                            Role = u.Role,
                         }
                 )
                 .ToList(),
@@ -471,7 +470,7 @@ public class ProjectService : IProjectService
                 new BaseResponseService { Error = true, Message = $"User of id:{uid} is not found" }
             );
 
-        if (user.RoleId == 1)
+        if (user.Role == UserRoleEnum.ProjectManger)
             return new ResponseService<List<Responses.ProjectDTO>>
             {
                 Error = false,

@@ -186,7 +186,7 @@ const Projects = () => {
     const auth = useAppSelector((s) => s.authSlice);
     const router = useRouter();
 
-    if (!auth.isAuth || auth.role != 1) router.replace("/");
+    if (!auth.isAuth || auth.role !== 0) router.replace("/");
 
     useEffect(() => {
         API.PROJECTS.GET_ALL().then((res) => {
@@ -261,7 +261,7 @@ const Projects = () => {
                     <DataGrid
                         className="bg-white relative h-full"
                         rows={projects
-                            .filter((p) => p.status === 1 || p.status === 4)
+                            .filter((p) => p.status === 0 || p.status === 3)
                             .map((p) => {
                                 return {
                                     id: p.id,
@@ -283,7 +283,7 @@ const Projects = () => {
                     <DataGrid
                         className="bg-white relative h-full"
                         rows={projects
-                            .filter((p) => p.status === 2)
+                            .filter((p) => p.status === 1)
                             .map((p) => {
                                 return {
                                     id: p.id,
@@ -305,7 +305,7 @@ const Projects = () => {
                     <DataGrid
                         className="bg-white relative h-full"
                         rows={projects
-                            .filter((p) => p.status === 3)
+                            .filter((p) => p.status === 2)
                             .map((p) => {
                                 return {
                                     id: p.id,

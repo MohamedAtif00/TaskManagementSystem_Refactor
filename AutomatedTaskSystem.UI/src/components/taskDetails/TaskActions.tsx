@@ -239,7 +239,7 @@ const TaskAction: React.FC<Props> = ({
                             </button>
                         </Link>
                     )}
-                {auth.role === 1 && (
+                {auth.role === 0 && (
                     <button
                         onClick={skipTask}
                         className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-cyan-400 bg-cyan-500 text-white"
@@ -248,7 +248,7 @@ const TaskAction: React.FC<Props> = ({
                         <div>Skip</div>
                     </button>
                 )}
-                {auth.role === 1 && (
+                {auth.role === 0 && (
                     <Link
                         href={{
                             pathname: `/tasks/${projectId}`,

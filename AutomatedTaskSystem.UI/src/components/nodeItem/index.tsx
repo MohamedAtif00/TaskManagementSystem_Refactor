@@ -227,7 +227,7 @@ const TogglePriorityForm = (props: TogglePrioProps): React.JSX.Element => {
         };
     }, [props.parent]);
 
-    const updatePrio = (priority: number | null) => {
+    const updatePrio = (priority: TaskPriority) => {
         API.SCHEMAS.NODES.STEPS.UPDATE_PRIO({
             stepId: props.id,
             priority,
@@ -247,7 +247,7 @@ const TogglePriorityForm = (props: TogglePrioProps): React.JSX.Element => {
             onClick={(e) => e.stopPropagation()}
         >
             <div
-                onClick={() => updatePrio(null)}
+                onClick={() => updatePrio(0)}
                 className="rounded-full py-1 text-black bg-white hover:bg-slate-200 text-center"
             >
                 None

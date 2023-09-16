@@ -19,11 +19,17 @@ const AddUser = () => {
         null
     );
     const [groups, setGroups] = useState<{ id: number; name: string }[]>([]);
-    const [role, setRole] = useState<{ id: number; name: string } | null>(null);
+    const [role, setRole] = useState<UserRole | null>(null);
 
     const [done, setDone] = useState<{ code: string; user: IUser } | null>(
         null
     );
+
+    const roleMap = new Map<UserRole, string>();
+    roleMap.set(0, "Project Manager");
+    roleMap.set(1, "Section Head");
+    roleMap.set(2, "Team Leader");
+    roleMap.set(3, "Member");
 
     useEffect(() => {
         if (query.form === "add-user") return setActive(true);
@@ -48,7 +54,7 @@ const AddUser = () => {
         API.RESOURCES.USERS.CREATE({
             name,
             groupId: group.id,
-            roleId: role.id,
+            role,
         }).then((res) => {
             if (res && !res.error) {
                 setDone(res.data);
@@ -117,14 +123,23 @@ const AddUser = () => {
                                     />
                                     <Dropdown
                                         label="Role"
-                                        value={role}
+                                        value={
+                                            role !== null
+                                                ? {
+                                                      id: role,
+                                                      name: roleMap.get(role)!,
+                                                  }
+                                                : null
+                                        }
                                         options={[
-                                            { id: 1, name: "Project Manager" },
-                                            { id: 2, name: "Section Head" },
-                                            { id: 3, name: "Team Leader" },
-                                            { id: 4, name: "Member" },
+                                            { id: 0, name: "Project Manager" },
+                                            { id: 1, name: "Section Head" },
+                                            { id: 2, name: "Team Leader" },
+                                            { id: 3, name: "Member" },
                                         ]}
-                                        handleChange={setRole}
+                                        handleChange={(v) => {
+                                            setRole(v.id as UserRole);
+                                        }}
                                     />
                                 </div>
                                 <FormConclusion

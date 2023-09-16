@@ -3,6 +3,7 @@ using AutomatedTaskSystem.Dtos.Dashboard.GetProjectManagerDashboard;
 using AutomatedTaskSystem.Dtos.Dashboard.GetTeamLeaderDashboard;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.ReportService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
@@ -51,7 +52,7 @@ public class DashboardService : IDashboardService
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );
-        if (user.RoleId != 1)
+        if (user.Role != UserRoleEnum.ProjectManger)
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );
@@ -157,13 +158,13 @@ public class DashboardService : IDashboardService
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );
-        if (user.RoleId != 3)
+        if (user.Role != UserRoleEnum.TeamLeader)
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );
 
         var members = await _context.Users
-            .Where(u => u.GroupId == user.GroupId && !u.Archived && u.RoleId == 4)
+            .Where(u => u.GroupId == user.GroupId && !u.Archived && u.Role == UserRoleEnum.Member)
             .Include(u => u.Tasks)
             .ThenInclude(t => t.LearningObjective)
             .ThenInclude(lo => lo.Lesson)

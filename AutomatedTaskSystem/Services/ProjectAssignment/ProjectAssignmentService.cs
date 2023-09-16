@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.ResponseService;
 
 namespace AutomatedTaskSystem.Services.ProjectAssignmentService;
@@ -54,7 +55,6 @@ public class ProjectAssignmentService : IProjectAssignmentService
             .Include(p => p.Users)
             .ThenInclude(u => u.Group)
             .Include(p => p.Users)
-            .ThenInclude(u => u.Role)
             .FirstOrDefaultAsync();
 
         if (project is null)
@@ -88,7 +88,6 @@ public class ProjectAssignmentService : IProjectAssignmentService
         var users = await _context.Users
             .Where(u => !u.Archived && !u.Projects.Contains(project))
             .Include(u => u.Group)
-            .Include(u => u.Role)
             .ToListAsync();
 
         return new ResponseService<List<User>>
@@ -116,7 +115,7 @@ public class ProjectAssignmentService : IProjectAssignmentService
         return new ResponseService<List<Project>>
         {
             Data =
-                user.RoleId == 1
+                user.Role == UserRoleEnum.ProjectManger
                     ? await _context.Projects.Where(p => !p.Archived).ToListAsync()
                     : user.Projects
                         .Where(

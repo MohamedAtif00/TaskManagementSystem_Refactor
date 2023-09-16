@@ -5,6 +5,7 @@ using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.TaskPriority;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using Microsoft.AspNetCore.Mvc;
@@ -50,7 +51,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Invalid Auth Request" }
             );
 
-        if (authedUser.RoleId == 4)
+        if (authedUser.Role == UserRoleEnum.Member)
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = true, Message = "Unauthorized" }
             );
@@ -221,7 +222,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );
 
-        if (user.RoleId == 1)
+        if (user.Role == UserRoleEnum.ProjectManger)
         {
             var p = await _context.Projects
                 .Where(_ => _.Id == pid && !_.Archived)
@@ -310,7 +311,7 @@ public class TaskService : ITaskService
 
         var groups = new List<Group> { user.Group };
 
-        if (user.RoleId == 2)
+        if (user.Role == UserRoleEnum.SectionHead)
         {
             var section = await _context.Sections
                 .Where(s => s.HeadId == user.Id && !s.Archived)
@@ -324,7 +325,7 @@ public class TaskService : ITaskService
 
         IQueryable<Models.Task> query;
 
-        if (user.RoleId == 3 || user.RoleId == 2)
+        if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
             query = _context.Tasks.Where(
                 t =>
                     groups.Contains(t.Group)
@@ -847,14 +848,14 @@ public class TaskService : ITaskService
 
         if (task.Status != TaskStatusEnum.Done && task.Status != TaskStatusEnum.Rollback)
         {
-            if (user.RoleId == 1)
+            if (user.Role == UserRoleEnum.ProjectManger)
             {
                 if (task.Status == TaskStatusEnum.Backlog || task.UserId == user.Id || task.UserId == null)
                     access = TaskAccess.WorkOnAndManage;
                 else
                     access = TaskAccess.Manage;
             }
-            else if (user.RoleId == 2)
+            else if (user.Role == UserRoleEnum.SectionHead)
             {
                 if (
                     user.GroupId == task.GroupId
@@ -879,7 +880,7 @@ public class TaskService : ITaskService
                     }
                 }
             }
-            else if (user.RoleId == 3)
+            else if (user.Role == UserRoleEnum.TeamLeader)
             {
                 if (task.GroupId == user.GroupId)
                 {
@@ -889,7 +890,7 @@ public class TaskService : ITaskService
                         access = TaskAccess.Manage;
                 }
             }
-            else if (user.RoleId == 4)
+            else if (user.Role == UserRoleEnum.Member)
                 if (task.GroupId == user.GroupId)
                     if (task.UserId == user.Id || task.Status == TaskStatusEnum.Backlog)
                         access = TaskAccess.WorkOn;
@@ -1378,7 +1379,7 @@ public class TaskService : ITaskService
 
         los.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
 
-        if (user.RoleId == 3)
+        if (user.Role == UserRoleEnum.TeamLeader)
         {
             var _taskBankItems = await _context.TaskBank
                 .Include(tb => tb.Group)
@@ -1429,7 +1430,7 @@ public class TaskService : ITaskService
             };
         }
 
-        if (user.RoleId == 2)
+        if (user.Role == UserRoleEnum.SectionHead)
         {
             var section = await _context.Sections
                 .Where(s => s.HeadId == user.Id)

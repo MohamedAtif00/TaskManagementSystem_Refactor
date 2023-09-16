@@ -128,7 +128,7 @@ const PROJECTS = {
         status,
     }: {
         id: string | string[] | number;
-        status: 1 | 2 | 3;
+        status: 0 | 1 | 2;
     }) => {
         try {
             const res = await fetch(`${url}/projects/${id}/status`, {

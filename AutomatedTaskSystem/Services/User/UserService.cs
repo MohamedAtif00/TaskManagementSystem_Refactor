@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,7 +37,7 @@ public class UserService : IUserService
     public async Task<ActionResult<ResponseService<Responses.UserAddedDTO>>> CreateUser(
         string Name,
         int GroupId,
-        int RoleId
+        UserRoleEnum Role
     )
     {
         var group = await _context.Groups
@@ -51,16 +52,6 @@ public class UserService : IUserService
                 }
             );
 
-        var role = await _context.Roles.Where(r => r.Id == RoleId).FirstOrDefaultAsync();
-        if (role is null)
-            return new NotFoundObjectResult(
-                new BaseResponseService
-                {
-                    Error = true,
-                    Message = $"Role of id:{RoleId} is not found"
-                }
-            );
-
         var newUser = new User
         {
             Archived = false,
@@ -69,8 +60,7 @@ public class UserService : IUserService
             GroupId = group.Id,
             Name = Name,
             OnBoard = false,
-            Role = role,
-            RoleId = role.Id
+            Role = Role,
         };
 
         _context.Users.Add(newUser);
@@ -83,7 +73,7 @@ public class UserService : IUserService
                 Code = newUser.Code,
                 User =
                 {
-                    Role = { Id = newUser.RoleId, Name = newUser.Role.Name },
+                    Role = newUser.Role,
                     Group = { Id = newUser.GroupId, Name = newUser.Group.Name },
                     Id = newUser.Id,
                     Name = newUser.Name,
@@ -98,14 +88,13 @@ public class UserService : IUserService
         int id,
         string Name,
         int GroupId,
-        int RoleId
+        UserRoleEnum Role
     )
     {
         var user = await _context.Users
             .Where(u => u.Id == id && !u.Archived)
             .Include(u => u.Group)
             .Include(u => u.Tasks)
-            .Include(u => u.Role)
             .FirstOrDefaultAsync();
 
         if (user is null)
@@ -125,21 +114,10 @@ public class UserService : IUserService
                 }
             );
 
-        var role = await _context.Roles.Where(r => r.Id == RoleId).FirstOrDefaultAsync();
-        if (role is null)
-            return new NotFoundObjectResult(
-                new BaseResponseService
-                {
-                    Error = true,
-                    Message = $"Role of id:{RoleId} is not found"
-                }
-            );
-
         user.Name = Name;
         user.Group = group;
         user.GroupId = group.Id;
-        user.Role = role;
-        user.RoleId = role.Id;
+        user.Role = Role;
 
         await _context.SaveChangesAsync();
 
@@ -148,7 +126,7 @@ public class UserService : IUserService
             Data = new Responses.UserDTO
             {
                 Group = { Id = user.GroupId, Name = user.Group.Name },
-                Role = { Id = user.RoleId, Name = user.Role.Name },
+                Role = user.Role,
                 Id = user.Id,
                 Name = user.Name
             },
@@ -162,7 +140,6 @@ public class UserService : IUserService
         var user = await _context.Users
             .Where(u => u.Id == Id && !u.Archived)
             .Include(u => u.Group)
-            .Include(u => u.Role)
             .FirstOrDefaultAsync();
 
         if (user is null)
@@ -175,7 +152,7 @@ public class UserService : IUserService
             Data = new Responses.UserDTO
             {
                 Group = { Id = user.GroupId, Name = user.Group.Name },
-                Role = { Id = user.RoleId, Name = user.Role.Name },
+                Role = user.Role,
                 Id = user.Id,
                 Name = user.Name
             },
@@ -189,7 +166,6 @@ public class UserService : IUserService
         var users = await _context.Users
             .Where(u => !u.Archived)
             .Include(u => u.Group)
-            .Include(u => u.Role)
             .ToListAsync();
 
         return new ResponseService<List<Responses.UserDTO>>
@@ -200,7 +176,7 @@ public class UserService : IUserService
                         new Responses.UserDTO
                         {
                             Group = { Id = u.GroupId, Name = u.Group.Name },
-                            Role = { Id = u.RoleId, Name = u.Role.Name },
+                            Role = u.Role,
                             Id = u.Id,
                             Name = u.Name
                         }

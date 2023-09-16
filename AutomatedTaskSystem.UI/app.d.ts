@@ -55,7 +55,7 @@ interface IProject {
     name: string;
     year: { id: number; name: string };
     term: boolean;
-    status: 1 | 2 | 3 | 4;
+    status: ProjectStatus;
 }
 
 interface ISection {
@@ -131,3 +131,5 @@ type TaskInfo = {
 
 type TaskPriority = 0 | 1 | 2 | 3;
 type TaskStatus = 0 | 1 | 2 | 3 | 4;
+type UserRole = 0 | 1 | 2 | 3;
+type ProjectStatus = 0 | 1 | 2 | 3;

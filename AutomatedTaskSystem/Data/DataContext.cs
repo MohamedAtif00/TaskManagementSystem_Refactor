@@ -1,5 +1,6 @@
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Models.SchemaTypesModel;
 using AutomatedTaskSystem.Models.YearModel;
 
@@ -67,17 +68,10 @@ public class DataContext : DbContext
             .WithMany(u => u.RefreshTokens)
             .OnDelete(DeleteBehavior.Cascade);
 
-        var pm = new Role { Id = 1, Name = "Project Manager" };
-        var sh = new Role { Id = 2, Name = "Section Head" };
-        var tl = new Role { Id = 3, Name = "Team Leader" };
-        var mm = new Role { Id = 4, Name = "Member" };
-
         var creation = new Models.Type { Id = 1, Name = "Creation" };
         var review = new Models.Type { Id = 3, Name = "Review" };
 
         modelBuilder.Entity<Models.Type>().HasData(creation, review);
-
-        modelBuilder.Entity<Role>().HasData(pm, sh, tl, mm);
 
         modelBuilder
             .Entity<ActivityType>()
@@ -99,7 +93,7 @@ public class DataContext : DbContext
 
         modelBuilder.Entity<Models.TaskBank>().Property(t => t.TypeId).HasDefaultValue(1);
 
-        modelBuilder.Entity<User>().Property(u => u.RoleId).HasDefaultValue(4);
+        modelBuilder.Entity<User>().Property(u => u.Role).HasDefaultValue(UserRoleEnum.Member);
 
         modelBuilder
             .Entity<Project>()
@@ -163,7 +157,6 @@ public class DataContext : DbContext
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Group> Groups => Set<Group>();
-    public DbSet<Role> Roles => Set<Role>();
     public DbSet<Schema> Schemas => Set<Schema>();
     public DbSet<SchemaType> SchemaTypes => Set<SchemaType>();
     public DbSet<Section> Sections => Set<Section>();
