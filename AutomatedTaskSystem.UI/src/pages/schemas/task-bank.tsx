@@ -14,10 +14,7 @@ export interface ITaskBank {
     id: number;
     name: string;
     tl: boolean;
-    type: {
-        id: number;
-        name: string;
-    };
+    type: TaskBankType;
     group: {
         id: number;
         name: string;
@@ -136,7 +133,7 @@ const TaskBank = () => {
                                         {b.name}
                                     </div>
                                     <div className="flex items-center justify-start text-slate-500 hover:text-slate-600">
-                                        {b.type.name}
+                                        {b.type === 0 ? "Creation" : b.type === 1 ? "Review": ""}
                                     </div>
                                     <div className="flex items-center justify-center">
                                         <div className="border border-solid border-slate-200 text-slate-500 px-2 py-1 rounded">

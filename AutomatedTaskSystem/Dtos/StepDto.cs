@@ -1,3 +1,5 @@
+using AutomatedTaskSystem.Models.Enums.TaskPriority;
+
 namespace AutomatedTaskSystem.DTO
 {
     public static partial class Requests
@@ -20,7 +22,7 @@ namespace AutomatedTaskSystem.DTO
             public bool TL { get; set; } = false;
             public IDName Group { get; set; } = new IDName { };
             public int Duration { get; set; }
-            public int? Priority { get; set; } = null;
+            public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
         }
     }
 }

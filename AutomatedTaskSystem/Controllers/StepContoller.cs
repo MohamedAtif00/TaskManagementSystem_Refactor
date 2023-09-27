@@ -3,6 +3,8 @@ using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Dtos.Steps;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.TaskBankType;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TaskService;
 using Microsoft.AspNetCore.Mvc;
@@ -38,7 +40,7 @@ public class StepController : ControllerBase
         {
             Id = step.Id,
             Order = step.Order,
-            Reviewable = step.TaskBank.TypeId == 3,
+            Reviewable = step.TaskBank.Type == TaskBankTypeEnum.Review,
             TL = step.TaskBank.TL,
             Group = new Responses.IDName
             {
@@ -135,7 +137,11 @@ public class StepController : ControllerBase
             );
 
         foreach (var task in step.Tasks)
-            if (task.StatusId != 4 && task.StatusId != 5 && !task.Archived)
+            if (
+                task.Status != TaskStatusEnum.Done
+                && task.Status != TaskStatusEnum.Done
+                && !task.Archived
+            )
                 return new ResponseService<GetStepDeleteCheckDto>
                 {
                     Message = "Step contains active tasks",
@@ -181,7 +187,13 @@ public class StepController : ControllerBase
             s.Order = s.Order - 1;
 
         var tasks = await _context.Tasks
-            .Where(t => !t.Archived && t.StepId == step.Id && t.StatusId != 4 && t.StatusId != 5)
+            .Where(
+                t =>
+                    !t.Archived
+                    && t.StepId == step.Id
+                    && t.Status != TaskStatusEnum.Done
+                    && t.Status != TaskStatusEnum.Rollback
+            )
             .ToListAsync();
 
         foreach (var task in tasks)
@@ -211,19 +223,11 @@ public class StepController : ControllerBase
         if (step == null)
             return NotFound(new Responses.BadRequestsDTO("Step not found"));
 
-        if (req.Priority == 1 || req.Priority == 2 || req.Priority == 3 || req.Priority is null)
+        if (req.Priority != step.Priority)
         {
-            if (req.Priority != step.Priority)
-            {
-                step.Priority = req.Priority;
-                await _context.SaveChangesAsync();
-            }
+            step.Priority = req.Priority;
+            await _context.SaveChangesAsync();
         }
-        else
-            return BadRequest(
-                new BaseResponseService { Error = true, Message = "Invalid Priority" }
-            );
-
         return new ResponseService<Responses.StepDTO>
         {
             Data = new Responses.StepDTO
@@ -238,7 +242,7 @@ public class StepController : ControllerBase
                 Name = step.TaskBank.Name,
                 Order = step.Order,
                 Priority = step.Priority,
-                Reviewable = step.TaskBank.TypeId == 3,
+                Reviewable = step.TaskBank.Type == TaskBankTypeEnum.Review,
                 TL = step.TaskBank.TL
             },
             Error = false,
@@ -413,13 +417,15 @@ public class StepController : ControllerBase
                 new BaseResponseService { Error = true, Message = "Step is not found" }
             );
 
-        var stepToBeRemoved = step.Rollbacks.Where(s => !s.Archived && req.Id == s.Id).FirstOrDefault();
+        var stepToBeRemoved = step.Rollbacks
+            .Where(s => !s.Archived && req.Id == s.Id)
+            .FirstOrDefault();
 
-		if (stepToBeRemoved is not null)
-		{
-		    step.Rollbacks.Remove(stepToBeRemoved);
-			stepToBeRemoved.From.Remove(step);
-		}
+        if (stepToBeRemoved is not null)
+        {
+            step.Rollbacks.Remove(stepToBeRemoved);
+            stepToBeRemoved.From.Remove(step);
+        }
 
         await _context.SaveChangesAsync();
 
@@ -463,7 +469,7 @@ public class StepController : ControllerBase
         );
 
         var currentNodeSteps = step.Node.Steps.Where(
-            s => !s.Archived && s.Order < step.Order && s.TaskBank.TypeId != 3
+            s => !s.Archived && s.Order < step.Order && s.TaskBank.Type == TaskBankTypeEnum.Creation
         );
 
         foreach (var s in currentNodeSteps)
@@ -481,7 +487,7 @@ public class StepController : ControllerBase
                             : 0
             );
             foreach (var s in n.Steps)
-                if (!s.Archived && s.TaskBank.TypeId != 3 && !step.Rollbacks.Any(_ => s.Id == _.Id))
+                if (!s.Archived && s.TaskBank.Type == TaskBankTypeEnum.Creation && !step.Rollbacks.Any(_ => s.Id == _.Id))
                     steps.Add(s);
         }
 

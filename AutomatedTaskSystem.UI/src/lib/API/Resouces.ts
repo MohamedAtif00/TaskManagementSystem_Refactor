@@ -105,11 +105,11 @@ const RESOURCES = {
 		CREATE: async ({
 			name,
 			groupId,
-			roleId,
+			role,
 		}: {
 			name: string;
 			groupId: number;
-			roleId: number;
+			role: UserRole;
 		}) => {
 			try {
 				const res = await fetch(`${url}/users`, {
@@ -117,7 +117,7 @@ const RESOURCES = {
 					headers: {
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify({ name, groupId, roleId }),
+					body: JSON.stringify({ name, groupId, role }),
 				});
 				const data: {
 					error: boolean;
@@ -134,12 +134,12 @@ const RESOURCES = {
 			id,
 			name,
 			groupId,
-			roleId,
+			role,
 		}: {
 			id: string | number;
 			name: string;
 			groupId: number;
-			roleId: number;
+			role: UserRole;
 		}) => {
 			try {
 				const res = await fetch(`${url}/users/${id}`, {
@@ -147,7 +147,7 @@ const RESOURCES = {
 					headers: {
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify({ name, groupId, roleId }),
+					body: JSON.stringify({ name, groupId, role }),
 				});
 				const data: {
 					error: boolean;

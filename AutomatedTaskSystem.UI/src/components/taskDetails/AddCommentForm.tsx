@@ -4,11 +4,12 @@ import { SetStateAction, useRef, useState } from "react";
 import { ITask } from ".";
 
 interface Props {
-    loId: number;
+    taskId: number;
     updateTask: (value: SetStateAction<ITask | undefined>) => void;
+	reload: () => void;
 }
 
-const AddCommentForm: React.FC<Props> = ({ loId, updateTask }) => {
+const AddCommentForm: React.FC<Props> = ({ taskId, updateTask, reload }) => {
     const [inputFocus, setInputFocus] = useState(false);
     const commentRefTextArea = useRef<HTMLTextAreaElement>(null);
     const [value, setValue] = useState("");
@@ -18,7 +19,7 @@ const AddCommentForm: React.FC<Props> = ({ loId, updateTask }) => {
         if (submitting) return;
         e.preventDefault();
         setSubmitting(true);
-        API.TASKS.COMMENT(loId, value).then((res) => {
+        API.TASKS.COMMENT(taskId, value).then((res) => {
             if (res && !res.error) {
                 updateTask((ps) => {
                     return {
@@ -28,6 +29,7 @@ const AddCommentForm: React.FC<Props> = ({ loId, updateTask }) => {
                 });
                 setValue("");
                 setSubmitting(false);
+				reload();
             }
         });
     };

@@ -9,7 +9,7 @@ const TaskCol: React.FC<Props> = ({ items, label }) => {
     const highPrio = items.filter((t) => t.priority === 3);
     const medPrio = items.filter((t) => t.priority === 2);
     const lowPrio = items.filter((t) => t.priority === 1);
-    const nonePrio = items.filter((t) => t.priority === null);
+    const nonePrio = items.filter((t) => t.priority === 0);
 
     return (
         <div

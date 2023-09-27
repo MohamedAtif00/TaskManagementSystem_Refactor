@@ -1,3 +1,5 @@
+using AutomatedTaskSystem.Models.Enums.TaskPriority;
+
 namespace AutomatedTaskSystem.Models;
 
 public class Step
@@ -10,7 +12,7 @@ public class Step
     public TaskBank TaskBank { get; set; } = new TaskBank { };
     public int TaskBankId { get; set; }
     public int Duration { get; set; }
-    public int? Priority { get; set; } = null;
+    public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
     public List<Models.Task> Tasks { get; set; } = new List<Task> { };
     public List<Step> Rollbacks { get; set; } = new List<Step> { };
     public List<Step> From { get; set; } = new List<Step> { };

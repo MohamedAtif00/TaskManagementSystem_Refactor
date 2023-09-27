@@ -35,8 +35,8 @@ interface IStep {
     tl: boolean;
     group: { name: string; id: number };
     duration: number;
-    priority: number | null;
-	taskBankItemId: number;
+    priority: TaskPriority;
+    taskBankItemId: number;
 }
 
 interface INode {
@@ -55,7 +55,7 @@ interface IProject {
     name: string;
     year: { id: number; name: string };
     term: boolean;
-    status: 1 | 2 | 3 | 4;
+    status: ProjectStatus;
 }
 
 interface ISection {
@@ -113,7 +113,7 @@ type CommentInfo = {
 type TaskInfo = {
     id: number;
     name: string;
-    status: "Done" | "Doing" | "To Do" | "Backlog" | "Rollback";
+    status: 0 | 1 | 2 | 3 | 4;
     TL: boolean;
     user?: { id: number; name: string };
     learningObjective: { id: number; name: string };
@@ -124,6 +124,29 @@ type TaskInfo = {
     isRollback: boolean;
     rollbackCount: number;
     from: string;
-    priority: number | null;
+    priority: 0 | 1 | 2 | 3;
     paused: boolean;
 };
+
+type TaskBankType = 0 | 1;
+type TaskActivityType =
+    | 0
+    | 1
+    | 2
+    | 3
+    | 4
+    | 5
+    | 6
+    | 7
+    | 8
+    | 9
+    | 10
+    | 11
+    | 12
+    | 13
+    | 14
+    | 15;
+type TaskPriority = 0 | 1 | 2 | 3;
+type TaskStatus = 0 | 1 | 2 | 3 | 4;
+type UserRole = 0 | 1 | 2 | 3;
+type ProjectStatus = 0 | 1 | 2 | 3;

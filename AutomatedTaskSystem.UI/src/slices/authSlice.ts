@@ -3,7 +3,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 type AuthState = {
 	isAuth: boolean;
 	name: string;
-	role: number;
+	role: UserRole;
 	group: string;
     id: number;
 };
@@ -12,7 +12,7 @@ const initialState: AuthState = {
 	isAuth: false,
 	group: "",
 	name: "",
-	role: 0,
+	role: 3,
 	id: 0,
 };
 
@@ -21,10 +21,10 @@ export const authSlice = createSlice({
 	initialState,
 	reducers: {
 		login: (
-			state,
+			{},
 			action: PayloadAction<{
 				name: string;
-				role: number;
+				role: UserRole;
 				id: number;
 				group: string;
 			}>
@@ -38,13 +38,7 @@ export const authSlice = createSlice({
 			};
 		},
 		logout: () => {
-			return {
-				isAuth: false,
-				name: "",
-				role: 0,
-				id: 0,
-				group: "",
-			};
+			return initialState;
 		},
 	},
 });

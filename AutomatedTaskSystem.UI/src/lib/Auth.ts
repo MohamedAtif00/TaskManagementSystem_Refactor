@@ -51,7 +51,7 @@ const getUser = async () => {
             const data: {
                 data: {
                     name: string;
-                    role: number;
+                    role: UserRole;
                     id: number;
                     group: string;
                 };

@@ -521,7 +521,7 @@ const SCHEMAS = {
                 priority,
             }: {
                 stepId: string | number;
-                priority: number | null;
+                priority: TaskPriority;
             }) => {
                 try {
                     const res = await fetch(`${url}/steps/${stepId}/priority`, {

@@ -1,3 +1,5 @@
+using AutomatedTaskSystem.Models.Enums.UserRole;
+
 namespace AutomatedTaskSystem.DTO
 {
 	public static partial class Requests
@@ -18,7 +20,7 @@ namespace AutomatedTaskSystem.DTO
 		public class AuthInfoDTO
 		{
 			public string Name { get; set; } = "";
-			public int Role { get; set; } = 0;
+			public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
 			public int Id { get; set; } = 0;
 			public string Group { get; set; } = "";
 		}

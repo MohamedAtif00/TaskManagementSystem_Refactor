@@ -9,7 +9,7 @@ const Resources = () => {
     const auth = useAppSelector((s) => s.authSlice);
     const router = useRouter();
 
-    if (!auth.isAuth || auth.role != 1) {
+    if (!auth.isAuth || auth.role !== 0) {
         router.replace("/");
     }
 

@@ -89,10 +89,10 @@ const TaskCard = ({
                     </div>
                     <div
                         className={`flex ${
-                            priority ? "justify-between" : "justify-end"
+                            priority !== 0 ? "justify-between" : "justify-end"
                         } mt-2`}
                     >
-                        {priority && (
+                        {priority !== 0 && (
                             <div className="flex flex-col items-start">
                                 <div className="text-xs opacity-60 flex justify-end">
                                     Priority:

@@ -15,9 +15,11 @@ const EditTaskBank = (props: {
     const [name, setName] = useState(props.taskBank.name);
     const [teamLeader, setTeamLeader] = useState(props.taskBank.tl);
     const [group, setGroup] = useState(props.taskBank.group.id);
-    const [type, setType] = useState(props.taskBank.type.id);
+    const [type, setType] = useState(props.taskBank.type);
     const [duration, setDuration] = useState(props.taskBank.duration);
     const [groups, setGroups] = useState<BasicInfo[]>([]);
+
+	console.log(props.taskBank)
 
     useEffect(() => {
         API.RESOURCES.GROUPS.GET_ALL_MINI().then((res) => {
@@ -56,11 +58,13 @@ const EditTaskBank = (props: {
                             label="Group"
                         />
                         <Dropdown
-                            handleChange={setType}
+                            handleChange={(v) => {
+                                setType(v as TaskBankType);
+                            }}
                             id={type}
                             options={[
-                                { id: 1, name: "Creation" },
-                                { id: 3, name: "Review" },
+                                { id: 0, name: "Creation" },
+                                { id: 1, name: "Review" },
                             ]}
                             label="Type"
                         />

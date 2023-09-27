@@ -9,6 +9,8 @@ namespace AutomatedTaskSystem.Models
         public int UserId { get; set; }
         public LearningObjective LearningObjective { get; set; } = new LearningObjective { };
         public int LearningObjectiveId { get; set; }
+		public Models.Task? Task { get; set; } = null;
+		public int? TaskId { get; set; }
         public bool Archived { get; set; } = false;
     }
 }

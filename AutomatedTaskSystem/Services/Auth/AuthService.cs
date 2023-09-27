@@ -45,7 +45,7 @@ public class AuthService : IAuthService
             {
                 Id = user.Id,
                 Group = user.Group.Name,
-                Role = user.RoleId,
+                Role = user.Role,
                 Name = user.Name
             },
             Error = false,
@@ -168,5 +168,20 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
 
         return rt;
+    }
+
+    public async Task<User?> GetAuthedUser()
+    {
+        var authRes = _tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return null;
+
+        var parseStatus = Int32.TryParse(authRes.Data, out int userId);
+        if (!parseStatus)
+            return null;
+
+        return await _context.Users
+            .Where(u => !u.Archived && u.Id == userId)
+            .FirstOrDefaultAsync();
     }
 }

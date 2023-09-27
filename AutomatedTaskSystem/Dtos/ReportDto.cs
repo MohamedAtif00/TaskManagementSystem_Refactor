@@ -1,3 +1,5 @@
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
+
 namespace AutomatedTaskSystem.DTO
 {
 	public static partial class Requests
@@ -39,8 +41,7 @@ namespace AutomatedTaskSystem.DTO
 		public class Task {
 			public int Id { get; set; }
 			public string Name { get; set; } = "";
-			public string Status { get; set; } = "";
-			public int StatusId { get; set; }
+			public TaskStatusEnum Status { get; set; } = TaskStatusEnum.Backlog;
 		}
 	}
 }

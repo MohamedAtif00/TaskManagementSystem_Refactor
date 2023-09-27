@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,4 +10,5 @@ public interface IAuthService
 	Task<ActionResult<BaseResponseService>> Logout(HttpRequest request, HttpResponse response);
 	Task<ActionResult<ResponseService<string>>> RefreshToken(HttpRequest request, HttpResponse response);
 	Task<ActionResult<ResponseService<Responses.AuthInfoDTO>>> AboutUser();
+	Task<User?> GetAuthedUser();
 }

@@ -9,8 +9,7 @@ import Loader from "../../components/loader";
 interface _Task {
     id: number;
     name: string;
-    status: string;
-    statusId: number;
+    status: TaskStatus;
 }
 
 interface _LearningObjective {
@@ -143,12 +142,18 @@ const Report = () => {
                                                                         >
                                                                             <div
                                                                                 className={`px-4 py-1 rounded-3xl ${
-                                                                                    t.statusId ===
-                                                                                    3
-                                                                                        ? "bg-orange-600 text-white"
-                                                                                        : t.statusId ===
-                                                                                          4
+                                                                                    t.status ===
+                                                                                    1
+                                                                                        ? "bg-blue-600 text-white"
+                                                                                        : t.status ===
+                                                                                          2
+                                                                                        ? "bg-yellow-300 text-black"
+                                                                                        : t.status ===
+                                                                                          3
                                                                                         ? "bg-emerald-400 text-white"
+                                                                                        : t.status ===
+                                                                                          4
+                                                                                        ? "bg-orange-400 text-white"
                                                                                         : "bg-slate-300"
                                                                                 }`}
                                                                                 key={

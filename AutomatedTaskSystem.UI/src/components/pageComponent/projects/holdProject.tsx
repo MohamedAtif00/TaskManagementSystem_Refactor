@@ -28,7 +28,7 @@ const HoldProject = () => {
         project &&
             API.PROJECTS.UPDATE_STATUS({
                 id: project.id,
-                status: 3,
+                status: 2,
             }).then((res) => {
                 if (res && !res.error) {
                     dispatch(edit(res.data));

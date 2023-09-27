@@ -28,7 +28,7 @@ const CloseProject = () => {
         project &&
             API.PROJECTS.UPDATE_STATUS({
                 id: project.id,
-                status: 2,
+                status: 1,
             }).then((res) => {
                 if (res && !res.error) {
                     dispatch(edit(res.data));

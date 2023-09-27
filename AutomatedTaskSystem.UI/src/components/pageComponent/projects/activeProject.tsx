@@ -28,7 +28,7 @@ const ActivateProject = () => {
         project &&
             API.PROJECTS.UPDATE_STATUS({
                 id: project.id,
-                status: 1,
+                status: 0,
             }).then((res) => {
                 if (res && !res.error) {
                     dispatch(edit(res.data));

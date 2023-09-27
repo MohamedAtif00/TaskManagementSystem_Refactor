@@ -2,9 +2,10 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using Microsoft.AspNetCore.Mvc;
 using AutomatedTaskSystem.Services.TaskService;
-using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.TokenService;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
+using AutomatedTaskSystem.Models.Enums.TaskActivityType;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -25,83 +26,6 @@ namespace AutomatedTaskSystem.Controllers
             _taskService = taskService;
             _tokenService = tokenService;
             _context = context;
-        }
-
-        // POST:
-        // Add Comment to lo
-        [HttpPost("{id}/comment")]
-        public async Task<ActionResult<ResponseService<Responses.CommentDTO>>> AddComment(
-            int id,
-            Requests.CommentDTO req
-        )
-        {
-            var lo = await _context.LearningObjectives
-                .Where(lo => lo.Id == id && !lo.Archived)
-                .FirstOrDefaultAsync();
-
-            if (lo is null)
-                return BadRequest(
-                    new BaseResponseService { Error = true, Message = "Lo is not found" }
-                );
-
-            var authRes = _tokenService.GetUserIdFromToken();
-            if (authRes.Error)
-                return new BadRequestObjectResult(
-                    new BaseResponseService { Error = true, Message = authRes.Message }
-                );
-
-            var statusUid = Int32.TryParse(authRes.Data, out int uid);
-            if (!statusUid)
-                return new UnauthorizedObjectResult(
-                    new BaseResponseService { Error = true, Message = "Invalid Request" }
-                );
-
-            var user = await _context.Users
-                .Where(u => u.Id == uid && !u.Archived)
-                .Include(u => u.Group)
-                .FirstOrDefaultAsync();
-            if (user is null)
-                return new UnauthorizedObjectResult(
-                    new BaseResponseService { Error = false, Message = "Invalid auth" }
-                );
-
-            if (req.Comment == "")
-                return BadRequest(
-                    new BaseResponseService { Error = false, Message = "Comment cannot be empty" }
-                );
-
-            var newComment = new Comment
-            {
-                Archived = false,
-                LearningObjective = lo,
-                LearningObjectiveId = lo.Id,
-                Content = req.Comment,
-                Timestamp = DateTime.Now,
-                User = user,
-                UserId = user.Id
-            };
-
-            lo.Comments.Add(newComment);
-            _context.Comments.Add(newComment);
-
-            await _context.SaveChangesAsync();
-
-            return new ResponseService<Responses.CommentDTO>
-            {
-                Error = false,
-                Message = "New Comment Added",
-                Data = new Responses.CommentDTO
-                {
-                    Id = newComment.Id,
-                    User = new Responses.IDName
-                    {
-                        Id = newComment.UserId,
-                        Name = newComment.User.Name
-                    },
-                    Timestamp = newComment.Timestamp,
-                    Content = newComment.Content
-                }
-            };
         }
 
         // DELETE:
@@ -147,6 +71,9 @@ namespace AutomatedTaskSystem.Controllers
             if (lo == null)
                 return NotFound(new Responses.BadRequestsDTO("Learning Objective not Found"));
 
+            if (req.Steps.Count < 0)
+                return NotFound(new Responses.BadRequestsDTO("Please supply steps"));
+
             if (lo.SchemaId != req.SchemaId)
             {
                 if (req.Steps.Count == 0)
@@ -165,41 +92,30 @@ namespace AutomatedTaskSystem.Controllers
                     .Where(t => t.LearningObjectiveId == lo.Id)
                     .ToListAsync();
 
-                var COSEA = await _context.EndActivityTypes.FindAsync(6);
-                if (COSEA != null)
+                foreach (var task in tasks)
                 {
-                    var status = await _context.Statuses.FindAsync(4);
-                    if (status == null)
-                        return NotFound(new Responses.BadRequestsDTO("Done status not Found"));
+                    task.Archived = true;
+                    task.Status = TaskStatusEnum.Done;
 
-                    foreach (var task in tasks)
+                    var newAct = new TaskActivity
                     {
-                        task.Archived = true;
-                        task.Status = status;
-                        task.StatusId = status.Id;
+                        Task = task,
+                        TaskId = task.Id,
+                        Type = TaskActivityTypeEnum.ProcessChange,
+                        ActorOne = null,
+                        ActorOneId = null,
+                        ActorTwo = null,
+                        ActorTwoId = null,
+                        TimeStamp = DateTime.Now,
+                        TaskSecondary = null,
+                        TaskSecondaryId = null,
+                        AdditionalInfo = null
+                    };
 
-                        var currentEA = await _context.EndActivities
-                            .Where(
-                                _ =>
-                                    _.UserId == task.UserId
-                                    && _.TaskId == task.Id
-                                    && _.EndDate == null
-                                    && _.EndActivityTypeId == null
-                            )
-                            .FirstOrDefaultAsync();
-
-                        if (currentEA != null)
-                        {
-                            currentEA.EndActivityTypeId = COSEA.Id;
-                            currentEA.EndActivityType = COSEA;
-                            currentEA.EndDate = DateTime.Now;
-                        }
-                    }
+                    _context.TaskActivities.Add(newAct);
                 }
 
-                if (req.Steps.Count < 0)
-                    return NotFound(new Responses.BadRequestsDTO("Please supply steps"));
-
+                // TODO: Fix issue regarding creating previous tasks
                 foreach (var stepId in req.Steps)
                 {
                     var step = await _context.Steps
