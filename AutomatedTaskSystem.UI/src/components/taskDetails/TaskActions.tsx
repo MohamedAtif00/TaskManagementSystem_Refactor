@@ -235,7 +235,7 @@ const TaskAction: React.FC<Props> = ({
                         >
                             <button className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-orange-400 bg-orange-500 text-white">
                                 <ArrowPathIcon className="w-6 h-6" />
-                                <div>Rollback</div>
+                                <div>Roll Back</div>
                             </button>
                         </Link>
                     )}

@@ -5,9 +5,10 @@ import AddCommentForm from "./AddCommentForm";
 import dateHandler from "../../lib/DateHandler";
 
 interface Props {
-    loId: number;
+	taskId: number
     updateTask: (value: SetStateAction<ITask | undefined>) => void;
     comments: IComment[];
+	reload: () => void;
 }
 
 interface CommentProps {
@@ -55,7 +56,7 @@ const TaskComments: React.FC<Props> = (props) => {
                 <ChatBubbleBottomCenterIcon className="w-7 h-7 stroke-black" />
                 <div className="font-bold">Comments</div>
             </div>
-            <AddCommentForm updateTask={props.updateTask} loId={props.loId} />
+            <AddCommentForm reload={props.reload} updateTask={props.updateTask} taskId={props.taskId} />
             {comments}
         </div>
     );

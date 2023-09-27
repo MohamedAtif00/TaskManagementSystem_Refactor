@@ -45,15 +45,11 @@ public class SchemaController : ControllerBase
         if (item == null)
             return NotFound(new Responses.BadRequestsDTO("Task Bank Item not found"));
 
-        var type = await _context.Types.FindAsync(req.Type);
-        if (type == null)
-            return NotFound(new Responses.BadRequestsDTO("Type not found"));
         var group = await _context.Groups.FindAsync(req.Group);
         if (group == null)
             return NotFound(new Responses.BadRequestsDTO("Group not found"));
 
-        item.Type = type;
-        item.TypeId = type.Id;
+        item.Type = req.Type;
         item.Group = group;
         item.GroupId = group.Id;
         item.TL = req.TL;
@@ -68,7 +64,7 @@ public class SchemaController : ControllerBase
             {
                 Id = item.Id,
                 Group = new Responses.IDName { Id = group.Id, Name = group.Name },
-                Type = new Responses.IDName { Id = type.Id, Name = type.Name },
+                Type = item.Type,
                 Name = item.Name,
                 TL = item.TL,
                 Duration = item.Duration
@@ -81,17 +77,13 @@ public class SchemaController : ControllerBase
     [HttpPost("task-bank")]
     public async Task<ActionResult<Responses.TaskBankDTO>> CreateTBI(Requests.TaskBankDTO req)
     {
-        var type = await _context.Types.FindAsync(req.Type);
-        if (type == null)
-            return NotFound(new Responses.BadRequestsDTO("Type not found"));
         var group = await _context.Groups.FindAsync(req.Group);
         if (group == null)
             return NotFound(new Responses.BadRequestsDTO("Group not found"));
 
         var newTaskBank = new TaskBank
         {
-            Type = type,
-            TypeId = type.Id,
+            Type = req.Type,
             Group = group,
             GroupId = group.Id,
             TL = req.TL,
@@ -108,8 +100,8 @@ public class SchemaController : ControllerBase
             {
                 Id = newTaskBank.Id,
                 Group = new Responses.IDName { Id = group.Id, Name = group.Name },
-                Type = new Responses.IDName { Id = type.Id, Name = type.Name },
-                Name = newTaskBank.Name,
+                Type =  req.Type,
+				Name = newTaskBank.Name,
                 TL = newTaskBank.TL,
                 Duration = newTaskBank.Duration
             }
@@ -122,7 +114,6 @@ public class SchemaController : ControllerBase
     public async Task<ActionResult<List<Responses.TaskBankDTO>>> GetTaskBank()
     {
         var bank = await _context.TaskBank
-            .Include(tb => tb.Type)
             .Include(_ => _.Group)
             .Where(_ => _.Active)
             .ToListAsync();
@@ -136,7 +127,7 @@ public class SchemaController : ControllerBase
                     Name = item.Name,
                     Id = item.Id,
                     TL = item.TL,
-                    Type = new Responses.IDName { Id = item.Type.Id, Name = item.Type.Name },
+					Type = item.Type,
                     Group = new Responses.IDName { Id = item.Group.Id, Name = item.Group.Name },
                     Duration = item.Duration
                 }
@@ -180,7 +171,6 @@ public class SchemaController : ControllerBase
     public async Task<ActionResult<List<Responses.SchemaDTO>>> GetSchemas()
     {
         var schemas = await _context.Schemas
-            .Include(s => s.Type)
             .Where(s => !s.Archived)
             .ToListAsync();
 

@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AutomatedTaskSystem.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class TaskContextModelSnapshot : ModelSnapshot
+    [Migration("20230917173401_RemoveTypes")]
+    partial class RemoveTypes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,6 +23,99 @@ namespace AutomatedTaskSystem.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Activity", b =>
+                {
+                    b.Property<int>("id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"), 1L, 1);
+
+                    b.Property<int>("ActivityTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("TimeStamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("id");
+
+                    b.HasIndex("ActivityTypeId");
+
+                    b.HasIndex("TaskId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Activities");
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.ActivityType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ActivityTypes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Start"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Done"
+                        });
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Assignment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<int?>("ById")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("TimeStamp")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValue(new DateTime(2023, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
+
+                    b.Property<int?>("ToId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ById");
+
+                    b.HasIndex("TaskId");
+
+                    b.HasIndex("ToId");
+
+                    b.ToTable("Assignments");
+                });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.Comment", b =>
                 {
@@ -40,9 +135,6 @@ namespace AutomatedTaskSystem.Migrations
                     b.Property<int>("LearningObjectiveId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("TaskId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
 
@@ -53,11 +145,92 @@ namespace AutomatedTaskSystem.Migrations
 
                     b.HasIndex("LearningObjectiveId");
 
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Comments");
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.EndActivity", b =>
+                {
+                    b.Property<int>("id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("id"), 1L, 1);
+
+                    b.Property<int?>("EndActivityTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("id");
+
+                    b.HasIndex("EndActivityTypeId");
+
                     b.HasIndex("TaskId");
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Comments");
+                    b.ToTable("EndActivities");
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.EndActivityType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("EndActivityTypes");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Flag"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Pause"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "Complete"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Name = "Session"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Name = "Reassign"
+                        },
+                        new
+                        {
+                            Id = 6,
+                            Name = "Change of Schema"
+                        });
                 });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.Group", b =>
@@ -453,48 +626,6 @@ namespace AutomatedTaskSystem.Migrations
                     b.ToTable("Tasks");
                 });
 
-            modelBuilder.Entity("AutomatedTaskSystem.Models.TaskActivity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
-
-                    b.Property<int?>("ActorOneId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ActorTwoId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("AdditionalInfo")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TaskId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("TaskSecondaryId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("TimeStamp")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActorOneId");
-
-                    b.HasIndex("ActorTwoId");
-
-                    b.HasIndex("TaskId");
-
-                    b.HasIndex("TaskSecondaryId");
-
-                    b.ToTable("TaskActivities");
-                });
-
             modelBuilder.Entity("AutomatedTaskSystem.Models.TaskBank", b =>
                 {
                     b.Property<int>("Id")
@@ -527,41 +658,6 @@ namespace AutomatedTaskSystem.Migrations
                     b.HasIndex("GroupId");
 
                     b.ToTable("TaskBank");
-                });
-
-            modelBuilder.Entity("AutomatedTaskSystem.Models.TaskWorkTime", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
-
-                    b.Property<double>("Duration")
-                        .HasColumnType("float");
-
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("EndReason")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("TaskId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TaskId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("TaskWorkTimes");
                 });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.Team", b =>
@@ -767,6 +863,56 @@ namespace AutomatedTaskSystem.Migrations
                     b.ToTable("RSteps", (string)null);
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Activity", b =>
+                {
+                    b.HasOne("AutomatedTaskSystem.Models.ActivityType", "ActivityType")
+                        .WithMany()
+                        .HasForeignKey("ActivityTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AutomatedTaskSystem.Models.Task", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AutomatedTaskSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ActivityType");
+
+                    b.Navigation("Task");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Assignment", b =>
+                {
+                    b.HasOne("AutomatedTaskSystem.Models.User", "By")
+                        .WithMany()
+                        .HasForeignKey("ById");
+
+                    b.HasOne("AutomatedTaskSystem.Models.Task", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AutomatedTaskSystem.Models.User", "To")
+                        .WithMany()
+                        .HasForeignKey("ToId");
+
+                    b.Navigation("By");
+
+                    b.Navigation("Task");
+
+                    b.Navigation("To");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.Comment", b =>
                 {
                     b.HasOne("AutomatedTaskSystem.Models.LearningObjective", "LearningObjective")
@@ -775,10 +921,6 @@ namespace AutomatedTaskSystem.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("AutomatedTaskSystem.Models.Task", "Task")
-                        .WithMany()
-                        .HasForeignKey("TaskId");
-
                     b.HasOne("AutomatedTaskSystem.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
@@ -786,6 +928,29 @@ namespace AutomatedTaskSystem.Migrations
                         .IsRequired();
 
                     b.Navigation("LearningObjective");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.EndActivity", b =>
+                {
+                    b.HasOne("AutomatedTaskSystem.Models.EndActivityType", "EndActivityType")
+                        .WithMany()
+                        .HasForeignKey("EndActivityTypeId");
+
+                    b.HasOne("AutomatedTaskSystem.Models.Task", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AutomatedTaskSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("EndActivityType");
 
                     b.Navigation("Task");
 
@@ -940,35 +1105,6 @@ namespace AutomatedTaskSystem.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("AutomatedTaskSystem.Models.TaskActivity", b =>
-                {
-                    b.HasOne("AutomatedTaskSystem.Models.User", "ActorOne")
-                        .WithMany()
-                        .HasForeignKey("ActorOneId");
-
-                    b.HasOne("AutomatedTaskSystem.Models.User", "ActorTwo")
-                        .WithMany()
-                        .HasForeignKey("ActorTwoId");
-
-                    b.HasOne("AutomatedTaskSystem.Models.Task", "Task")
-                        .WithMany()
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AutomatedTaskSystem.Models.Task", "TaskSecondary")
-                        .WithMany()
-                        .HasForeignKey("TaskSecondaryId");
-
-                    b.Navigation("ActorOne");
-
-                    b.Navigation("ActorTwo");
-
-                    b.Navigation("Task");
-
-                    b.Navigation("TaskSecondary");
-                });
-
             modelBuilder.Entity("AutomatedTaskSystem.Models.TaskBank", b =>
                 {
                     b.HasOne("AutomatedTaskSystem.Models.Group", "Group")
@@ -978,25 +1114,6 @@ namespace AutomatedTaskSystem.Migrations
                         .IsRequired();
 
                     b.Navigation("Group");
-                });
-
-            modelBuilder.Entity("AutomatedTaskSystem.Models.TaskWorkTime", b =>
-                {
-                    b.HasOne("AutomatedTaskSystem.Models.Task", "Task")
-                        .WithMany()
-                        .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AutomatedTaskSystem.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Task");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.Unit", b =>

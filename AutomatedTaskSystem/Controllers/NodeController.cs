@@ -2,6 +2,7 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.Nodes;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.TaskBankType;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TaskService;
@@ -69,7 +70,7 @@ public class NodeController : ControllerBase
                 Id = _s.Id,
                 Name = _s.TaskBank.Name,
                 Order = _s.Order,
-                Reviewable = _s.TaskBank.TypeId == 3,
+                Reviewable = _s.TaskBank.Type == TaskBankTypeEnum.Review,
                 TL = _s.TaskBank.TL,
                 Group = new Responses.IDName
                 {
@@ -163,7 +164,7 @@ public class NodeController : ControllerBase
                         Name = item.TaskBank.Name,
                         Id = item.TaskBank.Id
                     },
-                    Reviewable = item.TaskBank.TypeId == 3,
+                    Reviewable = item.TaskBank.Type == TaskBankTypeEnum.Review,
                     Duration = item.Duration,
                     TaskBankItemId = item.TaskBankId
                 }
@@ -360,7 +361,7 @@ public class NodeController : ControllerBase
                     Id = _s.Id,
                     Name = _s.TaskBank.Name,
                     Order = _s.Order,
-                    Reviewable = _s.TaskBank.TypeId == 3,
+                    Reviewable = _s.TaskBank.Type == TaskBankTypeEnum.Review,
                     TL = _s.TaskBank.TL,
                     Group = new Responses.IDName
                     {

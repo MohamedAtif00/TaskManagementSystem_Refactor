@@ -164,12 +164,6 @@ const Tasks = () => {
                     refreshTasks={refreshTasks}
                     projectId={project.id}
                 />
-                {router.query.form === "task-assign" && (
-                    <AssignTask
-                        taskId={router.query.taskId!}
-                        refreshTask={refreshTasks}
-                    />
-                )}
                 <CreateStandAloneTaskForm
                     refreshTasks={refreshTasks}
                     projectId={project.id}

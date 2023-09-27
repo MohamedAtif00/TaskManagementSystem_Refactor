@@ -3,6 +3,7 @@ using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Dtos.Steps;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.TaskBankType;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TaskService;
@@ -39,7 +40,7 @@ public class StepController : ControllerBase
         {
             Id = step.Id,
             Order = step.Order,
-            Reviewable = step.TaskBank.TypeId == 3,
+            Reviewable = step.TaskBank.Type == TaskBankTypeEnum.Review,
             TL = step.TaskBank.TL,
             Group = new Responses.IDName
             {
@@ -241,7 +242,7 @@ public class StepController : ControllerBase
                 Name = step.TaskBank.Name,
                 Order = step.Order,
                 Priority = step.Priority,
-                Reviewable = step.TaskBank.TypeId == 3,
+                Reviewable = step.TaskBank.Type == TaskBankTypeEnum.Review,
                 TL = step.TaskBank.TL
             },
             Error = false,
@@ -468,7 +469,7 @@ public class StepController : ControllerBase
         );
 
         var currentNodeSteps = step.Node.Steps.Where(
-            s => !s.Archived && s.Order < step.Order && s.TaskBank.TypeId != 3
+            s => !s.Archived && s.Order < step.Order && s.TaskBank.Type == TaskBankTypeEnum.Creation
         );
 
         foreach (var s in currentNodeSteps)
@@ -486,7 +487,7 @@ public class StepController : ControllerBase
                             : 0
             );
             foreach (var s in n.Steps)
-                if (!s.Archived && s.TaskBank.TypeId != 3 && !step.Rollbacks.Any(_ => s.Id == _.Id))
+                if (!s.Archived && s.TaskBank.Type == TaskBankTypeEnum.Creation && !step.Rollbacks.Any(_ => s.Id == _.Id))
                     steps.Add(s);
         }
 

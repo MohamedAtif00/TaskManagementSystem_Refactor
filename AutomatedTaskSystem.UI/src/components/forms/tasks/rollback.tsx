@@ -60,7 +60,7 @@ const RollbackForm = (props: { update: (params: ITask) => void }) => {
             >
                 <div className={[styles.form, styles.center].join(" ")}>
                     <form onSubmit={handleSubmit}>
-                        <h2>Rollback Task</h2>
+                        <h2>Roll back Task</h2>
                         <div className={styles.inputs}>
                             <Dropdown
                                 label="Rollback Task"
@@ -72,7 +72,7 @@ const RollbackForm = (props: { update: (params: ITask) => void }) => {
                         <div>
                             <input
                                 type="submit"
-                                value="Rollback"
+                                value="Roll Back"
                                 className={[
                                     styles.submit,
                                     stepId ? "" : styles.inactive,

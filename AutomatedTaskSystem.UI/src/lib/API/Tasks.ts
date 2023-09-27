@@ -80,7 +80,7 @@ const TASKS = {
         try {
             const authHeader = authService.authHeader();
             const res = await fetch(
-                `${url}/learning-objectives/${id}/comment`,
+                `${url}/tasks/${id}/comment`,
                 {
                     method: "POST",
                     headers: {

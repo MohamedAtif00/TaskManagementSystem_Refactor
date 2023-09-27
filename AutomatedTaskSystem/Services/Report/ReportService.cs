@@ -70,6 +70,7 @@ public class ReportService : IReportService
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
             .ThenInclude(l => l.LearningObjectives)
+			.AsNoTracking()
             .FirstOrDefaultAsync();
 
         if (project is null)

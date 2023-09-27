@@ -45,7 +45,7 @@ const EditStep = (props: Props) => {
     }, [taskBankItem]);
 
     useEffect(() => {
-        if (taskBankItem?.type.id === 3)
+        if (taskBankItem?.type === 1)
             API.SCHEMAS.NODES.STEPS.GET_ROLLBACK_POINTS(props.step.id).then(
                 (res) => {
                     if (res && !res.error) setRollbacks(res.data);
@@ -119,7 +119,7 @@ const EditStep = (props: Props) => {
                 </div>
                 <div
                     className={`grid ${
-                        taskBankItem?.type.id === 3
+                        taskBankItem?.type === 1
                             ? "grid-cols-2"
                             : "grid-cols-1"
                     } grid-rows-1 gap-4`}
@@ -149,7 +149,7 @@ const EditStep = (props: Props) => {
                             />
                         </div>
                     </form>
-                    {taskBankItem?.type.id === 3 && (
+                    {taskBankItem?.type === 1 && (
                         <div className="flex gap-4 flex-col">
                             <div>
                                 <div className="text-sm">Rollback Points:</div>

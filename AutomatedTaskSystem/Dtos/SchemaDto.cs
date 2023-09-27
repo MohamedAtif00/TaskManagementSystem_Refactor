@@ -1,3 +1,5 @@
+using AutomatedTaskSystem.Models.Enums.TaskBankType;
+
 namespace AutomatedTaskSystem.DTO
 {
     public static partial class Responses
@@ -7,7 +9,7 @@ namespace AutomatedTaskSystem.DTO
             public int Id { get; set; }
             public string Name { get; set; } = "";
             public bool TL { get; set; } = false;
-            public IDName Type { get; set; } = new IDName { };
+            public TaskBankTypeEnum Type { get; set; } = TaskBankTypeEnum.Creation;
             public IDName Group { get; set; } = new IDName { };
             public int Duration { get; set; }
         }
@@ -62,7 +64,7 @@ namespace AutomatedTaskSystem.DTO
         {
             public string Name { get; set; } = "";
             public bool TL { get; set; } = false;
-            public int Type { get; set; }
+            public TaskBankTypeEnum Type { get; set; } = TaskBankTypeEnum.Creation;
             public int Group { get; set; }
             public int Duration { get; set; }
         }

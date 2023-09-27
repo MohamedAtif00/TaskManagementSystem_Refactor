@@ -29,7 +29,7 @@ const StatusBadge: React.FC<Props> = ({ status }) => {
 	statuses.set(1, "To Do");
 	statuses.set(2, "Doing");
 	statuses.set(3, "Done");
-	statuses.set(4, "Rollback");
+	statuses.set(4, "Roll Back");
 
     return (
         <div className="group relative flex flex-col justify-start items-center">

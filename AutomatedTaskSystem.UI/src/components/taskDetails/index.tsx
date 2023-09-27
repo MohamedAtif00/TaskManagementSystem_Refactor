@@ -11,7 +11,9 @@ import DateLabel from "./DateLabel";
 import TaskComments from "./TaskComments";
 import RollbackForm from "../../components/forms/tasks/rollback";
 import { ClockIcon } from "@heroicons/react/24/solid";
-import CreatedActivity from "./RecentActivity/createdActivity";
+import TaskActivity from "./RecentActivity/taskActivity";
+import AssignTask from "../forms/tasks/assignToTask";
+import DurationBadge from "./durationBadge";
 
 export interface IComment {
     user: {
@@ -21,6 +23,16 @@ export interface IComment {
     id: number;
     content: string;
     timestamp: string;
+}
+
+export interface ITaskActivity {
+    id: number;
+    type: TaskActivityType;
+    secondaryTask?: BasicInfo;
+    actorOne?: BasicInfo;
+    actorTwo?: BasicInfo;
+    timeStamp: string;
+    additionalInfo?: string;
 }
 
 export interface ITask {
@@ -43,6 +55,8 @@ export interface ITask {
     startedAt: string | null;
     doneAt: string | null;
     priority: TaskPriority;
+    activities: ITaskActivity[];
+    duration: number;
 }
 
 interface Props {
@@ -68,6 +82,16 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
     const handleUpdate = (res: ITask) => {
         setTask(res);
         refreshTasks();
+    };
+
+    const reload = () => {
+        const id = router.query.taskId;
+        if (id)
+            API.TASKS.GET_ONE(id).then((res) => {
+                if (res && !res.error) {
+                    setTask(res.data);
+                }
+            });
     };
 
     const exit = () => router.push(`/tasks/${projectId}`);
@@ -156,6 +180,9 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                         />
                                     </>
                                 )}
+                                {task.duration > 0 && (
+									<DurationBadge duration={task.duration}  />
+                                )}
                             </div>
                             <button className="p-1 box-content" onClick={exit}>
                                 <CrossIcon className="stroke-black" />
@@ -207,9 +234,10 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                     access={task.access}
                                 />
                                 <TaskComments
-                                    loId={task.learningObjective.id}
+                                    taskId={task.id}
                                     updateTask={setTask}
                                     comments={task.comments}
+                                    reload={reload}
                                 />
                                 <RollbackForm
                                     update={(data) => {
@@ -227,22 +255,80 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                     <div>Recent Activity</div>
                                 </h1>
                                 <div className="grow flex items-center flex-col overflow-y-auto px-6 py-4">
-                                    <CreatedActivity
-                                        date={task.createdAt}
-                                        name={task.name}
-                                    />
-                                    <div className="justify-center items-center flex flex-col gap-2">
-                                        <div className="pl-1 h-8 rounded-b-full bg-slate-300"></div>
-                                        <div className="text-sm text-slate-500">
-                                            2 Hours
-                                        </div>
-                                        <div className="pl-1 h-8 rounded-full bg-slate-300"></div>
-                                    </div>
+                                    {task.activities.reduce((acc, value, i) => {
+                                        const previousValue =
+                                            i > 0 && task.activities[i - 1];
+                                        const newAcc = [...acc];
+
+                                        if (previousValue) {
+                                            const previousDate = new Date(
+                                                previousValue.timeStamp
+                                            ).getTime();
+                                            const valueDate = new Date(
+                                                value.timeStamp
+                                            ).getTime();
+
+                                            const diffInSeconds =
+                                                (previousDate - valueDate) /
+                                                1000;
+
+                                            const time = {
+												days: Math.floor(diffInSeconds / 86400),
+                                                hours: Math.floor(
+                                                    diffInSeconds / 3600
+                                                ) % 24,
+                                                minutes:
+                                                    Math.floor(
+                                                        diffInSeconds / 60
+                                                    ) % 60,
+                                            };
+
+                                            newAcc.push(
+                                                <div
+                                                    key={`${value.id}-spliter-${i}`}
+                                                    className="flex items-center flex-col"
+                                                >
+                                                    <div className="pl-1 bg-slate-300 h-4 rounded-b-full"></div>
+                                                    <div className="text-sm text-slate-500">
+														{time.days > 0 && time.days}{" "}
+                                                        {time.days > 0 || time.hours > 0 &&
+                                                            `${time.hours}:`}
+                                                        {time.minutes < 10
+                                                            ? `0${time.minutes}`
+                                                            : time.minutes}{" "}
+                                                        {time.hours > 0
+                                                            ? "hours"
+                                                            : "minutes"}
+                                                    </div>
+                                                    <div className="pl-1 bg-slate-300 h-4 rounded-t-full"></div>
+                                                </div>
+                                            );
+                                        }
+
+                                        newAcc.push(
+                                            <TaskActivity
+                                                key={value.id}
+                                                name={task.name}
+                                                {...value}
+                                            />
+                                        );
+
+                                        return newAcc;
+                                    }, [] as JSX.Element[])}
                                 </div>
                             </div>
                         </div>
                     </motion.div>
                 </motion.div>
+            )}
+            {router.query.form === "task-assign" && (
+                <AssignTask
+                    taskId={router.query.taskId!}
+                    refreshTask={() => {
+                        reload();
+                        refreshTasks();
+                    }}
+                />
             )}
         </AnimatePresence>
     );

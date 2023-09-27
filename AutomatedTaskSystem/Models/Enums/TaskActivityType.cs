@@ -15,5 +15,7 @@ public enum TaskActivityTypeEnum
     Assign,
     Comment,
     Rollback,
-    PriorityChange
+    PriorityChange,
+	Skip,
+	ProcessChange
 }

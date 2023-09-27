@@ -36,7 +36,7 @@ interface IStep {
     group: { name: string; id: number };
     duration: number;
     priority: TaskPriority;
-	taskBankItemId: number;
+    taskBankItemId: number;
 }
 
 interface INode {
@@ -128,7 +128,24 @@ type TaskInfo = {
     paused: boolean;
 };
 
-
+type TaskBankType = 0 | 1;
+type TaskActivityType =
+    | 0
+    | 1
+    | 2
+    | 3
+    | 4
+    | 5
+    | 6
+    | 7
+    | 8
+    | 9
+    | 10
+    | 11
+    | 12
+    | 13
+    | 14
+    | 15;
 type TaskPriority = 0 | 1 | 2 | 3;
 type TaskStatus = 0 | 1 | 2 | 3 | 4;
 type UserRole = 0 | 1 | 2 | 3;
