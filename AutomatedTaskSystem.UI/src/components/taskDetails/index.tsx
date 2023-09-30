@@ -181,7 +181,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                     </>
                                 )}
                                 {task.duration > 0 && (
-									<DurationBadge duration={task.duration}  />
+                                    <DurationBadge duration={task.duration} />
                                 )}
                             </div>
                             <button className="p-1 box-content" onClick={exit}>
@@ -273,10 +273,13 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                                 1000;
 
                                             const time = {
-												days: Math.floor(diffInSeconds / 86400),
-                                                hours: Math.floor(
-                                                    diffInSeconds / 3600
-                                                ) % 24,
+                                                days: Math.floor(
+                                                    diffInSeconds / 86400
+                                                ),
+                                                hours:
+                                                    Math.floor(
+                                                        diffInSeconds / 3600
+                                                    ) % 24,
                                                 minutes:
                                                     Math.floor(
                                                         diffInSeconds / 60
@@ -290,15 +293,18 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                                 >
                                                     <div className="pl-1 bg-slate-300 h-4 rounded-b-full"></div>
                                                     <div className="text-sm text-slate-500">
-														{time.days > 0 && time.days}{" "}
-                                                        {time.days > 0 || time.hours > 0 &&
-                                                            `${time.hours}:`}
-                                                        {time.minutes < 10
-                                                            ? `0${time.minutes}`
-                                                            : time.minutes}{" "}
+                                                        {time.days > 0 &&
+                                                            `${time.days} Days, `}
                                                         {time.hours > 0
-                                                            ? "hours"
-                                                            : "minutes"}
+                                                            ? `${time.hours}:${
+                                                                  time.minutes <
+                                                                  10
+                                                                      ? `0${time.minutes} Hours`
+                                                                      : `${time.minutes} Hours`
+                                                              }`
+                                                            : time.minutes < 10
+                                                            ? `0${time.minutes} Minutes`
+                                                            : `${time.minutes} Minutes`}
                                                     </div>
                                                     <div className="pl-1 bg-slate-300 h-4 rounded-t-full"></div>
                                                 </div>
