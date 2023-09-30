@@ -14,6 +14,7 @@ import { ClockIcon } from "@heroicons/react/24/solid";
 import TaskActivity from "./RecentActivity/taskActivity";
 import AssignTask from "../forms/tasks/assignToTask";
 import DurationBadge from "./durationBadge";
+import Link from "next/link";
 
 export interface IComment {
     user: {
@@ -96,10 +97,20 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 
     const exit = () => router.push(`/tasks/${projectId}`);
 
+    const proceedTask = () => {
+        if (task) {
+            API.TASKS.PROCEED(task.id).then((res) => {
+                if (res && !res.error) handleUpdate(res.data);
+            });
+            router.push(`/tasks/${projectId}?taskId=${task.id}`);
+        }
+    };
+
     return (
         <AnimatePresence>
             {task && (
                 <motion.div
+					key="main-task"
                     initial={{
                         backgroundColor: "#00000000",
                     }}
@@ -181,7 +192,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                     </>
                                 )}
                                 {task.duration > 0 && (
-									<DurationBadge duration={task.duration}  />
+                                    <DurationBadge duration={task.duration} />
                                 )}
                             </div>
                             <button className="p-1 box-content" onClick={exit}>
@@ -273,10 +284,13 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                                 1000;
 
                                             const time = {
-												days: Math.floor(diffInSeconds / 86400),
-                                                hours: Math.floor(
-                                                    diffInSeconds / 3600
-                                                ) % 24,
+                                                days: Math.floor(
+                                                    diffInSeconds / 86400
+                                                ),
+                                                hours:
+                                                    Math.floor(
+                                                        diffInSeconds / 3600
+                                                    ) % 24,
                                                 minutes:
                                                     Math.floor(
                                                         diffInSeconds / 60
@@ -290,15 +304,18 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                                 >
                                                     <div className="pl-1 bg-slate-300 h-4 rounded-b-full"></div>
                                                     <div className="text-sm text-slate-500">
-														{time.days > 0 && time.days}{" "}
-                                                        {time.days > 0 || time.hours > 0 &&
-                                                            `${time.hours}:`}
-                                                        {time.minutes < 10
-                                                            ? `0${time.minutes}`
-                                                            : time.minutes}{" "}
+                                                        {time.days > 0 &&
+                                                            `${time.days} Days, `}
                                                         {time.hours > 0
-                                                            ? "hours"
-                                                            : "minutes"}
+                                                            ? `${time.hours}:${
+                                                                  time.minutes <
+                                                                  10
+                                                                      ? `0${time.minutes} Hours`
+                                                                      : `${time.minutes} Hours`
+                                                              }`
+                                                            : time.minutes < 10
+                                                            ? `0${time.minutes} Minutes`
+                                                            : `${time.minutes} Minutes`}
                                                     </div>
                                                     <div className="pl-1 bg-slate-300 h-4 rounded-t-full"></div>
                                                 </div>
@@ -329,6 +346,38 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                         refreshTasks();
                     }}
                 />
+            )}
+            {task && router.query.form === "proceed" && (
+                <div key="confirmation-message" className="fixed z-50 top-0 left-0 right-0 bottom-0 bg-black/25 flex items-center justify-center">
+                    <div className="bg-white rounded-lg border-slate-200 border border-solid">
+                        <h4 className="text-2xl font-bold px-8 pt-4 pb-2 border-slate-200 border-b border-solid mb-2">
+                            Complete Task
+                        </h4>
+                        <p className="px-8 pt-4">
+                            Are you sure you want to continue?
+                        </p>
+                        <div className="grid grid-cols-2 px-8 py-4 gap-2">
+                            <Link
+                                href={{
+                                    pathname: `/tasks/${projectId}`,
+                                    query: {
+                                        taskId: task.id,
+                                    },
+                                }}
+                            >
+                                <div className="bg-black text-white text-lg font-bold text-center border-2 border-solid border-white/50 py-2">
+                                    Cancel
+                                </div>
+                            </Link>
+                            <div
+                                className="bg-emerald-600 text-white text-lg font-bold text-center border-2 border-solid border-white/50 py-2 cursor-pointer"
+                                onClick={proceedTask}
+                            >
+                                Confirm
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </AnimatePresence>
     );

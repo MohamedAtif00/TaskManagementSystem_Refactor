@@ -2,7 +2,7 @@ import {
     ArrowPathIcon,
     BookmarkSlashIcon,
     CalendarIcon,
-    ChatBubbleBottomCenterIcon,
+    ChatBubbleBottomCenterTextIcon,
     CheckIcon,
     ClockIcon,
     DocumentPlusIcon,
@@ -181,7 +181,7 @@ const TaskActivity: React.FC<Props> = (props) => {
             ) : props.type === 11 ? (
                 <div className="flex gap-4">
                     <div>
-                        <ChatBubbleBottomCenterIcon className="p-1 h-6 w-6 rounded-full border border-solid border-slate-400 box-content" />
+                        <ChatBubbleBottomCenterTextIcon className="p-1 h-6 w-6 rounded-full border border-solid border-slate-400 box-content" />
                     </div>
                     <div className="flex flex-col justify-center">
                         <div>
