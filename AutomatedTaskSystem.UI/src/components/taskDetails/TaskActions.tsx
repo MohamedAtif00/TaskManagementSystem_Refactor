@@ -74,7 +74,7 @@ const TaskAction: React.FC<Props> = ({
             if (res && !res.error) handleUpdate(res.data);
         });
 
-    return access !== "None" && status !== 4 && status !==  3 ? (
+    return access !== "None" && status !== 4 && status !== 3 ? (
         <div className="px-6 mt-6">
             <div className="flex items-center gap-2">
                 <div>
@@ -85,7 +85,23 @@ const TaskAction: React.FC<Props> = ({
             <div className="flex gap-4 mt-1 flex-wrap">
                 {(access === "WorkOnAndManage" || access == "WorkOn") &&
                     !pause &&
-                    !flag && (
+                    !flag &&
+                    (status === 2 ? (
+                        <Link
+                            href={{
+                                pathname: `/tasks/${projectId}`,
+                                query: {
+                                    form: "proceed",
+                                    taskId: taskId,
+                                },
+                            }}
+                        >
+                            <button className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-blue-400 bg-blue-500 text-white">
+                                <CheckIcon className="w-6 h-6" />
+                                <div>Complete</div>
+                            </button>
+                        </Link>
+                    ) : (
                         <button
                             onClick={proceedTask}
                             className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-blue-400 bg-blue-500 text-white"
@@ -95,19 +111,14 @@ const TaskAction: React.FC<Props> = ({
                                     <PlusIcon className="w-6 h-6" />
                                     <div>Add</div>
                                 </>
-                            ) : status === 1 ? (
+                            ) : (
                                 <>
                                     <PlayIcon className="w-6 h-6" />
                                     <div>Start</div>
                                 </>
-                            ) : (
-                                <>
-                                    <CheckIcon className="w-6 h-6" />
-                                    <div>Complete</div>
-                                </>
                             )}
                         </button>
-                    )}
+                    ))}
                 {!flag && user && user.id === auth.id && pause ? (
                     <button
                         onClick={pauseTask}
@@ -265,7 +276,11 @@ const TaskAction: React.FC<Props> = ({
                     </Link>
                 )}
             </div>
-                <JumpForm taskId={taskId} projectId={projectId} updateTask={handleUpdate} />
+            <JumpForm
+                taskId={taskId}
+                projectId={projectId}
+                updateTask={handleUpdate}
+            />
         </div>
     ) : (
         <></>
