@@ -17,5 +17,7 @@ public enum TaskActivityTypeEnum
     Rollback,
     PriorityChange,
 	Skip,
-	ProcessChange
+	ProcessChange,
+	Jump,
+	ReactivateJump
 }

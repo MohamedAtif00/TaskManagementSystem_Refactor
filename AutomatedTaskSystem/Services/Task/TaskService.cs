@@ -306,7 +306,14 @@ public class TaskService : ITaskService
 				new BaseResponseService { Error = true, Message = "User is unassigned to project" }
 			);
 
-		var groups = new List<Group> { user.Group };
+		var userGroup = await _context.Groups
+			.Where(g => g.Id == user.GroupId)
+			.FirstOrDefaultAsync();
+
+		if (userGroup is null)
+			throw new Exception("User has a not found group");
+
+		var groups = new List<Group> { userGroup };
 
 		if (user.Role == UserRoleEnum.SectionHead)
 		{
@@ -1907,6 +1914,12 @@ public class TaskService : ITaskService
 		List<PutJumpedTaskDto> options
 	)
 	{
+		var user = await _authService.GetAuthedUser();
+		if (user is null || user.Role != UserRoleEnum.ProjectManger)
+			return new UnauthorizedObjectResult(
+				new BaseResponseService { Error = true, Message = "Invalid auth" }
+			);
+
 		var task = await _context.Tasks
 			.Where(t => t.Id == id && !t.Archived)
 			.Include(t => t.LearningObjective)
@@ -2041,9 +2054,50 @@ public class TaskService : ITaskService
 			if (t is not null)
 			{
 				if (options.Any(o => o.StepId == step.Id))
-					t.Status = TaskStatusEnum.Backlog;
+				{
+					if (t.UserId is not null)
+						t.Status = TaskStatusEnum.ToDo;
+					else
+						t.Status = TaskStatusEnum.Backlog;
+
+					var newTaskAct2 = new TaskActivity
+					{
+						Task = t,
+						TaskId = t.Id,
+						Type = TaskActivityTypeEnum.ReactivateJump,
+						TimeStamp = DateTime.Now,
+						ActorOne = user,
+						ActorOneId = user.Id,
+						ActorTwo = null,
+						ActorTwoId = null,
+						TaskSecondary = null,
+						TaskSecondaryId = null,
+						AdditionalInfo = null
+					};
+
+					_context.TaskActivities.Add(newTaskAct2);
+				}
 				else
+				{
 					t.Status = TaskStatusEnum.Done;
+
+					var newTaskAct2 = new TaskActivity
+					{
+						Task = t,
+						TaskId = t.Id,
+						Type = TaskActivityTypeEnum.Jump,
+						TimeStamp = DateTime.Now,
+						ActorOne = user,
+						ActorOneId = user.Id,
+						ActorTwo = null,
+						ActorTwoId = null,
+						TaskSecondary = null,
+						TaskSecondaryId = null,
+						AdditionalInfo = null
+					};
+
+					_context.TaskActivities.Add(newTaskAct2);
+				}
 			}
 			else
 			{
@@ -2082,6 +2136,42 @@ public class TaskService : ITaskService
 					RollbackCount = 0,
 					IsRollback = false
 				};
+
+				var newTaskAct = new TaskActivity
+				{
+					Task = newTask,
+					TaskId = newTask.Id,
+					Type = TaskActivityTypeEnum.Created,
+					TimeStamp = DateTime.Now,
+					ActorOne = user,
+					ActorOneId = user.Id,
+					ActorTwo = null,
+					ActorTwoId = null,
+					TaskSecondary = null,
+					TaskSecondaryId = null,
+					AdditionalInfo = null
+				};
+
+				if (!check)
+				{
+					var newTaskAct2 = new TaskActivity
+					{
+						Task = newTask,
+						TaskId = newTask.Id,
+						Type = TaskActivityTypeEnum.Jump,
+						TimeStamp = DateTime.Now,
+						ActorOne = user,
+						ActorOneId = user.Id,
+						ActorTwo = null,
+						ActorTwoId = null,
+						TaskSecondary = null,
+						TaskSecondaryId = null,
+						AdditionalInfo = null
+					};
+					_context.TaskActivities.Add(newTaskAct2);
+				}
+
+				_context.TaskActivities.Add(newTaskAct);
 
 				_context.Tasks.Add(newTask);
 			}
