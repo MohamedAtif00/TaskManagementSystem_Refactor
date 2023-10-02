@@ -254,8 +254,40 @@ const TaskActivity: React.FC<Props> = (props) => {
                         <ForwardIcon className="p-1 h-6 w-6 rounded-full border border-solid border-slate-400 box-content" />
                     </div>
                     <div className="flex flex-col justify-center">
+                        <div>Task was completed due to process change.</div>
+                    </div>
+                </div>
+            ) : props.type === 16 ? (
+                <div className="flex gap-4">
+                    <div>
+                        <ForwardIcon className="p-1 h-6 w-6 rounded-full border border-solid border-slate-400 box-content" />
+                    </div>
+                    <div className="flex flex-col justify-center">
                         <div>
-                            Task was completed due to process change.
+                            Task was skipped due to a jump by{" "}
+                            <span className="font-bold">
+                                {props.actorOne
+                                    ? props.actorOne.name
+                                    : "a User"}
+                            </span>
+                            .
+                        </div>
+                    </div>
+                </div>
+            ) : props.type === 17 ? (
+                <div className="flex gap-4">
+                    <div>
+                        <ExclamationCircleIcon className="p-1 h-6 w-6 rounded-full border border-solid border-slate-400 box-content" />
+                    </div>
+                    <div className="flex flex-col justify-center">
+                        <div>
+                            Task was reactivated due to a jump by{" "}
+                            <span className="font-bold">
+                                {props.actorOne
+                                    ? props.actorOne.name
+                                    : "a User"}
+                            </span>
+                            .
                         </div>
                     </div>
                 </div>

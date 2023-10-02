@@ -145,7 +145,9 @@ type TaskActivityType =
     | 12
     | 13
     | 14
-    | 15;
+    | 15
+    | 16
+    | 17;
 type TaskPriority = 0 | 1 | 2 | 3;
 type TaskStatus = 0 | 1 | 2 | 3 | 4;
 type UserRole = 0 | 1 | 2 | 3;
