@@ -1,7 +1,7 @@
-import API from "../../lib/API";
+import API from "../../../lib/API";
 import { ChevronRightIcon } from "@heroicons/react/24/solid";
 import { SetStateAction, useRef, useState } from "react";
-import { ITask } from ".";
+import { ITask } from "..";
 
 interface Props {
     taskId: number;
@@ -19,7 +19,7 @@ const AddCommentForm: React.FC<Props> = ({ taskId, updateTask, reload }) => {
         if (submitting) return;
         e.preventDefault();
         setSubmitting(true);
-        API.TASKS.COMMENT(taskId, value).then((res) => {
+        API.TASKS.ADD_COMMENT(taskId, value).then((res) => {
             if (res && !res.error) {
                 updateTask((ps) => {
                     return {

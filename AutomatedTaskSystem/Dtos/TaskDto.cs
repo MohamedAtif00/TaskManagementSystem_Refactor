@@ -1,3 +1,4 @@
+using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models.Enums.TaskPriority;
 
 namespace AutomatedTaskSystem.DTO
@@ -26,25 +27,7 @@ namespace AutomatedTaskSystem.DTO
             public DateTime? StartedAt { get; set; }
             public DateTime? DoneAt { get; set; }
             public int? Priority { get; set; }
-            public List<CommentDTO> Comments { get; set; } = new List<CommentDTO> { };
-        }
-
-        public class TaskDTO
-        {
-            public int Id { get; set; }
-            public string Name { get; set; } = "";
-            public string Status { get; set; } = "";
-            public bool TL { get; set; }
-            public IDName? User { get; set; } = null;
-            public IDName LearningObjective { get; set; } = new IDName { };
-            public bool IsReview { get; set; }
-            public bool Flagged { get; set; }
-            public bool Attention { get; set; }
-            public List<CommentDTO> Comments { get; set; } = new List<CommentDTO> { };
-            public bool IsRollback { get; set; }
-            public int RollbackCount { get; set; }
-            public string From { get; set; } = "";
-            public int? Priority { get; set; }
+            public List<TaskCommentDto> Comments { get; set; } = new List<TaskCommentDto> { };
         }
 
         public class PreviousNodeDTO

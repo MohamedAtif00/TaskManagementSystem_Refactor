@@ -60,14 +60,6 @@ namespace AutomatedTaskSystem.DTO
             public List<User> Assigned { get; set; } = new List<User> { };
             public List<User> Unassigned { get; set; } = new List<User> { };
         }
-
-        public class CommentDTO
-        {
-            public int Id { get; set; }
-            public string Content { get; set; } = "";
-            public DateTime Timestamp { get; set; } = DateTime.Now;
-            public IDName User { get; set; } = new IDName { };
-        }
     }
 
     public static partial class Requests

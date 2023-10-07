@@ -31,4 +31,5 @@ public class Task
     public bool IsRollback { get; set; } = false;
 	[Range(0, 3)]
     public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
+	public List<Comment> Comments { get; set; } = new List<Comment>{};
 }

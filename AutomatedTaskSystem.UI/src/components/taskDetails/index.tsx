@@ -8,13 +8,15 @@ import StatusBadge from "./StatusBadge";
 import LoBadge from "./LoBadge";
 import TaskAction from "./TaskActions";
 import DateLabel from "./DateLabel";
-import TaskComments from "./TaskComments";
+import TaskComments from "./taskComments";
 import RollbackForm from "../../components/forms/tasks/rollback";
 import { ClockIcon } from "@heroicons/react/24/solid";
 import TaskActivity from "./RecentActivity/taskActivity";
 import AssignTask from "../forms/tasks/assignToTask";
 import DurationBadge from "./durationBadge";
 import Link from "next/link";
+import EditCommentForm from "./taskComments/EditCommentForm";
+import DeleteCommentForm from "./taskComments/DeleteComment";
 
 export interface IComment {
     user: {
@@ -24,6 +26,8 @@ export interface IComment {
     id: number;
     content: string;
     timestamp: string;
+    isEdited: boolean;
+    isDeleted: boolean;
 }
 
 export interface ITaskActivity {
@@ -73,9 +77,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
         const id = router.query.taskId;
         if (id)
             API.TASKS.GET_ONE(id).then((res) => {
-                if (res && !res.error) {
-                    setTask(res.data);
-                }
+                if (res && !res.error) setTask(res.data);
             });
         else setTask(undefined);
     }, [setTask, router.query.taskId]);
@@ -89,9 +91,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
         const id = router.query.taskId;
         if (id)
             API.TASKS.GET_ONE(id).then((res) => {
-                if (res && !res.error) {
-                    setTask(res.data);
-                }
+                if (res && !res.error) setTask(res.data);
             });
     };
 
@@ -110,7 +110,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
         <AnimatePresence>
             {task && (
                 <motion.div
-					key="main-task"
+                    key="main-task"
                     initial={{
                         backgroundColor: "#00000000",
                     }}
@@ -245,6 +245,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                     access={task.access}
                                 />
                                 <TaskComments
+                                    projectId={projectId}
                                     taskId={task.id}
                                     updateTask={setTask}
                                     comments={task.comments}
@@ -338,9 +339,10 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                     </motion.div>
                 </motion.div>
             )}
-            {router.query.form === "task-assign" && (
+            {task && router.query.form === "task-assign" && (
                 <AssignTask
-                    taskId={router.query.taskId!}
+					key="assign-task-form"
+                    taskId={task.id.toString()}
                     refreshTask={() => {
                         reload();
                         refreshTasks();
@@ -348,7 +350,10 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                 />
             )}
             {task && router.query.form === "proceed" && (
-                <div key="confirmation-message" className="fixed z-50 top-0 left-0 right-0 bottom-0 bg-black/25 flex items-center justify-center">
+                <div
+                    key="confirmation-message"
+                    className="fixed z-50 top-0 left-0 right-0 bottom-0 bg-black/25 flex items-center justify-center"
+                >
                     <div className="bg-white rounded-lg border-slate-200 border border-solid">
                         <h4 className="text-2xl font-bold px-8 pt-4 pb-2 border-slate-200 border-b border-solid mb-2">
                             Complete Task
@@ -365,12 +370,12 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                                     },
                                 }}
                             >
-                                <div className="bg-black text-white text-lg font-bold text-center border-2 border-solid border-white/50 py-2">
+                                <div className="bg-black text-white text-lg font-bold text-center border-2 border-solid border-white/50 py-1">
                                     Cancel
                                 </div>
                             </Link>
                             <div
-                                className="bg-emerald-600 text-white text-lg font-bold text-center border-2 border-solid border-white/50 py-2 cursor-pointer"
+                                className="bg-emerald-500 text-white text-lg font-bold text-center border-2 border-solid border-white/50 py-1 cursor-pointer"
                                 onClick={proceedTask}
                             >
                                 Confirm
@@ -379,6 +384,40 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
                     </div>
                 </div>
             )}
+            {task &&
+                router.query.form === "edit-comment" &&
+                router.query.commentId && (
+                    <EditCommentForm
+						key="edit-comment-form"
+                        update={reload}
+                        taskId={task.id}
+                        projectId={projectId}
+                        comment={task.comments.find((c) => {
+                            const cid = parseInt(
+                                router.query.commentId!.toString()
+                            );
+
+                            return !isNaN(cid) && c.id === cid;
+                        })}
+                    />
+                )}
+            {task &&
+                router.query.form === "delete-comment" &&
+                router.query.commentId && (
+                    <DeleteCommentForm
+						key="delete-comment-form"
+                        update={reload}
+                        taskId={task.id}
+                        projectId={projectId}
+                        comment={task.comments.find((c) => {
+                            const cid = parseInt(
+                                router.query.commentId!.toString()
+                            );
+
+                            return !isNaN(cid) && c.id === cid;
+                        })}
+                    />
+                )}
         </AnimatePresence>
     );
 };

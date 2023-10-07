@@ -19,5 +19,8 @@ public enum TaskActivityTypeEnum
 	Skip,
 	ProcessChange,
 	Jump,
-	ReactivateJump
+	ReactivateJump,
+	Reactivated,
+	EditComment,
+	DeleteComment
 }

@@ -54,7 +54,7 @@ public class TaskController : ControllerBase
 	// POST:
 	// Add comment to task
 	[Authorize, HttpPost("{id}/comment")]
-	public async Task<ActionResult<ResponseService<Responses.CommentDTO>>> AddComment(
+	public async Task<ActionResult<ResponseService<TaskCommentDto>>> AddComment(
 		int id,
 		Requests.CommentDTO req
 	) => await _taskService.AddComment(id, req.Comment);
@@ -246,34 +246,19 @@ public class TaskController : ControllerBase
 		List<PutJumpedTaskDto> req
 	) => await _taskService.JumpTask(id, req);
 
-	// TODO:
-	// REMOVE
-	[HttpGet("OTR")]
-	public async Task<ActionResult<string>> OTR()
-	{
-		var durations = await _context.TaskWorkTimes
-			.Where(d => d.Duration == 0 && d.EndDate != null)
-			.ToListAsync();
+	// PATCH:
+	// Edit comment
+	[Authorize, HttpPatch("{id}/comment")]
+	public async Task<ActionResult<ResponseService<TaskCommentDto>>> EditComment(
+		int id,
+		EditCommentDto req
+	) => await _taskService.EditComment(id, req.CommentId, req.Comment);
 
-		var test = "";
-
-		foreach (var d in durations)
-			try
-			{
-				test += ((DateTime)d.EndDate!).Subtract(d.StartDate).TotalMilliseconds;
-				test += " IS ";
-				test += ((DateTime)d.EndDate!).Subtract(d.StartDate);
-				test += "\n";
-				d.Duration = ((DateTime)d.EndDate!).Subtract(d.StartDate).TotalMilliseconds;
-			}
-			catch (System.Exception)
-			{
-				Console.WriteLine($"Failed at {d.Id}");
-				throw;
-			}
-
-		await _context.SaveChangesAsync();
-
-		return test;
-	}
+	// DELETE:
+	// Delete comment
+	[Authorize, HttpDelete("{id}/comment")]
+	public async Task<ActionResult<ResponseService<TaskCommentDto>>> DeleteComment(
+		int id,
+		DeleteCommentDto req
+	) => await _taskService.DeleteComment(id, req.CommentId);
 }
