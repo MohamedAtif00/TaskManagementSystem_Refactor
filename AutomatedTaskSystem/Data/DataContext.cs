@@ -136,4 +136,6 @@ public class DataContext : DbContext
 	public DbSet<TaskWorkTime> TaskWorkTimes => Set<TaskWorkTime>();
 	public DbSet<Node> Nodes => Set<Node>();
 	public DbSet<LearningObjective> LearningObjectives => Set<LearningObjective>();
+	public DbSet<Rollback> Rollbacks => Set<Rollback>();
+	public DbSet<RollbackIssue> RollbackIssues => Set<RollbackIssue>();
 }
