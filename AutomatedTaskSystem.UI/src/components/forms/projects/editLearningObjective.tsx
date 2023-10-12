@@ -1,454 +1,226 @@
-import { useRouter } from "next/router";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
-import ArrowIcon from "../../../assets/Icons/Arrow";
-import API, { BasicInfo } from "../../../lib/API";
-import Backdrop from "../backdrop";
+import Link from "next/link";
+import { useEffect, useReducer, useState } from "react";
 import CustomizedCombobox from "../../formComponents/Combobox";
+import API from "../../../lib/API";
+import EditLoSchemaForm from "./learning-objective/editSchema";
 
-const FormField = ({
-    label,
-    onChange,
-    value,
-}: {
-    label: string;
-    onChange: (params: string) => void;
-    value: string;
-}) => {
-    return (
-        <label className="flex flex-col gap-1">
-            <div>{label}</div>
-            <input
-                className="outline-none px-2 py-1 w-full border border-solid border-slate-200 rounded-lg"
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-            />
-        </label>
-    );
-};
-
-const Dropdown = ({
-    label,
-    options,
-    id,
-    handleChange,
-}: {
-    label: string;
-    options: { id: number; name: string }[];
-    id: number;
-    handleChange: (params: BasicInfo) => void;
-}) => {
-    const [active, setActive] = useState(false);
-
-    const foundOption = options.find((opt) => opt.id === id);
-
-    return (
-        <div
-            className="relative transition-all ease-in"
-            onMouseLeave={() => (active ? setActive(false) : "")}
-        >
-            <div className="label">{label}:</div>
-            <button
-                className="flex justify-between items-center border rounded-lg px-2 py-2 text-center w-full outline-none"
-                type="button"
-                onClick={() => {
-                    setActive((ps) => !ps);
-                }}
-            >
-                <div className={foundOption ? "" : "text-slate-300"}>
-                    {foundOption
-                        ? foundOption.name
-                        : `Please select a ${label}`}
-                </div>
-                <div>
-                    <ArrowIcon color="#DBDFE5" />
-                </div>
-            </button>
-            <div
-                className={`absolute right-0 w-full rounded-lg bg-white overflow-y-scroll transition-[max-height] ease-in ${
-                    active
-                        ? "border border-solid border-slate-200 z-10 max-h-60"
-                        : "max-h-0 "
-                }`}
-            >
-                {options.map((opt) => {
-                    return (
-                        <div
-                            key={opt.id}
-                            onClick={() => {
-                                handleChange(opt);
-                                setActive(false);
-                            }}
-                            className="cursor-pointer hover:bg-slate-200 p-2 text-center"
-                        >
-                            {opt.name}
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-};
-
-const CheckBox = (props: {
-    id: number;
+interface State {
+    schema: BasicInfo;
+    template: string;
+    environment: string;
+    tag: string;
     name: string;
-    selected: boolean;
-    onClick: (id: number) => void;
-}) => {
-    return (
-        <div
-            className="flex gap-4 px-4 py-2 hover:bg-slate-100 select-none"
-            onClick={() => props.onClick(props.id)}
-        >
-            <div className="flex flex-col justify-center items-center">
-                <div
-                    className={`transition-all ease-in p-2 rounded border border-solid ${
-                        props.selected
-                            ? "bg-blue-500 border-blue-400"
-                            : "border-slate-300"
-                    }`}
-                ></div>
-            </div>
-            <div
-                className={`${
-                    props.selected ? "font-bold" : "text-slate-500"
-                } transition-all ease-in`}
-            >
-                {props.name}
-            </div>
-        </div>
-    );
+}
+
+type StringActions = {
+    type: "update-env" | "update-tag" | "update-name" | "update-template";
+    payload: string;
 };
 
-const CheckList = (props: {
-    schema: {
-        id: number;
-        name: string;
-    };
-    selected: number[];
-    updateSelected: Dispatch<SetStateAction<number[]>>;
-}) => {
-    const [nodes, setNodes] = useState<BasicInfo[]>([]);
+interface UpdateSchemaAction {
+    type: "update-schema";
+    payload: BasicInfo;
+}
 
-    const handleAddToSelected = (id: number) =>
-        props.updateSelected((ps) => {
-            if (ps.includes(id)) {
-                const newState: number[] = [];
-                ps.forEach((_) => _ !== id && newState.push(_));
-                return newState;
+interface UpdateStepsAction {
+    type: "update-steps";
+    payload: number[];
+}
+
+const reducer = (
+    state: State,
+    action:
+        | StringActions
+        | UpdateSchemaAction
+        | UpdateStepsAction
+        | { type: "reset" }
+): State => {
+    switch (action.type) {
+        case "update-name":
+            return { ...state, name: action.payload };
+        case "update-env":
+            return { ...state, environment: action.payload };
+        case "update-template":
+            return { ...state, template: action.payload };
+        case "update-tag":
+            return { ...state, tag: action.payload };
+        case "update-schema":
+            return { ...state, schema: action.payload };
+        default:
+            throw Error("");
+    }
+};
+
+interface Props {
+    learningObjective: LearningObjective;
+    update: (param: LearningObjective) => void;
+    projectId: number;
+}
+
+const EditLearningObjectiveForm: React.FC<Props> = (props) => {
+    const [state, dispatch] = useReducer(reducer, {
+        schema: {
+            name: props.learningObjective.schema.name,
+            id: props.learningObjective.schema.id,
+        },
+        template: props.learningObjective.template,
+        environment: props.learningObjective.environment,
+        tag: props.learningObjective.tag,
+        name: props.learningObjective.name,
+    });
+    const [schemaOptions, setSchemaOptions] = useState<BasicInfo[]>([]);
+    const [schemaChange, setSchemaChange] = useState(false);
+    const [editSchema, setEditSchema] = useState(false);
+
+    useEffect(() => {
+        API.SCHEMAS.GET_ALL_MINI().then((res) => res && setSchemaOptions(res));
+    }, []);
+
+    useEffect(() => {
+        if (state.schema.id !== props.learningObjective.schema.id)
+            return setSchemaChange(true);
+        setSchemaChange(false);
+    }, [state, props]);
+
+    const handleSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
+        e.preventDefault();
+        API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.EDIT(
+            props.learningObjective.id,
+            {
+                name: state.name,
+                tag: state.tag,
+                environment: state.environment,
+                template: state.template,
+                schemaId: state.schema.id,
+                steps: [],
             }
-            return [...ps, id];
-        });
-
-    useEffect(() => {
-        API.SCHEMAS.NODES.GET_ALL_MINI(props.schema.id).then(
-            (res) => res && setNodes(res)
-        );
-    }, [props.schema, setNodes]);
-
-    return (
-        <div className="flex flex-col gap-1">
-            <h3>
-                <span className="font-bold">{props.schema.name}</span> Nodes:
-            </h3>
-            <div className="py-1 border border-solid border-slate-200 rounded-lg">
-                {nodes.map((n) => (
-                    <CheckBox
-                        id={n.id}
-                        key={n.id}
-                        name={n.name}
-                        selected={props.selected.includes(n.id)}
-                        onClick={handleAddToSelected}
-                    />
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const RadioBox = (props: {
-    id: number;
-    name: string;
-    selected: boolean;
-    onClick: () => void;
-}) => {
-    return (
-        <div
-            className="flex gap-4 px-4 py-2 hover:bg-slate-100 select-none"
-            onClick={props.onClick}
-        >
-            <div className="flex flex-col justify-center items-center">
-                <div
-                    className={`transition-all ease-in p-2 rounded-xl border border-solid ${
-                        props.selected
-                            ? "bg-blue-500 border-blue-400"
-                            : "border-slate-300"
-                    }`}
-                ></div>
-            </div>
-            <div
-                className={`${
-                    props.selected ? "font-bold" : "text-slate-500"
-                } transition-all ease-in`}
-            >
-                {props.name}
-            </div>
-        </div>
-    );
-};
-
-const RadioList = ({
-    nodes,
-    updateState,
-}: {
-    nodes: number[];
-    updateState: (values: number[]) => void;
-}) => {
-    const [selectedValues, setSelectedValues] = useState<
-        { nodeId: number; stepId: number }[]
-    >([]);
-    const [nodesWithSteps, setNodesWithSteps] = useState<
-        {
-            id: number;
-            name: string;
-            steps: BasicInfo[];
-        }[]
-    >([]);
-
-    const addValues = (value: { nodeId: number; stepId: number }) => {
-        setSelectedValues((ps) => {
-            if (!ps.find((_) => _.nodeId === value.nodeId))
-                return [...ps, value];
-
-            const newState: { nodeId: number; stepId: number }[] = [];
-            ps.forEach((_) =>
-                _.nodeId !== value.nodeId
-                    ? newState.push(_)
-                    : newState.push(value)
-            );
-            return newState;
+        ).then((res) => {
+            if (res) props.update(res);
         });
     };
 
-    useEffect(() => {
-        updateState(selectedValues.map((_) => _.stepId));
-    }, [selectedValues, updateState]);
-
-    useEffect(() => {
-        API.SCHEMAS.NODES.STEPS.GET_MULTIPLE(nodes).then(
-            (res) => res && setNodesWithSteps(res)
+    if (editSchema)
+        return (
+            <EditLoSchemaForm
+                back={() => setEditSchema(false)}
+                schemaId={state.schema.id}
+				state={state}
+				update={props.update}
+				loId={props.learningObjective.id}
+            />
         );
-    }, [nodes]);
 
     return (
-        <div className="flex flex-col gap-4">
-            {nodesWithSteps.map((n) => (
-                <div
-                    key={n.id}
-                    className="py-1 border border-solid border-slate-200 rounded-lg"
-                >
-                    <h3 className="px-2">
-                        <span className="font-bold">{n.name}</span> Steps:
-                    </h3>
-                    {n.steps.map((s) => {
-                        return (
-                            <RadioBox
-                                id={s.id}
-                                key={s.id}
-                                name={s.name}
-                                selected={
-                                    !!selectedValues.find(
-                                        (_) => _.stepId === s.id
-                                    )
-                                }
-                                onClick={() =>
-                                    addValues({ nodeId: n.id, stepId: s.id })
+        <div className="z-30 fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center bg-black/30">
+            <div className="rounded-md bg-white border border-solid border-slate-300">
+                <h2 className="font-bold text-lg px-8 py-4 border-b border-solid border-slate-300">
+                    Edit Learning Objective
+                </h2>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+                    <div className="px-8 pt-2 pb-1 w-96">
+                        <label>
+                            <div className="pl-2 text-sm">Name:</div>
+                            <input
+                                type="text"
+                                value={state.name}
+                                className="border border-solid border-slate-300 w-full px-3 py-2 rounded-lg text-sm mt-1"
+                                onChange={(e) =>
+                                    dispatch({
+                                        type: "update-name",
+                                        payload: e.target.value,
+                                    })
                                 }
                             />
-                        );
-                    })}
-                </div>
-            ))}
-        </div>
-    );
-};
-
-const EditLearningObjective = (
-    props: LearningObjective & { updateLo: (params: LearningObjective) => void }
-) => {
-    const router = useRouter();
-    const [submittable, setSubmittable] = useState(false);
-    const [name, setName] = useState(props.name);
-    const [tag, setTag] = useState(props.tag);
-    const [template, setTemplate] = useState(props.template);
-    const [environment, setEnvironment] = useState(props.environment);
-    const [schema, setSchema] = useState<BasicInfo>(props.schema);
-    const [schemas, setSchemas] = useState<BasicInfo[]>([]);
-    const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
-    const [selectedNodes, setSelectedNodes] = useState<number[]>([]);
-    const [selectedSteps, setSelectedSteps] = useState<number[]>([]);
-
-    useEffect(() => {
-        API.SCHEMAS.GET_ALL_MINI()
-            .then((res) => res && setSchemas(res))
-            .catch((err) => console.error(err));
-    }, [setSchemas]);
-
-    useEffect(() => {
-        switch (currentStep) {
-            case 1:
-                setSelectedNodes([]);
-                break;
-            case 2:
-                setSelectedSteps([]);
-        }
-    }, [currentStep]);
-
-    useEffect(() => {
-        switch (currentStep) {
-            case 1:
-                if (name !== "" && !submittable) {
-                    setSubmittable(true);
-                    break;
-                }
-                name === "" && submittable && setSubmittable(false);
-                break;
-            case 2:
-                if (selectedNodes.length !== 0 && !submittable) {
-                    setSubmittable(true);
-                    break;
-                }
-                selectedNodes.length === 0 &&
-                    submittable &&
-                    setSubmittable(false);
-                break;
-            case 3:
-                if (
-                    selectedSteps.length === selectedNodes.length &&
-                    !submittable
-                ) {
-                    setSubmittable(true);
-                    break;
-                }
-                selectedSteps.length !== selectedNodes.length &&
-                    submittable &&
-                    setSubmittable(false);
-        }
-    }, [
-        currentStep,
-        name,
-        submittable,
-        setSubmittable,
-        selectedNodes,
-        selectedSteps,
-    ]);
-
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if (currentStep === 2) return setCurrentStep(3);
-        if (currentStep === 1 && schema.id !== props.schema.id)
-            return setCurrentStep(2);
-        if (submittable)
-            API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.EDIT(props.id, {
-                schemaId: schema.id,
-                template,
-                environment,
-                name,
-                tag,
-                steps: selectedSteps,
-            }).then((lo) => lo && props.updateLo(lo));
-    };
-
-    const handleGotoPreviousStep = () => {
-        if (currentStep === 2) return setCurrentStep(1);
-        else if (currentStep === 3) return setCurrentStep(2);
-    };
-
-    return (
-        <Backdrop mainRoute={`/projects/${router.query.projectId}`}>
-            <div className="bg-white p-8 rounded-lg max-h-[90vh] w-96 flex flex-col gap-4 overflow-y-scroll">
-                <h3 className="text-xl">
-                    Editing <span className="font-bold">{props.name}</span>
-                </h3>
-                <form onSubmit={handleSubmit} className="gap-4 flex flex-col">
-                    <div className="flex flex-col gap-2">
-                        {currentStep === 1 ? (
-                            <>
-                                <FormField
-                                    label="Name"
-                                    onChange={setName}
-                                    value={name}
-                                />
-                                <div>
-                                    <div className="text-sm">Schema:</div>
-                                    <CustomizedCombobox
-                                        value={schema}
-                                        onChange={(e) => setSchema(e)}
-                                        options={schemas}
-                                    />
-                                </div>
-                                <FormField
-                                    label="Tag"
-                                    onChange={setTag}
-                                    value={tag}
-                                />
-                                <FormField
-                                    label="Template"
-                                    onChange={setTemplate}
-                                    value={template}
-                                />
-                                <FormField
-                                    label="Environment"
-                                    onChange={setEnvironment}
-                                    value={environment}
-                                />
-                            </>
-                        ) : currentStep === 2 ? (
-                            <>
-                                <CheckList
-                                    selected={selectedNodes}
-                                    updateSelected={setSelectedNodes}
-                                    schema={schema}
-                                />
-                            </>
-                        ) : (
-                            <>
-                                <RadioList
-                                    nodes={selectedNodes}
-                                    updateState={setSelectedSteps}
-                                />
-                            </>
-                        )}
+                        </label>
                     </div>
-                    <div className="flex flex-col gap-2">
-                        {currentStep !== 1 && (
+                    <div className="px-8 py-1 w-96">
+                        <div className="pl-2 text-sm">Schema:</div>
+                        <CustomizedCombobox
+                            value={state.schema}
+                            onChange={(e) =>
+                                dispatch({ type: "update-schema", payload: e })
+                            }
+                            options={schemaOptions}
+                        />
+                    </div>
+                    <div className="px-8 py-1 w-96">
+                        <label>
+                            <div className="pl-2 text-sm">Tag:</div>
+                            <input
+                                type="text"
+                                value={state.tag}
+                                className="border border-solid border-slate-300 w-full px-3 py-2 rounded-lg text-sm mt-1"
+                                onChange={(e) =>
+                                    dispatch({
+                                        type: "update-tag",
+                                        payload: e.target.value,
+                                    })
+                                }
+                            />
+                        </label>
+                    </div>
+                    <div className="px-8 py-1 w-96">
+                        <label>
+                            <div className="pl-2 text-sm">Template:</div>
+                            <input
+                                type="text"
+                                value={state.template}
+                                className="border border-solid border-slate-300 w-full px-3 py-2 rounded-lg text-sm mt-1"
+                                onChange={(e) =>
+                                    dispatch({
+                                        type: "update-template",
+                                        payload: e.target.value,
+                                    })
+                                }
+                            />
+                        </label>
+                    </div>
+                    <div className="px-8 py-1 w-96">
+                        <label>
+                            <div className="pl-2 text-sm">Environment:</div>
+                            <input
+                                type="text"
+                                value={state.environment}
+                                className="border border-solid border-slate-300 w-full px-3 py-2 rounded-lg text-sm mt-1"
+                                onChange={(e) =>
+                                    dispatch({
+                                        type: "update-env",
+                                        payload: e.target.value,
+                                    })
+                                }
+                            />
+                        </label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 px-8 pt-2 pb-4">
+                        <Link href={`/projects/${props.projectId}`}>
                             <button
-                                onClick={handleGotoPreviousStep}
+                                className="w-full py-2 bg-black text-white border-2 border-solid border-white/30"
                                 type="button"
-                                className={`border border-slate-700 border-solid text-center bg-white rounded-lg transition-all ease-in opacity-90 hover:opacity-100 w-full py-2 text-slate-800`}
                             >
-                                Previous
+                                Cancel
+                            </button>
+                        </Link>
+                        {schemaChange ? (
+                            <button
+                                type="button"
+                                className="bg-blue-500 border-2 border-solid border-blue-300 py-2 text-white"
+                                onClick={() => setEditSchema(true)}
+                            >
+                                Next
+                            </button>
+                        ) : (
+                            <button
+                                type="submit"
+                                className="bg-blue-500 border-2 border-solid border-blue-300 py-2 text-white"
+                            >
+                                Save
                             </button>
                         )}
-                        <input
-                            type="submit"
-                            value={
-                                props.schema.id !== schema.id &&
-                                currentStep !== 3
-                                    ? "Next"
-                                    : "Save"
-                            }
-                            className={`text-center ${
-                                submittable
-                                    ? "cursor-pointer bg-blue-500"
-                                    : "bg-slate-300"
-                            } rounded-lg transition-all ease-in opacity-90 hover:opacity-100 w-full py-2 text-white`}
-                        />
                     </div>
                 </form>
             </div>
-        </Backdrop>
+        </div>
     );
 };
 
-export default EditLearningObjective;
+export default EditLearningObjectiveForm;

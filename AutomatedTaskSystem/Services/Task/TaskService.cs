@@ -2452,7 +2452,7 @@ public class TaskService : ITaskService
         if (comment.Child is not null)
             return await DeleteComment(taskId, comment.Child.Id);
 
-		comment.Archived = true;
+        comment.Archived = true;
 
         var newTaskAct = new TaskActivity
         {
@@ -2481,8 +2481,24 @@ public class TaskService : ITaskService
                 Id = comment.Id,
                 User = new BasicInfoDto { Id = comment.UserId, Name = comment.User.Name },
                 Timestamp = comment.Timestamp,
-				IsDeleted = true
+                IsDeleted = true
             }
         };
+    }
+
+    public async Task<ActionResult<BaseResponseService>> CreateTaskFromPoint(Step step)
+    {
+        var foundTask = await _context.Tasks
+            .Where(t => t.StepId == step.Id && !t.Archived)
+            .FirstOrDefaultAsync();
+
+		if (foundTask is not null)
+		{
+		    foundTask.Status = TaskStatusEnum.Backlog;
+		    foundTask.Pause = false;
+		    foundTask.Flagged = false;
+		}
+
+        throw new NotImplementedException();
     }
 }

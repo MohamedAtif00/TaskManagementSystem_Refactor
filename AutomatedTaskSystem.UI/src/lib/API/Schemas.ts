@@ -134,6 +134,16 @@ const SCHEMAS = {
             return false;
         }
     },
+    GET_POINT: async (id: number) => {
+        try {
+            const res = await fetch(`${url}/schemas/${id}/points`);
+            const data: ResponseService<NodePoint[]> = await res.json();
+            return data;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
     GET_ALL: async () => {
         try {
             const res = await fetch(`${url}/schemas`);

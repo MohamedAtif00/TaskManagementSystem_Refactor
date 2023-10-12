@@ -1,5 +1,4 @@
 import { ISummary } from "../../pages/summaries/[projectId]";
-import authService from "../Auth";
 import { BasicInfo, url } from "./";
 import REPORTS from "./Reports";
 
@@ -363,34 +362,6 @@ const PROJECTS = {
                 }
             },
             LEARNING_OBJECTIVES: {
-                COMMENT: async (loId: number, comment: string) => {
-                    try {
-                        const auth = authService.authHeader();
-                        if (!auth) {
-                            console.error("Unathorized");
-                            return false;
-                        }
-                        const res = await fetch(
-                            `${url}/learning-objectives/${loId}/comment`,
-                            {
-                                method: "POST",
-
-                                headers: {
-                                    "Content-Type": "application/json",
-                                    ...auth,
-                                },
-                                body: JSON.stringify({
-                                    comment,
-                                }),
-                            }
-                        );
-                        const data = await res.json();
-                        return data;
-                    } catch (error) {
-                        console.error(error);
-                        return false;
-                    }
-                },
                 CREATE: async ({
                     lessonId,
                     name,

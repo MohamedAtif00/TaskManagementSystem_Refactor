@@ -91,7 +91,7 @@ interface ProjectDetails {
     name: string;
     description: string;
     units: Unit[];
-    status: string;
+    status: number;
 }
 
 type CommentInfo = {

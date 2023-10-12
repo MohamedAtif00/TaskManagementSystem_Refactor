@@ -1,5 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.Common;
+using AutomatedTaskSystem.Dtos.Schema;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.SchemaTypesModel;
@@ -372,6 +374,79 @@ public class SchemaService : ISchemaService
             },
             Error = false,
             Message = "Schema found"
+        };
+    }
+
+    public async Task<ActionResult<ResponseService<List<GetNodePointDto>>>> GetSchemaPoints(int id)
+    {
+
+        var schema = await _context.Schemas
+            .Where(s => s.Id == id && !s.Archived)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Previous)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Next)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Steps)
+            .ThenInclude(s => s.TaskBank)
+            .ThenInclude(s => s.Group)
+            .FirstOrDefaultAsync();
+
+        if (schema is null)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Schema is not active" }
+            );
+
+        var nodesRes = new List<GetNodePointDto> { };
+
+        var nodesAhead = (
+            from node in schema.Nodes
+            where !node.Archived
+            orderby node.Order
+            select node
+        ).ToList();
+
+        foreach (var node in nodesAhead)
+        {
+            nodesRes.Add(
+                new GetNodePointDto
+                {
+                    PreviousNodes = node.Previous
+                        .Where(n => !n.Archived)
+                        .Select(s => new BasicInfoDto { Id = s.Id, Name = s.Name })
+                        .ToList(),
+                    NextNodes = node.Next
+                        .Where(n => !n.Archived)
+                        .Select(s => new BasicInfoDto { Id = s.Id, Name = s.Name })
+                        .ToList(),
+                    Id = node.Id,
+                    Name = node.Name,
+                    Order = node.Order,
+                    Steps = node.Steps
+                        .Where(s => !s.Archived)
+                        .OrderBy(s => s.Order)
+                        .Select(s =>
+                        {
+                            return new GetStepPointDto
+                            {
+                                Id = s.Id,
+                                Name = s.TaskBank.Name,
+                                Group = new BasicInfoDto
+                                {
+                                    Name = s.TaskBank.Group.Name,
+                                    Id = s.TaskBank.Group.Id
+                                },
+                            };
+                        })
+                        .ToList(),
+                }
+            );
+        }
+
+        return new ResponseService<List<GetNodePointDto>>
+        {
+            Data = nodesRes,
+            Message = "List of All Nodes"
         };
     }
 

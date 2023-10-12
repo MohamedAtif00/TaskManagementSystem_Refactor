@@ -1,4 +1,3 @@
-using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.TaskPriority;
@@ -49,4 +48,5 @@ public interface ITaskService
         int taskId,
         int commentId
     );
+    Task<ActionResult<BaseResponseService>> CreateTaskFromPoint(Step step);
 }

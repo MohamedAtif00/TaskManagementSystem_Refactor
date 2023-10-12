@@ -18,8 +18,6 @@ const RemoveStep = () => {
         isSafeToDelete: boolean;
     }>();
 
-    console.log(step);
-
     useEffect(() => {
         if (query.form === "delete-step" && query.id) {
             API.SCHEMAS.NODES.STEPS.DELETE_CHECK(query.id).then((res) => {

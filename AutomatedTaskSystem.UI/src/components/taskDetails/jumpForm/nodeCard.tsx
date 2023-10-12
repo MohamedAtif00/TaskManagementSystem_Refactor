@@ -48,7 +48,7 @@ const NodeCard: React.FC<Props> = ({
                 onMouseEnter={() => onHover(id)}
                 onMouseLeave={onLeave}
             >
-                <div className="px-2 h-8 flex items-center justify-center">
+                <div className="px-2 h-8 flex items-center justify-center whitespace-nowrap">
                     {name}
                 </div>
             </div>
