@@ -44,9 +44,10 @@ public interface ITaskService
         int commentId,
         string content
     );
-    Task<ActionResult<ResponseService<TaskCommentDto>>> DeleteComment(
-        int taskId,
-        int commentId
+    Task<ActionResult<ResponseService<TaskCommentDto>>> DeleteComment(int taskId, int commentId);
+    Task<BaseResponseService> CreateProcess(
+        List<int> options,
+        int schemaId,
+        int loId
     );
-    Task<ActionResult<BaseResponseService>> CreateTaskFromPoint(Step step);
 }

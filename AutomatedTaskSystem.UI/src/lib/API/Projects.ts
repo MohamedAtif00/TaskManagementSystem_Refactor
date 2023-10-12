@@ -1,4 +1,5 @@
 import { ISummary } from "../../pages/summaries/[projectId]";
+import authService from "../Auth";
 import { BasicInfo, url } from "./";
 import REPORTS from "./Reports";
 
@@ -413,11 +414,13 @@ const PROJECTS = {
                     }
                 ) => {
                     try {
+                        const authHeader = authService.authHeader();
                         const res = await fetch(
                             `${url}/learning-objectives/${id}`,
                             {
                                 method: "PATCH",
                                 headers: {
+                                    ...authHeader,
                                     "Content-Type": "application/json",
                                 },
                                 body: JSON.stringify(edit),

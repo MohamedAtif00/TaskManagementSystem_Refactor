@@ -2486,19 +2486,195 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<ActionResult<BaseResponseService>> CreateTaskFromPoint(Step step)
+    public async Task<BaseResponseService> CreateProcess(List<int> options, int schemaId, int loId)
     {
-        var foundTask = await _context.Tasks
-            .Where(t => t.StepId == step.Id && !t.Archived)
+        var user = await _authService.GetAuthedUser();
+        if (user is null || user.Role != UserRoleEnum.ProjectManger)
+            return new BaseResponseService { Error = true, Message = "Invalid auth" };
+;
+        if (options.Count == 0)
+            return new BaseResponseService { Error = true, Message = "Please provide Steps" };
+
+        var lo = await _context.LearningObjectives
+            .Where(lo => lo.Id == loId && !lo.Archived)
             .FirstOrDefaultAsync();
 
-		if (foundTask is not null)
-		{
-		    foundTask.Status = TaskStatusEnum.Backlog;
-		    foundTask.Pause = false;
-		    foundTask.Flagged = false;
-		}
+        if (lo is null)
+            return new BaseResponseService { Error = true, Message = "Lo is not found" };
 
-        throw new NotImplementedException();
+        var schema = await _context.Schemas
+            .Where(s => s.Id == schemaId && !s.Archived)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Steps)
+            .ThenInclude(s => s.TaskBank)
+            .ThenInclude(tb => tb.Group)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Previous)
+            .FirstOrDefaultAsync();
+
+        if (schema is null)
+            return new BaseResponseService { Error = true, Message = "Please provide Steps" };
+
+        var selectedSteps = new List<Step> { };
+
+        foreach (var node in schema.Nodes)
+            if (!node.Archived)
+                foreach (var step in node.Steps)
+                {
+                    if (options.Contains(step.Id))
+                    {
+                        if (step.Archived)
+                            return new BaseResponseService
+                            {
+                                Error = true,
+                                Message = "Steps not found"
+                            };
+                        selectedSteps.Add(step);
+                    }
+                }
+
+        if (selectedSteps.Count != options.Count)
+            return new BaseResponseService { Error = true, Message = "Steps not found" };
+
+        var nodes = schema.Nodes
+            .Where(n => !n.Archived && selectedSteps.Any(s => s.NodeId == n.Id))
+            .ToList();
+
+        if (nodes.Count() != options.Count || !nodes.All(n => nodes.First().SchemaId == n.SchemaId))
+            return new BaseResponseService { Error = true, Message = "Invalid Nodes Selected" };
+
+        List<NodeWithRevDepth> depths = new List<NodeWithRevDepth> { };
+        foreach (var node in nodes)
+            depths.Add(
+                new NodeWithRevDepth
+                {
+                    ReversedDepth = GetReversedNodeDepth(node, schema),
+                    Node = node
+                }
+            );
+
+        var stepsToCreate = new Stack<Step> { };
+        var nodesToHandle = new Stack<Node> { };
+
+        depths.Sort((a, b) => b.ReversedDepth - a.ReversedDepth);
+
+        depths.ForEach(d => nodesToHandle.Push(d.Node));
+
+        while (nodesToHandle.Count > 0)
+        {
+            var node = nodesToHandle.Pop();
+            if (selectedSteps.Any(s => s.NodeId == node.Id))
+            {
+                var mainStep = selectedSteps.Where(o => o.NodeId == node.Id).First();
+                foreach (var step in node.Steps)
+                {
+                    if (
+                        step.Archived
+                        || step.Order > mainStep.Order
+                        || stepsToCreate.Any(s => s.Id == step.Id)
+                    )
+                        continue;
+                    stepsToCreate.Push(step);
+                }
+                foreach (var n in node.Previous)
+                {
+                    if (nodesToHandle.Any(_ => _.Id == n.Id))
+                        continue;
+                    var foundNode = schema.Nodes.Where(nd => nd.Id == n.Id && !nd.Archived).First();
+                    nodesToHandle.Push(foundNode);
+                }
+                continue;
+            }
+            foreach (var step in node.Steps)
+            {
+                if (step.Archived || stepsToCreate.Any(s => s.Id == step.Id))
+                    continue;
+                stepsToCreate.Push(step);
+            }
+            foreach (var n in node.Previous)
+            {
+                if (nodesToHandle.Any(_ => _.Id == n.Id))
+                    continue;
+                var foundNode = schema.Nodes.Where(nd => nd.Id == n.Id && !nd.Archived).First();
+                nodesToHandle.Push(foundNode);
+            }
+        }
+
+        while (stepsToCreate.Count > 0)
+        {
+            var step = stepsToCreate.Pop();
+
+            var check = selectedSteps.Any(o => o.Id == step.Id);
+
+            var newTask = new Models.Task
+            {
+                Priority = step.Priority,
+                Step = step,
+                StepId = step.Id,
+                LearningObjective = lo,
+                LearningObjectiveId = lo.Id,
+                TL = step.TaskBank.TL,
+                From = null,
+                FromId = null,
+                Name = step.TaskBank.Name,
+                User = null,
+                UserId = null,
+                Group = step.TaskBank.Group,
+                GroupId = step.TaskBank.GroupId,
+                Pause = false,
+                Status = check
+                    ? (step.TaskBank.TL ? TaskStatusEnum.ToDo : TaskStatusEnum.Backlog)
+                    : TaskStatusEnum.Done,
+                Flagged = false,
+                Archived = false,
+                IsReview = step.TaskBank.Type == TaskBankTypeEnum.Review,
+                Attention = false,
+                CreatedAt = DateTime.Now,
+                RollbackCount = 0,
+                IsRollback = false
+            };
+
+            var newTaskAct = new TaskActivity
+            {
+                Task = newTask,
+                TaskId = newTask.Id,
+                Type = TaskActivityTypeEnum.Created,
+                TimeStamp = DateTime.Now,
+                ActorOne = user,
+                ActorOneId = user.Id,
+                ActorTwo = null,
+                ActorTwoId = null,
+                TaskSecondary = null,
+                TaskSecondaryId = null,
+                AdditionalInfo = null
+            };
+
+            if (!check)
+            {
+                var newTaskAct2 = new TaskActivity
+                {
+                    Task = newTask,
+                    TaskId = newTask.Id,
+                    Type = TaskActivityTypeEnum.Jump,
+                    TimeStamp = DateTime.Now,
+                    ActorOne = user,
+                    ActorOneId = user.Id,
+                    ActorTwo = null,
+                    ActorTwoId = null,
+                    TaskSecondary = null,
+                    TaskSecondaryId = null,
+                    AdditionalInfo = null
+                };
+                _context.TaskActivities.Add(newTaskAct2);
+            }
+
+            _context.TaskActivities.Add(newTaskAct);
+
+            _context.Tasks.Add(newTask);
+        }
+
+        await _context.SaveChangesAsync();
+
+        return new BaseResponseService { Message = "Process Created", Error = false };
     }
 }

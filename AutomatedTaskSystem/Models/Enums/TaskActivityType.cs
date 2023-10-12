@@ -22,5 +22,6 @@ public enum TaskActivityTypeEnum
 	ReactivateJump,
 	Reactivated,
 	EditComment,
-	DeleteComment
+	DeleteComment,
+	ProcessChangeCreate
 }
