@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AutomatedTaskSystem.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20231012172129_AddTaskRollbackRecords")]
+    [Migration("20231012175500_AddTaskRollbackRecords")]
     partial class AddTaskRollbackRecords
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -320,7 +320,7 @@ namespace AutomatedTaskSystem.Migrations
                     b.Property<string>("Note")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("RollbackId")
+                    b.Property<int>("RollbackId")
                         .HasColumnType("int");
 
                     b.Property<int>("StepId")
@@ -968,15 +968,19 @@ namespace AutomatedTaskSystem.Migrations
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.RollbackIssue", b =>
                 {
-                    b.HasOne("AutomatedTaskSystem.Models.Rollback", null)
+                    b.HasOne("AutomatedTaskSystem.Models.Rollback", "Rollback")
                         .WithMany("RollbackIssues")
-                        .HasForeignKey("RollbackId");
+                        .HasForeignKey("RollbackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("AutomatedTaskSystem.Models.Step", "Step")
                         .WithMany()
                         .HasForeignKey("StepId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Rollback");
 
                     b.Navigation("Step");
                 });

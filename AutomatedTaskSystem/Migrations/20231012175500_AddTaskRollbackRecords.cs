@@ -48,9 +48,9 @@ namespace AutomatedTaskSystem.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    RollbackId = table.Column<int>(type: "int", nullable: false),
                     StepId = table.Column<int>(type: "int", nullable: false),
-                    Note = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    RollbackId = table.Column<int>(type: "int", nullable: true)
+                    Note = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -59,7 +59,8 @@ namespace AutomatedTaskSystem.Migrations
                         name: "FK_RollbackIssues_Rollbacks_RollbackId",
                         column: x => x.RollbackId,
                         principalTable: "Rollbacks",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_RollbackIssues_Steps_StepId",
                         column: x => x.StepId,
