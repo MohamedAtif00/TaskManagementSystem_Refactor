@@ -18,15 +18,38 @@ const EditUser = () => {
         null
     );
     const [groups, setGroups] = useState<{ id: number; name: string }[]>([]);
-    const [role, setRole] = useState<{ id: number; name: string } | null>(null);
+    const [role, setRole] = useState<{ id: UserRole; name: string } | null>(
+        null
+    );
 
     useEffect(() => {
         if (query.form === "edit-user" && query.userId) {
             API.RESOURCES.USERS.GET_ONE(query.userId.toString()).then((res) => {
                 if (res && !res.error) {
+                    const { role } = res.data;
                     setName(res.data.name);
                     setGroup(res.data.group);
-                    setRole(res.data.role);
+                    setRole(
+                        role === 0
+                            ? {
+                                  id: role,
+                                  name: "Project Manager",
+                              }
+                            : role === 1
+                            ? {
+                                  id: role,
+                                  name: "Section Head",
+                              }
+                            : role === 2
+                            ? {
+                                  id: role,
+                                  name: "Team Leader",
+                              }
+                            : {
+                                  id: role,
+                                  name: "Member",
+                              }
+                    );
                 }
             });
             return setActive(true);
@@ -53,7 +76,7 @@ const EditUser = () => {
             id: query.userId!.toString(),
             name,
             groupId: group.id,
-            roleId: role.id,
+            role: role.id,
         }).then((res) => {
             if (res && !res.error) {
                 dispatch(edit(res.data));
@@ -96,12 +119,12 @@ const EditUser = () => {
                                 label="Role"
                                 value={role}
                                 options={[
-                                    { id: 1, name: "Project Manager" },
-                                    { id: 2, name: "Section Head" },
-                                    { id: 3, name: "Team Leader" },
-                                    { id: 4, name: "Member" },
+                                    { id: 0, name: "Project Manager" },
+                                    { id: 1, name: "Section Head" },
+                                    { id: 2, name: "Team Leader" },
+                                    { id: 3, name: "Member" },
                                 ]}
-                                handleChange={setRole}
+                                handleChange={setRole as (v: BasicInfo) => void}
                             />
                         </div>
                         <FormConclusion
