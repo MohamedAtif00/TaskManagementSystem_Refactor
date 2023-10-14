@@ -11,4 +11,5 @@ public class Rollback
 	public int UserId { get; set; }
 	public string? Clarification { get; set; }
 	public List<RollbackIssue> RollbackIssues { get; set; } = new List<RollbackIssue>{};
+	public bool Resolved { get; set; } = false;
 }
