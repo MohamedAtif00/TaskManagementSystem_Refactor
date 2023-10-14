@@ -26,14 +26,12 @@ namespace AutomatedTaskSystem.Migrations
                         name: "FK_Rollbacks_Tasks_FromTaskId",
                         column: x => x.FromTaskId,
                         principalTable: "Tasks",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Rollbacks_Tasks_ToTaskId",
                         column: x => x.ToTaskId,
                         principalTable: "Tasks",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Rollbacks_Users_UserId",
                         column: x => x.UserId,
@@ -65,8 +63,7 @@ namespace AutomatedTaskSystem.Migrations
                         name: "FK_RollbackIssues_Steps_StepId",
                         column: x => x.StepId,
                         principalTable: "Steps",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateIndex(

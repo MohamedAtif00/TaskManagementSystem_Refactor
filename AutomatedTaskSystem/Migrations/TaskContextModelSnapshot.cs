@@ -942,13 +942,13 @@ namespace AutomatedTaskSystem.Migrations
                     b.HasOne("AutomatedTaskSystem.Models.Task", "FromTask")
                         .WithMany()
                         .HasForeignKey("FromTaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("AutomatedTaskSystem.Models.Task", "ToTask")
                         .WithMany()
                         .HasForeignKey("ToTaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("AutomatedTaskSystem.Models.User", "User")
@@ -975,7 +975,7 @@ namespace AutomatedTaskSystem.Migrations
                     b.HasOne("AutomatedTaskSystem.Models.Step", "Step")
                         .WithMany()
                         .HasForeignKey("StepId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Rollback");

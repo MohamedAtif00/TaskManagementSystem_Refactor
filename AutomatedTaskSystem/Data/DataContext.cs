@@ -115,6 +115,11 @@ public class DataContext : DbContext
 			);
 
 		modelBuilder.Entity<Project>().Property(p => p.YearId).HasDefaultValue(1);
+
+		modelBuilder.Entity<Rollback>().HasOne(p => p.FromTask).WithMany().OnDelete(DeleteBehavior.NoAction);
+		modelBuilder.Entity<Rollback>().HasOne(p => p.ToTask).WithMany().OnDelete(DeleteBehavior.NoAction);
+
+		modelBuilder.Entity<RollbackIssue>().HasOne(p => p.Step).WithMany().OnDelete(DeleteBehavior.NoAction);
 	}
 
 	public DbSet<Team> Teams => Set<Team>();
