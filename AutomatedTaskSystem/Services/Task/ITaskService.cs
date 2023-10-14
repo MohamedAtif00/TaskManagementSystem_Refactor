@@ -26,7 +26,11 @@ public interface ITaskService
     Task<ActionResult<ResponseService<GetTaskAssignmentDto>>> GetTaskAssignment(int id);
     Task<ActionResult<BaseResponseService>> AssignUser(int id, int uid);
     Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid);
-    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(int taskId, int stepId);
+    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(
+        int taskId,
+        int stepId,
+        List<RollbackLogDto> logs
+    );
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ProceedTask(int taskId);
     Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(int projectId);
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> SkipTask(int id);
@@ -45,9 +49,5 @@ public interface ITaskService
         string content
     );
     Task<ActionResult<ResponseService<TaskCommentDto>>> DeleteComment(int taskId, int commentId);
-    Task<BaseResponseService> CreateProcess(
-        List<int> options,
-        int schemaId,
-        int loId
-    );
+    Task<BaseResponseService> CreateProcess(List<int> options, int schemaId, int loId);
 }

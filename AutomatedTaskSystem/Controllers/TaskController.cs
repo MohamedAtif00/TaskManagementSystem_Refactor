@@ -92,7 +92,7 @@ public class TaskController : ControllerBase
 	public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(
 		int id,
 		Requests.RollbackDTO req
-	) => await _taskService.RollbackTask(taskId: id, stepId: req.StepId);
+	) => await _taskService.RollbackTask(taskId: id, stepId: req.StepId, logs: req.Logs);
 
 	// GET:
 	// Returns list of and steps
