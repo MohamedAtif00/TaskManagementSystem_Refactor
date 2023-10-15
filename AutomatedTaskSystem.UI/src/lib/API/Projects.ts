@@ -363,34 +363,6 @@ const PROJECTS = {
                 }
             },
             LEARNING_OBJECTIVES: {
-                COMMENT: async (loId: number, comment: string) => {
-                    try {
-                        const auth = authService.authHeader();
-                        if (!auth) {
-                            console.error("Unathorized");
-                            return false;
-                        }
-                        const res = await fetch(
-                            `${url}/learning-objectives/${loId}/comment`,
-                            {
-                                method: "POST",
-
-                                headers: {
-                                    "Content-Type": "application/json",
-                                    ...auth,
-                                },
-                                body: JSON.stringify({
-                                    comment,
-                                }),
-                            }
-                        );
-                        const data = await res.json();
-                        return data;
-                    } catch (error) {
-                        console.error(error);
-                        return false;
-                    }
-                },
                 CREATE: async ({
                     lessonId,
                     name,
@@ -442,11 +414,13 @@ const PROJECTS = {
                     }
                 ) => {
                     try {
+                        const authHeader = authService.authHeader();
                         const res = await fetch(
                             `${url}/learning-objectives/${id}`,
                             {
                                 method: "PATCH",
                                 headers: {
+                                    ...authHeader,
                                     "Content-Type": "application/json",
                                 },
                                 body: JSON.stringify(edit),

@@ -17,7 +17,7 @@ interface IUser {
     id: number;
     name: string;
     group: { id: number; name: string };
-    role: { id: number; name: string };
+    role: UserRole;
 }
 
 interface ISchema {
@@ -91,7 +91,7 @@ interface ProjectDetails {
     name: string;
     description: string;
     units: Unit[];
-    status: string;
+    status: number;
 }
 
 type CommentInfo = {
@@ -147,7 +147,10 @@ type TaskActivityType =
     | 14
     | 15
     | 16
-    | 17;
+    | 17
+    | 18
+    | 19
+    | 20;
 type TaskPriority = 0 | 1 | 2 | 3;
 type TaskStatus = 0 | 1 | 2 | 3 | 4;
 type UserRole = 0 | 1 | 2 | 3;

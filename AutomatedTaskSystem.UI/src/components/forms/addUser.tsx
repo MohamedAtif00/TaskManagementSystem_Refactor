@@ -13,7 +13,7 @@ const AddUser = () => {
 	const [submittable, setSubmittable] = useState(false);
 	const [name, setName] = useState("");
 	const [groupId, setGroupId] = useState(0);
-	const [roleId, setRoleId] = useState(0);
+	const [role, setRole] = useState<UserRole>(3);
 	const [active, setActive] = useState(false);
 	const router = useRouter();
 	const dispatch = useAppDispatch();
@@ -31,7 +31,7 @@ const AddUser = () => {
 		if (!_active) {
 			setName("");
 			setGroupId(0);
-			setRoleId(0);
+			setRole(0);
 		}
 	}, [router]);
 
@@ -54,7 +54,7 @@ const AddUser = () => {
 	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
 		if (submittable)
-			API.RESOURCES.USERS.CREATE({ name, groupId, roleId }).then(
+			API.RESOURCES.USERS.CREATE({ name, groupId, role }).then(
 				(res) => {
 					if (res && !res.error) {
 						dispatch(userSlice.add(res.data.user));
@@ -119,24 +119,24 @@ const AddUser = () => {
 									label="Role"
 									options={[
 										{
-											id: 1,
+											id: 0,
 											name: "Project Manager",
 										},
 										{
-											id: 2,
+											id: 1,
 											name: "Section Head",
 										},
 										{
-											id: 3,
+											id: 2,
 											name: "Team Leader",
 										},
 										{
-											id: 4,
+											id: 3,
 											name: "Member",
 										},
 									]}
-									id={roleId}
-									handleChange={setRoleId}
+									id={role}
+									handleChange={setRole as (v: number) => void}
 								/>
 							</div>
 							<div>

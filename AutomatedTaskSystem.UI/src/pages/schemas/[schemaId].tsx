@@ -12,7 +12,7 @@ import NodeItem from "../../components/nodeItem";
 import API from "../../lib/API";
 import { load } from "../../slices/nodesSlice";
 import EditSchema from "../../components/pageComponent/schemas/editSchema";
-import RemoveStep from "../../components/pageComponent/schemas/remoteStep";
+import RemoveStep from "../../components/pageComponent/schemas/removeStep";
 import RemoveNode from "../../components/pageComponent/schemas/removeNode";
 import Head from "next/head";
 import Loader from "../../components/loader";

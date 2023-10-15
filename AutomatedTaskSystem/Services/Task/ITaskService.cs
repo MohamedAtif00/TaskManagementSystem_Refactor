@@ -1,4 +1,3 @@
-using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.TaskPriority;
@@ -36,8 +35,19 @@ public interface ITaskService
         int id,
         List<PutJumpedTaskDto> options
     );
-    Task<ActionResult<ResponseService<Responses.CommentDTO>>> AddComment(int id, string comment);
+    Task<ActionResult<ResponseService<TaskCommentDto>>> AddComment(int id, string comment);
     Task<bool> CreateNext(Models.Task task);
     Task<bool> CreateNext(int taskId);
     Task<bool> CreateNextNode(int nodeId, int loId);
+    Task<ActionResult<ResponseService<TaskCommentDto>>> EditComment(
+        int taskId,
+        int commentId,
+        string content
+    );
+    Task<ActionResult<ResponseService<TaskCommentDto>>> DeleteComment(int taskId, int commentId);
+    Task<BaseResponseService> CreateProcess(
+        List<int> options,
+        int schemaId,
+        int loId
+    );
 }

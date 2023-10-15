@@ -1,4 +1,4 @@
-import { ITask } from "../../components/taskDetails";
+import { IComment, ITask } from "../../components/taskDetails";
 import authService from "../Auth";
 import { BasicInfo, CommonResponse, url } from "./";
 
@@ -76,31 +76,68 @@ const TASKS = {
             return false;
         }
     },
-    COMMENT: async (id: number, content: string) => {
+    ADD_COMMENT: async (id: number, content: string) => {
         try {
             const authHeader = authService.authHeader();
-            const res = await fetch(
-                `${url}/tasks/${id}/comment`,
-                {
-                    method: "POST",
-                    headers: {
-                        ...authHeader,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        comment: content,
-                    }),
-                }
-            );
-            const data: ResponseService<{
-                user: {
-                    id: number;
-                    name: string;
-                };
-                id: number;
-                content: string;
-                timestamp: string;
-            }> = await res.json();
+            const res = await fetch(`${url}/tasks/${id}/comment`, {
+                method: "POST",
+                headers: {
+                    ...authHeader,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    comment: content,
+                }),
+            });
+            const data: ResponseService<IComment> = await res.json();
+            return data;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
+    EDIT_COMMENT: async (
+        taskId: number,
+        commentId: number,
+        content: string
+    ) => {
+        try {
+            const authHeader = authService.authHeader();
+            const res = await fetch(`${url}/tasks/${taskId}/comment`, {
+                method: "PATCH",
+                headers: {
+                    ...authHeader,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    comment: content,
+                    commentId,
+                }),
+            });
+            const data: ResponseService<IComment> = await res.json();
+            return data;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
+    DELETE_COMMENT: async (
+        taskId: number,
+        commentId: number,
+    ) => {
+        try {
+            const authHeader = authService.authHeader();
+            const res = await fetch(`${url}/tasks/${taskId}/comment`, {
+                method: "DELETE",
+                headers: {
+                    ...authHeader,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    commentId,
+                }),
+            });
+            const data: ResponseService<IComment> = await res.json();
             return data;
         } catch (error) {
             console.error(error);
@@ -379,7 +416,10 @@ const TASKS = {
             return false;
         }
     },
-    JUMP_TASK: async (taskId: number, options: {nodeId: number, stepId: number}[]) => {
+    JUMP_TASK: async (
+        taskId: number,
+        options: { nodeId: number; stepId: number }[]
+    ) => {
         try {
             const authHeader = authService.authHeader();
             const res = await fetch(`${url}/tasks/${taskId}/jump`, {

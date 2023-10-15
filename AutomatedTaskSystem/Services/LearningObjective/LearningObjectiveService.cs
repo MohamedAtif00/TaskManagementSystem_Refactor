@@ -47,7 +47,5 @@ public class LearningObjectiveService : ILearningObjectiveService
             Error = false,
             Message = $"List of learning objectives in project of id:{project.Id}"
         };
-
-        throw new NotImplementedException();
     }
 }

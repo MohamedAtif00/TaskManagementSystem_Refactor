@@ -78,7 +78,13 @@ const AddUser = () => {
                     {done ? (
                         <div className="flex flex-col gap-4">
                             <h3>
-                                {done.user.role.name}{" "}
+                                {done.user.role === 0
+                                    ? "Project Manager"
+                                    : done.user.role === 1
+                                    ? "Section Head"
+                                    : done.user.role === 2
+                                    ? "Team Leader"
+                                    : "Member"}{" "}
                                 <span className="font-bold">
                                     {done.user.name}
                                 </span>{" "}

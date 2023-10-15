@@ -117,7 +117,14 @@ const Users = () => {
                                 col0: u.id,
                                 col1: u.name,
                                 col2: u.group.name,
-                                col3: u.role.name,
+                                col3:
+                                    u.role === 0
+                                        ? "Project Manager"
+                                        : u.role === 1
+                                        ? "Section Head"
+                                        : u.role === 2
+                                        ? "Team Leader"
+                                        : "Member",
                             };
                         })}
                         columns={columns}

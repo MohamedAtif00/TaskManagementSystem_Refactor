@@ -14,7 +14,7 @@ interface loUser {
 	id: number;
 	name: string;
 	group: { id: number; name: string };
-	role: { id: number; name: string };
+	role: UserRole;
 }
 
 const List = ({

@@ -2,10 +2,13 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using Microsoft.AspNetCore.Mvc;
 using AutomatedTaskSystem.Services.TaskService;
-using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.TokenService;
-using AutomatedTaskSystem.Models.Enums.TaskStatus;
+using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.TaskActivityType;
+using AutomatedTaskSystem.Services.AuthService;
+using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Models.Enums.UserRole;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -16,15 +19,18 @@ namespace AutomatedTaskSystem.Controllers
         private readonly DataContext _context;
         private readonly ITaskService _taskService;
         private readonly ITokenService _tokenService;
+        private readonly IAuthService _authService;
 
         public LearningObjectiveController(
             DataContext context,
             ITaskService taskService,
-            ITokenService tokenService
+            ITokenService tokenService,
+            IAuthService authService
         )
         {
             _taskService = taskService;
             _tokenService = tokenService;
+            _authService = authService;
             _context = context;
         }
 
@@ -64,8 +70,16 @@ namespace AutomatedTaskSystem.Controllers
             Requests.EditLearningObjectiveDTO req
         )
         {
+            var user = await _authService.GetAuthedUser();
+			if (user is null || user.Role != UserRoleEnum.ProjectManger)
+				return Unauthorized(new BaseResponseService {
+						Error = true,
+						Message = "Unauthorized"
+				});
+
             var lo = await _context.LearningObjectives
                 .Where(lo => lo.Id == id)
+                .Include(lo => lo.Schema)
                 .FirstOrDefaultAsync();
 
             if (lo == null)
@@ -76,59 +90,50 @@ namespace AutomatedTaskSystem.Controllers
 
             if (lo.SchemaId != req.SchemaId)
             {
-                if (req.Steps.Count == 0)
-                    return BadRequest(new Responses.BadRequestsDTO("Please supply steps"));
                 var schema = await _context.Schemas
                     .Where(s => s.Id == req.SchemaId)
                     .FirstOrDefaultAsync();
 
-                if (schema == null)
-                    return NotFound(new Responses.BadRequestsDTO("Schema not Found"));
+                if (schema is null)
+                    return NotFound(new Responses.BadRequestsDTO("Schema not found"));
 
-                lo.Schema = schema;
-                lo.SchemaId = schema.Id;
-
-                var tasks = await _context.Tasks
-                    .Where(t => t.LearningObjectiveId == lo.Id)
+                var loTasks = await _context.Tasks
+                    .Where(t => t.LearningObjectiveId == lo.Id && !t.Archived)
                     .ToListAsync();
 
-                foreach (var task in tasks)
+                foreach (var task in loTasks)
                 {
-                    task.Archived = true;
-                    task.Status = TaskStatusEnum.Done;
-
-                    var newAct = new TaskActivity
+                    var newTaskAct2 = new TaskActivity
                     {
                         Task = task,
                         TaskId = task.Id,
                         Type = TaskActivityTypeEnum.ProcessChange,
-                        ActorOne = null,
-                        ActorOneId = null,
+                        TimeStamp = DateTime.Now,
+                        ActorOne = user,
+                        ActorOneId = user.Id,
                         ActorTwo = null,
                         ActorTwoId = null,
-                        TimeStamp = DateTime.Now,
                         TaskSecondary = null,
                         TaskSecondaryId = null,
                         AdditionalInfo = null
                     };
+                    _context.TaskActivities.Add(newTaskAct2);
 
-                    _context.TaskActivities.Add(newAct);
+					task.Status = TaskStatusEnum.Done;
+					task.Archived = true;
                 }
 
-                // TODO: Fix issue regarding creating previous tasks
-                foreach (var stepId in req.Steps)
-                {
-                    var step = await _context.Steps
-                        .Where(s => s.Id == stepId)
-                        .Include(s => s.TaskBank)
-                        .ThenInclude(tb => tb.Group)
-                        .FirstOrDefaultAsync();
+                var res = await _taskService.CreateProcess(
+                    options: req.Steps,
+                    schemaId: req.SchemaId,
+                    loId: lo.Id
+                );
 
-                    if (step == null)
-                        return NotFound(new Responses.BadRequestsDTO("Step not Found"));
+                if (res.Error)
+                    return BadRequest(res);
 
-                    var newTask = await _taskService.CreateTask(step, lo);
-                }
+                lo.Schema = schema;
+                lo.SchemaId = schema.Id;
             }
             lo.Environment = req.Environment;
             lo.Template = req.Template;

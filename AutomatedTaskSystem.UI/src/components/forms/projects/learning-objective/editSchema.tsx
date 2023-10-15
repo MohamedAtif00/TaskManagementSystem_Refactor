@@ -1,42 +1,54 @@
 import { motion } from "framer-motion";
-import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import API from "../../../lib/API";
-import CrossIcon from "../../../assets/Icons/Cross";
-import Link from "next/link";
 import useMeasure from "react-use-measure";
-import StepCard from "./stepCard";
-import NodeCards from "./selectedNode";
-import { ITask } from "..";
+import NodeCards from "../../../taskDetails/jumpForm/selectedNode";
+import StepCard from "../../../taskDetails/jumpForm/stepCard";
+import API from "../../../../lib/API";
+import Loader from "../../../loader";
 
-interface Props {
-    taskId: number;
-    projectId: number;
-    updateTask: (value: ITask) => void;
+interface State {
+    schema: BasicInfo;
+    template: string;
+    environment: string;
+    tag: string;
+    name: string;
 }
 
-const JumpForm: React.FC<Props> = ({ taskId, projectId, updateTask }) => {
-    const [points, setPoints] = useState<NodeAhead[]>();
-    const router = useRouter();
-    const [selectedNodes, setSelectedNode] = useState<NodeAhead[]>([]);
+interface Props {
+    schemaId: number;
+    back: () => void;
+    state: State;
+	update: (param: LearningObjective) => void
+	loId: number;
+}
+
+const EditLoSchemaForm: React.FC<Props> = ({ schemaId, back, state, update, loId }) => {
+    const [points, setPoints] = useState<NodePoint[]>();
+    const [selectedNodes, setSelectedNode] = useState<NodePoint[]>([]);
     const [selectedSteps, setSelectedSteps] = useState<
         { nodeId: number; stepId: number }[]
     >([]);
     const [ref, { height }] = useMeasure();
 
     useEffect(() => {
-        if (router.query.form === "jump")
-            API.TASKS.GET_JUMP_POINTS(taskId).then((res) => {
-                if (res && !res.error) setPoints(res.data);
-            });
-        else {
-            setPoints(undefined);
-            setSelectedNode([]);
-            setSelectedSteps([]);
-        }
-    }, [taskId, router.query.form]);
+        API.SCHEMAS.GET_POINT(schemaId).then((res) => {
+            res && !res.error && setPoints(res.data);
+        });
+    }, [schemaId]);
 
-    if (router.query.form !== "jump" || !points) return <></>;
+    if (!points)
+        return (
+            <motion.div
+                initial={{
+                    opacity: 0,
+                }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed z-50 top-0 bottom-0 left-0 right-0 backdrop-blur-sm bg-black/5 flex justify-center items-center"
+            >
+                <Loader />
+            </motion.div>
+        );
 
     const handleNodeRemove = (value: number) =>
         setSelectedSteps((ps) => {
@@ -66,18 +78,22 @@ const JumpForm: React.FC<Props> = ({ taskId, projectId, updateTask }) => {
     const handleSubmit = () => {
         selectedSteps.length > 0 &&
             selectedSteps.length === selectedNodes.length &&
-            API.TASKS.JUMP_TASK(taskId, selectedSteps).then((res) => {
-                if (res && !res.error) {
-                    updateTask(res.data);
-                }
-            });
+            API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.EDIT(loId, {
+                name: state.name,
+                steps: selectedSteps.map((s) => s.stepId),
+                schemaId: state.schema.id,
+                tag: state.tag,
+                template: state.template,
+                environment: state.environment,
+            }).then(res => {
+				if (res) {
+					update(res);
+				}
+			});
     };
 
     return (
         <motion.div
-            initial={{
-                opacity: 0,
-            }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed z-50 top-0 bottom-0 left-0 right-0 backdrop-blur-sm bg-black/5 flex justify-center items-center"
@@ -88,26 +104,28 @@ const JumpForm: React.FC<Props> = ({ taskId, projectId, updateTask }) => {
                 className="bg-white shadow border-2 border-neutral-700 border-solid rounded flex flex-col gap-1 max-w-[90%]"
             >
                 <div className="pt-4 flex items-center justify-between px-6 shrink-0">
-                    <div className="font-bold text-lg">Jump Forward</div>
-                    <Link
-                        href={{
-                            pathname: `/tasks/[projectId]`,
-                            query: {
-                                taskId,
-                                projectId,
-                            },
-                        }}
+                    <div className="font-bold text-lg">Select Schema steps</div>
+                    <button
+                        className="px-3 py-1 bg-black text-white border-2 border-solid border-white/30"
+                        onClick={back}
                     >
-                        <button className="p-1 box-content">
-                            <CrossIcon className="stroke-black" />
-                        </button>
-                    </Link>
+                        Back
+                    </button>
                 </div>
                 <div className="px-6 py-4">
                     <div className="overflow-x-auto pb-4">
                         <NodeCards
                             updateSelected={handleNodeSelect}
-                            nodes={points}
+                            nodes={points.map((p) => {
+                                return {
+                                    ...p,
+                                    isComplete: false,
+                                    steps: p.steps.map((s) => ({
+                                        ...s,
+                                        isComplete: false,
+                                    })),
+                                };
+                            })}
                         />
                     </div>
                     <motion.div
@@ -127,13 +145,18 @@ const JumpForm: React.FC<Props> = ({ taskId, projectId, updateTask }) => {
                                         nodeId={s.id}
                                         name={s.name}
                                         key={s.id}
-                                        steps={s.steps}
+                                        steps={s.steps.map((p) => {
+                                            return {
+                                                ...p,
+                                                isComplete: false,
+                                            };
+                                        })}
                                     />
                                 );
                             })}
                         </div>
                         {selectedNodes.length > 0 && (
-                            <div className="flex justify-end">
+                            <div className="flex justify-end gap-4">
                                 <button
                                     onClick={handleSubmit}
                                     className="px-3 py-1 bg-blue-500 text-white rounded-md border-2 border-solid border-blue-300"
@@ -149,4 +172,4 @@ const JumpForm: React.FC<Props> = ({ taskId, projectId, updateTask }) => {
     );
 };
 
-export default JumpForm;
+export default EditLoSchemaForm;

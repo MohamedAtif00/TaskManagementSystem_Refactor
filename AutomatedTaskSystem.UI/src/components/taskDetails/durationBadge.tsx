@@ -17,7 +17,7 @@ const DurationBadge: React.FC<Props> = (props) => {
                 <div>Duration:</div>
                 <div className="flex gap-2">
                     {days > 0 ? `${days} Days ` : ""}
-                    {hours > 0 || days > 0 ? `${hours} Hours ` : ""}
+                    {hours % 24 > 0 || days > 0 ? `${hours % 24} Hours ` : ""}
                     {minutes % 60 >= 10 ? "" : "0"}
                     {minutes % 60} Minutes
                 </div>

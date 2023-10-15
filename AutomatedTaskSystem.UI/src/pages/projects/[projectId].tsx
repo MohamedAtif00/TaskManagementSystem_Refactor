@@ -9,13 +9,13 @@ import AddLearningObjective from "../../components/forms/projects/addLearningObj
 import { useAppSelector } from "../../app/hooks";
 import ProjectAssign from "../../components/forms/projects/projectAssign";
 import ProjectUnassign from "../../components/forms/projects/projectUnassign";
-import EditLearningObjective from "../../components/forms/projects/editLearningObjective";
 import Link from "next/link";
 import ProjectIcon from "../../assets/Icons/Project";
 import EditUnit from "../../components/pageComponent/projects/editUnit";
 import EditLesson from "../../components/pageComponent/projects/editLesson";
 import Head from "next/head";
 import Loader from "../../components/loader";
+import EditLearningObjectiveForm from "../../components/forms/projects/editLearningObjective";
 
 const LearningObjective = (
     props: LearningObjective & {
@@ -359,6 +359,7 @@ const Project = () => {
         lesson: {
             add: (name: string) => {
                 const unitId = router.query.unitId;
+                router.back();
                 if (unitId) {
                     const id = parseInt(unitId.toString());
                     !isNaN(id) &&
@@ -451,18 +452,18 @@ const Project = () => {
                         template,
                     }).then((res) => {
                         if (res) {
-                            setProject((ps) => {
-                                const units: Unit[] = [];
-                                ps!.units.forEach((u) => {
-                                    u.lessons.forEach((l) => {
-                                        if (l.id == id) {
-                                            l.learningObjectives.push(res);
-                                        }
-                                    });
-                                    units.push(u);
-                                });
-                                return { ...ps!, units };
-                            });
+                            // setProject((ps) => {
+                            //     const units: Unit[] = [];
+                            //     ps!.units.forEach((u) => {
+                            //         u.lessons.forEach((l) => {
+                            //             if (l.id == id) {
+                            //                 l.learningObjectives.push(res);
+                            //             }
+                            //         });
+                            //         units.push(u);
+                            //     });
+                            //     return { ...ps!, units };
+                            // });
                             router.back();
                         }
                     });
@@ -623,7 +624,15 @@ const Project = () => {
                     <div className="text-2xl font-bold text-slate-800">
                         {project.name}
                     </div>
-                    <div className="text-slate-500">{project.status}</div>
+                    <div className="text-slate-500">
+                        {project.status === 0
+                            ? "Open"
+                            : project.status === 1
+                            ? "Closed"
+                            : project.status === 2
+                            ? "Hold"
+                            : "Reopened"}
+                    </div>
                 </div>
                 <div className="flex gap-2">
                     <QueryButton
@@ -692,9 +701,10 @@ const Project = () => {
                 <ProjectAssign handler={handlers.project.assign} />
                 <ProjectUnassign handler={handlers.project.unassign} />
                 {activeLO && (
-                    <EditLearningObjective
-                        updateLo={handlers.learningObjective.edit}
-                        {...activeLO}
+                    <EditLearningObjectiveForm
+                        projectId={project.id}
+                        update={handlers.learningObjective.edit}
+                        learningObjective={activeLO}
                     />
                 )}
                 {activeUnit && (

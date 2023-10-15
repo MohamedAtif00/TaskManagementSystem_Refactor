@@ -4,7 +4,6 @@ import { useAppDispatch } from "../../../../../app/hooks";
 import styles from "../../../styles.module.scss";
 import Backdrop from "../../../backdrop";
 import API from "../../../../../lib/API";
-import { clear, load } from "../../../../../slices/groupSlice";
 import { addStep } from "../../../../../slices/nodesSlice";
 import Dropdown from "../../../dropdown";
 import { ITaskBank } from "../../../../../pages/schemas/task-bank";
