@@ -98,7 +98,6 @@ public class StepController : ControllerBase
 
         var taskBankItem = await _context.TaskBank
             .Include(_ => _.Group)
-            .Include(_ => _.Type)
             .Where(_ => _.Id == req.TaskBankItem)
             .FirstOrDefaultAsync();
 

@@ -378,7 +378,7 @@ const Project = () => {
                                     });
                                     return { ...ps!, units };
                                 });
-                                router.back();
+                                router.push(`/projects/${project!.id}`);
                             }
                         });
                 }
