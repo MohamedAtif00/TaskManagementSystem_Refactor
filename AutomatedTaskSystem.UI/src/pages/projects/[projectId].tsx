@@ -285,7 +285,7 @@ const Project = () => {
                     projectId: router.query.projectId!,
                     userIds,
                 }).then(() => {
-                    router.back();
+                    router.push(`/projects/${router.query.projectId}`);
                 });
             },
             unassign: (userIds: number[]) => {
@@ -293,7 +293,7 @@ const Project = () => {
                     projectId: router.query.projectId!,
                     userIds,
                 }).then(() => {
-                    router.back();
+                    router.push(`/projects/${router.query.projectId}`);
                 });
             },
         },
@@ -311,7 +311,7 @@ const Project = () => {
                                     units: [...ps!.units, res.data],
                                 };
                             });
-                            router.back();
+                            router.push(`/projects/${router.query.projectId}`);
                         }
                     });
                 }
@@ -359,7 +359,6 @@ const Project = () => {
         lesson: {
             add: (name: string) => {
                 const unitId = router.query.unitId;
-                router.back();
                 if (unitId) {
                     const id = parseInt(unitId.toString());
                     !isNaN(id) &&
@@ -378,7 +377,9 @@ const Project = () => {
                                     });
                                     return { ...ps!, units };
                                 });
-                                router.push(`/projects/${project!.id}`);
+                                router.push(
+                                    `/projects/${router.query.projectId}`
+                                );
                             }
                         });
                 }
@@ -464,7 +465,8 @@ const Project = () => {
                             //     });
                             //     return { ...ps!, units };
                             // });
-                            router.back();
+                            //
+                            router.push(`/projects/${project!.id}`);
                         }
                     });
                 }
@@ -493,7 +495,7 @@ const Project = () => {
                     });
                     return { ...ps!, units: newUnits };
                 });
-                router.back();
+                router.push(`/projects/${project!.id}`);
             },
             remove: (id: number) => {
                 API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.REMOVE(id).then(
@@ -563,7 +565,7 @@ const Project = () => {
                                 return { ...ps!, units: newUnits };
                             });
                         }
-                        router.back();
+                        router.push(`/projects/${project!.id}`);
                     });
                 else
                     return API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.UNASSIGN(

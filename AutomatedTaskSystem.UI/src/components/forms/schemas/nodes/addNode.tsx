@@ -97,7 +97,7 @@ const AddNode = ({
 			}).then((res) => {
 				if (res) {
 					updateList();
-					router.back();
+					router.push(`/schemas/${schemaId}`);
 				}
 			});
 	};

@@ -65,7 +65,7 @@ const EditGroup = ({ groups }: { groups: IGroup[] }) => {
 			}).then((res) => {
 				if (res && !res.error) {
 					dispatch(edit(res.data));
-					router.back();
+					router.push("/resources/groups");
 				}
 			});
 		}
