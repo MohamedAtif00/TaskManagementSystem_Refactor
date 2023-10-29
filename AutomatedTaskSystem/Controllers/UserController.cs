@@ -2,6 +2,8 @@ using AutomatedTaskSystem.DTO;
 using Microsoft.AspNetCore.Mvc;
 using AutomatedTaskSystem.Services.UserService;
 using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Services.UserTask;
+using AutomatedTaskSystem.Dtos.UserTask;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -10,10 +12,12 @@ namespace AutomatedTaskSystem.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly IUserTaskService _userTaskService;
 
-        public UserController(IUserService userService)
+        public UserController(IUserService userService, IUserTaskService userTaskService)
         {
             _userService = userService;
+            _userTaskService = userTaskService;
         }
 
         // POST:
@@ -48,5 +52,11 @@ namespace AutomatedTaskSystem.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult<BaseResponseService>> DeleteUser(int id) =>
             await _userService.ArchiveUser(id);
+
+        // GET:
+        // Get User Tasks
+        [HttpGet("tasks")]
+        public async Task<ActionResult<ResponseService<List<UserTaskDto>>>> GetUserTasks() =>
+            await _userTaskService.GetAvailableUsersTasks();
     }
 }

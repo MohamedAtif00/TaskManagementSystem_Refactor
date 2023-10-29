@@ -12,3 +12,13 @@ interface StepPoint {
 	name: string;
 	group: BasicInfo;
 }
+
+interface UserTaskCount {
+	id: number;
+	name: string;
+	group: BasicInfo;
+	tasks: {
+		todo: number;
+		doing: number;
+	}
+}

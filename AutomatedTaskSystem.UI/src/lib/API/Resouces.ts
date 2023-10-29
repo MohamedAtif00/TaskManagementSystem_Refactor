@@ -217,6 +217,21 @@ const RESOURCES = {
 				return false;
 			}
 		},
+		GET_ALL_USER_TASKS: async () => {
+			try {
+				const auth = authService.authHeader();
+				const res = await fetch(`${url}/users/tasks`, {
+					headers: {
+						...auth,
+					},
+				});
+				const data: ResponseService<UserTaskCount[]> = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		}
 	},
 	TEAMS: {
 		GET_ALL: async () => {
