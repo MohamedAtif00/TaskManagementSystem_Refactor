@@ -5,6 +5,7 @@ import {
 	UserIcon,
 } from "@heroicons/react/24/outline";
 import CrossIcon from "../../../assets/Icons/Cross";
+import Link from "next/link";
 
 interface Props {
 	name: string;
@@ -59,9 +60,9 @@ const UserTasksDetailsHeader = (props: Props) => {
 				</div>
 			</div>
 			<div className="pl-[1px] bg-slate-200 h-full"></div>
-			<button className="p-1 box-content" title="exit">
+			<Link className="p-1 box-content" title="exit" href="/user-tasks">
 				<CrossIcon className="stroke-black" />
-			</button>
+			</Link>
 		</div>
 	);
 };

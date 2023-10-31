@@ -22,3 +22,19 @@ interface UserTaskCount {
 		doing: number;
 	}
 }
+
+interface UserTask {
+	id: number;
+	name: string;
+	learningObjective: BasicInfo;
+	projectId: number;
+}
+
+interface UserTaskInfo {
+	id: number;
+	name: string;
+	group: BasicInfo;
+	backlogCount: number;
+	todoTasks: UserTask[];
+	doingTasks: UserTask[];
+}

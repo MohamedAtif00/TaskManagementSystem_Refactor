@@ -231,6 +231,16 @@ const RESOURCES = {
 				console.error(error);
 				return false;
 			}
+		},
+		GET_USER_TASKS: async (id: string | string[]) => {
+			try {
+				const res = await fetch(`${url}/users/${id}/tasks`);
+				const data: ResponseService<UserTaskInfo> = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
 		}
 	},
 	TEAMS: {

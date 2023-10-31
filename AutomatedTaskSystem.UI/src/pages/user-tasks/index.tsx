@@ -95,7 +95,9 @@ const UserTasksPage = () => {
 					))}
 				</div>
 			</div>
-			{router.query["user-id"] !== undefined && <UserTasksDetails />}
+			{router.query["user-id"] !== undefined && (
+				<UserTasksDetails userId={router.query["user-id"]} />
+			)}
 		</>
 	);
 };
