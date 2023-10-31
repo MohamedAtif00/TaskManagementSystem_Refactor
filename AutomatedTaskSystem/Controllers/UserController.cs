@@ -58,5 +58,11 @@ namespace AutomatedTaskSystem.Controllers
         [HttpGet("tasks")]
         public async Task<ActionResult<ResponseService<List<UserTaskDto>>>> GetUserTasks() =>
             await _userTaskService.GetAvailableUsersTasks();
+
+        // GET:
+        // Get User Tasks
+        [HttpGet("{id}/tasks")]
+        public async Task<ActionResult<ResponseService<UserTaskInfo>>> GetUserTasks(int id) =>
+            await _userTaskService.GetUserTasks(id);
     }
 }

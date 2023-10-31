@@ -68,4 +68,88 @@ public class UserTaskService : IUserTaskService
 
         throw new NotImplementedException();
     }
+
+    public async Task<ActionResult<ResponseService<UserTaskInfo>>> GetUserTasks(int id)
+    {
+        var user = await _context.Users
+            .Where(u => u.Id == id && !u.Archived)
+            .Include(u => u.Tasks)
+            .ThenInclude(t => t.LearningObjective)
+            .ThenInclude(t => t.Lesson)
+            .ThenInclude(t => t.Unit)
+            .ThenInclude(t => t.Project)
+            .Include(u => u.Group)
+            .FirstOrDefaultAsync();
+
+        if (user is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "User is not found!" }
+            );
+
+        var res = new UserTaskInfo
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Group = new BasicInfoDto { Id = user.Group.Id, Name = user.Group.Name },
+        };
+        foreach (var task in user.Tasks.Where(t => !t.Archived && t.Status == TaskStatusEnum.ToDo))
+            res.TodoTasks.Add(
+                new TaskInfoDto
+                {
+                    Id = task.Id,
+                    LearningObjective =
+                    {
+                        Id = task.LearningObjective.Id,
+                        Name = task.LearningObjective.Name
+                    },
+                    Name = task.Name,
+                    ProjectId = task.LearningObjective.Lesson.Unit.ProjectId
+                }
+            );
+
+        foreach (var task in user.Tasks.Where(t => !t.Archived && t.Status == TaskStatusEnum.Doing))
+            res.DoingTasks.Add(
+                new TaskInfoDto
+                {
+                    Id = task.Id,
+                    LearningObjective =
+                    {
+                        Id = task.LearningObjective.Id,
+                        Name = task.LearningObjective.Name
+                    },
+                    Name = task.Name,
+                    ProjectId = task.LearningObjective.Lesson.Unit.ProjectId
+                }
+            );
+
+        await _context
+            .Entry(user)
+            .Collection(u => u.Projects)
+            .Query()
+            .Include(p => p.Units)
+            .ThenInclude(u => u.Lessons)
+            .ThenInclude(l => l.LearningObjectives)
+            .ThenInclude(lo => lo.Tasks)
+            .LoadAsync();
+
+        foreach (var p in user.Projects.Where(p => !p.Archived))
+            foreach (var u in p.Units.Where(p => !p.Archived))
+                foreach (var l in u.Lessons.Where(p => !p.Archived))
+                    foreach (var lo in l.LearningObjectives.Where(p => !p.Archived))
+                        res.BacklogCount += lo.Tasks
+                            .Where(
+                                t =>
+                                    !t.Archived
+                                    && t.Status == TaskStatusEnum.Backlog
+                                    && t.GroupId == user.GroupId
+                            )
+                            .Count();
+
+        return new ResponseService<UserTaskInfo>
+        {
+            Data = res,
+            Error = false,
+            Message = "User task list"
+        };
+    }
 }
