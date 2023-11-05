@@ -11,8 +11,9 @@ public class Task
     public bool Attention { get; set; } = false;
     public int Id { get; set; }
     public string Name { get; set; } = "";
-	[Range(0, 4)]
-	public TaskStatusEnum Status { get; set; } = TaskStatusEnum.Backlog;
+
+    [Range(0, 4)]
+    public TaskStatusEnum Status { get; set; } = TaskStatusEnum.Backlog;
     public Step? Step { get; set; }
     public int? StepId { get; set; }
     public bool TL { get; set; } = false;
@@ -29,7 +30,9 @@ public class Task
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public int RollbackCount { get; set; }
     public bool IsRollback { get; set; } = false;
-	[Range(0, 3)]
+
+    [Range(0, 3)]
     public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
-	public List<Comment> Comments { get; set; } = new List<Comment>{};
+    public List<Comment> Comments { get; set; } = new List<Comment> { };
+    public List<Rollback> Rollbacks { get; set; } = new List<Rollback> { };
 }

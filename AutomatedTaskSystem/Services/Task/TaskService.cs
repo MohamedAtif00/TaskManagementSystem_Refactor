@@ -435,7 +435,8 @@ public class TaskService : ITaskService
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(
         int taskId,
         int stepId,
-        List<RollbackLogDto> logs
+        List<RollbackLogDto> logs,
+        string? clarification
     )
     {
         var user = await _authService.GetAuthedUser();
@@ -544,7 +545,7 @@ public class TaskService : ITaskService
                 FromTaskId: task.Id,
                 ToTaskId: foundTask.Id,
                 UserId: user.Id,
-                Clarification: null,
+                Clarification: clarification,
                 logs: logs
             );
 

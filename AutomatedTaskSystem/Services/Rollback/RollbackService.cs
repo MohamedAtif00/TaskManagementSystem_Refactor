@@ -41,26 +41,26 @@ public class RollbackService : IRollbackService
         if (toTask is null)
             return new BaseResponseService { Error = true, Message = "To task is not found" };
 
-        var stepIds = logs.Select(l => l.StepId).ToList();
+        List<int> stepIds = logs.Select(l => l.StepId).ToList();
 
         var steps = await _context.Steps
             .Where(s => stepIds.Contains(s.Id) && !s.Archived)
             .ToListAsync();
-        if (steps.Count() == logs.Count())
+        if (steps.Count() != logs.Count())
             return new BaseResponseService { Error = true, Message = "Steps are not found" };
 
         var Issues = new List<RollbackIssue> { };
         var rollback = new Rollback
         {
-            FromTask = fromTask,
-            FromTaskId = fromTask.Id,
+            Task = fromTask,
+            TaskId = fromTask.Id,
             ToTask = toTask,
             ToTaskId = toTask.Id,
             User = user,
             UserId = user.Id,
             Clarification = Clarification,
             RollbackIssues = Issues,
-			Resolved = false
+            Resolved = false
         };
         _context.Rollbacks.Add(rollback);
 

@@ -29,7 +29,8 @@ public interface ITaskService
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(
         int taskId,
         int stepId,
-        List<RollbackLogDto> logs
+        List<RollbackLogDto> logs,
+        string? clarification
     );
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ProceedTask(int taskId);
     Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(int projectId);
