@@ -59,8 +59,7 @@ public class RollbackService : IRollbackService
             User = user,
             UserId = user.Id,
             Clarification = Clarification,
-            RollbackIssues = Issues,
-            Resolved = false
+            RollbackIssues = Issues
         };
         _context.Rollbacks.Add(rollback);
 
