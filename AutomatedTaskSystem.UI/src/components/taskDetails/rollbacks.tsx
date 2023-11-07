@@ -1,5 +1,9 @@
 import Link from "next/link";
 import CrossIcon from "../../assets/Icons/Cross";
+import { useEffect, useState } from "react";
+import API from "../../lib/API";
+import Head from "next/head";
+import Loader from "../loader";
 
 interface Props {
 	taskId: number;
@@ -7,7 +11,38 @@ interface Props {
 	isReview: boolean;
 }
 
+interface History {
+	rollbacks: {
+		id: number;
+		clarification?: string;
+		task: BasicInfo;
+	}[];
+	issues: {
+		id: number;
+		note?: string;
+		task: BasicInfo;
+	}[];
+}
+
 const RollbackHistory: React.FC<Props> = ({ taskId, projectId, isReview }) => {
+	const [history, setHistory] = useState<History>();
+
+	useEffect(() => {
+		API.TASKS.GET_ROLLBACK_HISTORY(taskId).then(
+			(res) => res && !res.error && setHistory(res.data)
+		);
+	}, []);
+
+	if (history === undefined)
+		return (
+			<div className="fixed z-50 flex justify-center items-center bg-black/25 top-0 left-0 bottom-0 right-0">
+				<Head>
+					<title>ATS - Loading</title>
+				</Head>
+				<Loader />
+			</div>
+		);
+
 	return (
 		<div className="fixed top-0 bottom-0 left-0 right-0 bg-black/25 z-50 flex items-center justify-center">
 			<div className="bg-white rounded-lg overflow-hidden">
@@ -27,31 +62,37 @@ const RollbackHistory: React.FC<Props> = ({ taskId, projectId, isReview }) => {
 				<div className="w-96 max-h-96 py-3 overflow-auto">
 					<div className="flex flex-col gap-2 border-b border-slate-200 border-solid mb-4 pb-3">
 						<div className="text-lg px-6">
-							<span className="font-bold">3</span> Rollbacks{" "}
-							{isReview ? "to" : "from"}:
+							<span className="font-bold">
+								{history.rollbacks.length}
+							</span>{" "}
+							Rollbacks {isReview ? "to" : "from"}:
 						</div>
-						<div className="grid grid-cols-2 px-6 gap-3">
-							<div className="text-sm">ID GD Review</div>
-							<div>I don't Like it</div>
-						</div>
-						<div className="grid grid-cols-2 px-6 gap-3">
-							<div className="text-sm">Senior GD Review</div>
-							<div>Bad colors</div>
-						</div>
+						{history.rollbacks.map((m) => (
+							<div
+								key={m.id}
+								className="grid grid-cols-2 px-6 gap-3"
+							>
+								<div className="text-sm">{m.task.name}</div>
+								<div>{m.clarification}</div>
+							</div>
+						))}
 					</div>
 					<div className="flex flex-col gap-2">
 						<div className="text-lg px-6">
-							<span className="font-bold">6</span> Notes{" "}
-							{isReview ? "to" : "from"}:
+							<span className="font-bold">
+								{history.issues.length}
+							</span>{" "}
+							Issues {isReview ? "at" : "noted from"}:
 						</div>
-						<div className="grid grid-cols-2 px-6 gap-3">
-							<div className="text-sm">QC</div>
-							<div>Should never have passed</div>
-						</div>
-						<div className="grid grid-cols-2 px-6 gap-3">
-							<div className="text-sm">Dev TL Review</div>
-							<div>Nah</div>
-						</div>
+						{history.issues.map((m) => (
+							<div
+								key={m.id}
+								className="grid grid-cols-2 px-6 gap-3"
+							>
+								<div className="text-sm">{m.task.name}</div>
+								<div>{m.note ? m.note : "No note"}</div>
+							</div>
+						))}
 					</div>
 				</div>
 			</div>

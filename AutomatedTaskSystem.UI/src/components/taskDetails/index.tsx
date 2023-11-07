@@ -240,13 +240,24 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 										/>
 									)}
 									{task.isReview ? (
-										<div
-											className="px-4 rounded-full bg-yellow-500 text-white flex items-center gap-2"
-											title="Rollbacks"
+										<Link
+											href={{
+												pathname: `/tasks/${projectId}`,
+												query: {
+													view: "rollback-history",
+													taskId: task.id,
+												},
+											}}
+											className="flex gap-2"
 										>
-											<ArrowPathRoundedSquareIcon className="w-4 h-4" />
-											<div>{task.issuesCreated}</div>
-										</div>
+											<div
+												className="px-4 rounded-full bg-blue-500 text-white flex items-center gap-2"
+												title="Rollbacks"
+											>
+												<ArrowPathRoundedSquareIcon className="w-4 h-4" />
+												<div>{task.issuesCreated}</div>
+											</div>
+										</Link>
 									) : (
 										<Link
 											href={{
@@ -259,14 +270,14 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 											className="flex gap-2"
 										>
 											<div
-												className="px-4 rounded-full bg-yellow-500 text-white flex items-center gap-2"
+												className="px-4 rounded-full bg-blue-500 text-white flex items-center gap-2"
 												title="Rollbacks"
 											>
 												<ArrowPathRoundedSquareIcon className="w-4 h-4" />
 												<div>{task.issuesRecieved}</div>
 											</div>
 											<div
-												className="px-4 rounded-full bg-blue-500 text-white flex items-center gap-2"
+												className="px-4 rounded-full bg-yellow-500 text-white flex items-center gap-2"
 												title="Notes"
 											>
 												<PencilSquareIcon className="w-4 h-4" />

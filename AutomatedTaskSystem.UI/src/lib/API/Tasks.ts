@@ -449,6 +449,31 @@ const TASKS = {
 			return false;
 		}
 	},
+	GET_ROLLBACK_HISTORY: async (taskId: number) => {
+		try {
+			const res = await fetch(`${url}/tasks/${taskId}/history`);
+			const data: {
+				data: {
+					rollbacks: {
+						id: number;
+						clarification?: string;
+						task: BasicInfo;
+					}[];
+					issues: {
+						id: number;
+						note?: string;
+						task: BasicInfo;
+					}[];
+				};
+				error: boolean;
+				message: string;
+			} = await res.json();
+			return data;
+		} catch (error) {
+			console.log(error);
+			return false;
+		}
+	},
 };
 
 export default TASKS;
