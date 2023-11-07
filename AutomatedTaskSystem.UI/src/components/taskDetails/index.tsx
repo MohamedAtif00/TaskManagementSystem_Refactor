@@ -17,6 +17,11 @@ import DurationBadge from "./durationBadge";
 import Link from "next/link";
 import EditCommentForm from "./taskComments/EditCommentForm";
 import DeleteCommentForm from "./taskComments/DeleteComment";
+import {
+	ArrowPathRoundedSquareIcon,
+	PencilSquareIcon,
+} from "@heroicons/react/24/outline";
+import RollbackHistory from "./rollbacks";
 
 export interface IComment {
 	user: {
@@ -62,6 +67,9 @@ export interface ITask {
 	priority: TaskPriority;
 	activities: ITaskActivity[];
 	duration: number;
+	notes: number;
+	issuesRecieved: number;
+	issuesCreated: number;
 }
 
 interface Props {
@@ -206,8 +214,8 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 									<div className="font-bold mr-2">
 										{task.name}
 									</div>
-									<div className="p-1 bg-slate-400 rounded-full"></div>
-									<div className="ml-2 font-bold">
+									<div className="p-1 bg-slate-300 rounded-full"></div>
+									<div className="mx-2 font-bold">
 										{task.learningObjective.name}
 									</div>
 								</div>
@@ -230,6 +238,41 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 											text={task.template}
 											label="Template"
 										/>
+									)}
+									{task.isReview ? (
+										<div
+											className="px-4 rounded-full bg-yellow-500 text-white flex items-center gap-2"
+											title="Rollbacks"
+										>
+											<ArrowPathRoundedSquareIcon className="w-4 h-4" />
+											<div>{task.issuesCreated}</div>
+										</div>
+									) : (
+										<Link
+											href={{
+												pathname: `/tasks/${projectId}`,
+												query: {
+													view: "rollback-history",
+													taskId: task.id,
+												},
+											}}
+											className="flex gap-2"
+										>
+											<div
+												className="px-4 rounded-full bg-yellow-500 text-white flex items-center gap-2"
+												title="Rollbacks"
+											>
+												<ArrowPathRoundedSquareIcon className="w-4 h-4" />
+												<div>{task.issuesRecieved}</div>
+											</div>
+											<div
+												className="px-4 rounded-full bg-blue-500 text-white flex items-center gap-2"
+												title="Notes"
+											>
+												<PencilSquareIcon className="w-4 h-4" />
+												<div>{task.notes}</div>
+											</div>
+										</Link>
 									)}
 								</div>
 								<TaskAction
@@ -339,6 +382,13 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 								);
 								refreshTasks();
 							}}
+						/>
+					)}
+					{router.query.view === "rollback-history" && (
+						<RollbackHistory
+							isReview={task.isReview}
+							taskId={task.id}
+							projectId={projectId}
 						/>
 					)}
 				</motion.div>
