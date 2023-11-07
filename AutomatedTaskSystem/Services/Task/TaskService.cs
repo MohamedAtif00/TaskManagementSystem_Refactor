@@ -1118,6 +1118,18 @@ public class TaskService : ITaskService
         foreach (var d in durations)
             duration += d.Duration;
 
+        var issuesRecieved = task.IsReview
+            ? 0
+            : (await _context.Rollbacks.Where(rb => rb.ToTaskId == task.Id).ToListAsync()).Count;
+        var issuesCreated = task.IsReview
+            ? (await _context.Rollbacks.Where(rb => rb.TaskId == task.Id).ToListAsync()).Count
+            : 0;
+        var notes = task.IsReview
+            ? 0
+            : (
+                await _context.RollbackIssues.Where(rb => rb.StepId == task.StepId).ToListAsync()
+            ).Count;
+
         return new ResponseService<GetTaskDetailsDto>
         {
             Error = false,
@@ -1223,7 +1235,10 @@ public class TaskService : ITaskService
                     )
                     .OrderByDescending(a => a.TimeStamp)
                     .ToList(),
-                Duration = duration
+                Duration = duration,
+                IssuesCreated = issuesCreated,
+                IssuesRecieved = issuesRecieved,
+                Notes = notes
             },
             Message = "Task found"
         };

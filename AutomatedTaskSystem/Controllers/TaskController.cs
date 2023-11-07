@@ -10,6 +10,7 @@ using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Models.Enums.TaskBankType;
+using AutomatedTaskSystem.Services.RollbackService;
 
 namespace AutomatedTaskSystem.Controllers;
 
@@ -20,12 +21,19 @@ public class TaskController : ControllerBase
     private readonly DataContext _context;
     private readonly ITokenService _tokenService;
     private readonly ITaskService _taskService;
+    private readonly IRollbackService _rollbackService;
 
-    public TaskController(DataContext context, ITokenService authService, ITaskService taskService)
+    public TaskController(
+        DataContext context,
+        ITokenService authService,
+        ITaskService taskService,
+        IRollbackService rollbackService
+    )
     {
         _context = context;
         _tokenService = authService;
         _taskService = taskService;
+        _rollbackService = rollbackService;
     }
 
     [HttpGet("/creatables/{projectId}")]
@@ -267,4 +275,10 @@ public class TaskController : ControllerBase
         int id,
         DeleteCommentDto req
     ) => await _taskService.DeleteComment(id, req.CommentId);
+
+    // GET:
+    // Get Task Rollback History
+    [HttpGet("{id}/history")]
+    public async Task<ActionResult<ResponseService<GetRollbackHistoryDto>>> GetHistory(int id) =>
+        await _rollbackService.GetRollbackHistory(id);
 }

@@ -3,6 +3,8 @@ using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.AuthService;
 using AutomatedTaskSystem.Models;
+using Microsoft.AspNetCore.Mvc;
+using AutomatedTaskSystem.Dtos.Common;
 
 namespace AutomatedTaskSystem.Services.RollbackService;
 
@@ -84,5 +86,115 @@ public class RollbackService : IRollbackService
         await _context.SaveChangesAsync();
 
         return new BaseResponseService { Error = false, Message = "Roll Back log created" };
+    }
+
+    public async Task<ActionResult<ResponseService<GetRollbackHistoryDto>>> GetRollbackHistory(
+        int id
+    )
+    {
+        var task = await _context.Tasks.Where(t => t.Id == id && !t.Archived).FirstOrDefaultAsync();
+
+        if (task is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not found" }
+            );
+
+        if (task.IsReview)
+        {
+            var rollbacksTo = await _context.Rollbacks
+                .Where(r => r.TaskId == task.Id)
+                .Include(r => r.ToTask)
+                .Include(r => r.RollbackIssues)
+                .ThenInclude(i => i.Step)
+                .ThenInclude(i => i.TaskBank)
+                .ToListAsync();
+
+            var issuesList = new List<GetIssueDto> { };
+
+            foreach (var item in rollbacksTo)
+                foreach (var issue in item.RollbackIssues)
+                    issuesList.Add(
+                        new GetIssueDto
+                        {
+                            Id = issue.Id,
+                            Note = issue.Note,
+                            Task = new BasicInfoDto
+                            {
+                                Id = issue.Step.Id,
+                                Name = issue.Step.TaskBank.Name
+                            }
+                        }
+                    );
+
+            var res1 = new GetRollbackHistoryDto
+            {
+                Rollbacks = rollbacksTo
+                    .Select(
+                        r =>
+                            new GetRollbackDto
+                            {
+                                Id = r.Id,
+                                Clarification = r.Clarification,
+                                Task = new BasicInfoDto { Id = r.ToTask.Id, Name = r.ToTask.Name }
+                            }
+                    )
+                    .ToList(),
+                Issues = issuesList
+            };
+            return new ResponseService<GetRollbackHistoryDto>
+            {
+                Data = res1,
+                Error = false,
+                Message = "Task Rollback History"
+            };
+        }
+
+        var rollbacksFrom = await _context.Rollbacks
+            .Where(r => r.ToTaskId == task.Id)
+            .Include(r => r.Task)
+            .ToListAsync();
+        var issues = await _context.RollbackIssues
+            .Where(i => i.StepId == task.StepId)
+            .Include(i => i.Rollback)
+            .ThenInclude(r => r.Task)
+            .ToListAsync();
+
+        var res = new GetRollbackHistoryDto
+        {
+            Rollbacks = rollbacksFrom
+                .Select(
+                    r =>
+                        new GetRollbackDto
+                        {
+                            Id = r.Id,
+                            Clarification = r.Clarification,
+                            Task = new BasicInfoDto { Id = r.Task.Id, Name = r.Task.Name }
+                        }
+                )
+                .ToList(),
+            Issues = issues
+                .Select(
+                    i =>
+                        new GetIssueDto
+                        {
+                            Id = i.Id,
+                            Note = i.Note,
+                            Task = new BasicInfoDto
+                            {
+                                Id = i.Rollback.Task.Id,
+                                Name = i.Rollback.Task.Name
+                            }
+                        }
+                )
+                .ToList()
+        };
+        return new ResponseService<GetRollbackHistoryDto>
+        {
+            Data = res,
+            Error = false,
+            Message = "Task Rollback History"
+        };
+
+        throw new NotImplementedException();
     }
 }
