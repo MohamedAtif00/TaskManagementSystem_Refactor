@@ -35,6 +35,14 @@ const Sidebar = () => {
 					icon="Home"
 					text="Home"
 				/>
+				{auth.role !== 3 && (
+					<Navlink
+						activeCondition={path.includes("/user-tasks")}
+						to="/user-tasks"
+						icon="Resources"
+						text="User Tasks"
+					/>
+				)}
 				{auth.role == 0 ? (
 					<>
 						<Navlink
@@ -42,12 +50,6 @@ const Sidebar = () => {
 							to="/resources"
 							icon="Resources"
 							text="Resources"
-						/>
-						<Navlink
-							activeCondition={path.includes("/user-tasks")}
-							to="/user-tasks"
-							icon="Resources"
-							text="User Tasks"
 						/>
 						<Navlink
 							activeCondition={path.includes("/schemas")}

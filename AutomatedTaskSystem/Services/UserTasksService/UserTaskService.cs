@@ -65,6 +65,100 @@ public class UserTaskService : IUserTaskService
                 Message = "List of User Tasks"
             };
         }
+        if (user.Role == UserRoleEnum.SectionHead)
+        {
+            var section = await _context.Sections
+                .Where(s => s.HeadId == user.Id && !s.Archived)
+                .Include(s => s.Groups)
+                .FirstOrDefaultAsync();
+
+            if (section is null)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = false, Message = "Section is not found" }
+                );
+
+            var groups = new List<int> { };
+
+            foreach (var g in section.Groups)
+                groups.Add(g.Id);
+
+            var users = await _context.Users
+                .Where(
+                    u =>
+                        !u.Archived
+                        && u.Role != UserRoleEnum.ProjectManger
+                        && u.Role != UserRoleEnum.SectionHead
+                        && groups.Contains(u.GroupId)
+                )
+                .ToListAsync();
+            var res = new List<UserTaskDto> { };
+
+            users.ForEach(u =>
+            {
+                var record = new UserTaskDto
+                {
+                    Id = u.Id,
+                    Name = u.Name,
+                    Group = new BasicInfoDto { Id = u.GroupId, Name = u.Group.Name },
+                    Tasks = new TaskCountDto
+                    {
+                        Doing = u.Tasks
+                            .Where(t => !t.Archived && t.Status == TaskStatusEnum.Doing)
+                            .Count(),
+                        Todo = u.Tasks
+                            .Where(t => !t.Archived && t.Status == TaskStatusEnum.ToDo)
+                            .Count()
+                    }
+                };
+                res.Add(record);
+            });
+
+            return new ResponseService<List<UserTaskDto>>
+            {
+                Data = res,
+                Error = false,
+                Message = "List of User Tasks"
+            };
+        }
+        if (user.Role == UserRoleEnum.TeamLeader)
+        {
+            var users = await _context.Users
+                .Where(
+                    u => !u.Archived && u.Role == UserRoleEnum.Member && u.GroupId == user.GroupId
+                )
+                .Include(u => u.Group)
+                .Include(u => u.Tasks)
+                .ToListAsync();
+
+            var res = new List<UserTaskDto> { };
+
+            users.ForEach(u =>
+            {
+                var record = new UserTaskDto
+                {
+                    Id = u.Id,
+                    Name = u.Name,
+                    Group = new BasicInfoDto { Id = u.GroupId, Name = u.Group.Name },
+                    Tasks = new TaskCountDto
+                    {
+                        Doing = u.Tasks
+                            .Where(t => !t.Archived && t.Status == TaskStatusEnum.Doing)
+                            .Count(),
+                        Todo = u.Tasks
+                            .Where(t => !t.Archived && t.Status == TaskStatusEnum.ToDo)
+                            .Count()
+                    }
+                };
+                res.Add(record);
+            });
+
+            return new ResponseService<List<UserTaskDto>>
+            {
+                Data = res,
+                Error = false,
+                Message = "List of User Tasks"
+            };
+        }
 
         throw new NotImplementedException();
     }
