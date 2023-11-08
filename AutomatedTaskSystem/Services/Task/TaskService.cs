@@ -890,6 +890,8 @@ public class TaskService : ITaskService
         User? user
     )
     {
+        var authedUser = await _authService.GetAuthedUser();
+
         var newTask = new Models.Task
         {
             Step = null,
@@ -925,8 +927,8 @@ public class TaskService : ITaskService
             TaskSecondary = null,
             ActorTwoId = null,
             ActorTwo = null,
-            ActorOneId = null,
-            ActorOne = null,
+            ActorOneId = authedUser is null ? null : authedUser.Id,
+            ActorOne = authedUser,
             TimeStamp = DateTime.Now,
             Type = TaskActivityTypeEnum.Created,
         };
@@ -1127,7 +1129,15 @@ public class TaskService : ITaskService
         var notes = task.IsReview
             ? 0
             : (
-                await _context.RollbackIssues.Where(rb => rb.StepId == task.StepId).ToListAsync()
+                await _context.RollbackIssues
+                    .Where(
+                        rb =>
+                            rb.StepId == task.StepId
+                            && task.LearningObjectiveId == rb.Rollback.Task.LearningObjectiveId
+                    )
+                    .Include(rb => rb.Rollback)
+                    .ThenInclude(r => r.Task)
+                    .ToListAsync()
             ).Count;
 
         return new ResponseService<GetTaskDetailsDto>

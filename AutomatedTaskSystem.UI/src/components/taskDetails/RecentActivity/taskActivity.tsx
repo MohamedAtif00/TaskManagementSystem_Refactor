@@ -34,7 +34,18 @@ const TaskActivity: React.FC<Props> = (props) => {
 					<div className="flex flex-col justify-center">
 						<div>
 							<span className="font-bold">{props.name}</span> was
-							created.
+							created
+							{props.actorOne ? (
+								<>
+									{" "}
+									by{" "}
+									<span className="font-bold">
+										{props.actorOne.name}
+									</span>
+								</>
+							) : (
+								"."
+							)}
 						</div>
 					</div>
 				</div>
@@ -317,7 +328,7 @@ const TaskActivity: React.FC<Props> = (props) => {
 						</div>
 					</div>
 				</div>
-			) : props.type === 20 ?
+			) : props.type === 20 ? (
 				<div className="flex gap-4">
 					<div>
 						<ChatBubbleBottomCenterTextIcon className="p-1 h-6 w-6 rounded-full border border-solid border-red-400 box-content stroke-red-500" />
@@ -331,7 +342,7 @@ const TaskActivity: React.FC<Props> = (props) => {
 						</div>
 					</div>
 				</div>
-			: (
+			) : (
 				""
 			)}
 			<div className="flex gap-4 justify-center text-slate-600 text-xs">
