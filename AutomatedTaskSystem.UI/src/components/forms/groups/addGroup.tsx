@@ -51,7 +51,7 @@ const AddGroup = () => {
 			}).then((res) => {
 				if (res && !res.error) {
 					dispatch(add(res.data));
-					router.back();
+					router.push("/resources/groups");
 				}
 			});
 		}

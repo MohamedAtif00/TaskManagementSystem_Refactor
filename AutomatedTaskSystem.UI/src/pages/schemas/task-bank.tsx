@@ -47,7 +47,7 @@ const TaskBank = () => {
 
     const HandleTaskAdd = (item: ITaskBank) => {
         setBank((ps) => (ps ? [...ps, item] : [item]));
-        router.back();
+        router.push("/schemas/task-bank");
     };
 
     const HandleTaskEdit = (item: ITaskBank) => {
@@ -62,7 +62,7 @@ const TaskBank = () => {
 
             return newState;
         });
-        router.back();
+        router.push("/schemas/task-bank");
     };
 
     const HandleTaskDelete = (id: number) => {

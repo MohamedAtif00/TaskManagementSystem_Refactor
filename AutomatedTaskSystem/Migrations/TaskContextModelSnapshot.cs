@@ -276,6 +276,63 @@ namespace AutomatedTaskSystem.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Rollback", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("Clarification")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ToTaskId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskId");
+
+                    b.HasIndex("ToTaskId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Rollbacks");
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.RollbackIssue", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RollbackId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StepId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RollbackId");
+
+                    b.HasIndex("StepId");
+
+                    b.ToTable("RollbackIssues");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.Schema", b =>
                 {
                     b.Property<int>("Id")
@@ -880,6 +937,52 @@ namespace AutomatedTaskSystem.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Rollback", b =>
+                {
+                    b.HasOne("AutomatedTaskSystem.Models.Task", "Task")
+                        .WithMany("Rollbacks")
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("AutomatedTaskSystem.Models.Task", "ToTask")
+                        .WithMany()
+                        .HasForeignKey("ToTaskId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("AutomatedTaskSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Task");
+
+                    b.Navigation("ToTask");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.RollbackIssue", b =>
+                {
+                    b.HasOne("AutomatedTaskSystem.Models.Rollback", "Rollback")
+                        .WithMany("RollbackIssues")
+                        .HasForeignKey("RollbackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AutomatedTaskSystem.Models.Step", "Step")
+                        .WithMany()
+                        .HasForeignKey("StepId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Rollback");
+
+                    b.Navigation("Step");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.Schema", b =>
                 {
                     b.HasOne("AutomatedTaskSystem.Models.SchemaTypesModel.SchemaType", "Type")
@@ -1131,6 +1234,11 @@ namespace AutomatedTaskSystem.Migrations
                     b.Navigation("Units");
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Rollback", b =>
+                {
+                    b.Navigation("RollbackIssues");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.Schema", b =>
                 {
                     b.Navigation("LearningObjectives");
@@ -1156,6 +1264,8 @@ namespace AutomatedTaskSystem.Migrations
             modelBuilder.Entity("AutomatedTaskSystem.Models.Task", b =>
                 {
                     b.Navigation("Comments");
+
+                    b.Navigation("Rollbacks");
                 });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.TaskBank", b =>

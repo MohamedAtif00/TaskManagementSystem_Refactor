@@ -11,6 +11,7 @@ using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.AuthService;
 using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Services.RollbackService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Services.TaskService;
@@ -25,11 +26,17 @@ public class TaskService : ITaskService
 {
     private readonly DataContext _context;
     private readonly IAuthService _authService;
+    private readonly IRollbackService _rollbackService;
 
-    public TaskService(DataContext context, IAuthService authService)
+    public TaskService(
+        DataContext context,
+        IAuthService authService,
+        IRollbackService rollbackService
+    )
     {
         _context = context;
         _authService = authService;
+        _rollbackService = rollbackService;
     }
 
     public async Task<ActionResult<BaseResponseService>> AssignUser(int id, int uid)
@@ -427,7 +434,9 @@ public class TaskService : ITaskService
 
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(
         int taskId,
-        int stepId
+        int stepId,
+        List<RollbackLogDto> logs,
+        string? clarification
     )
     {
         var user = await _authService.GetAuthedUser();
@@ -532,6 +541,17 @@ public class TaskService : ITaskService
                 ActorTwoId = null
             };
 
+            var RollbackLog = await _rollbackService.CreateRollback(
+                FromTaskId: task.Id,
+                ToTaskId: foundTask.Id,
+                UserId: user.Id,
+                Clarification: clarification,
+                logs: logs
+            );
+
+            if (RollbackLog.Error)
+                return new BadRequestObjectResult(RollbackLog);
+
             _context.TaskActivities.Add(newActivity);
             _context.TaskActivities.Add(newActivity2);
         }
@@ -591,6 +611,17 @@ public class TaskService : ITaskService
                 ActorTwo = null,
                 ActorTwoId = null
             };
+
+            var RollbackLog = await _rollbackService.CreateRollback(
+                FromTaskId: task.Id,
+                ToTaskId: newTask.Id,
+                UserId: user.Id,
+                Clarification: null,
+                logs: logs
+            );
+
+            if (RollbackLog.Error)
+                return new BadRequestObjectResult(RollbackLog);
 
             _context.TaskActivities.Add(newActivity);
             _context.TaskActivities.Add(newActivity2);
@@ -859,6 +890,8 @@ public class TaskService : ITaskService
         User? user
     )
     {
+        var authedUser = await _authService.GetAuthedUser();
+
         var newTask = new Models.Task
         {
             Step = null,
@@ -894,8 +927,8 @@ public class TaskService : ITaskService
             TaskSecondary = null,
             ActorTwoId = null,
             ActorTwo = null,
-            ActorOneId = null,
-            ActorOne = null,
+            ActorOneId = authedUser is null ? null : authedUser.Id,
+            ActorOne = authedUser,
             TimeStamp = DateTime.Now,
             Type = TaskActivityTypeEnum.Created,
         };
@@ -1087,6 +1120,26 @@ public class TaskService : ITaskService
         foreach (var d in durations)
             duration += d.Duration;
 
+        var issuesRecieved = task.IsReview
+            ? 0
+            : (await _context.Rollbacks.Where(rb => rb.ToTaskId == task.Id).ToListAsync()).Count;
+        var issuesCreated = task.IsReview
+            ? (await _context.Rollbacks.Where(rb => rb.TaskId == task.Id).ToListAsync()).Count
+            : 0;
+        var notes = task.IsReview
+            ? 0
+            : (
+                await _context.RollbackIssues
+                    .Where(
+                        rb =>
+                            rb.StepId == task.StepId
+                            && task.LearningObjectiveId == rb.Rollback.Task.LearningObjectiveId
+                    )
+                    .Include(rb => rb.Rollback)
+                    .ThenInclude(r => r.Task)
+                    .ToListAsync()
+            ).Count;
+
         return new ResponseService<GetTaskDetailsDto>
         {
             Error = false,
@@ -1192,7 +1245,10 @@ public class TaskService : ITaskService
                     )
                     .OrderByDescending(a => a.TimeStamp)
                     .ToList(),
-                Duration = duration
+                Duration = duration,
+                IssuesCreated = issuesCreated,
+                IssuesRecieved = issuesRecieved,
+                Notes = notes
             },
             Message = "Task found"
         };
@@ -2491,7 +2547,7 @@ public class TaskService : ITaskService
         var user = await _authService.GetAuthedUser();
         if (user is null || user.Role != UserRoleEnum.ProjectManger)
             return new BaseResponseService { Error = true, Message = "Invalid auth" };
-;
+        ;
         if (options.Count == 0)
             return new BaseResponseService { Error = true, Message = "Please provide Steps" };
 

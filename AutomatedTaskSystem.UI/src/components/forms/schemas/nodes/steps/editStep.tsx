@@ -102,7 +102,7 @@ const EditStep = (props: Props) => {
         }).then((res) => {
             if (res) {
                 dispatch(editStep({ step: res }));
-                router.back();
+                router.push(`/schemas/${props.schemaId}`);
             }
         });
     };

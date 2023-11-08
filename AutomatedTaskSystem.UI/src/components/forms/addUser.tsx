@@ -88,7 +88,7 @@ const AddUser = () => {
 						<button
 							className={styles.submit}
 							onClick={() => {
-								router.back();
+								router.push(`/resources/users`);
 								setDone({
 									status: false,
 									code: "",

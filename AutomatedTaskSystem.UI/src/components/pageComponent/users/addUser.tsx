@@ -101,7 +101,7 @@ const AddUser = () => {
                             </div>
                             <div className="flex justify-center">
                                 <Link href={{ pathname }}>
-                                    <button className="h-10 bg-black text-white font-bold w-1/2">
+                                    <button className="h-10 bg-black text-white font-bold px-4">
                                         Done
                                     </button>
                                 </Link>
