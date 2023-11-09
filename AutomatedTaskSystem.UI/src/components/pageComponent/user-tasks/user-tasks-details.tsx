@@ -22,8 +22,8 @@ const UserTasksDetails = (props: Props) => {
 		<div className="fixed top-0 left-0 right-0 bottom-0 z-30 bg-black/25 flex justify-end">
 			<div className="bg-white rounded-l-lg flex flex-col">
 				<UserTasksDetailsHeader
-					name="Mohamed Hesham"
-					group="System Maintainer"
+					name={userData.name}
+					group={userData.group.name}
 					tasks={{
 						backlog: userData.backlogCount,
 						todo: userData.todoTasks.length,
