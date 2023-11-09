@@ -110,6 +110,12 @@ public class UserTaskService : IUserTaskService
                         && u.Role != UserRoleEnum.SectionHead
                         && groups.Contains(u.GroupId)
                 )
+                .Include(u => u.Group)
+                .Include(u => u.Tasks)
+                .ThenInclude(u => u.LearningObjective)
+                .ThenInclude(u => u.Lesson)
+                .ThenInclude(u => u.Unit)
+                .ThenInclude(u => u.Project)
                 .ToListAsync();
             var res = new List<UserTaskDto> { };
 
@@ -160,10 +166,18 @@ public class UserTaskService : IUserTaskService
         {
             var users = await _context.Users
                 .Where(
-                    u => !u.Archived && u.Role == UserRoleEnum.Member && u.GroupId == user.GroupId
+                    u =>
+                        !u.Archived
+                        && u.Role != UserRoleEnum.ProjectManger
+                        && u.Role != UserRoleEnum.SectionHead
+                        && u.GroupId == user.GroupId
                 )
                 .Include(u => u.Group)
                 .Include(u => u.Tasks)
+                .ThenInclude(u => u.LearningObjective)
+                .ThenInclude(u => u.Lesson)
+                .ThenInclude(u => u.Unit)
+                .ThenInclude(u => u.Project)
                 .ToListAsync();
 
             var res = new List<UserTaskDto> { };
