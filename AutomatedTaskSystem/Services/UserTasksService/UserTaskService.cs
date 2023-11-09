@@ -34,6 +34,10 @@ public class UserTaskService : IUserTaskService
                 .Where(u => !u.Archived && u.Role != UserRoleEnum.ProjectManger)
                 .Include(u => u.Group)
                 .Include(u => u.Tasks)
+                .ThenInclude(t => t.LearningObjective)
+                .ThenInclude(t => t.Lesson)
+                .ThenInclude(t => t.Unit)
+                .ThenInclude(t => t.Project)
                 .ToListAsync();
 
             var res = new List<UserTaskDto> { };
@@ -48,10 +52,26 @@ public class UserTaskService : IUserTaskService
                     Tasks = new TaskCountDto
                     {
                         Doing = u.Tasks
-                            .Where(t => !t.Archived && t.Status == TaskStatusEnum.Doing)
+                            .Where(
+                                t =>
+                                    !t.Archived
+                                    && t.Status == TaskStatusEnum.Doing
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Closed
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Hold
+                            )
                             .Count(),
                         Todo = u.Tasks
-                            .Where(t => !t.Archived && t.Status == TaskStatusEnum.ToDo)
+                            .Where(
+                                t =>
+                                    !t.Archived
+                                    && t.Status == TaskStatusEnum.ToDo
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Closed
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Hold
+                            )
                             .Count()
                     }
                 };
@@ -103,10 +123,26 @@ public class UserTaskService : IUserTaskService
                     Tasks = new TaskCountDto
                     {
                         Doing = u.Tasks
-                            .Where(t => !t.Archived && t.Status == TaskStatusEnum.Doing)
+                            .Where(
+                                t =>
+                                    !t.Archived
+                                    && t.Status == TaskStatusEnum.Doing
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Closed
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Hold
+                            )
                             .Count(),
                         Todo = u.Tasks
-                            .Where(t => !t.Archived && t.Status == TaskStatusEnum.ToDo)
+                            .Where(
+                                t =>
+                                    !t.Archived
+                                    && t.Status == TaskStatusEnum.ToDo
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Closed
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Hold
+                            )
                             .Count()
                     }
                 };
@@ -142,10 +178,26 @@ public class UserTaskService : IUserTaskService
                     Tasks = new TaskCountDto
                     {
                         Doing = u.Tasks
-                            .Where(t => !t.Archived && t.Status == TaskStatusEnum.Doing)
+                            .Where(
+                                t =>
+                                    !t.Archived
+                                    && t.Status == TaskStatusEnum.Doing
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Closed
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Hold
+                            )
                             .Count(),
                         Todo = u.Tasks
-                            .Where(t => !t.Archived && t.Status == TaskStatusEnum.ToDo)
+                            .Where(
+                                t =>
+                                    !t.Archived
+                                    && t.Status == TaskStatusEnum.ToDo
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Closed
+                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                        != ProjectStatusEnum.Hold
+                            )
                             .Count()
                     }
                 };
@@ -186,7 +238,15 @@ public class UserTaskService : IUserTaskService
             Name = user.Name,
             Group = new BasicInfoDto { Id = user.Group.Id, Name = user.Group.Name },
         };
-        foreach (var task in user.Tasks.Where(t => !t.Archived && t.Status == TaskStatusEnum.ToDo))
+        foreach (
+            var task in user.Tasks.Where(
+                t =>
+                    !t.Archived
+                    && t.Status == TaskStatusEnum.ToDo
+                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Closed
+                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
+            )
+        )
             res.TodoTasks.Add(
                 new TaskInfoDto
                 {
@@ -201,7 +261,15 @@ public class UserTaskService : IUserTaskService
                 }
             );
 
-        foreach (var task in user.Tasks.Where(t => !t.Archived && t.Status == TaskStatusEnum.Doing))
+        foreach (
+            var task in user.Tasks.Where(
+                t =>
+                    !t.Archived
+                    && t.Status == TaskStatusEnum.Doing
+                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Closed
+                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
+            )
+        )
             res.DoingTasks.Add(
                 new TaskInfoDto
                 {
@@ -226,7 +294,14 @@ public class UserTaskService : IUserTaskService
             .ThenInclude(lo => lo.Tasks)
             .LoadAsync();
 
-        foreach (var p in user.Projects.Where(p => !p.Archived))
+        foreach (
+            var p in user.Projects.Where(
+                p =>
+                    !p.Archived
+                    && p.Status != ProjectStatusEnum.Closed
+                    && p.Status != ProjectStatusEnum.Hold
+            )
+        )
             foreach (var u in p.Units.Where(p => !p.Archived))
                 foreach (var l in u.Lessons.Where(p => !p.Archived))
                     foreach (var lo in l.LearningObjectives.Where(p => !p.Archived))
