@@ -26,12 +26,6 @@ public class DataContext : DbContext
             .UsingEntity(j => j.ToTable("NodeSequences"));
 
         modelBuilder
-            .Entity<Node>()
-            .HasMany(n => n.Required)
-            .WithMany(n => n.Requires)
-            .UsingEntity(j => j.ToTable("NodeDependencies"));
-
-        modelBuilder
             .Entity<Step>()
             .HasMany(n => n.Rollbacks)
             .WithMany(n => n.From)

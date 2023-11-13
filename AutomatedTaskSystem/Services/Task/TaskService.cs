@@ -1476,78 +1476,80 @@ public class TaskService : ITaskService
                 .Include(n => n.Next)
                 .ThenInclude(n => n.Steps)
                 .Include(n => n.Next)
-                .ThenInclude(n => n.Requires)
+                .ThenInclude(n => n.Previous)
                 .ThenInclude(n => n.Steps)
                 .FirstOrDefaultAsync();
 
-            if (currentNode is not null)
+            if (currentNode is null)
+                return true;
+
+            if (currentNode.Next.Count == 0)
+                task.LearningObjective.DoneAt = DateTime.Now;
+
+            foreach (var nextNode in currentNode.Next)
             {
-                if (currentNode.Next.Count == 0)
-                    task.LearningObjective.DoneAt = DateTime.Now;
-
-                foreach (var nextNode in currentNode.Next)
+                var requiredIsComplete = true;
+                foreach (var previousNode in nextNode.Previous)
                 {
-                    var requiredIsComplete = true;
-                    foreach (var nodeRequired in nextNode.Requires)
+                    var nodeSteps = previousNode.Steps
+                        .Where(s => !s.Archived)
+                        .ToList()
+                        .OrderByDescending(s => s.Order);
+                    var lastStep = nodeSteps.FirstOrDefault();
+                    if (lastStep is not null)
                     {
-                        var lastStep = nodeRequired.Steps
-                            .Where(s => s.Order == nodeRequired.Steps.Count && !s.Archived)
-                            .FirstOrDefault();
-                        if (lastStep is not null)
-                        {
-                            var lastTask = await _context.Tasks
-                                .Where(
-                                    t =>
-                                        t.StepId == lastStep.Id
-                                        && t.LearningObjectiveId == task.LearningObjectiveId
-                                        && !t.Archived
-                                )
-                                .ToListAsync();
-
-                            if (lastTask.Count == 0)
-                                requiredIsComplete = false;
-
-                            lastTask.ForEach(t =>
-                            {
-                                if (
-                                    t.Status != TaskStatusEnum.Done
-                                    || t.Status == TaskStatusEnum.Rollback
-                                )
-                                    requiredIsComplete = false;
-                            });
-                        }
-                    }
-
-                    if (requiredIsComplete)
-                    {
-                        var firstStep = await _context.Steps
-                            .Where(s => s.NodeId == nextNode.Id && s.Order == 1 && !s.Archived)
-                            .Include(s => s.TaskBank)
-                            .ThenInclude(tb => tb.Group)
-                            .FirstOrDefaultAsync();
-
-                        if (firstStep is null)
-                            return false;
-
-                        var foundTasks = await _context.Tasks
+                        var lastTask = await _context.Tasks
                             .Where(
                                 t =>
-                                    t.StepId == firstStep.Id
+                                    t.StepId == lastStep.Id
                                     && t.LearningObjectiveId == task.LearningObjectiveId
                                     && !t.Archived
                             )
                             .ToListAsync();
 
-                        if (foundTasks.Count > 0)
-                            foundTasks.ForEach(t => t.Status = TaskStatusEnum.ToDo);
-                        else
+                        if (lastTask.Count == 0)
+                            requiredIsComplete = false;
+
+                        lastTask.ForEach(t =>
                         {
-                            await createTask(
-                                step: firstStep,
-                                learningObjective: task.LearningObjective,
-                                task.From
-                            );
-                        }
+                            if (
+                                t.Status != TaskStatusEnum.Done
+                                || t.Status == TaskStatusEnum.Rollback
+                            )
+                                requiredIsComplete = false;
+                        });
+                    }
+                }
+
+                if (requiredIsComplete)
+                {
+                    var firstStep = await _context.Steps
+                        .Where(s => s.NodeId == nextNode.Id && s.Order == 1 && !s.Archived)
+                        .Include(s => s.TaskBank)
+                        .ThenInclude(tb => tb.Group)
+                        .FirstOrDefaultAsync();
+
+                    if (firstStep is null)
+                        return false;
+
+                    var foundTasks = await _context.Tasks
+                        .Where(
+                            t =>
+                                t.StepId == firstStep.Id
+                                && t.LearningObjectiveId == task.LearningObjectiveId
+                                && !t.Archived
+                        )
+                        .ToListAsync();
+
+                    if (foundTasks.Count > 0)
+                        foundTasks.ForEach(t => t.Status = TaskStatusEnum.ToDo);
+                    else
+                    {
+                        await createTask(
+                            step: firstStep,
+                            learningObjective: task.LearningObjective,
+                            task.From
+                        );
                     }
                 }
             }
@@ -1567,7 +1569,7 @@ public class TaskService : ITaskService
             .Include(n => n.Next)
             .ThenInclude(n => n.Steps)
             .Include(n => n.Next)
-            .ThenInclude(n => n.Requires)
+            .ThenInclude(n => n.Previous)
             .ThenInclude(n => n.Steps)
             .FirstOrDefaultAsync();
 
@@ -1579,10 +1581,11 @@ public class TaskService : ITaskService
             foreach (var nextNode in currentNode.Next)
             {
                 var requiredIsComplete = true;
-                foreach (var nodeRequired in nextNode.Requires)
+                foreach (var previousNode in nextNode.Previous)
                 {
-                    var lastStep = nodeRequired.Steps
-                        .Where(s => s.Order == nodeRequired.Steps.Count && !s.Archived)
+                    var lastStep = previousNode.Steps
+                        .Where(s => !s.Archived)
+                        .OrderByDescending(s => s.Order)
                         .FirstOrDefault();
                     if (lastStep is not null)
                     {
