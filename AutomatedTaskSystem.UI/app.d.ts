@@ -44,7 +44,6 @@ interface INode {
     order: number;
     name: string;
     previous: { name: string; id: number }[];
-    requires: { name: string; id: number }[];
     isStart: boolean;
     steps: IStep[];
 }

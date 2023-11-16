@@ -14,7 +14,7 @@ const UserTasksDetails = (props: Props) => {
 		API.RESOURCES.USERS.GET_USER_TASKS(props.userId).then(
 			(res) => res && !res.error && setUserData(res.data)
 		);
-	}, []);
+	}, [props.userId]);
 
 	if (userData === undefined) return <></>;
 

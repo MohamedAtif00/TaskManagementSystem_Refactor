@@ -21,7 +21,6 @@ export const nodesSlice = createSlice({
                     isStart: n.isStart,
                     name: n.name,
                     previous: n.previous,
-                    requires: n.requires,
                     steps,
                 };
 
@@ -46,7 +45,6 @@ export const nodesSlice = createSlice({
                             ? [...n.steps, action.payload.step]
                             : n.steps,
                     previous: n.previous,
-                    requires: n.requires,
                     order: n.order,
                 };
                 newState.push(newNode);
@@ -77,7 +75,6 @@ export const nodesSlice = createSlice({
                     name: n.name,
                     steps: newSteps,
                     previous: n.previous,
-                    requires: n.requires,
                     order: n.order,
                 };
                 newState.push(newNode);
@@ -100,7 +97,7 @@ export const nodesSlice = createSlice({
         add: (state, action: PayloadAction<INode>) => {
             return [...state, action.payload];
         },
-        load: (state, action: PayloadAction<INode[]>) => {
+        load: ({}, action: PayloadAction<INode[]>) => {
             return [...action.payload];
         },
         clear: () => {

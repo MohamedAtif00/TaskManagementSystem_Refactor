@@ -150,7 +150,6 @@ const Schema = () => {
                                 name={n.name}
                                 isStart={n.isStart}
                                 previous={n.previous}
-                                requires={n.requires}
                                 steps={n.steps}
                             />
                         );

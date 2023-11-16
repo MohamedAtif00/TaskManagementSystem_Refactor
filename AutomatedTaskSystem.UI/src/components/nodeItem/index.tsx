@@ -14,7 +14,6 @@ interface Props {
     id: number;
     name: string;
     previous: { name: string; id: number }[];
-    requires: { name: string; id: number }[];
     isStart: boolean;
     steps: IStep[];
     updateNodes: () => void;
@@ -26,7 +25,6 @@ const NodeItem = ({
     name,
     isStart,
     previous,
-    requires,
     steps,
     updateNodes,
 }: Props) => {
@@ -134,19 +132,9 @@ const NodeItem = ({
                     {isStart ? (
                         <div>Start Point</div>
                     ) : (
-                        <>
                             <div>
                                 Previous: {previous.map((p) => `${p.name} `)}
                             </div>
-                            {requires.length !== 0 ? (
-                                <div>
-                                    Requires:{" "}
-                                    {requires.map((r) => `${r.name} `)}
-                                </div>
-                            ) : (
-                                ""
-                            )}
-                        </>
                     )}
                 </div>
             </div>

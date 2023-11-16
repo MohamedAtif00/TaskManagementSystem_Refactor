@@ -31,7 +31,7 @@ const RollbackHistory: React.FC<Props> = ({ taskId, projectId, isReview }) => {
 		API.TASKS.GET_ROLLBACK_HISTORY(taskId).then(
 			(res) => res && !res.error && setHistory(res.data)
 		);
-	}, []);
+	}, [taskId]);
 
 	if (history === undefined)
 		return (
