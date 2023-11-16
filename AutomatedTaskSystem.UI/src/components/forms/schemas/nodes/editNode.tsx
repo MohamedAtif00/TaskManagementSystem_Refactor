@@ -3,7 +3,6 @@ import Backdrop from "../../backdrop";
 import React, { useEffect, useState } from "react";
 import FormField from "../../field";
 import SelectNodesWithToggle from "../../selectListWithToggle";
-import SelectList from "../../selectList";
 import API from "../../../../lib/API";
 import { useRouter } from "next/router";
 
@@ -29,9 +28,6 @@ const EditNode = ({
     const [previous, setPrevious] = useState<number[]>(
         node.previous.map((n) => n.id)
     );
-    const [requires, setRequires] = useState<number[]>(
-        node.requires.map((n) => n.id)
-    );
     const router = useRouter();
 
     const updatePrevious = (nodeId: number) => {
@@ -39,34 +35,17 @@ const EditNode = ({
         if (foundIndex === -1) {
             return setPrevious((ps) => [...ps, nodeId]);
         }
-        const foundRequires = requires.findIndex((_n) => _n === nodeId);
-        if (foundRequires !== -1) {
-            setRequires((ps) => [
-                ...ps.slice(0, foundRequires),
-                ...ps.slice(foundRequires + 1),
-            ]);
-        }
         return setPrevious((ps) => [
             ...ps.slice(0, foundIndex),
             ...ps.slice(foundIndex + 1),
         ]);
     };
 
-    const updateRequires = (nodeId: number) =>
-        setRequires((ps) => {
-            const foundIndex = ps.findIndex((_n) => _n == nodeId);
-            if (foundIndex == -1) {
-                return [...ps, nodeId];
-            }
-            return [...ps.slice(0, foundIndex), ...ps.slice(foundIndex + 1)];
-        });
 
     const updateStart = () => {
         setStart((ps) => !ps);
-        if (!start) {
+        if (!start)
             setPrevious([]);
-            setRequires([]);
-        }
     };
 
     useEffect(() => {
@@ -83,7 +62,6 @@ const EditNode = ({
                 name,
                 isStart: start,
                 previous,
-                requires,
                 schemaId,
             }).then((res) => {
                 if (res) {
@@ -113,14 +91,6 @@ const EditNode = ({
                             selected={previous}
                             checkbox={start}
                             toggle={updateStart}
-                        />
-                        <SelectList
-                            label="Requires"
-                            list={nodes.filter((_n) =>
-                                previous.includes(_n.id)
-                            )}
-                            selected={requires}
-                            updateList={updateRequires}
                         />
                     </div>
                     <div>

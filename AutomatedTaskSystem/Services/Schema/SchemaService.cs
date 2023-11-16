@@ -203,7 +203,6 @@ public class SchemaService : ISchemaService
             .Include(s => s.Nodes)
             .ThenInclude(n => n.Previous)
             .Include(s => s.Nodes)
-            .ThenInclude(n => n.Requires)
             .Include(s => s.Type)
             .FirstOrDefaultAsync();
 
@@ -265,15 +264,6 @@ public class SchemaService : ISchemaService
                 {
                     newNodes[i].Previous.Add(newNodes[index]);
                     newNodes[index].Next.Add(newNodes[i]);
-                }
-            }
-            foreach (var item in oldNode.Requires)
-            {
-                var index = oldNodes.FindIndex(n => n.Id == item.Id);
-                if (index >= 0)
-                {
-                    newNodes[i].Requires.Add(newNodes[index]);
-                    newNodes[index].Required.Add(newNodes[i]);
                 }
             }
         }

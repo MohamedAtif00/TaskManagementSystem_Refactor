@@ -33,8 +33,6 @@ namespace AutomatedTaskSystem.DTO
             public int Order { get; set; }
             public string Name { get; set; } = "";
             public List<NodeStepDTO> Steps { get; set; } = new List<NodeStepDTO> { };
-            public List<IDName> Required { get; set; } = new List<IDName> { };
-            public List<IDName> Requires { get; set; } = new List<IDName> { };
             public List<IDName> Next { get; set; } = new List<IDName> { };
             public List<IDName> Previous { get; set; } = new List<IDName> { };
             public bool isStart { get; set; } = false;

@@ -6,7 +6,6 @@ type Node = {
     name: string;
     isStart: boolean;
     previous: number[];
-    requires: number[];
 };
 
 export interface UnarchivableSchemaResponse {
@@ -298,7 +297,6 @@ const SCHEMAS = {
             name,
             isStart,
             previous,
-            requires,
         }: { id: number } & Node) => {
             try {
                 const res = await fetch(`${url}/nodes/${id}`, {
@@ -310,7 +308,6 @@ const SCHEMAS = {
                         name,
                         isStart,
                         previous,
-                        requires,
                     }),
                 });
                 const data: INode = await res.json();
@@ -320,7 +317,7 @@ const SCHEMAS = {
                 return false;
             }
         },
-        ADD: async ({ schemaId, name, isStart, previous, requires }: Node) => {
+        ADD: async ({ schemaId, name, isStart, previous }: Node) => {
             try {
                 const res = await fetch(`${url}/nodes/${schemaId}`, {
                     method: "POST",
@@ -331,7 +328,6 @@ const SCHEMAS = {
                         name,
                         isStart,
                         previous,
-                        requires,
                     }),
                 });
                 const data: INode = await res.json();
