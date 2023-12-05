@@ -1,24 +1,26 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { useAppSelector } from "../../app/hooks";
-import PlusIcon from "../../assets/Icons/Plus";
-import QueryButton from "../../components/button/queryButton";
-import AssignTask from "../../components/forms/tasks/assignToTask";
-import Header from "../../components/header/header";
-import TaskDetails from "../../components/taskDetails";
-import API from "../../lib/API";
+import { useAppSelector } from "../../../app/hooks";
+import PlusIcon from "../../../assets/Icons/Plus";
+import QueryButton from "../../../components/button/queryButton";
+import Header from "../../../components/header/header";
+import TaskDetails from "../../../components/taskDetails";
+import API from "../../../lib/API";
 import Head from "next/head";
-import Loader from "../../components/loader";
-import CreateStandAloneTaskForm from "../../components/pageComponent/tasks/CreateStandAloneForm";
-import TaskCol from "../../components/pageComponent/tasks/TasksCol";
+import Loader from "../../../components/loader";
+import CreateStandAloneTaskForm from "../../../components/pageComponent/tasks/CreateStandAloneForm";
+import TaskCol from "../../../components/pageComponent/tasks/TasksCol";
+import useTaskPathHandler from "../../../components/taskDetails/useTaskPathHandler.ts";
 
-const Tasks = () => {
+const TaskBoard = () => {
     const [tasks, setTasks] = useState<TaskInfo[]>();
     const [filteredTasks, setFilteredTasks] = useState<TaskInfo[]>([]);
     const [project, setProject] = useState<IProject>();
     const [loFilter, setLoFilter] = useState(0);
     const auth = useAppSelector((e) => e.authSlice);
     const router = useRouter();
+
+    useTaskPathHandler();
 
     useEffect(() => {
         if (loFilter > 0 && tasks !== undefined) {
@@ -115,6 +117,7 @@ const Tasks = () => {
             </Head>
             <div className="w-full h-screen overflow-hidden flex flex-col">
                 <div className="px-8">
+                    {/*
                     <Header text={project.name} icon="Task">
                         {auth.role !== 3 ? (
                             <QueryButton
@@ -151,6 +154,7 @@ const Tasks = () => {
                             </select>
                         </div>
                     </Header>
+                    */}
                 </div>
                 <div className="px-8 overflow-x-auto flex grow">
                     <div className="flex gap-1 bg-slate-50">
@@ -173,4 +177,5 @@ const Tasks = () => {
     );
 };
 
-export default Tasks;
+export default TaskBoard;
+

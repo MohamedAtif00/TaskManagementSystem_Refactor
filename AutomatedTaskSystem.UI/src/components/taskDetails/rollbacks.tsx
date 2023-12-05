@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import API from "../../lib/API";
 import Head from "next/head";
 import Loader from "../loader";
+import useTaskPathHandler from "./useTaskPathHandler.ts";
 
 interface Props {
 	taskId: number;
@@ -24,8 +25,9 @@ interface History {
 	}[];
 }
 
-const RollbackHistory: React.FC<Props> = ({ taskId, projectId, isReview }) => {
+const RollbackHistory: React.FC<Props> = ({ taskId, isReview }) => {
 	const [history, setHistory] = useState<History>();
+	const pathHandler = useTaskPathHandler();
 
 	useEffect(() => {
 		API.TASKS.GET_ROLLBACK_HISTORY(taskId).then(
@@ -50,7 +52,7 @@ const RollbackHistory: React.FC<Props> = ({ taskId, projectId, isReview }) => {
 					<div>Rollback History:</div>
 					<Link
 						href={{
-							pathname: `/tasks/${projectId}`,
+							pathname: pathHandler(),
 							query: {
 								taskId,
 							},

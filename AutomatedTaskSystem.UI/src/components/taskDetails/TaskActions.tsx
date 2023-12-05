@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import JumpForm from "./jumpForm";
+import useTaskPathHandler from "./useTaskPathHandler.ts";
 
 interface Props {
     access: "WorkOn" | "Manage" | "WorkOnAndManage" | "None";
@@ -44,6 +45,7 @@ const TaskAction: React.FC<Props> = ({
 }) => {
     const [priorityFocus, setPriorityFocus] = useState(false);
     const auth = useAppSelector((s) => s.authSlice);
+    const pathHandler = useTaskPathHandler();
 
     const updatePrio = (value: null | number) => {
         API.TASKS.UPDATE_PRIORITY(
@@ -89,7 +91,7 @@ const TaskAction: React.FC<Props> = ({
                     (status === 2 ? (
                         <Link
                             href={{
-                                pathname: `/tasks/${projectId}`,
+                                pathname: pathHandler(),
                                 query: {
                                     form: "proceed",
                                     taskId: taskId,
@@ -142,7 +144,7 @@ const TaskAction: React.FC<Props> = ({
                     (access === "Manage" || access === "WorkOnAndManage") && (
                         <Link
                             href={{
-                                pathname: `/tasks/${projectId}`,
+                                pathname: pathHandler(),
                                 query: {
                                     form: "task-assign",
                                     taskId: taskId,
@@ -237,7 +239,7 @@ const TaskAction: React.FC<Props> = ({
                     status === 2 && (
                         <Link
                             href={{
-                                pathname: `/tasks/${projectId}`,
+                                pathname: pathHandler(),
                                 query: {
                                     form: "rollback",
                                     taskId: taskId,
@@ -262,7 +264,7 @@ const TaskAction: React.FC<Props> = ({
                 {auth.role === 0 && (
                     <Link
                         href={{
-                            pathname: `/tasks/${projectId}`,
+                            pathname: pathHandler(),
                             query: {
                                 taskId: taskId,
                                 form: "jump",

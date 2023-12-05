@@ -7,6 +7,7 @@ import Loader from "../../loader";
 import CrossIcon from "../../../assets/Icons/Cross";
 import Link from "next/link";
 import CustomizedCombobox from "../../formComponents/Combobox";
+import useTaskPathHandler from "../../taskDetails/useTaskPathHandler.ts";
 
 interface Props {
 	update: (params: ITask) => void;
@@ -27,6 +28,7 @@ const RollbackForm = ({ taskId, projectId, update }: Props) => {
 	const [rollbackPoints, setRollbackPoints] = useState<BasicInfo[]>();
 	const [review, setReview] = useState(false);
 	const [error, setError] = useState<string>();
+	const pathHandler = useTaskPathHandler();
 
 	useEffect(() => {
 		API.TASKS.PREVIOUS_TASKS(taskId).then((res) => {
@@ -105,14 +107,14 @@ const RollbackForm = ({ taskId, projectId, update }: Props) => {
 		<motion.div
 			initial={{ opacity: 0 }}
 			animate={{ opacity: 1 }}
-			className="fixed z-50 flex justify-center items-center bg-black/25 top-0 left-0 bottom-0 right-0"
+			className="fixed z-50 flex justify-center items-center bg-black/25 top-0 left-0 bottom-0 right-0 overflow-y-auto"
 		>
 			<div className="rounded-lg bg-white shadow-md">
 				<div className="flex justify-between py-4 px-6 items-center border-b border-solid border-slate-200">
 					<div className="text-xl">Roll Back Task</div>
 					<Link
 						href={{
-							pathname: `/tasks/${projectId}`,
+							pathname: pathHandler(),
 							query: {
 								taskId: taskId,
 							},
@@ -276,7 +278,7 @@ const RollbackForm = ({ taskId, projectId, update }: Props) => {
 						) : (
 							<Link
 								href={{
-									pathname: `/tasks/${projectId}`,
+									pathname: pathHandler(),
 									query: {
 										taskId,
 									},
