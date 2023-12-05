@@ -5,7 +5,6 @@ import FormField from "../../field";
 import { useRouter } from "next/router";
 import API from "../../../../lib/API";
 import SelectNodesWithToggle from "../../selectListWithToggle";
-import SelectList from "../../selectList";
 
 interface INodeLocal {
 	id: number;
@@ -26,7 +25,6 @@ const AddNode = ({
 	const [name, setName] = useState("");
 	const [start, setStart] = useState(false);
 	const [previous, setPrevious] = useState<number[]>([]);
-	const [requires, setRequires] = useState<number[]>([]);
 	const router = useRouter();
 
 	const updatePrevious = (nodeId: number) => {
@@ -34,34 +32,17 @@ const AddNode = ({
 		if (foundIndex === -1) {
 			return setPrevious((ps) => [...ps, nodeId]);
 		}
-		const foundRequires = requires.findIndex((_n) => _n === nodeId);
-		if (foundRequires !== -1) {
-			setRequires((ps) => [
-				...ps.slice(0, foundRequires),
-				...ps.slice(foundRequires + 1),
-			]);
-		}
 		return setPrevious((ps) => [
 			...ps.slice(0, foundIndex),
 			...ps.slice(foundIndex + 1),
 		]);
 	};
 
-	const updateRequires = (nodeId: number) =>
-		setRequires((ps) => {
-			const foundIndex = ps.findIndex((_n) => _n == nodeId);
-			if (foundIndex == -1) {
-				return [...ps, nodeId];
-			}
-			return [...ps.slice(0, foundIndex), ...ps.slice(foundIndex + 1)];
-		});
 
 	const updateStart = () => {
 		setStart((ps) => !ps);
-		if (!start) {
+		if (!start)
 			setPrevious([]);
-			setRequires([]);
-		}
 	};
 
 	useEffect(() => {
@@ -81,7 +62,6 @@ const AddNode = ({
 			setName("");
 			setStart(false);
 			setPrevious([]);
-			setRequires([]);
 		}
 	}, [router]);
 
@@ -92,12 +72,11 @@ const AddNode = ({
 				name,
 				isStart: start,
 				previous,
-				requires,
 				schemaId,
 			}).then((res) => {
 				if (res) {
 					updateList();
-					router.back();
+					router.push(`/schemas/${schemaId}`);
 				}
 			});
 	};
@@ -123,14 +102,6 @@ const AddNode = ({
 								selected={previous}
 								checkbox={start}
 								toggle={updateStart}
-							/>
-							<SelectList
-								label="Requires"
-								list={nodes.filter((_n) =>
-									previous.includes(_n.id)
-								)}
-								selected={requires}
-								updateList={updateRequires}
 							/>
 						</div>
 						<div>

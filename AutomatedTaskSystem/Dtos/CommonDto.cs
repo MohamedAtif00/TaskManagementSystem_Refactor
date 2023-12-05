@@ -12,10 +12,11 @@ namespace AutomatedTaskSystem.DTO
                 Info = info;
             }
         }
+
         public class SuccessDTO
         {
             public bool Error { get; } = false;
-            public String Info { get; set; } = "";
+            public string Info { get; set; } = "";
 
             public SuccessDTO(string info)
             {

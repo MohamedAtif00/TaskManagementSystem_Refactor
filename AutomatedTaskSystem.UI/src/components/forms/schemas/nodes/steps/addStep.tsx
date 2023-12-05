@@ -49,7 +49,7 @@ const AddStep = (props: Props) => {
                             step: res,
                         })
                     );
-                    router.back();
+                    router.push(`/schemas/${props.schemaId}`);
                 }
             });
     };
@@ -79,7 +79,10 @@ const AddStep = (props: Props) => {
                                 }))}
                                 handleChange={setTaskBankItem}
                             />
-                            <HoursMinutes value={duration} setValue={setDuration} />
+                            <HoursMinutes
+                                value={duration}
+                                setValue={setDuration}
+                            />
                         </div>
                         <div>
                             <input

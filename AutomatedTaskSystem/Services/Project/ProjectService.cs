@@ -577,7 +577,10 @@ public class ProjectService : IProjectService
 
         if (status == ProjectStatusEnum.Active)
         {
-            if (project.Status == ProjectStatusEnum.Active || project.Status == ProjectStatusEnum.Reopened)
+            if (
+                project.Status == ProjectStatusEnum.Active
+                || project.Status == ProjectStatusEnum.Reopened
+            )
                 return new BadRequestObjectResult(
                     new BaseResponseService { Error = true, Message = "Project is already active" }
                 );

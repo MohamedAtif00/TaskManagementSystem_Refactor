@@ -29,14 +29,10 @@ public class NodeController : ControllerBase
             .Where(_n => _n.Id == nodeId && !_n.Archived)
             .Include(_n => _n.Previous)
             .Include(_n => _n.Next)
-            .Include(_n => _n.Required)
-            .Include(_n => _n.Requires)
             .FirstOrDefaultAsync();
 
         if (node == null)
-        {
             return NotFound(new Responses.BadRequestsDTO("Node not found"));
-        }
 
         var res = new Responses.NodeDTO
         {
@@ -51,12 +47,6 @@ public class NodeController : ControllerBase
             _n => res.Previous.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
         );
         node.Next.ForEach(_n => res.Next.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name }));
-        node.Required.ForEach(
-            _n => res.Required.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
-        );
-        node.Requires.ForEach(
-            _n => res.Requires.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
-        );
         var steps = await _context.Steps
             .Where(_s => _s.NodeId == node.Id)
             .Include(_s => _s.TaskBank)
@@ -120,25 +110,17 @@ public class NodeController : ControllerBase
             .Where(n => req.Previous.Contains(n.Id) && !n.Archived)
             .Include(n => n.Previous)
             .Include(n => n.Next)
-            .Include(n => n.Requires)
-            .Include(n => n.Required)
             .ToListAsync();
 
         var requires = await _context.Nodes
             .Where(n => req.Requires.Contains(n.Id) && !n.Archived)
             .Include(n => n.Previous)
             .Include(n => n.Next)
-            .Include(n => n.Requires)
-            .Include(n => n.Required)
             .ToListAsync();
-
-        foreach (var item in requires)
-            item.Required.Add(node);
 
         foreach (var item in prevNodes)
             item.Next.Add(node);
 
-        node.Requires = requires;
         node.Previous = prevNodes;
 
         if (req.Name != "")
@@ -179,14 +161,6 @@ public class NodeController : ControllerBase
         foreach (var item in node.Next)
             nexts.Add(new Responses.IDName { Name = item.Name, Id = item.Id });
 
-        var reqs = new List<Responses.IDName> { };
-        foreach (var item in node.Requires)
-            reqs.Add(new Responses.IDName { Name = item.Name, Id = item.Id });
-
-        var reqd = new List<Responses.IDName> { };
-        foreach (var item in node.Required)
-            reqs.Add(new Responses.IDName { Name = item.Name, Id = item.Id });
-
         var res = new Responses.NodeDTO
         {
             Order = node.Order,
@@ -197,8 +171,6 @@ public class NodeController : ControllerBase
             Next = nexts,
             Previous = prevs,
             Steps = steps,
-            Required = reqd,
-            Requires = reqs
         };
 
         return res;
@@ -221,8 +193,6 @@ public class NodeController : ControllerBase
             return NotFound(new Responses.BadRequestsDTO("Schema not found"));
 
         var previousNodes = new List<Node> { };
-        var requiresNodes = new List<Node> { };
-        var emptyNodes = new List<Node> { };
 
         var newNode = new Node
         {
@@ -232,9 +202,7 @@ public class NodeController : ControllerBase
             Schema = schema,
             SchemaId = schema.Id,
             Previous = previousNodes,
-            Next = emptyNodes,
-            Required = emptyNodes,
-            Requires = requiresNodes,
+            Next = new List<Node>{},
             Steps = new List<Step> { },
             Order = schema.Nodes.FindAll(n => !n.Archived).Count + 1
         };
@@ -267,10 +235,6 @@ public class NodeController : ControllerBase
                 return NotFound(
                     new Responses.BadRequestsDTO($"Node of ID {req.Requires[i]} is not found")
                 );
-
-            _pn.Required.Add(newNode);
-
-            requiresNodes.Add(_pn);
         }
         _context.Nodes.Add(newNode);
         await _context.SaveChangesAsync();
@@ -313,8 +277,6 @@ public class NodeController : ControllerBase
             .Where(_n => _n.SchemaId == schemaId && !_n.Archived)
             .Include(_n => _n.Previous)
             .Include(_n => _n.Next)
-            .Include(_n => _n.Required)
-            .Include(_n => _n.Requires)
             .Include(n => n.Steps)
             .ThenInclude(s => s.TaskBank)
             .ThenInclude(tb => tb.Group)
@@ -343,12 +305,6 @@ public class NodeController : ControllerBase
             );
             node.Next.ForEach(
                 _n => nodeRes.Next.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
-            );
-            node.Required.ForEach(
-                _n => nodeRes.Required.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
-            );
-            node.Requires.ForEach(
-                _n => nodeRes.Requires.Add(new Responses.IDName { Id = _n.Id, Name = _n.Name })
             );
 
             node.Steps.ForEach(_s =>
@@ -447,10 +403,6 @@ public class NodeController : ControllerBase
             .ThenInclude(n => n.Previous)
             .Include(n => n.Previous)
             .ThenInclude(n => n.Next)
-            .Include(n => n.Required)
-            .ThenInclude(n => n.Requires)
-            .Include(n => n.Requires)
-            .ThenInclude(n => n.Required)
             .Include(n => n.Steps)
             .ThenInclude(s => s.Tasks)
             .ThenInclude(t => t.LearningObjective)
@@ -488,11 +440,6 @@ public class NodeController : ControllerBase
         foreach (var item in node.Previous)
             item.Next.Remove(node);
 
-        foreach (var item in node.Required)
-            item.Requires.Remove(node);
-        foreach (var item in node.Requires)
-            item.Required.Remove(node);
-
         foreach (var step in node.Steps)
             step.Archived = true;
 
@@ -516,8 +463,6 @@ public class NodeController : ControllerBase
             .Where(n => n.SchemaId == node.SchemaId && !n.Archived)
             .Include(n => n.Previous)
             .Include(n => n.Next)
-            .Include(n => n.Required)
-            .Include(n => n.Requires)
             .ToListAsync();
 
         if (node.Order > 1)
@@ -548,8 +493,6 @@ public class NodeController : ControllerBase
             .Where(n => n.SchemaId == node.SchemaId && !n.Archived)
             .Include(n => n.Previous)
             .Include(n => n.Next)
-            .Include(n => n.Required)
-            .Include(n => n.Requires)
             .ToListAsync();
 
         if (nodes.Any(n => n.Order > node.Order))

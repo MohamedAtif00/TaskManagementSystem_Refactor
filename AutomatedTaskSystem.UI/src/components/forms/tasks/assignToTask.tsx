@@ -33,15 +33,21 @@ const AssignTask = (props: Props) => {
             userId: selectedUser,
             taskId: props.taskId,
         }).then(() => {
-            window.history.length < 2
-                ? router.back()
-                : router.push(`/tasks/${router.query.projectId}${router.query.taskId ? `?taskId=${router.query.taskId}` : ""}`);
+            router.push(
+                `/tasks/${router.query.projectId}${
+                    router.query.taskId ? `?taskId=${router.query.taskId}` : ""
+                }`
+            );
             props.refreshTask();
         });
     };
 
     return (
-        <Backdrop mainRoute={`/tasks/${router.query.projectId}${router.query.taskId ? `?taskId=${router.query.taskId}` : ""}`}>
+        <Backdrop
+            mainRoute={`/tasks/${router.query.projectId}${
+                router.query.taskId ? `?taskId=${router.query.taskId}` : ""
+            }`}
+        >
             <div className={[styles.form, styles.center].join(" ")}>
                 <div className="pb-2">
                     Assigned User:{" "}
@@ -52,7 +58,7 @@ const AssignTask = (props: Props) => {
                 <form onSubmit={handleSubmit}>
                     <div className={styles.inputs}>
                         <select
-							className="px-2 py-1 rounded-md bg-slate-200 border border-solid border-slate-600"
+                            className="px-2 py-1 rounded-md bg-slate-200 border border-solid border-slate-600"
                             value={selectedUser}
                             onChange={(e) => {
                                 const value = parseInt(e.target.value);

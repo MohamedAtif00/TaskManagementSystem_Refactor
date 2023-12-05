@@ -11,6 +11,7 @@ using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.AuthService;
 using AutomatedTaskSystem.Services.ResponseService;
+using AutomatedTaskSystem.Services.RollbackService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Services.TaskService;
@@ -25,11 +26,17 @@ public class TaskService : ITaskService
 {
     private readonly DataContext _context;
     private readonly IAuthService _authService;
+    private readonly IRollbackService _rollbackService;
 
-    public TaskService(DataContext context, IAuthService authService)
+    public TaskService(
+        DataContext context,
+        IAuthService authService,
+        IRollbackService rollbackService
+    )
     {
         _context = context;
         _authService = authService;
+        _rollbackService = rollbackService;
     }
 
     public async Task<ActionResult<BaseResponseService>> AssignUser(int id, int uid)
@@ -427,7 +434,9 @@ public class TaskService : ITaskService
 
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(
         int taskId,
-        int stepId
+        int stepId,
+        List<RollbackLogDto> logs,
+        string? clarification
     )
     {
         var user = await _authService.GetAuthedUser();
@@ -532,6 +541,17 @@ public class TaskService : ITaskService
                 ActorTwoId = null
             };
 
+            var RollbackLog = await _rollbackService.CreateRollback(
+                FromTaskId: task.Id,
+                ToTaskId: foundTask.Id,
+                UserId: user.Id,
+                Clarification: clarification,
+                logs: logs
+            );
+
+            if (RollbackLog.Error)
+                return new BadRequestObjectResult(RollbackLog);
+
             _context.TaskActivities.Add(newActivity);
             _context.TaskActivities.Add(newActivity2);
         }
@@ -591,6 +611,17 @@ public class TaskService : ITaskService
                 ActorTwo = null,
                 ActorTwoId = null
             };
+
+            var RollbackLog = await _rollbackService.CreateRollback(
+                FromTaskId: task.Id,
+                ToTaskId: newTask.Id,
+                UserId: user.Id,
+                Clarification: null,
+                logs: logs
+            );
+
+            if (RollbackLog.Error)
+                return new BadRequestObjectResult(RollbackLog);
 
             _context.TaskActivities.Add(newActivity);
             _context.TaskActivities.Add(newActivity2);
@@ -859,6 +890,8 @@ public class TaskService : ITaskService
         User? user
     )
     {
+        var authedUser = await _authService.GetAuthedUser();
+
         var newTask = new Models.Task
         {
             Step = null,
@@ -894,8 +927,8 @@ public class TaskService : ITaskService
             TaskSecondary = null,
             ActorTwoId = null,
             ActorTwo = null,
-            ActorOneId = null,
-            ActorOne = null,
+            ActorOneId = authedUser is null ? null : authedUser.Id,
+            ActorOne = authedUser,
             TimeStamp = DateTime.Now,
             Type = TaskActivityTypeEnum.Created,
         };
@@ -1087,6 +1120,26 @@ public class TaskService : ITaskService
         foreach (var d in durations)
             duration += d.Duration;
 
+        var issuesRecieved = task.IsReview
+            ? 0
+            : (await _context.Rollbacks.Where(rb => rb.ToTaskId == task.Id).ToListAsync()).Count;
+        var issuesCreated = task.IsReview
+            ? (await _context.Rollbacks.Where(rb => rb.TaskId == task.Id).ToListAsync()).Count
+            : 0;
+        var notes = task.IsReview
+            ? 0
+            : (
+                await _context.RollbackIssues
+                    .Where(
+                        rb =>
+                            rb.StepId == task.StepId
+                            && task.LearningObjectiveId == rb.Rollback.Task.LearningObjectiveId
+                    )
+                    .Include(rb => rb.Rollback)
+                    .ThenInclude(r => r.Task)
+                    .ToListAsync()
+            ).Count;
+
         return new ResponseService<GetTaskDetailsDto>
         {
             Error = false,
@@ -1192,7 +1245,10 @@ public class TaskService : ITaskService
                     )
                     .OrderByDescending(a => a.TimeStamp)
                     .ToList(),
-                Duration = duration
+                Duration = duration,
+                IssuesCreated = issuesCreated,
+                IssuesRecieved = issuesRecieved,
+                Notes = notes
             },
             Message = "Task found"
         };
@@ -1420,78 +1476,80 @@ public class TaskService : ITaskService
                 .Include(n => n.Next)
                 .ThenInclude(n => n.Steps)
                 .Include(n => n.Next)
-                .ThenInclude(n => n.Requires)
+                .ThenInclude(n => n.Previous)
                 .ThenInclude(n => n.Steps)
                 .FirstOrDefaultAsync();
 
-            if (currentNode is not null)
+            if (currentNode is null)
+                return true;
+
+            if (currentNode.Next.Count == 0)
+                task.LearningObjective.DoneAt = DateTime.Now;
+
+            foreach (var nextNode in currentNode.Next)
             {
-                if (currentNode.Next.Count == 0)
-                    task.LearningObjective.DoneAt = DateTime.Now;
-
-                foreach (var nextNode in currentNode.Next)
+                var requiredIsComplete = true;
+                foreach (var previousNode in nextNode.Previous)
                 {
-                    var requiredIsComplete = true;
-                    foreach (var nodeRequired in nextNode.Requires)
+                    var nodeSteps = previousNode.Steps
+                        .Where(s => !s.Archived)
+                        .ToList()
+                        .OrderByDescending(s => s.Order);
+                    var lastStep = nodeSteps.FirstOrDefault();
+                    if (lastStep is not null)
                     {
-                        var lastStep = nodeRequired.Steps
-                            .Where(s => s.Order == nodeRequired.Steps.Count && !s.Archived)
-                            .FirstOrDefault();
-                        if (lastStep is not null)
-                        {
-                            var lastTask = await _context.Tasks
-                                .Where(
-                                    t =>
-                                        t.StepId == lastStep.Id
-                                        && t.LearningObjectiveId == task.LearningObjectiveId
-                                        && !t.Archived
-                                )
-                                .ToListAsync();
-
-                            if (lastTask.Count == 0)
-                                requiredIsComplete = false;
-
-                            lastTask.ForEach(t =>
-                            {
-                                if (
-                                    t.Status != TaskStatusEnum.Done
-                                    || t.Status == TaskStatusEnum.Rollback
-                                )
-                                    requiredIsComplete = false;
-                            });
-                        }
-                    }
-
-                    if (requiredIsComplete)
-                    {
-                        var firstStep = await _context.Steps
-                            .Where(s => s.NodeId == nextNode.Id && s.Order == 1 && !s.Archived)
-                            .Include(s => s.TaskBank)
-                            .ThenInclude(tb => tb.Group)
-                            .FirstOrDefaultAsync();
-
-                        if (firstStep is null)
-                            return false;
-
-                        var foundTasks = await _context.Tasks
+                        var lastTask = await _context.Tasks
                             .Where(
                                 t =>
-                                    t.StepId == firstStep.Id
+                                    t.StepId == lastStep.Id
                                     && t.LearningObjectiveId == task.LearningObjectiveId
                                     && !t.Archived
                             )
                             .ToListAsync();
 
-                        if (foundTasks.Count > 0)
-                            foundTasks.ForEach(t => t.Status = TaskStatusEnum.ToDo);
-                        else
+                        if (lastTask.Count == 0)
+                            requiredIsComplete = false;
+
+                        lastTask.ForEach(t =>
                         {
-                            await createTask(
-                                step: firstStep,
-                                learningObjective: task.LearningObjective,
-                                task.From
-                            );
-                        }
+                            if (
+                                t.Status != TaskStatusEnum.Done
+                                || t.Status == TaskStatusEnum.Rollback
+                            )
+                                requiredIsComplete = false;
+                        });
+                    }
+                }
+
+                if (requiredIsComplete)
+                {
+                    var firstStep = await _context.Steps
+                        .Where(s => s.NodeId == nextNode.Id && s.Order == 1 && !s.Archived)
+                        .Include(s => s.TaskBank)
+                        .ThenInclude(tb => tb.Group)
+                        .FirstOrDefaultAsync();
+
+                    if (firstStep is null)
+                        return false;
+
+                    var foundTasks = await _context.Tasks
+                        .Where(
+                            t =>
+                                t.StepId == firstStep.Id
+                                && t.LearningObjectiveId == task.LearningObjectiveId
+                                && !t.Archived
+                        )
+                        .ToListAsync();
+
+                    if (foundTasks.Count > 0)
+                        foundTasks.ForEach(t => t.Status = TaskStatusEnum.ToDo);
+                    else
+                    {
+                        await createTask(
+                            step: firstStep,
+                            learningObjective: task.LearningObjective,
+                            task.From
+                        );
                     }
                 }
             }
@@ -1511,7 +1569,7 @@ public class TaskService : ITaskService
             .Include(n => n.Next)
             .ThenInclude(n => n.Steps)
             .Include(n => n.Next)
-            .ThenInclude(n => n.Requires)
+            .ThenInclude(n => n.Previous)
             .ThenInclude(n => n.Steps)
             .FirstOrDefaultAsync();
 
@@ -1523,10 +1581,11 @@ public class TaskService : ITaskService
             foreach (var nextNode in currentNode.Next)
             {
                 var requiredIsComplete = true;
-                foreach (var nodeRequired in nextNode.Requires)
+                foreach (var previousNode in nextNode.Previous)
                 {
-                    var lastStep = nodeRequired.Steps
-                        .Where(s => s.Order == nodeRequired.Steps.Count && !s.Archived)
+                    var lastStep = previousNode.Steps
+                        .Where(s => !s.Archived)
+                        .OrderByDescending(s => s.Order)
                         .FirstOrDefault();
                     if (lastStep is not null)
                     {
@@ -2491,7 +2550,7 @@ public class TaskService : ITaskService
         var user = await _authService.GetAuthedUser();
         if (user is null || user.Role != UserRoleEnum.ProjectManger)
             return new BaseResponseService { Error = true, Message = "Invalid auth" };
-;
+        ;
         if (options.Count == 0)
             return new BaseResponseService { Error = true, Message = "Please provide Steps" };
 

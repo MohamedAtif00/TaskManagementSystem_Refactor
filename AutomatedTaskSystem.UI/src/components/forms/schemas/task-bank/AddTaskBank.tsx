@@ -59,8 +59,8 @@ const AddTaskBank = (props: { complete: (response: ITaskBank) => void }) => {
                             handleChange={setType}
                             id={type}
                             options={[
-                                { id: 1, name: "Creation" },
-                                { id: 3, name: "Review" },
+                                { id: 0, name: "Creation" },
+                                { id: 1, name: "Review" },
                             ]}
                             label="Type"
                         />

@@ -14,6 +14,8 @@ using AutomatedTaskSystem.Services.UserService;
 using AutomatedTaskSystem.Services.YearService;
 using AutomatedTaskSystem.Services.ReportService;
 using AutomatedTaskSystem.Services.DashboardService;
+using AutomatedTaskSystem.Services.RollbackService;
+using AutomatedTaskSystem.Services.UserTask;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -22,6 +24,8 @@ public static class DependancyInjections
     public static void Inject(WebApplicationBuilder builder)
     {
         builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<IUserTaskService, UserTaskService>();
+        builder.Services.AddScoped<IRollbackService, RollbackService>();
         builder.Services.AddScoped<IDashboardService, DashboardService>();
         builder.Services.AddScoped<IEncryptionService, EncryptionService>();
         builder.Services.AddScoped<IReportService, ReportService>();
