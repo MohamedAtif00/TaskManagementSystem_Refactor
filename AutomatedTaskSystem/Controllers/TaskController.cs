@@ -11,6 +11,7 @@ using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Models.Enums.TaskBankType;
 using AutomatedTaskSystem.Services.RollbackService;
+using AutomatedTaskSystem.Dtos.Projects;
 
 namespace AutomatedTaskSystem.Controllers;
 
@@ -80,11 +81,18 @@ public class TaskController : ControllerBase
         await _taskService.GetTaskDetails(id);
 
     // GET:
-    // Get Project Tasks
+    // Get Project Tasks as Card
     [Authorize]
-    [HttpGet("/projects/{id}/tasks")]
-    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasks(int id) =>
+    [HttpGet("/projects/{id}/tasks/cards")]
+    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetCardTasks(int id) =>
         await _taskService.GetProjectTask(id);
+
+    // GET:
+    // Get Project Tasks as Sheet
+    [Authorize]
+    [HttpGet("/projects/{id}/tasks/sheet")]
+    public async Task<ActionResult<ResponseService<GetProjectSheetDto>>> GetTasksSheet(int id) =>
+        await _taskService.GetProjectTaskChips(id);
 
     // HttpPatch:
     // Proceed with task

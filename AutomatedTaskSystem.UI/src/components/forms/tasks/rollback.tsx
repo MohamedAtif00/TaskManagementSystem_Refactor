@@ -12,7 +12,6 @@ import useTaskPathHandler from "../../taskDetails/useTaskPathHandler.ts";
 interface Props {
 	update: (params: ITask) => void;
 	taskId: number;
-	projectId: number;
 }
 
 interface Log {
@@ -21,7 +20,7 @@ interface Log {
 	isSelected: boolean;
 }
 
-const RollbackForm = ({ taskId, projectId, update }: Props) => {
+const RollbackForm = ({ taskId, update }: Props) => {
 	const [logs, setLogs] = useState<Log[]>([]);
 	const [step, setStep] = useState<BasicInfo>();
 	const [clarification, setClarification] = useState<string>();

@@ -74,11 +74,10 @@ export interface ITask {
 }
 
 interface Props {
-	projectId: number;
 	refreshTasks: () => void;
 }
 
-const TaskDetails = ({ projectId, refreshTasks }: Props) => {
+const TaskDetails = ({ refreshTasks }: Props) => {
 	const [task, setTask] = useState<ITask>();
 	const router = useRouter();
 	const pathHandler = useTaskPathHandler();
@@ -290,7 +289,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 								</div>
 								<TaskAction
 									priority={task.priority}
-									projectId={projectId}
 									isReview={task.isReview}
 									pause={task.pause}
 									flag={task.flagged}
@@ -301,7 +299,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 									access={task.access}
 								/>
 								<TaskComments
-									projectId={projectId}
 									taskId={task.id}
 									updateTask={setTask}
 									comments={task.comments}
@@ -386,7 +383,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 					</motion.div>
 					{router.query.form === "rollback" && (
 						<RollbackForm
-							projectId={projectId}
 							taskId={task.id}
 							update={(data) => {
 								setTask(data);
@@ -401,7 +397,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 						<RollbackHistory
 							isReview={task.isReview}
 							taskId={task.id}
-							projectId={projectId}
 						/>
 					)}
 				</motion.div>
@@ -458,7 +453,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 						key="edit-comment-form"
 						update={reload}
 						taskId={task.id}
-						projectId={projectId}
 						comment={task.comments.find((c) => {
 							const cid = parseInt(
 								router.query.commentId!.toString()
@@ -475,7 +469,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 						key="delete-comment-form"
 						update={reload}
 						taskId={task.id}
-						projectId={projectId}
 						comment={task.comments.find((c) => {
 							const cid = parseInt(
 								router.query.commentId!.toString()

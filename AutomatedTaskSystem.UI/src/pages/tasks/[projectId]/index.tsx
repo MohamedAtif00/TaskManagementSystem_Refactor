@@ -11,9 +11,9 @@ const TaskSheet = () => {
         const preferredView = localStorage.getItem("tasks:view");
 
         if (preferredView !== null && preferredView === "sheet") 
-            router.push(`/tasks/${router.query.projectId}/sheet`)
+            router.replace(`/tasks/${router.query.projectId}/sheet`)
         else
-            router.push(`/tasks/${router.query.projectId}/board`)
+            router.replace(`/tasks/${router.query.projectId}/board`)
 
         return setDone(true);
     }, [])

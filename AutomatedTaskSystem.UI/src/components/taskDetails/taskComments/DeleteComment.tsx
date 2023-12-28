@@ -1,23 +1,22 @@
 import Link from "next/link";
 import { IComment } from "..";
-import { useState } from "react";
 import API from "../../../lib/API";
 import { useRouter } from "next/router";
+import useTaskPathHandler from "../useTaskPathHandler.ts";
 
 interface Props {
-    projectId: number;
     taskId: number;
     comment?: IComment;
     update: () => void;
 }
 
 const DeleteCommentForm: React.FC<Props> = ({
-    projectId,
     taskId,
     comment,
     update,
 }) => {
     const router = useRouter();
+    const pathHandler = useTaskPathHandler();
 
     const handleSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
         e.preventDefault();
@@ -25,7 +24,7 @@ const DeleteCommentForm: React.FC<Props> = ({
         comment &&
             API.TASKS.DELETE_COMMENT(taskId, comment.id).then((res) => {
                 if (res && !res.error) update();
-                router.push(`/tasks/${projectId}?taskId=${taskId}`);
+                router.push(`${pathHandler()}?taskId=${taskId}`);
             });
     };
 
@@ -49,7 +48,7 @@ const DeleteCommentForm: React.FC<Props> = ({
                         <div className="grid grid-cols-2 px-8 py-4 gap-2">
                             <Link
                                 href={{
-                                    pathname: `/tasks/${projectId}`,
+                                    pathname: pathHandler(),
                                     query: {
                                         taskId: taskId,
                                     },
@@ -75,7 +74,7 @@ const DeleteCommentForm: React.FC<Props> = ({
                         <div>Comment is not found</div>
                         <Link
                             href={{
-                                pathname: `/tasks/${projectId}`,
+                                pathname: pathHandler(),
                                 query: {
                                     taskId: taskId,
                                 },

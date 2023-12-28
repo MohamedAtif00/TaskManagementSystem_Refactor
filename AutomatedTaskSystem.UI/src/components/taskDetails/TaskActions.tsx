@@ -28,7 +28,6 @@ interface Props {
     flag: boolean;
     pause: boolean;
     isReview: boolean;
-    projectId: number;
     priority: TaskPriority;
 }
 
@@ -40,7 +39,6 @@ const TaskAction: React.FC<Props> = ({
     handleUpdate,
     flag,
     pause,
-    projectId,
     isReview,
 }) => {
     const [priorityFocus, setPriorityFocus] = useState(false);
@@ -280,7 +278,6 @@ const TaskAction: React.FC<Props> = ({
             </div>
             <JumpForm
                 taskId={taskId}
-                projectId={projectId}
                 updateTask={handleUpdate}
             />
         </div>

@@ -9,7 +9,6 @@ public class GetTaskCardDto
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public TaskStatusEnum Status { get; set; } = TaskStatusEnum.Backlog;
-    public bool TL { get; set; }
     public BasicInfoDto? User { get; set; }
     public BasicInfoDto LearningObjective { get; set; } = new BasicInfoDto { };
     public bool IsReview { get; set; }

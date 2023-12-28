@@ -8,7 +8,6 @@ import useTaskPathHandler from "./useTaskPathHandler.ts";
 
 interface Props {
 	taskId: number;
-	projectId: number;
 	isReview: boolean;
 }
 

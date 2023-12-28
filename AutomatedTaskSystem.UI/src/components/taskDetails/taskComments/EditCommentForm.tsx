@@ -3,22 +3,22 @@ import { IComment } from "..";
 import { useState } from "react";
 import API from "../../../lib/API";
 import { useRouter } from "next/router";
+import useTaskPathHandler from "../useTaskPathHandler.ts";
 
 interface Props {
-    projectId: number;
     taskId: number;
     comment?: IComment;
     update: () => void;
 }
 
 const EditCommentForm: React.FC<Props> = ({
-    projectId,
     taskId,
     comment,
     update,
 }) => {
     const [content, setContent] = useState(comment ? comment.content : "");
     const router = useRouter();
+    const pathHandler = useTaskPathHandler();
 
     const handleSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
         e.preventDefault();
@@ -28,7 +28,7 @@ const EditCommentForm: React.FC<Props> = ({
             API.TASKS.EDIT_COMMENT(taskId, comment.id, content).then((res) => {
                 if (res && !res.error)
                     update();
-                router.push(`/tasks/${projectId}?taskId=${taskId}`);
+                router.push(`${pathHandler()}?taskId=${taskId}`);
             });
     };
 
@@ -53,7 +53,7 @@ const EditCommentForm: React.FC<Props> = ({
                         <div className="grid grid-cols-2 px-8 py-4 gap-2">
                             <Link
                                 href={{
-                                    pathname: `/tasks/${projectId}`,
+                                    pathname: pathHandler(),
                                     query: {
                                         taskId: taskId,
                                     },
@@ -79,7 +79,7 @@ const EditCommentForm: React.FC<Props> = ({
                         <div>Comment is not found</div>
                         <Link
                             href={{
-                                pathname: `/tasks/${projectId}`,
+                                pathname: pathHandler(),
                                 query: {
                                     taskId: taskId,
                                 },

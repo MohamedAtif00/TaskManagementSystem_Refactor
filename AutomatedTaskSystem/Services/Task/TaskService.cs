@@ -1,7 +1,11 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.Common;
+using AutomatedTaskSystem.Dtos.LearningObjective;
+using AutomatedTaskSystem.Dtos.Lessons;
+using AutomatedTaskSystem.Dtos.Projects;
 using AutomatedTaskSystem.Dtos.Tasks;
+using AutomatedTaskSystem.Dtos.Unit;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.TaskActivityType;
 using AutomatedTaskSystem.Models.Enums.TaskBankType;
@@ -277,7 +281,6 @@ public class TaskService : ITaskService
                                         Priority = task.Priority,
                                         RollbackCount = task.RollbackCount,
                                         Status = task.Status,
-                                        TL = task.TL,
                                         User = task.User is null
                                             ? null
                                             : new BasicInfoDto
@@ -384,7 +387,6 @@ public class TaskService : ITaskService
                             Priority = t.Priority,
                             RollbackCount = t.RollbackCount,
                             Status = t.Status,
-                            TL = t.TL,
                             User = t.User is null
                                 ? null
                                 : new BasicInfoDto { Name = t.User.Name, Id = t.User.Id }
@@ -1995,8 +1997,6 @@ public class TaskService : ITaskService
             Data = nodesRes,
             Message = "List of All Nodes"
         };
-
-        throw new NotImplementedException();
     }
 
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> JumpTask(
@@ -2735,5 +2735,155 @@ public class TaskService : ITaskService
         await _context.SaveChangesAsync();
 
         return new BaseResponseService { Message = "Process Created", Error = false };
+    }
+
+    public async Task<ActionResult<ResponseService<GetProjectSheetDto>>> GetProjectTaskChips(int pid)
+    {
+        var user = await _authService.GetAuthedUser();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = false, Message = "Invalid auth" }
+            );
+
+        var p = await _context.Projects
+            .Where(_ => _.Id == pid && !_.Archived)
+            .FirstOrDefaultAsync();
+
+
+        if (p is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Project is not found" }
+            );
+
+        await _context
+            .Entry(p)
+            .Collection(p => p.Units)
+            .Query()
+            .Where(u => !u.Archived)
+            .LoadAsync();
+
+        var res = new GetProjectSheetDto
+        {
+            Id = p.Id,
+            Name = p.Name
+        };
+
+        if (user.Role == UserRoleEnum.SectionHead)
+        {
+            var groups = await _context.Sections
+                .Where(s => s.HeadId == user.Id)
+                .Include(s => s.Groups)
+                .ToListAsync();
+
+            foreach (var group in groups)
+                if (!group.Archived)
+                    res.WorkableTasks.Add(new BasicInfoDto { Id = group.Id, Name = group.Name });
+        }
+        if (user.Role != UserRoleEnum.ProjectManger)
+        {
+            var group = await _context.Groups
+                .Where(s => s.Id == user.GroupId)
+                .FirstOrDefaultAsync();
+
+            if (group is null)
+                throw new Exception("User group is not found");
+            res.WorkableTasks.Add(new BasicInfoDto
+            {
+                Id = group.Id,
+                Name = group.Name
+            });
+        }
+
+        foreach (var unit in p.Units)
+        {
+            var unitChip = new GetUnitChipDto
+            {
+                Name = unit.Name,
+                Id = unit.Id,
+            };
+
+            await _context
+                .Entry(unit)
+                .Collection(unit => unit.Lessons)
+                .Query()
+                .Where(l => !l.Archived)
+                .LoadAsync();
+
+            foreach (var lesson in unit.Lessons)
+            {
+                var lessonChip = new GetLessonChipDto
+                {
+                    Id = lesson.Id,
+                    Name = lesson.Name
+                };
+
+                await _context
+                    .Entry(lesson)
+                    .Collection(lesson => lesson.LearningObjectives)
+                    .Query()
+                    .Where(lo => !lo.Archived)
+                    .Include(lo => lo.Schema)
+                    .LoadAsync();
+
+                foreach (var lo in lesson.LearningObjectives)
+                {
+                    var loChip = new GetLearningObjectiveChipDto
+                    {
+                        Id = lo.Id,
+                        Name = lo.Name,
+                        Tag = lo.Tag,
+                        Template = lo.Template,
+                        Schema = new BasicInfoDto
+                        {
+                            Id = lo.Schema.Id,
+                            Name = lo.Schema.Name
+                        },
+                    };
+
+                    await _context
+                        .Entry(lo)
+                        .Collection(lo => lo.Tasks)
+                        .Query()
+                        .Where(t => !t.Archived)
+                        .Include(t => t.Group)
+                        .Include(t => t.User)
+                        .LoadAsync();
+
+                    foreach (var task in lo.Tasks)
+                    {
+                        loChip.Tasks.Add(new GetTaskChipDto
+                        {
+                            Id = task.Id,
+                            Name = task.Name,
+                            User = task.User is null ? null : new BasicInfoDto
+                            {
+                                Id = task.User.Id,
+                                Name = task.User.Name
+                            },
+                            Group = new BasicInfoDto
+                            {
+                                Id = task.Group.Id,
+                                Name = task.Group.Name
+                            },
+                            Paused = task.Pause,
+                            Status = task.Status,
+                            IsRollback = task.IsRollback,
+                            RollbackCounts = task.RollbackCount
+                        });
+                    }
+
+                    lessonChip.Los.Add(loChip);
+                }
+                unitChip.Lessons.Add(lessonChip);
+            }
+            res.Units.Add(unitChip);
+        }
+
+        return new ResponseService<GetProjectSheetDto>
+        {
+            Data = res,
+            Error = false,
+            Message = "Project Sheet"
+        };
     }
 }

@@ -113,7 +113,6 @@ type TaskInfo = {
     id: number;
     name: string;
     status: 0 | 1 | 2 | 3 | 4;
-    TL: boolean;
     user?: { id: number; name: string };
     learningObjective: { id: number; name: string };
     isReview: boolean;
@@ -154,3 +153,43 @@ type TaskPriority = 0 | 1 | 2 | 3;
 type TaskStatus = 0 | 1 | 2 | 3 | 4;
 type UserRole = 0 | 1 | 2 | 3;
 type ProjectStatus = 0 | 1 | 2 | 3;
+
+interface ProjectSheet {
+    id: number;
+    name: string;
+    units: UnitChip[];
+    workableTasks: BasicInfo[];
+}
+
+interface UnitChip {
+    id: number;
+    name: string;
+    lessons: LessonChip[];
+}
+
+interface LessonChip {
+    id: number;
+    name: string;
+    los: LoChip[]
+}
+
+interface LoChip {
+    id: number;
+    name: string;
+    tag: string;
+    environment: string;
+    template: string;
+    schema: BasicInfo;
+    tasks: TaskChip[];
+}
+
+interface TaskChip {
+    id: number;
+    name: string;
+    user: null | BasicInfo
+    group: BasicInfo;
+    status: 0 | 1 | 2 | 3 | 4;
+    rollbackCounts: 0;
+    isRollback: boolean;
+    paused: false;
+}
