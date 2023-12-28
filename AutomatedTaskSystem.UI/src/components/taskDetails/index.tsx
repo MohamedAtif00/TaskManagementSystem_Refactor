@@ -22,6 +22,7 @@ import {
 	PencilSquareIcon,
 } from "@heroicons/react/24/outline";
 import RollbackHistory from "./rollbacks";
+import useTaskPathHandler from "./useTaskPathHandler.ts";
 
 export interface IComment {
 	user: {
@@ -73,13 +74,13 @@ export interface ITask {
 }
 
 interface Props {
-	projectId: number;
 	refreshTasks: () => void;
 }
 
-const TaskDetails = ({ projectId, refreshTasks }: Props) => {
+const TaskDetails = ({ refreshTasks }: Props) => {
 	const [task, setTask] = useState<ITask>();
 	const router = useRouter();
+	const pathHandler = useTaskPathHandler();
 
 	useEffect(() => {
 		const id = router.query.taskId;
@@ -103,14 +104,14 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 			});
 	};
 
-	const exit = () => router.push(`/tasks/${projectId}`);
+	const exit = () => router.push(pathHandler());
 
 	const proceedTask = () => {
 		if (task) {
 			API.TASKS.PROCEED(task.id).then((res) => {
 				if (res && !res.error) handleUpdate(res.data);
 			});
-			router.push(`/tasks/${projectId}?taskId=${task.id}`);
+			router.push(`${pathHandler()}?taskId=${task.id}`);
 		}
 	};
 
@@ -242,7 +243,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 									{task.isReview ? (
 										<Link
 											href={{
-												pathname: `/tasks/${projectId}`,
+												pathname: pathHandler(),
 												query: {
 													view: "rollback-history",
 													taskId: task.id,
@@ -261,7 +262,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 									) : (
 										<Link
 											href={{
-												pathname: `/tasks/${projectId}`,
+												pathname: pathHandler(),
 												query: {
 													view: "rollback-history",
 													taskId: task.id,
@@ -288,7 +289,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 								</div>
 								<TaskAction
 									priority={task.priority}
-									projectId={projectId}
 									isReview={task.isReview}
 									pause={task.pause}
 									flag={task.flagged}
@@ -299,7 +299,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 									access={task.access}
 								/>
 								<TaskComments
-									projectId={projectId}
 									taskId={task.id}
 									updateTask={setTask}
 									comments={task.comments}
@@ -384,12 +383,11 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 					</motion.div>
 					{router.query.form === "rollback" && (
 						<RollbackForm
-							projectId={projectId}
 							taskId={task.id}
 							update={(data) => {
 								setTask(data);
 								router.push(
-									`/tasks/${router.query.projectId}?taskId=${task.id}`
+									`${pathHandler()}?taskId=${task.id}`
 								);
 								refreshTasks();
 							}}
@@ -399,7 +397,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 						<RollbackHistory
 							isReview={task.isReview}
 							taskId={task.id}
-							projectId={projectId}
 						/>
 					)}
 				</motion.div>
@@ -429,7 +426,7 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 						<div className="grid grid-cols-2 px-8 py-4 gap-2">
 							<Link
 								href={{
-									pathname: `/tasks/${projectId}`,
+									pathname: pathHandler(),
 									query: {
 										taskId: task.id,
 									},
@@ -456,7 +453,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 						key="edit-comment-form"
 						update={reload}
 						taskId={task.id}
-						projectId={projectId}
 						comment={task.comments.find((c) => {
 							const cid = parseInt(
 								router.query.commentId!.toString()
@@ -473,7 +469,6 @@ const TaskDetails = ({ projectId, refreshTasks }: Props) => {
 						key="delete-comment-form"
 						update={reload}
 						taskId={task.id}
-						projectId={projectId}
 						comment={task.comments.find((c) => {
 							const cid = parseInt(
 								router.query.commentId!.toString()

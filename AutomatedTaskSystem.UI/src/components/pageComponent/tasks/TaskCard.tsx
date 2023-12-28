@@ -34,7 +34,7 @@ const TaskCard = ({
     return (
         <Link
             href={{
-                pathname: `/tasks/${projectId}`,
+                pathname: `/tasks/${projectId}/board`,
                 query: {
                     taskId: id,
                 },

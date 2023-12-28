@@ -28,9 +28,8 @@ const LearningObjective = (
 
     return (
         <div
-            className={`grid grid-cols-6 px-2 ${
-                props.lightBg ? " bg-slate-100" : "bg-slate-200"
-            }`}
+            className={`grid grid-cols-6 px-2 ${props.lightBg ? " bg-slate-100" : "bg-slate-200"
+                }`}
             onMouseLeave={deleting ? () => setDeleting(false) : undefined}
         >
             <div className="bg-inherit">{props.name}</div>
@@ -53,9 +52,8 @@ const LearningObjective = (
                     </button>
                 </Link>
                 <button
-                    className={`transition-all ease-out text-base gap-2 font-normal px-3 rounded flex items-center justify-center py-1 ${
-                        deleting ? "bg-rose-500 text-white" : "text-rose-500"
-                    }`}
+                    className={`transition-all ease-out text-base gap-2 font-normal px-3 rounded flex items-center justify-center py-1 ${deleting ? "bg-rose-500 text-white" : "text-rose-500"
+                        }`}
                     onClick={
                         deleting
                             ? () => props.remove(props.id)
@@ -87,11 +85,10 @@ const Lesson = (
                 <h3 className="text-lg">{props.name}</h3>
                 <div className="flex gap-2">
                     <button
-                        className={`transition-all ease-out text-base gap-2 font-normal px-3 rounded flex items-center justify-center py-1 ${
-                            deleting
+                        className={`transition-all ease-out text-base gap-2 font-normal px-3 rounded flex items-center justify-center py-1 ${deleting
                                 ? "bg-rose-500 text-white"
                                 : "text-rose-500"
-                        }`}
+                            }`}
                         onClick={
                             deleting
                                 ? () => props.remove(props.id)
@@ -170,11 +167,10 @@ const Unit = (
                 <h3 className="text-xl">{props.name}</h3>
                 <div className="flex gap-1">
                     <button
-                        className={`transition-all ease-out text-base gap-2 font-normal px-3 rounded flex items-center justify-center py-1 ${
-                            deleting
+                        className={`transition-all ease-out text-base gap-2 font-normal px-3 rounded flex items-center justify-center py-1 ${deleting
                                 ? "bg-rose-500 text-white"
                                 : "text-rose-500"
-                        }`}
+                            }`}
                         onClick={
                             deleting
                                 ? () => props.remove(props.id)
@@ -621,7 +617,9 @@ const Project = () => {
             <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="flex">
-                        <ProjectIcon color={"#29313d"} />
+                        <div className="w-6 h-6">
+                            <ProjectIcon color={"#29313d"} />
+                        </div>
                     </div>
                     <div className="text-2xl font-bold text-slate-800">
                         {project.name}
@@ -630,10 +628,10 @@ const Project = () => {
                         {project.status === 0
                             ? "Open"
                             : project.status === 1
-                            ? "Closed"
-                            : project.status === 2
-                            ? "Hold"
-                            : "Reopened"}
+                                ? "Closed"
+                                : project.status === 2
+                                    ? "Hold"
+                                    : "Reopened"}
                     </div>
                 </div>
                 <div className="flex gap-2">

@@ -181,20 +181,43 @@ const TASKS = {
 			return false;
 		}
 	},
-	GET_ALL: async (projectId: string | string[]) => {
+	GET_ALL_CARDS: async (projectId: string | string[]) => {
 		try {
 			const auth = authService.authHeader();
 			if (!auth) {
 				console.error("Unathorized");
 				return false;
 			}
-			const res = await fetch(`${url}/projects/${projectId}/tasks`, {
+			const res = await fetch(`${url}/projects/${projectId}/tasks/cards`, {
 				headers: {
 					...auth,
 				},
 			});
 			const data: {
 				data: TaskInfo[];
+				error: boolean;
+				message: string;
+			} = await res.json();
+			return data;
+		} catch (error) {
+			console.error(error);
+			return false;
+		}
+	},
+	GET_PROJECT_SHEET: async (projectId: string | string[]) => {
+		try {
+			const auth = authService.authHeader();
+			if (!auth) {
+				console.error("Unathorized");
+				return false;
+			}
+			const res = await fetch(`${url}/projects/${projectId}/tasks/sheet`, {
+				headers: {
+					...auth,
+				},
+			});
+			const data: {
+				data: ProjectSheet;
 				error: boolean;
 				message: string;
 			} = await res.json();

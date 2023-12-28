@@ -8,14 +8,14 @@ import useMeasure from "react-use-measure";
 import StepCard from "./stepCard";
 import NodeCards from "./selectedNode";
 import { ITask } from "..";
+import useTaskPathHandler from "../useTaskPathHandler.ts";
 
 interface Props {
     taskId: number;
-    projectId: number;
     updateTask: (value: ITask) => void;
 }
 
-const JumpForm: React.FC<Props> = ({ taskId, projectId, updateTask }) => {
+const JumpForm: React.FC<Props> = ({ taskId, updateTask }) => {
     const [points, setPoints] = useState<NodeAhead[]>();
     const router = useRouter();
     const [selectedNodes, setSelectedNode] = useState<NodeAhead[]>([]);
@@ -23,6 +23,7 @@ const JumpForm: React.FC<Props> = ({ taskId, projectId, updateTask }) => {
         { nodeId: number; stepId: number }[]
     >([]);
     const [ref, { height }] = useMeasure();
+    const pathHandler = useTaskPathHandler();
 
     useEffect(() => {
         if (router.query.form === "jump")
@@ -91,10 +92,9 @@ const JumpForm: React.FC<Props> = ({ taskId, projectId, updateTask }) => {
                     <div className="font-bold text-lg">Jump Forward</div>
                     <Link
                         href={{
-                            pathname: `/tasks/[projectId]`,
+                            pathname: pathHandler(),
                             query: {
                                 taskId,
-                                projectId,
                             },
                         }}
                     >

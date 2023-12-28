@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import API from "../../../lib/API";
 import Backdrop from "../backdrop";
 import styles from "../styles.module.scss";
+import useTaskPathHandler from "../../taskDetails/useTaskPathHandler.ts";
 
 interface Props {
     taskId: string | string[];
@@ -18,6 +19,7 @@ const AssignTask = (props: Props) => {
     });
     const [selectedUser, setSelectedUser] = useState(0);
     const router = useRouter();
+    const pathHandler = useTaskPathHandler();
 
     useEffect(() => {
         API.TASKS.TASK_ASSIGNMENT(props.taskId).then((res) => {
@@ -34,7 +36,7 @@ const AssignTask = (props: Props) => {
             taskId: props.taskId,
         }).then(() => {
             router.push(
-                `/tasks/${router.query.projectId}${
+                `${pathHandler()}${
                     router.query.taskId ? `?taskId=${router.query.taskId}` : ""
                 }`
             );
@@ -44,7 +46,7 @@ const AssignTask = (props: Props) => {
 
     return (
         <Backdrop
-            mainRoute={`/tasks/${router.query.projectId}${
+            mainRoute={`${pathHandler()}${
                 router.query.taskId ? `?taskId=${router.query.taskId}` : ""
             }`}
         >

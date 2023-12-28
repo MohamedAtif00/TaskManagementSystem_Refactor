@@ -4,6 +4,7 @@ import FormConclusion from "../../formComponents/FormConclusion";
 import { useRouter } from "next/router";
 import API, { BasicInfo } from "../../../lib/API";
 import CustomizedCombobox from "../../formComponents/Combobox";
+import useTaskPathHandler from "../../taskDetails/useTaskPathHandler.ts";
 
 interface Props {
     projectId: number;
@@ -39,6 +40,7 @@ const CreateStandAloneTaskForm: React.FC<Props> = (props) => {
         name: string;
         group: BasicInfo;
     }>();
+    const pathHandler = useTaskPathHandler();
 
     useEffect(() => {
         if (query.form === "new-task") {
@@ -65,7 +67,7 @@ const CreateStandAloneTaskForm: React.FC<Props> = (props) => {
                 TaskBankItemId: taskBank.id,
             }).then(() => {
                 props.refreshTasks();
-                routerPush(`/tasks/${props.projectId}`);
+                routerPush(pathHandler());
             });
     };
 
@@ -131,7 +133,7 @@ const CreateStandAloneTaskForm: React.FC<Props> = (props) => {
                             </div>
                         </div>
                         <FormConclusion
-                            pathname={`/tasks/${props.projectId}`}
+                            pathname={pathHandler()}
                             submittable={true}
                         />
                     </form>

@@ -5,10 +5,10 @@ import AddCommentForm from "./AddCommentForm";
 import dateHandler from "../../../lib/DateHandler";
 import { useAppSelector } from "../../../app/hooks";
 import Link from "next/link";
+import useTaskPathHandler from "../useTaskPathHandler.ts";
 
 interface Props {
     taskId: number;
-    projectId: number;
     updateTask: (value: SetStateAction<ITask | undefined>) => void;
     comments: IComment[];
     reload: () => void;
@@ -22,11 +22,9 @@ interface CommentProps {
     isEdited: boolean;
     isDeleted: boolean;
     taskId: number;
-    projectId: number;
 }
 
 const Comment: React.FC<CommentProps> = ({
-    projectId,
     content,
     user,
     date,
@@ -37,6 +35,7 @@ const Comment: React.FC<CommentProps> = ({
 }) => {
     const auth = useAppSelector((u) => u.authSlice);
     const formatted = dateHandler(date);
+    const pathHandler = useTaskPathHandler();
 
     return (
         <div
@@ -59,7 +58,7 @@ const Comment: React.FC<CommentProps> = ({
                         <Link
                             className="text-blue-600 hover:underline"
                             href={{
-                                pathname: `/tasks/${projectId}`,
+                                pathname: pathHandler(),
                                 query: {
                                     taskId,
                                     form: "edit-comment",
@@ -74,7 +73,7 @@ const Comment: React.FC<CommentProps> = ({
                         <Link
                             className="text-rose-600 hover:underline"
                             href={{
-                                pathname: `/tasks/${projectId}`,
+                                pathname: pathHandler(),
                                 query: {
                                     taskId,
                                     form: "delete-comment",
@@ -112,7 +111,6 @@ const TaskComments: React.FC<Props> = (props) => {
                 <Comment
                     id={c.id}
                     key={c.id}
-                    projectId={props.projectId}
                     taskId={props.taskId}
                     date={c.timestamp}
                     content={c.content}
