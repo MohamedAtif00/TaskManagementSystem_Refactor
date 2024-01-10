@@ -101,6 +101,13 @@ public class TaskController : ControllerBase
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ProceedTask(int id) =>
         await _taskService.ProceedTask(taskId: id);
 
+    // HttpPatch:
+    // Proceed with task
+    [Authorize]
+    [HttpPatch("{id}/complete")]
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CompleteTask(int id) =>
+        await _taskService.CompleteTask(taskId: id);
+
     // POST:
     // Rollback Task
     [Authorize]

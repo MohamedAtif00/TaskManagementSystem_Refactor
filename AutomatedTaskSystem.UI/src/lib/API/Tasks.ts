@@ -252,6 +252,31 @@ const TASKS = {
 			return false;
 		}
 	},
+	COMPLETE: async (taskId: number) => {
+		try {
+			const auth = authService.authHeader();
+			if (!auth) {
+				console.error("Unathorized");
+				return false;
+			}
+			const res = await fetch(`${url}/tasks/${taskId}/complete`, {
+				method: "PATCH",
+				headers: {
+					"Content-Type": "application/json",
+					...auth,
+				},
+			});
+			const data: {
+				error: boolean;
+				message: string;
+				data: ITask;
+			} = await res.json();
+			return data;
+		} catch (error) {
+			console.log(error);
+			return false;
+		}
+	},
 	ROLLBACK: async ({
 		taskId,
 		stepId,

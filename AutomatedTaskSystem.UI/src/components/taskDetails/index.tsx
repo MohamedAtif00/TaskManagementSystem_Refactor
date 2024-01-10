@@ -108,7 +108,11 @@ const TaskDetails = ({ refreshTasks }: Props) => {
 
 	const proceedTask = () => {
 		if (task) {
-			API.TASKS.PROCEED(task.id).then((res) => {
+			if (task.status == 2)
+				API.TASKS.COMPLETE(task.id).then((res) => {
+					if (res && !res.error) handleUpdate(res.data);
+				});
+			else API.TASKS.PROCEED(task.id).then((res) => {
 				if (res && !res.error) handleUpdate(res.data);
 			});
 			router.push(`${pathHandler()}?taskId=${task.id}`);
@@ -160,19 +164,18 @@ const TaskDetails = ({ refreshTasks }: Props) => {
 										<div className="text-sm flex flex-col justify-center items-start text-slate-600">
 											<div>Priority:</div>
 											<div
-												className={`text-base font-bold ${
-													task.priority === 1
+												className={`text-base font-bold ${task.priority === 1
 														? "text-rose-400"
 														: task.priority === 2
-														? "text-orange-400"
-														: "text-blue-400"
-												}`}
+															? "text-orange-400"
+															: "text-blue-400"
+													}`}
 											>
 												{task.priority === 1
 													? "High"
 													: task.priority === 2
-													? "Medium"
-													: "Low"}
+														? "Medium"
+														: "Low"}
 											</div>
 										</div>
 									</>
@@ -352,15 +355,14 @@ const TaskDetails = ({ refreshTasks }: Props) => {
 														{time.days > 0 &&
 															`${time.days} Days, `}
 														{time.hours > 0
-															? `${time.hours}:${
-																	time.minutes <
-																	10
-																		? `0${time.minutes} Hours`
-																		: `${time.minutes} Hours`
-															  }`
+															? `${time.hours}:${time.minutes <
+																10
+																? `0${time.minutes} Hours`
+																: `${time.minutes} Hours`
+															}`
 															: time.minutes < 10
-															? `0${time.minutes} Minutes`
-															: `${time.minutes} Minutes`}
+																? `0${time.minutes} Minutes`
+																: `${time.minutes} Minutes`}
 													</div>
 													<div className="pl-1 bg-slate-300 h-4 rounded-t-full"></div>
 												</div>

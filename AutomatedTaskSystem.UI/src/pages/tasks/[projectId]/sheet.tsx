@@ -21,8 +21,6 @@ interface LocalProject {
 const SheetView = () => {
     const [project, setProject] = useState<LocalProject>();
     const [units, setUnits] = useState<UnitChip[]>();
-    // const [filteredUnits, setFilteredUnits] = useState<UnitChip[]>([]);
-    const [search, setSearch] = useState("");
     const auth = useAppSelector((e) => e.authSlice);
     const router = useRouter();
     const pathHandler = useTaskPathHandler();
@@ -43,27 +41,16 @@ const SheetView = () => {
             );
     }, [router.query.projectId]);
 
-    // const searchLos: React.FormEventHandler<HTMLFormElement> = (e) => {
-    //     e.preventDefault();
-    //     if (search !== "" && units !== undefined) {
-    //         setFilteredUnits(
-    //             units.filter((u) => {
-    //                 u.lessons.filter(l => {
-    //                     l.los.filter((lo) => lo.name.toLowerCase().split("_").join("").includes(search.toLowerCase().split("_").join("")))
-    //                 })
-    //             })
-    //         );
-    //         return;
-    //     }
-    //     units &&
-    //         setFilteredUnits(
-    //             units.sort((A, B) => {
-    //                 const a = A.name.toLowerCase(),
-    //                     b = B.name.toLowerCase();
-    //                 return a > b ? 1 : a < b ? -1 : 0;
-    //             })
-    //         );
-    // }
+    useEffect(() => {
+        if (project) {
+            const refreshInterval = setInterval(() => {
+                API.TASKS.GET_PROJECT_SHEET(project.id.toString()).then(
+                    (res) => { if (res && !res.error) { setUnits(res.data.units); } }
+                );
+            }, 30000);
+            return () => clearInterval(refreshInterval);
+        }
+    }, [project]);
 
     if (project === undefined)
         return (

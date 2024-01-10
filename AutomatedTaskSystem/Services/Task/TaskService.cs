@@ -1354,54 +1354,78 @@ public class TaskService : ITaskService
             await _context.SaveChangesAsync();
             return await GetTaskDetails(task.Id);
         }
-        else if (task.Status == TaskStatusEnum.Doing)
-        {
-            if (task.User is not null && user.Id != task.User.Id)
-                return new BadRequestObjectResult(
-                    new BaseResponseService { Error = true, Message = "Unauthorized" }
-                );
-            task.Status = TaskStatusEnum.Done;
 
-            var newActivity = new TaskActivity
-            {
-                Task = task,
-                TaskId = task.Id,
-                ActorOne = user,
-                ActorOneId = user.Id,
-                TaskSecondary = null,
-                TaskSecondaryId = null,
-                ActorTwo = null,
-                ActorTwoId = null,
-                AdditionalInfo = null,
-                TimeStamp = DateTime.Now,
-                Type = TaskActivityTypeEnum.Status_Done
-            };
-
-            var taskDuration = await _context.TaskWorkTimes
-                .Where(d => d.TaskId == task.Id && d.EndDate == null)
-                .FirstOrDefaultAsync();
-
-            if (taskDuration is not null)
-            {
-                var now = DateTime.Now;
-                taskDuration.EndDate = now;
-                taskDuration.EndReason = TaskDurationEndReasonEnum.Complete;
-                taskDuration.Duration = now.Subtract(taskDuration.StartDate).TotalMilliseconds;
-            }
-
-            _context.TaskActivities.Add(newActivity);
-
-            await CreateNext(task);
-
-            task.From = null;
-
-            await _context.SaveChangesAsync();
-            return await GetTaskDetails(task.Id);
-        }
 
         return new BadRequestObjectResult(
             new BaseResponseService { Error = true, Message = "Cannot proceed with task" }
         );
+    }
+
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CompleteTask(int taskId)
+    {
+        var task = await _context.Tasks
+            .Where(t => !t.Archived && t.Id == taskId)
+            .Include(t => t.User)
+            .Include(t => t.LearningObjective)
+            .Include(t => t.Step)
+            .Include(t => t.From)
+            .FirstOrDefaultAsync();
+
+        if (task is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Task is not found" }
+            );
+
+        var user = await _authService.GetAuthedUser();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid auth" }
+            );
+        if (task.Status != TaskStatusEnum.Doing)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Task may not be completed yet" }
+            );
+        if (task.User is not null && user.Id != task.User.Id)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Unauthorized" }
+            );
+        task.Status = TaskStatusEnum.Done;
+
+        var newActivity = new TaskActivity
+        {
+            Task = task,
+            TaskId = task.Id,
+            ActorOne = user,
+            ActorOneId = user.Id,
+            TaskSecondary = null,
+            TaskSecondaryId = null,
+            ActorTwo = null,
+            ActorTwoId = null,
+            AdditionalInfo = null,
+            TimeStamp = DateTime.Now,
+            Type = TaskActivityTypeEnum.Status_Done
+        };
+
+        var taskDuration = await _context.TaskWorkTimes
+            .Where(d => d.TaskId == task.Id && d.EndDate == null)
+            .FirstOrDefaultAsync();
+
+        if (taskDuration is not null)
+        {
+            var now = DateTime.Now;
+            taskDuration.EndDate = now;
+            taskDuration.EndReason = TaskDurationEndReasonEnum.Complete;
+            taskDuration.Duration = now.Subtract(taskDuration.StartDate).TotalMilliseconds;
+        }
+
+        _context.TaskActivities.Add(newActivity);
+
+        await CreateNext(task);
+
+        task.From = null;
+
+        await _context.SaveChangesAsync();
+        return await GetTaskDetails(task.Id);
     }
 
     public async Task<bool> CreateNext(int taskId)
