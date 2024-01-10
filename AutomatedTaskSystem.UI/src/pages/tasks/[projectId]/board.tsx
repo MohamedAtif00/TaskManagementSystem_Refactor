@@ -15,6 +15,7 @@ const TaskBoard = () => {
     const [tasks, setTasks] = useState<TaskInfo[]>();
     const [filteredTasks, setFilteredTasks] = useState<TaskInfo[]>([]);
     const [project, setProject] = useState<IProject>();
+    const [toggleFilter, setToggleFilter] = useState(false);
     const [loFilter, setLoFilter] = useState("");
     const auth = useAppSelector((e) => e.authSlice);
     const router = useRouter();
@@ -36,18 +37,25 @@ const TaskBoard = () => {
     }, [project]);
 
     useEffect(() => {
+        if (toggleFilter && tasks) {
+            setFilteredTasks(tasks);
+        }
+    }, [tasks, setFilteredTasks, toggleFilter])
+
+    useEffect(() => {
         if (project) {
             const refreshInterval = setInterval(() => {
                 API.TASKS.GET_ALL_CARDS(project.id.toString()).then(
                     (res) => { if (res && !res.error) { setTasks(res.data); searchLos(); } }
                 );
-            }, 60000);
+            }, 30000);
             return () => clearInterval(refreshInterval);
         }
     }, [project]);
 
     const searchLos = () => {
         if (loFilter !== "" && tasks !== undefined) {
+            setToggleFilter(true);
             setFilteredTasks(
                 tasks
                     .filter((_) => _.learningObjective.name.toLowerCase().split("_").join("").includes(loFilter.toLowerCase().split("_").join("")))
@@ -58,6 +66,8 @@ const TaskBoard = () => {
                     })
             );
             return;
+        } else {
+            setToggleFilter(false);
         }
         tasks &&
             setFilteredTasks(
@@ -93,10 +103,10 @@ const TaskBoard = () => {
     if (!project) return <div>Loading</div>;
 
     const view = {
-        backlog: filteredTasks.filter((t) => t.status === 0),
-        todo: filteredTasks.filter((t) => t.status === 1),
-        doing: filteredTasks.filter((t) => t.status === 2),
-        done: filteredTasks.filter(
+        backlog: (toggleFilter ? filteredTasks : tasks).filter((t) => t.status === 0),
+        todo: (toggleFilter ? filteredTasks : tasks).filter((t) => t.status === 1),
+        doing: (toggleFilter ? filteredTasks : tasks).filter((t) => t.status === 2),
+        done: (toggleFilter ? filteredTasks : tasks).filter(
             (t) => t.status === 3 || t.status === 4
         ),
     };
