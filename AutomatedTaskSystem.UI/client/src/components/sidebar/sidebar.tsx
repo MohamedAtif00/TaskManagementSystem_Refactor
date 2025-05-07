@@ -35,14 +35,6 @@ const Sidebar = () => {
 					icon="Home"
 					text="Home"
 				/>
-				{auth.role !== 3 && (
-					<Navlink
-						activeCondition={path.includes("/user-tasks")}
-						to="/user-tasks"
-						icon="Resources"
-						text="User Tasks"
-					/>
-				)}
 				{auth.role == 0 ? (
 					<>
 						<Navlink
@@ -50,6 +42,12 @@ const Sidebar = () => {
 							to="/resources"
 							icon="Resources"
 							text="Resources"
+						/>
+						<Navlink
+							activeCondition={path.includes("/user-tasks")}
+							to="/user-tasks"
+							icon="Resources"
+							text="User Tasks"
 						/>
 						<Navlink
 							activeCondition={path.includes("/schemas")}
@@ -79,6 +77,30 @@ const Sidebar = () => {
 								text="Summaries"
 							/>
 						</NavList>
+						<NavList label="Leaves" icon={ChartIcon}>
+							<Navlink
+								activeCondition={path.includes(
+									"/members-leaves"
+								)}
+								to="/members-leaves"
+								icon="Resources"
+								text="Members Leaves"
+							/>
+							<Navlink
+								activeCondition={path.includes(
+									"/calendar"
+								)}
+								to="/calendar"
+								icon="Schema"
+								text="Calendar"
+							/>
+						</NavList>
+						<Navlink
+							activeCondition={path.includes("/sprint")}
+							to="/sprints"
+							icon="Sprint"
+							text="Sprints"
+						/>
 					</>
 				) : (
 					""
@@ -89,6 +111,13 @@ const Sidebar = () => {
 					icon="Task"
 					text="Tasks"
 				/>
+				<Navlink
+				activeCondition={path.includes("/advancedReport")}
+				to="/advancedReport"
+				icon="Task"
+				text="Advanced Report"
+				/>
+
 			</div>
 			<div className={styles.logoutButton} onClick={logoutHandler}>
 				<div>Logout</div>

@@ -9,6 +9,7 @@ import useTaskPathHandler from "./useTaskPathHandler.ts";
 interface Props {
 	taskId: number;
 	isReview: boolean;
+	type:string
 }
 
 interface History {
@@ -24,9 +25,9 @@ interface History {
 	}[];
 }
 
-const RollbackHistory: React.FC<Props> = ({ taskId, isReview }) => {
+const RollbackHistory: React.FC<Props> = ({ taskId, isReview ,type}) => {
 	const [history, setHistory] = useState<History>();
-	const pathHandler = useTaskPathHandler();
+	const pathHandler = useTaskPathHandler({type:type});
 
 	useEffect(() => {
 		API.TASKS.GET_ROLLBACK_HISTORY(taskId).then(

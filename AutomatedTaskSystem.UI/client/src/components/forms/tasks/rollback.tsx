@@ -12,6 +12,7 @@ import useTaskPathHandler from "../../taskDetails/useTaskPathHandler.ts";
 interface Props {
 	update: (params: ITask) => void;
 	taskId: number;
+	type:string
 }
 
 interface Log {
@@ -20,14 +21,14 @@ interface Log {
 	isSelected: boolean;
 }
 
-const RollbackForm = ({ taskId, update }: Props) => {
+const RollbackForm = ({ taskId, update,type }: Props) => {
 	const [logs, setLogs] = useState<Log[]>([]);
 	const [step, setStep] = useState<BasicInfo>();
 	const [clarification, setClarification] = useState<string>();
 	const [rollbackPoints, setRollbackPoints] = useState<BasicInfo[]>();
 	const [review, setReview] = useState(false);
 	const [error, setError] = useState<string>();
-	const pathHandler = useTaskPathHandler();
+	const pathHandler = useTaskPathHandler({type:type});
 
 	useEffect(() => {
 		API.TASKS.PREVIOUS_TASKS(taskId).then((res) => {

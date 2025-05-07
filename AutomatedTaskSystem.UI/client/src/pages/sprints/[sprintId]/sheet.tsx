@@ -23,10 +23,12 @@ const SheetView = () => {
     const [units, setUnits] = useState<UnitChip[]>();
     const auth = useAppSelector((e) => e.authSlice);
     const router = useRouter();
-    const pathHandler = useTaskPathHandler({type:"tasks"});
+    const pathHandler = useTaskPathHandler({type:"sprints"});
 
     useEffect(() => {
-        const id = router.query.projectId;
+        const id = router.query.sprintId;
+        console.log('the id that i get ',id);
+        
         if (id !== undefined)
             API.TASKS.GET_PROJECT_SHEET(id).then(
                 (res) => {
@@ -39,7 +41,7 @@ const SheetView = () => {
                     }
                 }
             );
-    }, [router.query.projectId]);
+    }, [router.query.sprintId]);
 
     useEffect(() => {
         if (project) {
@@ -83,7 +85,7 @@ const SheetView = () => {
             <div className="flex gap-4 items-center">
                 <div>
                     <Link href={{
-                        pathname: `/tasks/${project.id}/board`,
+                        pathname: `/sprints/${project.id}/board`,
                     }} onClick={() => {
                         localStorage.setItem("tasks:view", "board");
                     }}>
@@ -157,12 +159,12 @@ const SheetView = () => {
         </div>
         <TaskDetails
             refreshTasks={refreshTasks}
-            type="tasks"
+            type="sprints"
         />
         <CreateStandAloneTaskForm
             refreshTasks={refreshTasks}
             projectId={project.id}
-            type="tasks"
+            type="sprints"
         />
     </div>);
 }

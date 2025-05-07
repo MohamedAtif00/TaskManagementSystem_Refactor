@@ -3,9 +3,10 @@ import RESOURCES from "./Resouces";
 import SCHEMAS from "./Schemas";
 import TASKS from "./tasks";
 import DASHBOARDS from "./dashboard";
+import SPRINTS from "./sprints";
 
-export const url = "/api";
-
+// export const url = "/api";
+export const url = "http://localhost:5238";
 export interface BasicInfo {
     id: number;
     name: string;
@@ -27,6 +28,7 @@ const API = {
     PROJECTS,
     TASKS,
     DASHBOARDS,
+    SPRINTS
 };
 
 export default API;

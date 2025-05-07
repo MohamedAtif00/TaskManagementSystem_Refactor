@@ -6,6 +6,7 @@ import Link from "next/link";
 import ProjectIcon from "../../assets/Icons/Project";
 import TaskIcon from "../../assets/Icons/Task";
 import { useState } from "react";
+import SprintIcon from "../../assets/Icons/Sprint";
 
 const Navlink = ({
     icon,
@@ -13,7 +14,7 @@ const Navlink = ({
     to,
     activeCondition,
 }: {
-    icon: "Home" | "Resources" | "Schema" | "Project" | "Task" | "None";
+    icon: "Home" | "Resources" | "Schema" | "Project" | "Task" |"Sprint"| "Advanced Report" |"None";
     text: string;
     to: string;
     activeCondition: boolean;
@@ -41,7 +42,9 @@ const Navlink = ({
                         <ProjectIcon color={color} />
                     ) : icon === "Task" ? (
                         <TaskIcon color={color} />
-                    ) : (
+                    ) : icon === "Sprint" ? (
+                        <SprintIcon width="100" height="20" />
+                    ) :(
                         <></>
                     )}
                 </div>

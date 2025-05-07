@@ -23,6 +23,7 @@ import {
 } from "@heroicons/react/24/outline";
 import RollbackHistory from "./rollbacks";
 import useTaskPathHandler from "./useTaskPathHandler.ts";
+import BaseDuration from "./BaseDuration";
 
 export interface IComment {
 	user: {
@@ -68,6 +69,7 @@ export interface ITask {
 	priority: TaskPriority;
 	activities: ITaskActivity[];
 	duration: number;
+	baseDuration:number;
 	notes: number;
 	issuesRecieved: number;
 	issuesCreated: number;
@@ -75,12 +77,16 @@ export interface ITask {
 
 interface Props {
 	refreshTasks: () => void;
+	type:"tasks" | "sprints"
 }
 
-const TaskDetails = ({ refreshTasks }: Props) => {
+const TaskDetails = ({ refreshTasks ,type}: Props) => {
+	
+	console.log("type is ",type);
+	
 	const [task, setTask] = useState<ITask>();
 	const router = useRouter();
-	const pathHandler = useTaskPathHandler();
+	const pathHandler = useTaskPathHandler({type:type});
 
 	useEffect(() => {
 		const id = router.query.taskId;
@@ -206,6 +212,14 @@ const TaskDetails = ({ refreshTasks }: Props) => {
 								{task.duration > 0 && (
 									<DurationBadge duration={task.duration} />
 								)}
+								{task.baseDuration > 0 &&(
+									<>
+										<BaseDuration duration={task.baseDuration}></BaseDuration>
+									</>
+								)
+									
+								}
+								
 							</div>
 							<button className="p-1 box-content" onClick={exit}>
 								<CrossIcon className="stroke-black" />
@@ -300,12 +314,14 @@ const TaskDetails = ({ refreshTasks }: Props) => {
 									user={task.user}
 									status={task.status}
 									access={task.access}
+									type={type}
 								/>
 								<TaskComments
 									taskId={task.id}
 									updateTask={setTask}
 									comments={task.comments}
 									reload={reload}
+									type={type}
 								/>
 							</div>
 							<div className="bg-blue-50 flex flex-col overflow-hidden rounded-br-lg">
@@ -393,12 +409,14 @@ const TaskDetails = ({ refreshTasks }: Props) => {
 								);
 								refreshTasks();
 							}}
+							type={type}
 						/>
 					)}
 					{router.query.view === "rollback-history" && (
 						<RollbackHistory
 							isReview={task.isReview}
 							taskId={task.id}
+							type={type}
 						/>
 					)}
 				</motion.div>
@@ -411,6 +429,7 @@ const TaskDetails = ({ refreshTasks }: Props) => {
 						reload();
 						refreshTasks();
 					}}
+					type={type}
 				/>
 			)}
 			{task && router.query.form === "proceed" && (
@@ -462,6 +481,7 @@ const TaskDetails = ({ refreshTasks }: Props) => {
 
 							return !isNaN(cid) && c.id === cid;
 						})}
+						type={type}
 					/>
 				)}
 			{task &&
@@ -478,6 +498,7 @@ const TaskDetails = ({ refreshTasks }: Props) => {
 
 							return !isNaN(cid) && c.id === cid;
 						})}
+						type={type}
 					/>
 				)}
 		</AnimatePresence>

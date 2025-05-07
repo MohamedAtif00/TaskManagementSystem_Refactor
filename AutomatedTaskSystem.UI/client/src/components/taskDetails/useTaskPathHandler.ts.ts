@@ -1,7 +1,7 @@
 import { useRouter } from "next/router"
 import { useEffect, useState } from "react"
 
-const useTaskPathHandler = () => {
+const useTaskPathHandler = ({type}:{type:string}) => {
 	const router = useRouter();
 	const [isBoard, setIsBoard] = useState(false);
 
@@ -9,9 +9,9 @@ const useTaskPathHandler = () => {
 		setIsBoard(router.pathname.includes("board"));
 	})
 
-	const projectId = router.query.projectId;
+	const projectId = type == "tasks"? router.query.projectId :router.query.sprintId;
 
-	return () => isBoard ? `/tasks/${projectId}/board` : `/tasks/${projectId}/sheet`;
+	return () => isBoard ? `/${type}/${projectId}/board` : `/${type}/${projectId}/sheet`;
 
 }
 

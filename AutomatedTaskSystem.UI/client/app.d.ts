@@ -57,6 +57,15 @@ interface IProject {
     status: ProjectStatus;
 }
 
+
+interface ISprint{
+    id:number,
+    name:string,
+    description:string,
+    startDate:string,
+    endDate:string
+}
+
 interface ISection {
     id: number;
     name: string;

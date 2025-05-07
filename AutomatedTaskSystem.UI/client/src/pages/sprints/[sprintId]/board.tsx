@@ -15,24 +15,26 @@ import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/24/solid";
 
 const TaskBoard = () => {
     const [tasks, setTasks] = useState<TaskInfo[]>();
-    const [project, setProject] = useState<IProject>();
+    const [project, setProject] = useState<ISprint>();
     const auth = useAppSelector((e) => e.authSlice);
     const router = useRouter();
-    const pathHandler = useTaskPathHandler({type:"tasks"});
+    const pathHandler = useTaskPathHandler({type:"sprints"});
     const [selectedLo, setSelected] = useState<BasicInfo>({ id: 0, name: "None" });
     const [query, setQuery] = useState('')
 
     useEffect(() => {
-        const id = router.query.projectId;
+        const id = router.query.sprintId;
+        console.log('hello',id);
+        
         if (id !== undefined)
-            API.PROJECTS.GET_ONE(id).then(
+            API.SPRINTS.GET_ONE(id).then(
                 (res) => res && !res.error && setProject(res.data)
             );
-    }, [router.query.projectId]);
+    }, [router.query.sprintId]);
 
     useEffect(() => {
         project &&
-            API.TASKS.GET_ALL_CARDS(project.id.toString()).then(
+            API.SPRINTS.GET_ALL_CARDS(project.id.toString()).then(
                 (res) => { if (res && !res.error) { setTasks(res.data);
                     console.log(res.data);
                     
@@ -43,7 +45,7 @@ const TaskBoard = () => {
     useEffect(() => {
         if (project) {
             const refreshInterval = setInterval(() => {
-                API.TASKS.GET_ALL_CARDS(project.id.toString()).then(
+                API.SPRINTS.GET_ALL_CARDS(project.id.toString()).then(
                     (res) => { if (res && !res.error) { setTasks(res.data); };
                     }
                 );
@@ -63,9 +65,9 @@ const TaskBoard = () => {
         );
 
     const refreshTasks = () => {
-        const projectId = router.query.projectId;
+        const projectId = router.query.sprintId;
         if (projectId)
-            API.TASKS.GET_ALL_CARDS(projectId).then(
+            API.SPRINTS.GET_ALL_CARDS(projectId).then(
                 (res) => {
                     if (res && !res.error)
                         setTasks(res.data)
@@ -127,26 +129,7 @@ const TaskBoard = () => {
                             <span className="text-2xl font-bold">{project.name}</span>
                         </div>
                         <div className="flex gap-4 items-center">
-                            <div>
-                                <Link href={{
-                                    pathname: `/tasks/${project.id}/sheet`,
-                                }} onClick={() => {
-                                    localStorage.setItem("tasks:view", "sheet");
-                                }}>
-                                    <button className="px-4 py-1 bg-slate-50 rounded-md text-black border border-solid border-black text-sm hover:border-pink-700 hover:text-pink-700 transition ease-in">Sheet View</button>
-                                </Link>
-                            </div>
-                            <div>
-                                {auth.role !== 3 &&
-                                    <Link href={{
-                                        pathname: pathHandler(),
-                                        query: {
-                                            form: "new-task",
-                                        },
-                                    }}>
-                                        <button className="px-4 py-1 bg-slate-50 rounded-md text-black border border-solid border-black text-sm hover:border-green-600 hover:text-green-600 transition ease-in">New Task</button>
-                                    </Link>}
-                            </div>
+
                             <div>
                                 <form className="flex gap-4 items-end" onSubmit={e => { e.preventDefault(); }}>
                                     <label className="relative block">
@@ -221,20 +204,20 @@ const TaskBoard = () => {
                 </div>
                 <div className="px-8 overflow-x-auto flex grow">
                     <div className="flex gap-1 bg-slate-50">
-                        <TaskCol label="Backlog" items={view.backlog}  type={"tasks"}/>
-                        <TaskCol label="To Do" items={view.todo} type={"tasks"}/>
-                        <TaskCol label="Doing" items={view.doing} type={"tasks"}/>
-                        <TaskCol label="Done" items={view.done} type={"tasks"}/>
+                        <TaskCol label="Backlog" items={view.backlog} type={"sprints"}/>
+                        <TaskCol label="To Do" items={view.todo} type={"sprints"}/>
+                        <TaskCol label="Doing" items={view.doing} type={"sprints"}/>
+                        <TaskCol label="Done" items={view.done} type={"sprints"}/>
                     </div>
                 </div>
                 <TaskDetails
                     refreshTasks={refreshTasks}
-                    type="tasks"
+                    type="sprints"
                 />
                 <CreateStandAloneTaskForm
                     refreshTasks={refreshTasks}
                     projectId={project.id}
-                    type="tasks"
+                    type="sprints"
                 />
             </div>
         </>

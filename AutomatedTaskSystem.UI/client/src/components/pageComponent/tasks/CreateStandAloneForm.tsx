@@ -9,6 +9,7 @@ import useTaskPathHandler from "../../taskDetails/useTaskPathHandler.ts";
 interface Props {
     projectId: number;
     refreshTasks: () => void;
+    type:"tasks" | "sprints"
 }
 
 const CreateStandAloneTaskForm: React.FC<Props> = (props) => {
@@ -40,7 +41,8 @@ const CreateStandAloneTaskForm: React.FC<Props> = (props) => {
         name: string;
         group: BasicInfo;
     }>();
-    const pathHandler = useTaskPathHandler();
+    const pathHandler = useTaskPathHandler({type:props.type});
+    const [estimatedTime, setEstimatedTime] = useState<number>()
 
     useEffect(() => {
         if (query.form === "new-task") {
