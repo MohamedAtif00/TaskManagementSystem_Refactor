@@ -5,5 +5,6 @@ public enum UserRoleEnum
     ProjectManger,
     SectionHead,
     TeamLeader,
-    Member
+    Member,
+    Owner
 }

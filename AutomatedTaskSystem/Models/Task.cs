@@ -23,6 +23,8 @@ public class Task
     public int? FromId { get; set; }
     public User? User { get; set; }
     public int? UserId { get; set; }
+    public int? SprintId { get; set; }
+    public Sprint? Sprint { get; set; }
     public LearningObjective LearningObjective { get; set; } = new LearningObjective { };
     public int LearningObjectiveId { get; set; }
     public bool IsReview { get; set; } = false;
@@ -30,6 +32,7 @@ public class Task
     public DateTime CreatedAt { get; set; } = DateTime.Now;
     public int RollbackCount { get; set; }
     public bool IsRollback { get; set; } = false;
+    public int Duration { get; set; }
 
     [Range(0, 3)]
     public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;

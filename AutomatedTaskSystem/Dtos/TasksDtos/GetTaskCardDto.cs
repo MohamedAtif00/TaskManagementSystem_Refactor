@@ -18,5 +18,7 @@ public class GetTaskCardDto
     public bool IsRollback { get; set; }
     public int RollbackCount { get; set; }
     public string From { get; set; } = "";
+    public decimal? duration { get; set; }
+    public int? baseDuration { get; set; }
     public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
 }

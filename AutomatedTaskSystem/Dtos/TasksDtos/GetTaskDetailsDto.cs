@@ -26,6 +26,7 @@ public class GetTaskDetailsDto
     public TaskAccess Access { get; set; } = TaskAccess.WorkOn;
     public List<GetTaskActivity> Activities { get; set; } = new List<GetTaskActivity> { };
     public double Duration { get; set; }
+    public int BaseDuration { get; set; }
     public int Notes { get; set; }
     public int IssuesRecieved { get; set; }
     public int IssuesCreated { get; set; }

@@ -80,6 +80,13 @@ public class TaskController : ControllerBase
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTask(int id) =>
         await _taskService.GetTaskDetails(id);
 
+
+    [HttpGet("/sprints/{id}/tasks/cards")]
+    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetCardTasksBySprint(int id)
+    {
+        return await _taskService.GetProjectTasksBySprint(id);
+    }
+
     // GET:
     // Get Project Tasks as Card
     [Authorize]

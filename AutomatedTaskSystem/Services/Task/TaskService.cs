@@ -208,7 +208,11 @@ public class TaskService : ITaskService
                 }
             );
 
-        var task = await createTask(TaskBankItem, lo, user);
+        var sprintId = _context.Sprints
+                .FirstOrDefault(x => DateTime.Now.Date <= x.EndDate.Date && DateTime.Now.Date >= x.StartDate.Date)?.Id;
+
+        var task = await createTask(TaskBankItem, lo, user, sprintId);
+
 
         return await getTaskDetails(task.Id);
     }
@@ -219,6 +223,74 @@ public class TaskService : ITaskService
     public async Task<Models.Task> CreateTask(Step step, LearningObjective lo, Models.Task? from) =>
         await createTask(step: step, learningObjective: lo, from);
 
+
+    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTasksBySprint(int sprintId)
+    {
+        //var user = await _authService.GetAuthedUser();
+        //if (user is null)
+        //    return new UnauthorizedObjectResult(
+        //        new BaseResponseService { Error = false, Message = "Invalid auth" }
+        //    );
+
+        var sprint = await _context.Sprints
+        .Include(s => s.Tasks)
+            .ThenInclude(t => t.LearningObjective)
+                .ThenInclude(lo => lo.Lesson)
+                    .ThenInclude(l => l.Unit)
+        .Include(s => s.Tasks)
+            .ThenInclude(t => t.User)
+        .Include(s => s.Tasks)
+            .ThenInclude(t => t.Group)
+        .Include(s => s.Tasks)
+            .ThenInclude(t => t.From)
+        .FirstOrDefaultAsync(s => s.Id == sprintId);
+
+        if (sprint is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Sprint not found" }
+            );
+
+        var tasks = sprint.Tasks
+            .Where(t => !t.Archived)
+            .Select(t => new GetTaskCardDto
+            {
+                Paused = t.Pause,
+                Attention = t.Attention,
+                Flagged = t.Flagged,
+                From = t.From is null ? "" : t.From.Name,
+                Id = t.Id,
+                IsReview = t.IsReview,
+                IsRollback = t.IsRollback,
+                LearningObjective = new BasicInfoDto
+                {
+                    Id = t.LearningObjective.Id,
+                    Name = t.LearningObjective.Name
+                },
+                Name = t.Name,
+                Priority = t.Priority,
+                RollbackCount = t.RollbackCount,
+                Status = t.Status,
+                User = t.User is null
+                    ? null
+                    : new BasicInfoDto
+                    {
+                        Name = t.User.Name,
+                        Id = t.User.Id
+                    },
+                baseDuration = t.Duration,
+                duration = (decimal?)_context.TaskWorkTimes
+                    .Where(q => q.TaskId == t.Id)
+                    .Sum(q => q.Duration) / 60000
+            })
+            .ToList();
+
+        return new ResponseService<List<GetTaskCardDto>>
+        {
+            Data = tasks,
+            Error = false,
+            Message = "Public list of tasks in sprint"
+        };
+    }
     public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid)
     {
         var user = await _authService.GetAuthedUser();
@@ -235,6 +307,7 @@ public class TaskService : ITaskService
                 .ThenInclude(u => u.Lessons)
                 .ThenInclude(l => l.LearningObjectives)
                 .ThenInclude(lo => lo.Tasks)
+                .ThenInclude(t => t.User)
                 .Include(p => p.Units)
                 .ThenInclude(u => u.Lessons)
                 .ThenInclude(l => l.LearningObjectives)
@@ -247,52 +320,62 @@ public class TaskService : ITaskService
                     new BaseResponseService { Error = true, Message = "Project is not found" }
                 );
 
-            var tasks = new List<GetTaskCardDto> { };
+            var tasks = new List<GetTaskCardDto>();
             foreach (var unit in p.Units)
             {
                 if (unit.Archived)
                     continue;
+
                 foreach (var lesson in unit.Lessons)
                 {
                     if (lesson.Archived)
                         continue;
+
                     foreach (var lo in lesson.LearningObjectives)
                     {
                         if (lo.Archived)
                             continue;
+
                         foreach (var task in lo.Tasks)
+                        {
                             if (!task.Archived)
-                                tasks.Add(
-                                    new GetTaskCardDto
+                            {
+                                tasks.Add(new GetTaskCardDto
+                                {
+                                    Paused = task.Pause,
+                                    Attention = task.Attention,
+                                    Flagged = task.Flagged,
+                                    From = task.From is null ? "" : task.From.Name,
+                                    Id = task.Id,
+                                    IsReview = task.IsReview,
+                                    IsRollback = task.IsRollback,
+                                    LearningObjective = new BasicInfoDto
                                     {
-                                        Paused = task.Pause,
-                                        Attention = task.Attention,
-                                        Flagged = task.Flagged,
-                                        From = task.From is null ? "" : task.From.Name,
-                                        Id = task.Id,
-                                        IsReview = task.IsReview,
-                                        IsRollback = task.IsRollback,
-                                        LearningObjective = new BasicInfoDto
+                                        Id = lo.Id,
+                                        Name = lo.Name
+                                    },
+                                    Name = task.Name,
+                                    Priority = task.Priority,
+                                    RollbackCount = task.RollbackCount,
+                                    Status = task.Status,
+                                    User = task.User is null
+                                        ? null
+                                        : new BasicInfoDto
                                         {
-                                            Id = lo.Id,
-                                            Name = lo.Name
+                                            Name = task.User.Name,
+                                            Id = task.User.Id
                                         },
-                                        Name = task.Name,
-                                        Priority = task.Priority,
-                                        RollbackCount = task.RollbackCount,
-                                        Status = task.Status,
-                                        User = task.User is null
-                                            ? null
-                                            : new BasicInfoDto
-                                            {
-                                                Name = task.User.Name,
-                                                Id = task.User.Id
-                                            }
-                                    }
-                                );
+                                    baseDuration = task.Duration,
+                                    duration = (decimal?)_context.TaskWorkTimes
+                                                    .Where(q => q.TaskId == task.Id)
+                                                    .Sum(q => q.Duration) / 60000
+                                });
+                            }
+                        }
                     }
                 }
             }
+
             return new ResponseService<List<GetTaskCardDto>>
             {
                 Data = tasks,
@@ -329,24 +412,36 @@ public class TaskService : ITaskService
         {
             var section = await _context.Sections
                 .Where(s => s.HeadId == user.Id && !s.Archived)
-                .Include(s => s.Groups)
                 .FirstOrDefaultAsync();
 
             if (section is not null)
-                foreach (var group in section.Groups)
-                    groups.Add(group);
+            {
+                var sectionGroupIds = await _context.SectionGroups
+                    .Where(sg => sg.SectionId == section.Id)
+                    .Select(sg => sg.GroupId)
+                    .ToListAsync();
+
+                var sectionGroups = await _context.Groups
+                    .Where(g => sectionGroupIds.Contains(g.Id))
+                    .ToListAsync();
+
+                groups.AddRange(sectionGroups);
+            }
         }
 
         IQueryable<Models.Task> query;
 
         if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
+        {
             query = _context.Tasks.Where(
                 t =>
-                    groups.Contains(t.Group)
+                    groups.Select(g => g.Id).Contains(t.GroupId)
                     && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
                     && !t.Archived
             );
+        }
         else
+        {
             query = _context.Tasks.Where(
                 t =>
                     t.GroupId == user.GroupId
@@ -355,6 +450,8 @@ public class TaskService : ITaskService
                     && (t.UserId == user.Id || t.Status == TaskStatusEnum.Backlog)
                     && (!t.TL || t.UserId == user.Id)
             );
+        }
+
         var _tasks = await query
             .Include(t => t.LearningObjective)
             .ThenInclude(lo => lo.Lesson)
@@ -366,33 +463,36 @@ public class TaskService : ITaskService
 
         return new ResponseService<List<GetTaskCardDto>>
         {
-            Data = _tasks
-                .Select(
-                    t =>
-                        new GetTaskCardDto
-                        {
-                            Paused = t.Pause,
-                            Attention = t.Attention,
-                            Flagged = t.Flagged,
-                            From = t.From is null ? "" : t.From.Name,
-                            Id = t.Id,
-                            IsReview = t.IsReview,
-                            IsRollback = t.IsRollback,
-                            LearningObjective = new BasicInfoDto
-                            {
-                                Id = t.LearningObjective.Id,
-                                Name = t.LearningObjective.Name
-                            },
-                            Name = t.Name,
-                            Priority = t.Priority,
-                            RollbackCount = t.RollbackCount,
-                            Status = t.Status,
-                            User = t.User is null
-                                ? null
-                                : new BasicInfoDto { Name = t.User.Name, Id = t.User.Id }
-                        }
-                )
-                .ToList(),
+            Data = _tasks.Select(t => new GetTaskCardDto
+            {
+                Paused = t.Pause,
+                Attention = t.Attention,
+                Flagged = t.Flagged,
+                From = t.From is null ? "" : t.From.Name,
+                Id = t.Id,
+                IsReview = t.IsReview,
+                IsRollback = t.IsRollback,
+                LearningObjective = new BasicInfoDto
+                {
+                    Id = t.LearningObjective.Id,
+                    Name = t.LearningObjective.Name
+                },
+                Name = t.Name,
+                Priority = t.Priority,
+                RollbackCount = t.RollbackCount,
+                Status = t.Status,
+                User = t.User is null
+                    ? null
+                    : new BasicInfoDto
+                    {
+                        Name = t.User.Name,
+                        Id = t.User.Id
+                    },
+                baseDuration = t.Duration,
+                duration = (decimal?)_context.TaskWorkTimes
+                    .Where(q => q.TaskId == t.Id)
+                    .Sum(q => q.Duration) / 60000
+            }).ToList(),
             Error = false,
             Message = "List of available tasks"
         };
@@ -889,7 +989,8 @@ public class TaskService : ITaskService
     private async Task<Models.Task> createTask(
         TaskBank taskBank,
         LearningObjective learningObjective,
-        User? user
+        User? user,
+        int? sprintId = null
     )
     {
         var authedUser = await _authService.GetAuthedUser();
@@ -917,7 +1018,9 @@ public class TaskService : ITaskService
             CreatedAt = DateTime.Now,
             RollbackCount = 0,
             IsRollback = false,
-            Priority = TaskPriorityEnum.None
+            Duration = taskBank.Duration,
+            Priority = TaskPriorityEnum.None,
+            SprintId = sprintId
         };
 
         var createdAct = new TaskActivity
@@ -1008,13 +1111,13 @@ public class TaskService : ITaskService
             .Where(t => !t.Archived && t.Id == id)
             .Include(t => t.User)
             .Include(t => t.LearningObjective)
-            .ThenInclude(t => t.Schema)
+                .ThenInclude(lo => lo.Schema)
             .Include(t => t.LearningObjective)
-            .ThenInclude(t => t.Comments)
-            .ThenInclude(c => c.User)
+                .ThenInclude(lo => lo.Comments)
+                    .ThenInclude(c => c.User)
             .Include(t => t.LearningObjective)
-            .ThenInclude(t => t.Comments)
-            .ThenInclude(t => t.Child)
+                .ThenInclude(lo => lo.Comments)
+                    .ThenInclude(c => c.Child)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
@@ -1030,7 +1133,9 @@ public class TaskService : ITaskService
             .Include(a => a.TaskSecondary)
             .ToListAsync();
 
-        var durations = await _context.TaskWorkTimes.Where(d => d.TaskId == task.Id).ToListAsync();
+        var durations = await _context.TaskWorkTimes
+            .Where(d => d.TaskId == task.Id)
+            .ToListAsync();
 
         var started = await _context.TaskActivities
             .Where(a => a.TaskId == task.Id && a.Type == TaskActivityTypeEnum.Status_Doing)
@@ -1038,14 +1143,10 @@ public class TaskService : ITaskService
             .LastOrDefaultAsync();
 
         var done = await _context.TaskActivities
-            .Where(
-                a =>
-                    a.TaskId == task.Id
-                    && (
-                        a.Type == TaskActivityTypeEnum.Status_Done
-                        || a.Type == TaskActivityTypeEnum.Status_Rollback
-                    )
-            )
+            .Where(a =>
+                a.TaskId == task.Id &&
+                (a.Type == TaskActivityTypeEnum.Status_Done ||
+                 a.Type == TaskActivityTypeEnum.Status_Rollback))
             .OrderBy(a => a.TimeStamp)
             .LastOrDefaultAsync();
 
@@ -1055,90 +1156,70 @@ public class TaskService : ITaskService
         {
             if (user.Role == UserRoleEnum.ProjectManger)
             {
-                if (
-                    task.Status == TaskStatusEnum.Backlog
-                    || task.UserId == user.Id
-                    || task.UserId == null
-                )
+                if (task.Status == TaskStatusEnum.Backlog || task.UserId == user.Id || task.UserId == null)
                     access = TaskAccess.WorkOnAndManage;
                 else
                     access = TaskAccess.Manage;
             }
             else if (user.Role == UserRoleEnum.SectionHead)
             {
-                if (
-                    user.GroupId == task.GroupId
-                    && (
-                        task.UserId == user.Id
-                        || task.Status == TaskStatusEnum.Backlog
-                        || task.UserId == null
-                    )
-                )
-                    access = TaskAccess.WorkOnAndManage;
-                else if (task.UserId != user.Id && task.GroupId == user.GroupId)
-                    access = TaskAccess.Manage;
-                else
-                {
-                    var section = await _context.Sections
-                        .Where(s => s.HeadId == user.Id)
-                        .Include(s => s.Groups)
-                        .FirstOrDefaultAsync();
+                var sectionGroup = await _context.SectionGroups
+                    .Where(sg => sg.Section.HeadId == user.Id && sg.GroupId == task.GroupId)
+                    .FirstOrDefaultAsync();
 
-                    if (section is not null && section.Groups.Any(g => g.Id == task.GroupId))
-                    {
-                        if (
-                            task.UserId == user.Id
-                            || task.Status == TaskStatusEnum.Backlog
-                            || task.UserId == null
-                        )
-                            access = TaskAccess.WorkOnAndManage;
-                        else
-                            access = TaskAccess.Manage;
-                    }
+                if (sectionGroup != null)
+                {
+                    if (task.UserId == user.Id || task.Status == TaskStatusEnum.Backlog || task.UserId == null)
+                        access = TaskAccess.WorkOnAndManage;
+                    else
+                        access = TaskAccess.Manage;
                 }
             }
             else if (user.Role == UserRoleEnum.TeamLeader)
             {
-                if (task.GroupId == user.GroupId)
+                var sectionGroup = await _context.SectionGroups
+                    .Where(sg => sg.Section.HeadId == user.Id && sg.GroupId == task.GroupId)
+                    .FirstOrDefaultAsync();
+
+                if (sectionGroup != null)
                 {
-                    if (
-                        task.UserId == user.Id
-                        || task.Status == TaskStatusEnum.Backlog
-                        || task.UserId == null
-                    )
+                    if (task.UserId == user.Id || task.Status == TaskStatusEnum.Backlog || task.UserId == null)
                         access = TaskAccess.WorkOnAndManage;
                     else
                         access = TaskAccess.Manage;
                 }
             }
             else if (user.Role == UserRoleEnum.Member)
-                if (task.GroupId == user.GroupId)
-                    if (task.UserId == user.Id || task.Status == TaskStatusEnum.Backlog)
-                        access = TaskAccess.WorkOn;
+            {
+                var sectionGroup = await _context.SectionGroups
+                    .Where(sg => sg.GroupId == user.GroupId && sg.GroupId == task.GroupId)
+                    .FirstOrDefaultAsync();
+
+                if (sectionGroup != null && (task.UserId == user.Id || task.Status == TaskStatusEnum.Backlog))
+                {
+                    access = TaskAccess.WorkOn;
+                }
+            }
         }
 
-        double duration = 0;
-
-        foreach (var d in durations)
-            duration += d.Duration;
+        double duration = durations.Sum(d => d.Duration);
 
         var issuesRecieved = task.IsReview
             ? 0
             : (await _context.Rollbacks.Where(rb => rb.ToTaskId == task.Id).ToListAsync()).Count;
+
         var issuesCreated = task.IsReview
             ? (await _context.Rollbacks.Where(rb => rb.TaskId == task.Id).ToListAsync()).Count
             : 0;
+
         var notes = task.IsReview
             ? 0
             : (
                 await _context.RollbackIssues
-                    .Where(
-                        rb =>
-                            rb.StepId == task.StepId
-                            && task.LearningObjectiveId == rb.Rollback.Task.LearningObjectiveId
-                    )
+                    .Where(rb => rb.StepId == task.StepId &&
+                                 task.LearningObjectiveId == rb.Rollback.Task.LearningObjectiveId)
                     .Include(rb => rb.Rollback)
-                    .ThenInclude(r => r.Task)
+                        .ThenInclude(r => r.Task)
                     .ToListAsync()
             ).Count;
 
@@ -1149,40 +1230,33 @@ public class TaskService : ITaskService
             {
                 CreatedAt = task.CreatedAt,
                 Comments = task.LearningObjective.Comments
-                    .FindAll(t => t.Child is null)
+                    .Where(c => c.Child == null)
                     .OrderByDescending(c => c.Timestamp)
-                    .Select(
-                        c =>
-                            c.Archived
-                                ? new TaskCommentDto
-                                {
-                                    Id = c.Id,
-                                    Timestamp = c.Timestamp,
-                                    User = new BasicInfoDto { Id = c.User.Id, Name = c.User.Name },
-                                    IsDeleted = true
-                                }
-                                : new TaskCommentDto
-                                {
-                                    Content = c.Content,
-                                    Id = c.Id,
-                                    Timestamp = c.Timestamp,
-                                    User = new BasicInfoDto { Id = c.User.Id, Name = c.User.Name },
-                                    IsEdited = task.LearningObjective.Comments.Any(
-                                        _ => _.ChildId == c.Id
-                                    )
-                                }
-                    )
-                    .ToList(),
-                User = task.User is not null
+                    .Select(c =>
+                        c.Archived
+                            ? new TaskCommentDto
+                            {
+                                Id = c.Id,
+                                Timestamp = c.Timestamp,
+                                User = new BasicInfoDto { Id = c.User.Id, Name = c.User.Name },
+                                IsDeleted = true
+                            }
+                            : new TaskCommentDto
+                            {
+                                Content = c.Content,
+                                Id = c.Id,
+                                Timestamp = c.Timestamp,
+                                User = new BasicInfoDto { Id = c.User.Id, Name = c.User.Name },
+                                IsEdited = task.LearningObjective.Comments.Any(_ => _.ChildId == c.Id)
+                            }
+                    ).ToList(),
+                User = task.User != null
                     ? new BasicInfoDto { Id = task.User.Id, Name = task.User.Name }
                     : null,
-                DoneAt =
-                    done is not null
-                    && (
-                        task.Status != TaskStatusEnum.Rollback || task.Status == TaskStatusEnum.Done
-                    )
-                        ? done.TimeStamp
-                        : null,
+                DoneAt = done != null &&
+                         (task.Status != TaskStatusEnum.Rollback || task.Status == TaskStatusEnum.Done)
+                    ? done.TimeStamp
+                    : null,
                 Environment = task.LearningObjective.Environment,
                 Flagged = task.Flagged,
                 Id = task.Id,
@@ -1200,61 +1274,45 @@ public class TaskService : ITaskService
                     Id = task.LearningObjective.Schema.Id,
                     Name = task.LearningObjective.Schema.Name
                 },
-                StartedAt =
-                    started is not null
-                    && (
-                        task.Status == TaskStatusEnum.Doing
-                        || task.Status != TaskStatusEnum.Rollback
-                        || task.Status == TaskStatusEnum.Done
-                    )
-                        ? started.TimeStamp
-                        : null,
+                StartedAt = started != null &&
+                            (task.Status == TaskStatusEnum.Doing ||
+                             task.Status != TaskStatusEnum.Rollback ||
+                             task.Status == TaskStatusEnum.Done)
+                    ? started.TimeStamp
+                    : null,
                 Status = task.Status,
                 Tag = task.LearningObjective.Tag,
                 Template = task.LearningObjective.Template,
                 Access = access,
                 Activities = activities
-                    .Select(
-                        a =>
-                            new GetTaskActivity
-                            {
-                                Id = a.Id,
-                                AdditionalInfo = a.AdditionalInfo,
-                                ActorOne = a.ActorOne is null
-                                    ? null
-                                    : new BasicInfoDto
-                                    {
-                                        Id = a.ActorOne.Id,
-                                        Name = a.ActorOne.Name
-                                    },
-                                ActorTwo = a.ActorTwo is null
-                                    ? null
-                                    : new BasicInfoDto
-                                    {
-                                        Id = a.ActorTwo.Id,
-                                        Name = a.ActorTwo.Name
-                                    },
-                                TimeStamp = a.TimeStamp,
-                                Type = a.Type,
-                                SecondaryTask = a.TaskSecondary is null
-                                    ? null
-                                    : new BasicInfoDto
-                                    {
-                                        Id = a.TaskSecondary.Id,
-                                        Name = a.TaskSecondary.Name
-                                    }
-                            }
-                    )
+                    .Select(a => new GetTaskActivity
+                    {
+                        Id = a.Id,
+                        AdditionalInfo = a.AdditionalInfo,
+                        ActorOne = a.ActorOne != null
+                            ? new BasicInfoDto { Id = a.ActorOne.Id, Name = a.ActorOne.Name }
+                            : null,
+                        ActorTwo = a.ActorTwo != null
+                            ? new BasicInfoDto { Id = a.ActorTwo.Id, Name = a.ActorTwo.Name }
+                            : null,
+                        TimeStamp = a.TimeStamp,
+                        Type = a.Type,
+                        SecondaryTask = a.TaskSecondary != null
+                            ? new BasicInfoDto { Id = a.TaskSecondary.Id, Name = a.TaskSecondary.Name }
+                            : null
+                    })
                     .OrderByDescending(a => a.TimeStamp)
                     .ToList(),
                 Duration = duration,
                 IssuesCreated = issuesCreated,
                 IssuesRecieved = issuesRecieved,
-                Notes = notes
+                Notes = notes,
+                BaseDuration = task.Duration
             },
             Message = "Task found"
         };
     }
+
 
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ProceedTask(int taskId)
     {
@@ -1673,9 +1731,7 @@ public class TaskService : ITaskService
         return true;
     }
 
-    public async Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(
-        int projectId
-    )
+    public async Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(int projectId)
     {
         var user = await _authService.GetAuthedUser();
         if (user is null)
@@ -1697,15 +1753,13 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Project is not found" }
             );
 
-        var los = new List<BasicInfoDto> { };
-
-        foreach (var u in project.Units)
-            foreach (var l in u.Lessons)
-                foreach (var lo in l.LearningObjectives)
-                    if (!lo.Archived)
-                        los.Add(new BasicInfoDto { Id = lo.Id, Name = lo.Name });
-
-        los.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
+        var los = project.Units
+            .SelectMany(u => u.Lessons)
+            .SelectMany(l => l.LearningObjectives)
+            .Where(lo => !lo.Archived)
+            .OrderBy(lo => lo.Name)
+            .Select(lo => new BasicInfoDto { Id = lo.Id, Name = lo.Name })
+            .ToList();
 
         if (user.Role == UserRoleEnum.TeamLeader)
         {
@@ -1714,7 +1768,8 @@ public class TaskService : ITaskService
                 .Where(tb => tb.Active && tb.GroupId == user.GroupId)
                 .ToListAsync();
 
-            _taskBankItems.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
+            _taskBankItems.Sort((a, b) => string.Compare(a.Name.ToLower(), b.Name.ToLower()));
+
             return new ResponseService<GetCreatableTasksDto>
             {
                 Error = false,
@@ -1724,35 +1779,29 @@ public class TaskService : ITaskService
                     LearningObjectives = los,
                     Assignees = project.Users
                         .Where(u => !u.Archived && u.GroupId == user.GroupId)
-                        .Select(
-                            i =>
-                                new UserDto
-                                {
-                                    Name = i.Name,
-                                    Id = i.Id,
-                                    Group = new BasicInfoDto
-                                    {
-                                        Name = i.Group.Name,
-                                        Id = i.Group.Id
-                                    }
-                                }
-                        )
+                        .Select(i => new UserDto
+                        {
+                            Name = i.Name,
+                            Id = i.Id,
+                            Group = new BasicInfoDto
+                            {
+                                Name = i.Group.Name,
+                                Id = i.Group.Id
+                            }
+                        })
                         .ToList(),
                     Options = _taskBankItems
-                        .Select(
-                            tb =>
-                                new TaskOption
-                                {
-                                    Name = tb.Name,
-                                    Id = tb.Id,
-                                    TeamLead = tb.TL,
-                                    Group = new BasicInfoDto
-                                    {
-                                        Id = tb.Group.Id,
-                                        Name = tb.Group.Name
-                                    }
-                                }
-                        )
+                        .Select(tb => new TaskOption
+                        {
+                            Name = tb.Name,
+                            Id = tb.Id,
+                            TeamLead = tb.TL,
+                            Group = new BasicInfoDto
+                            {
+                                Id = tb.Group.Id,
+                                Name = tb.Group.Name
+                            }
+                        })
                         .ToList()
                 }
             };
@@ -1760,23 +1809,18 @@ public class TaskService : ITaskService
 
         if (user.Role == UserRoleEnum.SectionHead)
         {
-            var section = await _context.Sections
-                .Where(s => s.HeadId == user.Id)
-                .Include(s => s.Groups)
-                .FirstOrDefaultAsync();
-
-            var groups = new List<Group> { user.Group };
-
-            if (section is not null)
-                foreach (var group in section.Groups)
-                    groups.Add(group);
+            var sectionGroups = await _context.SectionGroups
+                .Where(sg => sg.Section.HeadId == user.Id)
+                .Select(sg => sg.Group)
+                .ToListAsync();
 
             var _taskBankItems = await _context.TaskBank
                 .Include(tb => tb.Group)
-                .Where(tb => tb.Active && groups.Contains(tb.Group))
+                .Where(tb => tb.Active && sectionGroups.Contains(tb.Group))
                 .ToListAsync();
 
-            _taskBankItems.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
+            _taskBankItems.Sort((a, b) => string.Compare(a.Name.ToLower(), b.Name.ToLower()));
+
             return new ResponseService<GetCreatableTasksDto>
             {
                 Error = false,
@@ -1786,35 +1830,29 @@ public class TaskService : ITaskService
                     LearningObjectives = los,
                     Assignees = project.Users
                         .Where(u => !u.Archived && u.GroupId == user.GroupId)
-                        .Select(
-                            i =>
-                                new UserDto
-                                {
-                                    Name = i.Name,
-                                    Id = i.Id,
-                                    Group = new BasicInfoDto
-                                    {
-                                        Name = i.Group.Name,
-                                        Id = i.Group.Id
-                                    }
-                                }
-                        )
+                        .Select(i => new UserDto
+                        {
+                            Name = i.Name,
+                            Id = i.Id,
+                            Group = new BasicInfoDto
+                            {
+                                Name = i.Group.Name,
+                                Id = i.Group.Id
+                            }
+                        })
                         .ToList(),
                     Options = _taskBankItems
-                        .Select(
-                            tb =>
-                                new TaskOption
-                                {
-                                    Name = tb.Name,
-                                    Id = tb.Id,
-                                    TeamLead = tb.TL,
-                                    Group = new BasicInfoDto
-                                    {
-                                        Id = tb.Group.Id,
-                                        Name = tb.Group.Name
-                                    }
-                                }
-                        )
+                        .Select(tb => new TaskOption
+                        {
+                            Name = tb.Name,
+                            Id = tb.Id,
+                            TeamLead = tb.TL,
+                            Group = new BasicInfoDto
+                            {
+                                Id = tb.Group.Id,
+                                Name = tb.Group.Name
+                            }
+                        })
                         .ToList()
                 }
             };
@@ -1825,7 +1863,7 @@ public class TaskService : ITaskService
             .Where(tb => tb.Active)
             .ToListAsync();
 
-        taskBankItems.Sort((a, b) => String.Compare(a.Name.ToLower(), b.Name.ToLower()));
+        taskBankItems.Sort((a, b) => string.Compare(a.Name.ToLower(), b.Name.ToLower()));
 
         return new ResponseService<GetCreatableTasksDto>
         {
@@ -1836,31 +1874,34 @@ public class TaskService : ITaskService
                 LearningObjectives = los,
                 Assignees = project.Users
                     .Where(u => !u.Archived)
-                    .Select(
-                        i =>
-                            new UserDto
-                            {
-                                Name = i.Name,
-                                Id = i.Id,
-                                Group = new BasicInfoDto { Name = i.Group.Name, Id = i.Group.Id }
-                            }
-                    )
+                    .Select(i => new UserDto
+                    {
+                        Name = i.Name,
+                        Id = i.Id,
+                        Group = new BasicInfoDto
+                        {
+                            Name = i.Group.Name,
+                            Id = i.Group.Id
+                        }
+                    })
                     .ToList(),
                 Options = taskBankItems
-                    .Select(
-                        tb =>
-                            new TaskOption
-                            {
-                                Name = tb.Name,
-                                Id = tb.Id,
-                                TeamLead = tb.TL,
-                                Group = new BasicInfoDto { Id = tb.Group.Id, Name = tb.Group.Name }
-                            }
-                    )
+                    .Select(tb => new TaskOption
+                    {
+                        Name = tb.Name,
+                        Id = tb.Id,
+                        TeamLead = tb.TL,
+                        Group = new BasicInfoDto
+                        {
+                            Id = tb.Group.Id,
+                            Name = tb.Group.Name
+                        }
+                    })
                     .ToList()
             }
         };
     }
+
 
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> SkipTask(int id)
     {
@@ -2773,7 +2814,6 @@ public class TaskService : ITaskService
             .Where(_ => _.Id == pid && !_.Archived)
             .FirstOrDefaultAsync();
 
-
         if (p is null)
             return new NotFoundObjectResult(
                 new BaseResponseService { Error = true, Message = "Project is not found" }
@@ -2792,17 +2832,26 @@ public class TaskService : ITaskService
             Name = p.Name
         };
 
+        // SectionHead role processing using SectionGroup junction table
         if (user.Role == UserRoleEnum.SectionHead)
         {
-            var groups = await _context.Sections
-                .Where(s => s.HeadId == user.Id)
-                .Include(s => s.Groups)
+            var sectionGroups = await _context.SectionGroups
+                .Where(sg => sg.Section.HeadId == user.Id && !sg.Section.Archived)
+                .Include(sg => sg.Group)
                 .ToListAsync();
 
-            foreach (var group in groups)
-                if (!group.Archived)
-                    res.WorkableTasks.Add(new BasicInfoDto { Id = group.Id, Name = group.Name });
+            foreach (var sectionGroup in sectionGroups)
+            {
+                if (!sectionGroup.Group.Archived)
+                    res.WorkableTasks.Add(new BasicInfoDto
+                    {
+                        Id = sectionGroup.Group.Id,
+                        Name = sectionGroup.Group.Name
+                    });
+            }
         }
+
+        // Handle non-ProjectManager roles and add the user's own group
         if (user.Role != UserRoleEnum.ProjectManger)
         {
             var group = await _context.Groups
@@ -2811,6 +2860,7 @@ public class TaskService : ITaskService
 
             if (group is null)
                 throw new Exception("User group is not found");
+
             res.WorkableTasks.Add(new BasicInfoDto
             {
                 Id = group.Id,
@@ -2818,6 +2868,7 @@ public class TaskService : ITaskService
             });
         }
 
+        // Process Units and Lessons as before
         foreach (var unit in p.Units)
         {
             var unitChip = new GetUnitChipDto
@@ -2910,4 +2961,84 @@ public class TaskService : ITaskService
             Message = "Project Sheet"
         };
     }
+
+
+    public void PauseAllTasksForUser(int userId)
+    {
+        // Get all tasks for the user that are active and not already paused
+        var tasks = _context.Tasks
+            .Where(t => !t.Archived && t.UserId == userId && !t.Pause)
+            .ToList();
+
+        if (!tasks.Any())
+            return;
+
+        var activities = new List<TaskActivity>(); // For batch insert of task activities
+        var now = DateTime.Now;
+
+        foreach (var task in tasks)
+        {
+            if (task.Status != TaskStatusEnum.Doing)
+            {
+                // Log attempt to pause non-active task
+                activities.Add(new TaskActivity
+                {
+                    Type = TaskActivityTypeEnum.Pause,
+                    Task = task,
+                    TaskId = task.Id,
+                    ActorOneId = userId,
+                    ActorTwoId = null,
+                    TimeStamp = now,
+                    AdditionalInfo = "Task cannot be paused because it's not in 'Doing' status",
+                    TaskSecondary = null,
+                    TaskSecondaryId = null
+                });
+
+                continue;
+            }
+
+            // Get all ongoing work time sessions for the task
+            var ongoingSessions = _context.TaskWorkTimes
+                .Where(twt => twt.TaskId == task.Id && twt.EndDate == null)
+                .ToList();
+
+            foreach (var session in ongoingSessions)
+            {
+                session.EndDate = now;
+                session.Duration = (now - session.StartDate).TotalMilliseconds;
+                session.EndReason = TaskDurationEndReasonEnum.Session;
+                session.UserId = userId; // Ensure user is set if needed
+            }
+
+            // Pause the task
+            task.Status = TaskStatusEnum.ToDo;
+            task.Pause = true;
+
+            // Add activity log
+            activities.Add(new TaskActivity
+            {
+                Type = TaskActivityTypeEnum.Pause,
+                Task = task,
+                TaskId = task.Id,
+                ActorOneId = userId,
+                ActorTwoId = null,
+                TimeStamp = now,
+                AdditionalInfo = null,
+                TaskSecondary = null,
+                TaskSecondaryId = null
+            });
+        }
+
+        // Add all new activities
+        if (activities.Any())
+            _context.TaskActivities.AddRange(activities);
+
+        // Save everything in one transaction
+        _context.SaveChanges();
+    }
+
+
+
+
+
 }

@@ -126,6 +126,11 @@ public class DataContext : DbContext
             .HasOne(p => p.Step)
             .WithMany()
             .OnDelete(DeleteBehavior.NoAction);
+        modelBuilder
+            .Entity<Sprint>()
+            .HasMany(x => x.Tasks)
+            .WithOne(x => x.Sprint)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 
     public DbSet<Team> Teams => Set<Team>();
@@ -149,4 +154,7 @@ public class DataContext : DbContext
     public DbSet<LearningObjective> LearningObjectives => Set<LearningObjective>();
     public DbSet<Rollback> Rollbacks => Set<Rollback>();
     public DbSet<RollbackIssue> RollbackIssues => Set<RollbackIssue>();
+    public DbSet<Sprint> Sprints => Set<Sprint>();
+    public DbSet<SectionGroup> SectionGroups => Set<SectionGroup>();
+    public DbSet<LeaveRequest> Vacations => Set<LeaveRequest>();
 }

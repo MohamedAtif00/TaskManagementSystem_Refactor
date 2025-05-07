@@ -85,38 +85,30 @@ public class UserTaskService : IUserTaskService
                 Message = "List of User Tasks"
             };
         }
+
         if (user.Role == UserRoleEnum.SectionHead)
         {
-            var section = await _context.Sections
-                .Where(s => s.HeadId == user.Id && !s.Archived)
-                .Include(s => s.Groups)
-                .FirstOrDefaultAsync();
+            var sectionGroupIds = await _context.SectionGroups
+                .Where(sg => sg.Section.HeadId == user.Id && !sg.Section.Archived)
+                .Select(sg => sg.GroupId)
+                .ToListAsync();
 
-            if (section is null)
+            if (!sectionGroupIds.Any())
                 return new BadRequestObjectResult(
-                    new BaseResponseService { Error = false, Message = "Section is not found" }
+                    new BaseResponseService { Error = false, Message = "Section groups not found" }
                 );
 
-            var groups = new List<int> { };
-
-            foreach (var g in section.Groups)
-                groups.Add(g.Id);
-
             var users = await _context.Users
-                .Where(
-                    u =>
-                        !u.Archived
-                        && u.Role != UserRoleEnum.ProjectManger
-                        && u.Role != UserRoleEnum.SectionHead
-                        && groups.Contains(u.GroupId)
-                )
+                .Where(u => !u.Archived && u.Role != UserRoleEnum.ProjectManger && u.Role != UserRoleEnum.SectionHead)
+                .Where(u => sectionGroupIds.Contains(u.GroupId))
                 .Include(u => u.Group)
                 .Include(u => u.Tasks)
-                .ThenInclude(u => u.LearningObjective)
-                .ThenInclude(u => u.Lesson)
-                .ThenInclude(u => u.Unit)
-                .ThenInclude(u => u.Project)
+                .ThenInclude(t => t.LearningObjective)
+                .ThenInclude(t => t.Lesson)
+                .ThenInclude(t => t.Unit)
+                .ThenInclude(t => t.Project)
                 .ToListAsync();
+
             var res = new List<UserTaskDto> { };
 
             users.ForEach(u =>
@@ -162,16 +154,12 @@ public class UserTaskService : IUserTaskService
                 Message = "List of User Tasks"
             };
         }
+
         if (user.Role == UserRoleEnum.TeamLeader)
         {
             var users = await _context.Users
-                .Where(
-                    u =>
-                        !u.Archived
-                        && u.Role != UserRoleEnum.ProjectManger
-                        && u.Role != UserRoleEnum.SectionHead
-                        && u.GroupId == user.GroupId
-                )
+                .Where(u => !u.Archived && u.Role != UserRoleEnum.ProjectManger && u.Role != UserRoleEnum.SectionHead)
+                .Where(u => u.GroupId == user.GroupId)
                 .Include(u => u.Group)
                 .Include(u => u.Tasks)
                 .ThenInclude(u => u.LearningObjective)
@@ -228,6 +216,7 @@ public class UserTaskService : IUserTaskService
 
         throw new NotImplementedException();
     }
+
 
     public async Task<ActionResult<ResponseService<UserTaskInfo>>> GetUserTasks(int id)
     {
