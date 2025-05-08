@@ -12,12 +12,22 @@ interface IGroup {
     role: string;
     roleId: number;
 }
-
 interface IUser {
     id: number;
     name: string;
     group: { id: number; name: string };
     role: UserRole;
+    hrCode?:string
+    code?:string;
+    accountType?:AccountType
+    vacation?:IVacation;
+    email:string
+}
+
+interface IVacation{
+    annual:number;
+    sick:number;    
+    emergency:number;
 }
 
 interface ISchema {
@@ -122,6 +132,7 @@ type TaskInfo = {
     id: number;
     name: string;
     status: 0 | 1 | 2 | 3 | 4;
+    TL: boolean;
     user?: { id: number; name: string };
     learningObjective: { id: number; name: string };
     isReview: boolean;
@@ -131,6 +142,8 @@ type TaskInfo = {
     isRollback: boolean;
     rollbackCount: number;
     from: string;
+    duration:number;
+    baseDuration:number;
     priority: 0 | 1 | 2 | 3;
     paused: boolean;
 };

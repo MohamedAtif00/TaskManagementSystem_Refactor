@@ -1,6 +1,6 @@
 import Head  from "next/head"
 import Link from "next/link"
-import ResourcesIcon from "../../assets/Icons/Resources"
+import ResourcesIcon from "../../../assets/Icons/Resources"
 
 
 export default function MembersLeaves(){

@@ -2,6 +2,7 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -16,8 +17,7 @@ namespace AutomatedTaskSystem.Controllers
             _context = context;
         }
 
-        // GET:
-        // Get one team
+        // GET: /teams/{id}
         [HttpGet("{id}")]
         public async Task<ActionResult<Responses.TeamDTO>> GetTeam(int id)
         {
@@ -31,67 +31,50 @@ namespace AutomatedTaskSystem.Controllers
                 return NotFound(new Responses.BadRequestsDTO("Team not found"));
             }
 
-            var users = new List<Responses.TeamUser> { };
+            var users = await _context.Users
+                .Where(u => u.TeamId == team.Id && !u.Archived)
+                .Include(u => u.Group)
+                .Select(u => new Responses.TeamUser
+                {
+                    Id = u.Id,
+                    Name = u.Name,
+                    Group = u.Group.Name
+                })
+                .ToListAsync();
 
-            for (int i = 0; i < team.Users.Count; i++)
-            {
-                var user = team.Users[i];
-
-                var group = await _context.Groups
-                    .Where(g => g.Id == user.GroupId)
-                    .FirstOrDefaultAsync();
-
-                users.Add(
-                    new Responses.TeamUser
-                    {
-                        Group = group!.Name,
-                        Id = user.Id,
-                        Name = user.Name
-                    }
-                );
-            }
-
-            var res = new Responses.TeamDTO
+            return new Responses.TeamDTO
             {
                 Id = team.Id,
                 Name = team.Name,
                 Users = users
             };
-
-            return res;
         }
 
-        // GET:
-        // Get all teams
+        // GET: /teams
+        [HttpGet]
         public async Task<ActionResult<List<Responses.MiniTeamDTO>>> GetTeams()
         {
-            var res = new List<Responses.MiniTeamDTO> { };
-
             var teams = await _context.Teams
                 .Where(t => !t.Archived)
                 .Include(t => t.Users)
+                .Select(t => new Responses.MiniTeamDTO
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    Members = t.Users.Count
+                })
                 .ToListAsync();
 
-            teams.ForEach(
-                t =>
-                    res.Add(
-                        new Responses.MiniTeamDTO
-                        {
-                            Id = t.Id,
-                            Members = t.Users.Count,
-                            Name = t.Name
-                        }
-                    )
-            );
-
-            return res;
+            return teams;
         }
 
-        // POST:
-        // Add team
+        // POST: /teams
         [HttpPost]
         public async Task<ActionResult<Responses.MiniTeamDTO>> AddTeam(Requests.TeamDTO req)
         {
+            if (string.IsNullOrWhiteSpace(req.Name))
+                return BadRequest(new Responses.BadRequestsDTO("Team name is required"));
+
             var newTeam = new Team { Name = req.Name, Archived = false };
 
             _context.Teams.Add(newTeam);
@@ -105,25 +88,18 @@ namespace AutomatedTaskSystem.Controllers
             };
         }
 
-        // PATCH:
-        // Edit team
+        // PATCH: /teams/{id}
         [HttpPatch("{id}")]
-        public async Task<ActionResult<Responses.MiniTeamDTO>> EditTeam(
-            int id,
-            Requests.TeamDTO req
-        )
+        public async Task<ActionResult<Responses.MiniTeamDTO>> EditTeam(int id, Requests.TeamDTO req)
         {
             var team = await _context.Teams
-                .Where(t => t.Id == id)
                 .Include(t => t.Users)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(t => t.Id == id);
 
             if (team == null)
-            {
                 return NotFound(new Responses.BadRequestsDTO("Team not found"));
-            }
 
-            if (req.Name != "")
+            if (!string.IsNullOrWhiteSpace(req.Name))
                 team.Name = req.Name;
 
             await _context.SaveChangesAsync();
@@ -131,66 +107,53 @@ namespace AutomatedTaskSystem.Controllers
             return new Responses.MiniTeamDTO
             {
                 Id = team.Id,
-                Members = team.Users.Count,
-                Name = team.Name
+                Name = team.Name,
+                Members = team.Users.Count
             };
         }
 
-        // POST:
-        // Assign user to team
+        // POST: /teams/{id}/assign
         [HttpPost("{id}/assign")]
-        public async Task<ActionResult<Responses.TeamDTO>> AssignUsers(
-            int id,
-            Requests.TeamAssignmentDTO req
-        )
+        public async Task<ActionResult<Responses.TeamDTO>> AssignUsers(int id, Requests.TeamAssignmentDTO req)
         {
+            if (req.UserIds == null || req.UserIds.Count == 0)
+                return BadRequest(new Responses.BadRequestsDTO("No user IDs provided"));
+
             var team = await _context.Teams
-                .Where(t => t.Id == id)
                 .Include(t => t.Users)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(t => t.Id == id);
 
             if (team == null)
-            {
                 return NotFound(new Responses.BadRequestsDTO("Team not found"));
-            }
 
-            for (int i = 0; i < req.UserIds.Count; i++)
+            foreach (var userId in req.UserIds)
             {
                 var user = await _context.Users
-                    .Where(u => u.Id == req.UserIds[i] && !u.Archived)
+                    .Where(u => u.Id == userId && !u.Archived)
                     .FirstOrDefaultAsync();
 
                 if (user == null)
-                {
-                    return NotFound(
-                        new Responses.BadRequestsDTO($"User of id:{req.UserIds[i]} is not found")
-                    );
-                }
+                    return NotFound(new Responses.BadRequestsDTO($"User with ID {userId} not found"));
 
-                user.Team = team;
-                user.TeamId = team.Id;
-                team.Users.Add(user);
+                if (user.TeamId != id)
+                {
+                    user.Team = team;
+                    team.Users.Add(user);
+                }
             }
 
             await _context.SaveChangesAsync();
 
-            var users = new List<Responses.TeamUser> { };
-
-            for (int i = 0; i < team.Users.Count; i++)
-            {
-                var user = team.Users[i];
-                var group = await _context.Groups
-                    .Where(g => g.Id == user.GroupId)
-                    .FirstOrDefaultAsync();
-                users.Add(
-                    new Responses.TeamUser
-                    {
-                        Group = group!.Name,
-                        Id = user.Id,
-                        Name = user.Name
-                    }
-                );
-            }
+            var users = await _context.Users
+                .Where(u => u.TeamId == team.Id && !u.Archived)
+                .Include(u => u.Group)
+                .Select(u => new Responses.TeamUser
+                {
+                    Id = u.Id,
+                    Name = u.Name,
+                    Group = u.Group.Name
+                })
+                .ToListAsync();
 
             return new Responses.TeamDTO
             {
@@ -200,59 +163,42 @@ namespace AutomatedTaskSystem.Controllers
             };
         }
 
-        // POST:
-        // Unassign user from team
+        // POST: /teams/{id}/unassign
         [HttpPost("{id}/unassign")]
-        public async Task<ActionResult<Responses.TeamDTO>> UnassignUsers(
-            int id,
-            Requests.TeamAssignmentDTO req
-        )
+        public async Task<ActionResult<Responses.TeamDTO>> UnassignUsers(int id, Requests.TeamAssignmentDTO req)
         {
+            if (req.UserIds == null || req.UserIds.Count == 0)
+                return BadRequest(new Responses.BadRequestsDTO("No user IDs provided"));
+
             var team = await _context.Teams
-                .Where(t => t.Id == id)
                 .Include(t => t.Users)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(t => t.Id == id);
 
             if (team == null)
-            {
                 return NotFound(new Responses.BadRequestsDTO("Team not found"));
-            }
 
-            for (int i = 0; i < req.UserIds.Count; i++)
+            foreach (var userId in req.UserIds)
             {
-                var user = team.Users.Find(u => u.Id == req.UserIds[i]);
-
+                var user = team.Users.FirstOrDefault(u => u.Id == userId);
                 if (user == null)
-                {
-                    return NotFound(
-                        new Responses.BadRequestsDTO($"User of id:{req.UserIds[i]} is not found")
-                    );
-                }
+                    return NotFound(new Responses.BadRequestsDTO($"User with ID {userId} not found"));
 
                 user.Team = null;
-                user.TeamId = null;
                 team.Users.Remove(user);
             }
 
             await _context.SaveChangesAsync();
 
-            var users = new List<Responses.TeamUser> { };
-
-            for (int i = 0; i < team.Users.Count; i++)
-            {
-                var user = team.Users[i];
-                var group = await _context.Groups
-                    .Where(g => g.Id == user.GroupId)
-                    .FirstOrDefaultAsync();
-                users.Add(
-                    new Responses.TeamUser
-                    {
-                        Group = group!.Name,
-                        Id = user.Id,
-                        Name = user.Name
-                    }
-                );
-            }
+            var users = await _context.Users
+                .Where(u => u.TeamId == team.Id && !u.Archived)
+                .Include(u => u.Group)
+                .Select(u => new Responses.TeamUser
+                {
+                    Id = u.Id,
+                    Name = u.Name,
+                    Group = u.Group.Name
+                })
+                .ToListAsync();
 
             return new Responses.TeamDTO
             {
@@ -262,18 +208,19 @@ namespace AutomatedTaskSystem.Controllers
             };
         }
 
-        // DELETE:
-        // Archive team
+        // DELETE: /teams/{id}
         [HttpDelete("{id}")]
         public async Task<ActionResult<Responses.SuccessDTO>> ArchiveTeam(int id)
         {
-            var team = await _context.Teams.Where(t => t.Id == id).FirstOrDefaultAsync();
+            var team = await _context.Teams.FirstOrDefaultAsync(t => t.Id == id);
+
             if (team == null)
                 return NotFound(new Responses.BadRequestsDTO("Team not found"));
 
             team.Archived = true;
             await _context.SaveChangesAsync();
-            return new Responses.SuccessDTO("Team is not archived");
+
+            return new Responses.SuccessDTO("Team archived successfully");
         }
     }
 }

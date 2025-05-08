@@ -16,6 +16,7 @@ public class User
     public int Annual_leave { get; set; }
     public int Sick_leave { get; set; }
     public int Emergency_leave { get; set; }
+    public int Permission { get; set; }
     public string HR_code { get; set; } = "";
     public string? Email { get; set; }
     public User? Teamleader { get; set; }

@@ -25,7 +25,7 @@ namespace AutomatedTaskSystem.Controllers
         [HttpPost]
         public async Task<ActionResult<ResponseService<Responses.UserAddedDTO>>> CreateUser(
             Requests.UserDTO req
-        ) => await _userService.CreateUser(req.Name, req.GroupId, req.Role);
+        ) => await _userService.CreateUser(req);
 
         // GET:
         // Get all users
@@ -45,7 +45,7 @@ namespace AutomatedTaskSystem.Controllers
         public async Task<ActionResult<ResponseService<Responses.UserDTO>>> EditUser(
             int id,
             Requests.UserDTO req
-        ) => await _userService.EditUser(id, req.Name, req.GroupId, req.Role);
+        ) => await _userService.EditUser(id, req);
 
         // DELETE:
         // Archive User

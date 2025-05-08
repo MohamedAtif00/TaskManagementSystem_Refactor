@@ -7,6 +7,7 @@ import SPRINTS from "./sprints";
 
 // export const url = "/api";
 export const url = "http://localhost:5238";
+
 export interface BasicInfo {
     id: number;
     name: string;

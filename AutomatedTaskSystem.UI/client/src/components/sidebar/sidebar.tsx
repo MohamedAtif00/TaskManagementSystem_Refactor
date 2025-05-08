@@ -94,6 +94,14 @@ const Sidebar = () => {
 								icon="Schema"
 								text="Calendar"
 							/>
+							<Navlink
+								activeCondition={path.includes(
+									"/myleave"
+								)}
+								to="/myleave"
+								icon="Schema"
+								text="My Leaves"
+							/>
 						</NavList>
 						<Navlink
 							activeCondition={path.includes("/sprint")}

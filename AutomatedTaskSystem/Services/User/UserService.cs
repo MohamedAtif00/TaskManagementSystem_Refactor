@@ -35,20 +35,28 @@ public class UserService : IUserService
     }
 
     public async Task<ActionResult<ResponseService<Responses.UserAddedDTO>>> CreateUser(
-        string Name,
-        int GroupId,
-        UserRoleEnum Role
+    Requests.UserDTO req
     )
     {
         var group = await _context.Groups
-            .Where(g => g.Id == GroupId && !g.Archived)
+            .Where(g => g.Id == req.GroupId && !g.Archived)
             .FirstOrDefaultAsync();
         if (group is null)
             return new NotFoundObjectResult(
                 new BaseResponseService
                 {
                     Error = true,
-                    Message = $"Group of id:{GroupId} is not found"
+                    Message = $"Group of id:{req.GroupId} is not found"
+                }
+            );
+
+
+        if (req.Email != null && await CheckEmailExist(req.Email))
+            return new NotFoundObjectResult(
+                new BaseResponseService
+                {
+                    Error = true,
+                    Message = $"Group of id:{req.GroupId} is not found"
                 }
             );
 
@@ -58,9 +66,16 @@ public class UserService : IUserService
             Code = await GenerateCode(),
             Group = group,
             GroupId = group.Id,
-            Name = Name,
+            Name = req.Name,
             OnBoard = false,
-            Role = Role,
+            Role = req.Role,
+            HR_code = req.HrCode,
+            TeamleaderId = req.Role == UserRoleEnum.Member ? req.Teamleader : null,
+            AccountType = req.AccountType,
+            Email = req.Email,
+            Annual_leave = req.Vacation.Annual,
+            Sick_leave = req.Vacation.Sick,
+            Emergency_leave = req.Vacation.Emergency
         };
 
         _context.Users.Add(newUser);
@@ -77,6 +92,7 @@ public class UserService : IUserService
                     Group = { Id = newUser.GroupId, Name = newUser.Group.Name },
                     Id = newUser.Id,
                     Name = newUser.Name,
+
                 }
             },
             Error = false,
@@ -86,9 +102,7 @@ public class UserService : IUserService
 
     public async Task<ActionResult<ResponseService<Responses.UserDTO>>> EditUser(
         int id,
-        string Name,
-        int GroupId,
-        UserRoleEnum Role
+        Requests.UserDTO req
     )
     {
         var user = await _context.Users
@@ -103,21 +117,27 @@ public class UserService : IUserService
             );
 
         var group = await _context.Groups
-            .Where(g => g.Id == GroupId && !g.Archived)
+            .Where(g => g.Id == req.GroupId && !g.Archived)
             .FirstOrDefaultAsync();
         if (group is null)
             return new NotFoundObjectResult(
                 new BaseResponseService
                 {
                     Error = true,
-                    Message = $"Group of id:{GroupId} is not found"
+                    Message = $"Group of id:{req.GroupId} is not found"
                 }
             );
 
-        user.Name = Name;
+        user.Name = req.Name;
         user.Group = group;
         user.GroupId = group.Id;
-        user.Role = Role;
+        user.Role = req.Role;
+        user.AccountType = req.AccountType;
+        user.Annual_leave = req.Vacation.Annual;
+        user.Sick_leave = req.Vacation.Sick;
+        user.Emergency_leave = req.Vacation.Emergency;
+        user.Code = await GenerateCode();
+
 
         await _context.SaveChangesAsync();
 
@@ -154,7 +174,17 @@ public class UserService : IUserService
                 Group = { Id = user.GroupId, Name = user.Group.Name },
                 Role = user.Role,
                 Id = user.Id,
-                Name = user.Name
+                Name = user.Name,
+                Code = user.Code,
+                HrCode = user.HR_code,
+                AccountType = user.AccountType,
+                Email = user.Email,
+                Vacation = new Responses.VacationDto
+                {
+                    Annual = user.Annual_leave,
+                    Sick = user.Sick_leave,
+                    Emergency = user.Emergency_leave
+                }
             },
             Error = false,
             Message = $"User of id:{user.Id}"
@@ -243,4 +273,9 @@ public class UserService : IUserService
 
         return code;
     }
+
+    private async Task<bool> CheckEmailExist(string email) => await _context.Users.AnyAsync(x => x.Email == email);
+
+
+
 }

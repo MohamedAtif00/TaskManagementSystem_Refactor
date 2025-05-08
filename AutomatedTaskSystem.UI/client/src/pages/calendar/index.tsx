@@ -1,8 +1,9 @@
 import { Tab } from "@headlessui/react";
 import { Box, Paper, Typography, Grid, TextField, FormControl, InputLabel, Select, MenuItem, Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody } from "@mui/material";
-import SchemaIcon from "../../assets/Icons/Schema";
-import UserProfileIcone from "../../assets/Icons/UserProfile";
+import SchemaIcon from "../../../assets/Icons/Schema";
+import UserProfileIcone from "../../../assets/Icons/UserProfile";
 import { CSSProperties, useState } from "react";
+
 
 
 const buttonStyle: CSSProperties = {
@@ -67,10 +68,10 @@ export default function Calendar(){
                                 borderRight: index !== 2 ? '1px solid #D1D5DB' : 'none', // gray-300 in Tailwind is #D1D5DB
                             }}
                         >
-                            <Typography variant="p" className="font-bold text-gray-800">
+                            <Typography component="p" variant="body1"  className="font-bold text-gray-800">
                                 {leave.label}
                             </Typography>
-                            <Typography variant="p" className="text-gray-600 font-light">
+                            <Typography component="p" variant="body1"  className="text-gray-600 font-light">
                             <span className="text-blue-500 font-bold text-lg">{leave.value}</span> / {leave.total}
                             </Typography>
                         </div>
