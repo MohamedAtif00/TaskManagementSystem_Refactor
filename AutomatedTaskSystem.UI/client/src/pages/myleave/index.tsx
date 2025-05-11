@@ -1,61 +1,134 @@
 import React, { useState, useEffect } from "react";
+import { FiMenu, FiX, FiFilter, FiChevronLeft, FiChevronRight, FiPlus } from "react-icons/fi";
 import { format } from "date-fns";
 import LeftArrowIcon from "../../assets/Icons/LeftArrow";
 import RightArrowIcon from "../../assets/Icons/RightArrow";
 import FilterIcon from "../../assets/Icons/Filter";
-import { FormControl, InputLabel, MenuItem, Select, SelectChangeEvent, TextField, TextFieldProps } from "@mui/material";
-import { DatePicker, LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { Dayjs } from "dayjs";
-
-
-type LeaveRequestStatus = "approved" | "pending" | "rejected" | string; // Adjust if you have a stricter enum or union
-
-interface StatusBadgeProps {
-  status: LeaveRequestStatus;
-}
+import { PlusIcon } from "@heroicons/react/24/outline";
 
 
 
-type Leave = {
-    id: number;
-    type: string;
-    startDate: string;
-    endDate: string;
-    duration: string;
-    status: string;
-  };
-  
-  type Permission = {
-    id: number;
-    type: string;
-    date: string;
-    time: string;
-    duration: string;
-    status: string;
-  };
+type LeaveRequestStatus = "Pending"|"Approved"|"Rejected"
+// Added: New LeaveModal component
+const LeaveModal = ({ isOpen, onClose }:{isOpen:boolean,onClose:()=>void}) => {
+  if (!isOpen) return null;
 
-  type CombinedData = (Leave | Permission)[];
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">Create Leave Request</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <FiX size={20} />
+          </button>
+        </div>
+        <form className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Leave Type</label>
+            <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+              <option>Annual Leave</option>
+              <option>Sick Leave</option>
+              <option>Emergency Leave</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Start Date</label>
+            <input type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">End Date</label>
+            <input type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Reason</label>
+            <textarea className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" rows={3}></textarea>
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+            >
+              Submit
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
+// Added: New PermissionModal component
+const PermissionModal = ({ isOpen, onClose }:{isOpen:boolean,onClose:()=>void}) => {
+  if (!isOpen) return null;
 
-const thClass = "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium">Create Permission Request</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <FiX size={20} />
+          </button>
+        </div>
+        <form className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Permission Type</label>
+            <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+              <option>Morning Permission</option>
+              <option>Night Permission</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Date</label>
+            <input type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Reason</label>
+            <textarea className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" rows={3}></textarea>
+          </div>
+          <div className="flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+            >
+              Submit
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 const LeaveManagement = () => {
+  // Updated: Added state for permission modal
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
+
   const [activeTab, setActiveTab] = useState("leaves");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState<{
-    fromDate: Dayjs | null;
-    toDate: Dayjs | null;
-    type: string;
-  }>({
-    fromDate: null,
-    toDate: null,
-    type: '',
-  });
 
-  
   const mockLeaveData = [
     {
       id: 1,
@@ -75,14 +148,23 @@ const LeaveManagement = () => {
     }
   ];
 
+  // Updated: Modified mock permission data to include types
   const mockPermissionData = [
     {
       id: 1,
-      type: "Short Leave",
+      type: "Morning Permission",
       date: "2024-01-10",
-      time: "14:00-16:00",
+      time: "09:00-11:00",
       duration: "2 hours",
       status: "Approved"
+    },
+    {
+      id: 2,
+      type: "Night Permission",
+      date: "2024-01-12",
+      time: "18:00-20:00",
+      duration: "2 hours",
+      status: "Pending"
     }
   ];
 
@@ -101,8 +183,8 @@ const LeaveManagement = () => {
     </div>
   );
 
-  const StatusBadge = ({ status }: StatusBadgeProps) => {
-    const getStatusColor = (status: string) => {
+  const StatusBadge = ({ status }:{status:LeaveRequestStatus}) => {
+    const getStatusColor = (status:LeaveRequestStatus) => {
       switch (status.toLowerCase()) {
         case "approved":
           return "bg-green-100 text-green-800";
@@ -122,65 +204,9 @@ const LeaveManagement = () => {
     );
   };
 
-  // const handleFilterChange = (e:React.ChangeEvent<HTMLInputElement>) => {
-  //   const { name, value } = e.target;
-  //   setFilters(prev => ({
-  //     ...prev,
-  //     [name]: value
-  //   }));
-  // };
-
-  const handleFilterChange = (
-    e: React.ChangeEvent<HTMLInputElement> | SelectChangeEvent
-  ) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
-  };
-  
-  const handleDateChange = (name: 'fromDate' | 'toDate', value: Dayjs | null) => {
-    setFilters((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleResetFilters = () => {
-    setFilters({
-      fromDate: null,
-      toDate: null,
-      type: '',
-    });
-  };
-  
-
-  const getFilteredData = (): CombinedData => {
-    let data: CombinedData = activeTab === "leaves" ? mockLeaveData : mockPermissionData;
-  
-    if (filters.fromDate) {
-      data = data.filter(item => {
-        const date = "startDate" in item ? item.startDate : item.date;
-        return new Date(date) >= filters.fromDate!.toDate();  // ✅ Convert Dayjs to Date
-      });
-    }
-  
-    if (filters.toDate) {
-      data = data.filter(item => {
-        const date = "endDate" in item ? item.endDate : item.date;
-        return new Date(date) <= filters.toDate!.toDate();  // ✅ Convert Dayjs to Date
-      });
-    }
-  
-    if (filters.type) {
-      data = data.filter(item => item.type.toLowerCase().includes(filters.type.toLowerCase()));
-    }
-  
-    return data;
-  };
-  
-
   return (
-    <div className="min-h-screen bg-gray-50 w-full">
-      <header className="bg-white shadow-sm">
+    <div className="min-h-screen bg-gray-50">
+      {/* <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -191,11 +217,17 @@ const LeaveManagement = () => {
               />
               <h1 className="ml-3 text-xl font-semibold text-gray-900">Leave Management</h1>
             </div>
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden"
+            >
+              {isMobileMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+            </button>
           </div>
         </div>
-      </header>
+      </header> */}
 
-      <main className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <LeaveBalanceCard title="Annual Leaves" used={2} total={20} color="bg-blue-500" />
           <LeaveBalanceCard title="Sick Leaves" used={1} total={10} color="bg-green-500" />
@@ -205,20 +237,40 @@ const LeaveManagement = () => {
 
         <div className="mb-6">
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab("leaves")}
-                className={activeTab === "leaves" ? "border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"}
-              >
-                Leaves
-              </button>
-              <button
-                onClick={() => setActiveTab("permissions")}
-                className={activeTab === "permissions" ? "border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"}
-              >
-                Permissions
-              </button>
-            </nav>
+            <div className="flex justify-between items-center">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => setActiveTab("leaves")}
+                  className={activeTab === "leaves" ? "border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"}
+                >
+                  Leaves
+                </button>
+                <button
+                  onClick={() => setActiveTab("permissions")}
+                  className={activeTab === "permissions" ? "border-blue-500 text-blue-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"}
+                >
+                  Permissions
+                </button>
+              </nav>
+              {/* Updated: Conditional button rendering based on active tab */}
+              {activeTab === "leaves" ? (
+                <button
+                  onClick={() => setIsLeaveModalOpen(true)}
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  <PlusIcon />
+                  New Leave Request
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsPermissionModalOpen(true)}
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  <PlusIcon />
+                  New Permission Request
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -228,74 +280,11 @@ const LeaveManagement = () => {
               <h2 className="text-lg font-medium text-gray-900">
                 {activeTab === "leaves" ? "Leave Applications" : "Permission Requests"}
               </h2>
-              <button 
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center px-3 py-2  rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                <FilterIcon color="#aaa" className="mr-2 w-10 h-10 border-none "  />
-                
+              <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <FilterIcon className="mr-2" />
+                Filter
               </button>
             </div>
-
-            {showFilters && (
-              <LocalizationProvider dateAdapter={AdapterDayjs}  >
-
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 border ">
-                    <DatePicker
-                      label="From Date"
-                      value={filters.fromDate}
-                      onChange={(newValue) => handleDateChange('fromDate', newValue)}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          size: 'small',
-                        },
-                      }}
-                    />
-
-                    <DatePicker
-                      label="To Date"
-                      value={filters.toDate}
-                      onChange={(newValue) => handleDateChange('toDate', newValue)}
-                      slotProps={{
-                        textField: {
-                          fullWidth: true,
-                          size: 'small',
-                        },
-                      }}
-                    />
-
-                    <FormControl fullWidth size="small">
-                      <InputLabel>Type</InputLabel>
-                      <Select
-                        label="Type"
-                        name="type"
-                        value={filters.type}
-                        onChange={handleFilterChange}
-                      >
-                        <MenuItem value="">All</MenuItem>
-                        <MenuItem value="Sick">Sick</MenuItem>
-                        <MenuItem value="Vacation">Vacation</MenuItem>
-                        <MenuItem value="Permission">Permission</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </div>
-                  
-                  {/* Reset Filter Button */}
-                  <div className="mt-4 flex justify-end">
-                    <button
-                      onClick={handleResetFilters}
-                      className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-700 rounded-md"
-                    >
-                      Reset Filters
-                    </button>
-                  </div>
-              
-              </LocalizationProvider>
-            )}
-
-
-
           </div>
 
           <div className="overflow-x-auto">
@@ -304,55 +293,48 @@ const LeaveManagement = () => {
                 <tr>
                   {activeTab === "leaves" ? (
                     <>
-                      <th className={thClass}>Type</th>
-                      <th className={thClass}>Start Date</th>
-                      <th className={thClass}>End Date</th>
-                      <th className={thClass}>Duration</th>
-                      <th className={thClass}>Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     </>
                   ) : (
                     <>
-                      <th className={thClass}>Type</th>
-                      <th className={thClass}>Date</th>
-                      <th className={thClass}>Time</th>
-                      <th className={thClass}>Duration</th>
-                      <th className={thClass}>Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     </>
                   )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {activeTab === "leaves"
-                    ? (getFilteredData() as Leave[]).map((leave) => (
-                        <tr key={leave.id} className="hover:bg-gray-50">
+                  ? mockLeaveData.map((leave) => (
+                      <tr key={leave.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{leave.type}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {format(new Date(leave.startDate), "dd MMM yyyy")}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {format(new Date(leave.endDate), "dd MMM yyyy")}
-                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(leave.startDate), "dd MMM yyyy")}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(leave.endDate), "dd MMM yyyy")}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{leave.duration}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                            <StatusBadge status={leave.status} />
+                          <StatusBadge status={leave.status} />
                         </td>
-                        </tr>
+                      </tr>
                     ))
-                    : (getFilteredData() as Permission[]).map((permission) => (
-                        <tr key={permission.id} className="hover:bg-gray-50">
+                  : mockPermissionData.map((permission) => (
+                      <tr key={permission.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{permission.type}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {format(new Date(permission.date), "dd MMM yyyy")}
-                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(permission.date), "dd MMM yyyy")}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{permission.time}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{permission.duration}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                            <StatusBadge status={permission.status} />
+                          <StatusBadge status={permission.status} />
                         </td>
-                        </tr>
+                      </tr>
                     ))}
-                </tbody>
-
+              </tbody>
             </table>
           </div>
 
@@ -388,6 +370,10 @@ const LeaveManagement = () => {
           </div>
         </div>
       </main>
+
+      {/* Updated: Added both modals with separate states */}
+      <LeaveModal isOpen={isLeaveModalOpen} onClose={() => setIsLeaveModalOpen(false)} />
+      <PermissionModal isOpen={isPermissionModalOpen} onClose={() => setIsPermissionModalOpen(false)} />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { addDays, endOfWeek, startOfWeek } from "date-fns";
 import { DateRangePicker } from "react-date-range";
 import { useAppSelector } from "../../app/hooks";
+import { enUS } from 'date-fns/locale';
 
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
@@ -59,6 +60,7 @@ const CreateSprint = () => {
             
             if (response && !response.error) {
                 console.log("Sprint created:", response.message);
+
                 push(pathname); // Close modal
             }else if(response.error){
                 setError(`Error : ${response.message}`);
@@ -70,6 +72,7 @@ const CreateSprint = () => {
             setError("An error occurred. Please try again.");
         }
     };
+
 
 
     const selectNextWeek = () => {
@@ -130,6 +133,7 @@ const CreateSprint = () => {
                         <DateRangePicker
                             onChange={(item) => setState([item.selection])}
                             moveRangeOnFirstSelection={false}
+                            locale ={enUS}
                             months={2}
                             ranges={state}
                             direction="horizontal"

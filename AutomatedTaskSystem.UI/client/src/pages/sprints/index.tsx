@@ -6,6 +6,7 @@ import TaskIcon from "../../assets/Icons/Task";
 import Head from "next/head";
 import Loader from "../../components/loader";
 import CreateSprint from "../../components/sprintComponents/createSprint";
+import { format } from "date-fns";
 
 // Columns for Sprints
 const sprintColumns: GridColDef[] = [
@@ -119,14 +120,14 @@ const Sprints = () => {
                                 id: s.id,
                                 col0: s.id,
                                 col1: s.name,
-                                col2: s.startDate,
-                                col3: s.endDate
+                                col2: format(new Date(s.startDate), 'yyyy-MM-dd'), // Or 'dd/MM/yyyy' or any pattern
+                                col3: format(new Date(s.endDate), 'yyyy-MM-dd')
                             };
                         })}
                         columns={sprintColumns}
                     />
                 </div>
-                <CreateSprint/>
+                <CreateSprint />
             </div>
         </>
     );

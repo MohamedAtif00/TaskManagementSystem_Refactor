@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Services.Leave
 {
-    public class LeaveRequestService
+    public class LeaveRequestService : ILeaveRequestService
     {
         private readonly DataContext _dataContext;
 
@@ -17,13 +17,13 @@ namespace AutomatedTaskSystem.Services.Leave
         }
 
         // ✅ Create
-        public async Task<bool> AddVacationAsync(CreateLeaveRequestDto[] request, int userId)
+        public async Task<bool> CreateLeaveRequest(CreateLeaveRequestDto request, int userId)
         {
             var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
 
             if (user == null) return false;
 
-            if (user.Annual_leave < request.Length) return false; // Check before adding
+            if (user.Annual_leave < DateTime.Parse( request.StartDate).tda) return false; // Check before adding
 
             List<Models.LeaveRequest> vacations = new();
             foreach (var vacation in request)
