@@ -157,4 +157,5 @@ public class DataContext : DbContext
     public DbSet<Sprint> Sprints => Set<Sprint>();
     public DbSet<SectionGroup> SectionGroups => Set<SectionGroup>();
     public DbSet<LeaveRequest> Vacations => Set<LeaveRequest>();
+    public DbSet<Permission> Permissions => Set<Permission>();
 }

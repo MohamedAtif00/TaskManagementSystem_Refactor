@@ -17,69 +17,67 @@ namespace AutomatedTaskSystem.Services.Leave
         }
 
         // ✅ Create
-        public async Task<bool> CreateLeaveRequest(CreateLeaveRequestDto request, int userId)
+        public async Task<bool> CreateLeaveRequest(CreateLeaveRequestDto request)
         {
-            var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
-
+            var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
             if (user == null) return false;
 
-            if (user.Annual_leave < DateTime.Parse( request.StartDate).tda) return false; // Check before adding
+            // Parse and validate dates
+            if (!DateTime.TryParse(request.StartDate, out var startDate) ||
+                !DateTime.TryParse(request.EndDate, out var endDate))
+                return false;
 
-            List<Models.LeaveRequest> vacations = new();
-            foreach (var vacation in request)
+            if (endDate < startDate)
+                return false;
+
+            // Calculate leave days (inclusive)
+            int requestedDays = (endDate - startDate).Days + 1;
+
+            if (user.Annual_leave < requestedDays)
+                return false;
+
+            var leaveRequest = new Models.LeaveRequest
             {
-                var leaveRequest = new Models.LeaveRequest
-                {
-                    UserId = vacation.UserId,
-                    StartDate = DateTime.Parse(vacation.StartDate),
-                    EndDate = DateTime.Parse(vacation.EndDate),
-                    Reason = vacation.Reason,
-                    Status = Models.LeaveRequestStatusEnum.Pending,
-                };
+                UserId = user.Id,
+                StartDate = startDate,
+                EndDate = endDate,
+                Reason = request.Reason,
+                Status = Models.LeaveRequestStatusEnum.Pending
+            };
 
-                // Assign TeamLeaderId if the current user is a TeamLeader
-                if (user.Role == UserRoleEnum.TeamLeader)
-                {
-                    leaveRequest.TeamleaderId = user.Id; // Assigning the TeamLeader to the request
-                }
+            // TeamLeader logic
+            if (user.Role == UserRoleEnum.TeamLeader)
+            {
+                leaveRequest.TeamleaderId = user.Id;
 
-                // Assign SectionHeadId based on the Group or Section the TeamLeader belongs to
-                if (user.Role == UserRoleEnum.TeamLeader)
-                {
-                    // Get all sections that the user's group is part of
-                    var sections = await _dataContext.Sections
-                        .Where(s => s.SectionGroups.Any(g => g.Id == user.GroupId)) // Check if the group is part of this section
-                        .ToListAsync();
+                // Assign SectionHeadId based on user's group
+                var section = await _dataContext.Sections
+                    .Where(s => s.SectionGroups.Any(g => g.GroupId == user.GroupId))
+                    .FirstOrDefaultAsync();
 
-                    // You may want to select a section in a specific way (e.g., the first one, the most recent one, etc.)
-                    var section = sections.FirstOrDefault(); // Just selecting the first section for simplicity
-
-                    if (section != null)
-                    {
-                        leaveRequest.SectionheadId = section.HeadId; // Assign SectionHeadId from the Section entity
-                    }
-                }
-
-                vacations.Add(leaveRequest);
+                if (section != null)
+                    leaveRequest.SectionheadId = section.HeadId;
             }
 
-            _dataContext.Vacations.AddRange(vacations);
+            _dataContext.Vacations.Add(leaveRequest);
 
-            user.Annual_leave -= vacations.Count;
+            // Deduct leave days
+            user.Annual_leave -= requestedDays;
             _dataContext.Users.Update(user);
 
-            // Notify the receivers (separately - not adding vacations!)
+            // Notify receivers
             var receivers = await GetReceiversAsync(user.Role);
-
             foreach (var receiver in receivers)
             {
-                // Send notification to receiver (future: SignalR / notification system)
                 Console.WriteLine($"Notify user {receiver.Id} about the new vacation request.");
+                // Optional: implement actual notification (e.g., SignalR)
             }
 
             await _dataContext.SaveChangesAsync();
             return true;
         }
+
+
 
 
 

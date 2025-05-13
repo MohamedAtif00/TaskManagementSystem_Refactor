@@ -12,16 +12,31 @@ interface IGroup {
     role: string;
     roleId: number;
 }
-interface IUser {
+ interface IUser {
     id: number;
+    archived: boolean;
+    code: string;
+    onBoard: boolean;
     name: string;
-    group: { id: number; name: string };
+    group?: {
+        id: number;
+        name: string;
+    };
+    accountType: AccountType;
+    annual_leave_MAX: number;
+    annual_leave: number;
+    sick_leave: number;
+    emergency_leave_MAX: number;
+    emergency_leave: number;
+    permission_MAX: number;
+    permission: number;
+    hrCode: string;
+    email?: string | null;
+    teamleader?: IUser | null;
+    teamleaderId?: number | null;
+    groupId?: number;
     role: UserRole;
-    hrCode?:string
-    code?:string;
-    accountType?:AccountType
-    vacation?:IVacation;
-    email:string
+    vacation?: IVacation;
 }
 
 interface IVacation{

@@ -7,7 +7,7 @@ namespace AutomatedTaskSystem.Services.Leave
 {
     public interface ILeaveRequestService
     {
-        Task<bool> CreateLeaveRequest(CreateLeaveRequestDto[] request, int userId);
+        Task<bool> CreateLeaveRequest(CreateLeaveRequestDto request);
 
         //Task<bool> AddLeaveRequest(CreateLeaveRequestDto[] request, int userId);
         Task<bool> DeleteVacationAsync(int id);

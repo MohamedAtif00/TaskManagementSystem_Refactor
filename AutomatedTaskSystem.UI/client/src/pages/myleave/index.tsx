@@ -5,19 +5,39 @@ import LeftArrowIcon from "../../assets/Icons/LeftArrow";
 import RightArrowIcon from "../../assets/Icons/RightArrow";
 import FilterIcon from "../../assets/Icons/Filter";
 import { PlusIcon } from "@heroicons/react/24/outline";
+import { IGetPermission, PermissionType } from "../../lib/API/Permission";
+import { LeaveRequestStatus } from "../../lib/API/Leave";
+import { useAppSelector } from "../../app/hooks";
 
 
+// const mockPermissionData: IGetPermission[] = [
+//   {
+//     id: 1,
+//     type: PermissionType.Morning,
+//     date: "2024-01-10",
+//     reason: "Morning appointment",
+//     status: "Approved" as LeaveRequestStatus,
+//     createdAt: "2024-01-09"
+//   },
+//   {
+//     id: 2,
+//     type: PermissionType.Morning,
+//     date: "2024-01-12",
+//     reason: "Doctor visit",
+//     status: "Pending" as LeaveRequestStatus,
+//     createdAt: "2024-01-11"
+//   }
+// ];
 
-type LeaveRequestStatus = "Pending"|"Approved"|"Rejected"
 // Added: New LeaveModal component
 const LeaveModal = ({ isOpen, onClose }:{isOpen:boolean,onClose:()=>void}) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" dir="rtl">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Create Leave Request</h3>
+          <h3 className="text-lg font-medium">إنشاء طلب إجازة</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500"
@@ -27,23 +47,23 @@ const LeaveModal = ({ isOpen, onClose }:{isOpen:boolean,onClose:()=>void}) => {
         </div>
         <form className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Leave Type</label>
+            <label className="block text-sm font-medium text-gray-700">نوع الإجازة</label>
             <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-              <option>Annual Leave</option>
-              <option>Sick Leave</option>
-              <option>Emergency Leave</option>
+              <option>إجازة سنوية</option>
+              <option>إجازة مرضية</option>
+              <option>إجازة طارئة</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Start Date</label>
+            <label className="block text-sm font-medium text-gray-700">تاريخ البداية</label>
             <input type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">End Date</label>
+            <label className="block text-sm font-medium text-gray-700">تاريخ النهاية</label>
             <input type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Reason</label>
+            <label className="block text-sm font-medium text-gray-700">السبب</label>
             <textarea className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" rows={3}></textarea>
           </div>
           <div className="flex justify-end space-x-3">
@@ -52,13 +72,13 @@ const LeaveModal = ({ isOpen, onClose }:{isOpen:boolean,onClose:()=>void}) => {
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
-              Cancel
+              إلغاء
             </button>
             <button
               type="submit"
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
             >
-              Submit
+              إرسال
             </button>
           </div>
         </form>
@@ -73,9 +93,9 @@ const PermissionModal = ({ isOpen, onClose }:{isOpen:boolean,onClose:()=>void}) 
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" dir="rtl">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Create Permission Request</h3>
+          <h3 className="text-lg font-medium">إنشاء طلب إذن</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500"
@@ -85,18 +105,18 @@ const PermissionModal = ({ isOpen, onClose }:{isOpen:boolean,onClose:()=>void}) 
         </div>
         <form className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Permission Type</label>
+            <label className="block text-sm font-medium text-gray-700">نوع الإذن</label>
             <select className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-              <option>Morning Permission</option>
-              <option>Night Permission</option>
+              <option>إذن صباحي</option>
+              <option>إذن مسائي</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Date</label>
+            <label className="block text-sm font-medium text-gray-700">التاريخ</label>
             <input type="date" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Reason</label>
+            <label className="block text-sm font-medium text-gray-700">السبب</label>
             <textarea className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" rows={3}></textarea>
           </div>
           <div className="flex justify-end space-x-3">
@@ -105,13 +125,13 @@ const PermissionModal = ({ isOpen, onClose }:{isOpen:boolean,onClose:()=>void}) 
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
-              Cancel
+              إلغاء
             </button>
             <button
               type="submit"
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
             >
-              Submit
+              إرسال
             </button>
           </div>
         </form>
@@ -124,10 +144,11 @@ const LeaveManagement = () => {
   // Updated: Added state for permission modal
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
-
+  const auth = useAppSelector((e) => e.authSlice);
   const [activeTab, setActiveTab] = useState("leaves");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  // import { useAppSelector } from "../../../../app/hooks";
 
   const mockLeaveData = [
     {
@@ -136,7 +157,7 @@ const LeaveManagement = () => {
       startDate: "2024-01-15",
       endDate: "2024-01-17",
       duration: "3 days",
-      status: "Approved"
+      status: "Approved" as LeaveRequestStatus
     },
     {
       id: 2,
@@ -144,27 +165,27 @@ const LeaveManagement = () => {
       startDate: "2024-01-20",
       endDate: "2024-01-20",
       duration: "1 day",
-      status: "Pending"
+      status: "Pending" as LeaveRequestStatus
     }
   ];
 
   // Updated: Modified mock permission data to include types
-  const mockPermissionData = [
+  const mockPermissionData: IGetPermission[] = [
     {
       id: 1,
-      type: "Morning Permission",
+      type: PermissionType.Morning,
       date: "2024-01-10",
-      time: "09:00-11:00",
-      duration: "2 hours",
-      status: "Approved"
+      reason: "Morning appointment",
+      status: "Approved" as LeaveRequestStatus,
+      createdAt: "2024-01-09"
     },
     {
       id: 2,
-      type: "Night Permission",
+      type: PermissionType.Morning,
       date: "2024-01-12",
-      time: "18:00-20:00",
-      duration: "2 hours",
-      status: "Pending"
+      reason: "Doctor visit",
+      status: "Pending" as LeaveRequestStatus,
+      createdAt: "2024-01-11"
     }
   ];
 
@@ -183,14 +204,14 @@ const LeaveManagement = () => {
     </div>
   );
 
-  const StatusBadge = ({ status }:{status:LeaveRequestStatus}) => {
-    const getStatusColor = (status:LeaveRequestStatus) => {
-      switch (status.toLowerCase()) {
-        case "approved":
+  const StatusBadge = ({ status }: { status: LeaveRequestStatus }) => {
+    const getStatusColor = (status: LeaveRequestStatus) => {
+      switch (status) {
+        case "Approved":
           return "bg-green-100 text-green-800";
-        case "pending":
+        case "Pending":
           return "bg-yellow-100 text-yellow-800";
-        case "rejected":
+        case "Rejected":
           return "bg-red-100 text-red-800";
         default:
           return "bg-gray-100 text-gray-800";
@@ -205,7 +226,7 @@ const LeaveManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 w-full">
       {/* <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -258,7 +279,7 @@ const LeaveManagement = () => {
                   onClick={() => setIsLeaveModalOpen(true)}
                   className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  <PlusIcon />
+                  <PlusIcon  className="w-10 h-10"/>
                   New Leave Request
                 </button>
               ) : (
@@ -266,7 +287,7 @@ const LeaveManagement = () => {
                   onClick={() => setIsPermissionModalOpen(true)}
                   className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                 >
-                  <PlusIcon />
+                  <PlusIcon className="w-10 h-10"/>
                   New Permission Request
                 </button>
               )}
@@ -281,7 +302,7 @@ const LeaveManagement = () => {
                 {activeTab === "leaves" ? "Leave Applications" : "Permission Requests"}
               </h2>
               <button className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                <FilterIcon className="mr-2" />
+                <FilterIcon className="mr-2 w-10 h-10" />
                 Filter
               </button>
             </div>
@@ -303,8 +324,7 @@ const LeaveManagement = () => {
                     <>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     </>
                   )}
@@ -318,20 +338,23 @@ const LeaveManagement = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(leave.startDate), "dd MMM yyyy")}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(leave.endDate), "dd MMM yyyy")}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{leave.duration}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadge status={leave.status} />
-                        </td>
+                        {auth &&
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <StatusBadge status={leave.status} />
+                          </td>
+                        }
                       </tr>
                     ))
                   : mockPermissionData.map((permission) => (
                       <tr key={permission.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{permission.type}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{format(new Date(permission.date), "dd MMM yyyy")}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{permission.time}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{permission.duration}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadge status={permission.status} />
-                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{permission.reason}</td>
+                        {auth &&
+                          <td className="px-6 py-4 whitespace-nowrap" >
+                            {permission.status && <StatusBadge status={permission.status} />}
+                          </td>
+                        }
                       </tr>
                     ))}
               </tbody>

@@ -19,9 +19,9 @@ namespace AutomatedTaskSystem.Controllers
 
         // 🔹 CREATE
         [HttpPost]
-        public async Task<IActionResult> CreateVacation([FromBody] CreateLeaveRequestDto[] request)
+        public async Task<IActionResult> CreateVacation([FromBody] CreateLeaveRequestDto request)
         {
-            var result = await _vacationService.AddVacationAsync(request, Convert.ToInt32(User.FindFirst(ClaimTypes.NameIdentifier)?.Value));
+            var result = await _vacationService.CreateLeaveRequest(request);
             if (!result)
                 return BadRequest("Failed to create vacation.");
             return Ok("Vacation created successfully.");
