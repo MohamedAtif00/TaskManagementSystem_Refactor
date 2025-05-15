@@ -259,7 +259,7 @@ namespace AutomatedTaskSystem.Controllers
             lo.Template = req.Template;
             lo.Tag = req.Tag;
             //lo.Name = req.Name;
-            lo.Name = lo.Name + " old " + DateTime.Now.Day;
+            lo.Name = lo.Name + "_old_" + DateTime.Now.Day+"_"+DateTime.Now.Month;
             lo.DoneAt = DateTime.Now;
             await _context.SaveChangesAsync();
 
