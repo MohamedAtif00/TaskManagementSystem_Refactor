@@ -18,8 +18,9 @@ const TaskCol: React.FC<Props> = ({ items, label }) => {
             }
         >
             <div className="sticky top-0 left-0 z-10 px-2 pt-2">
-                <h3 className="px-4 font-bold text-lg bg-white bg-opacity-10 backdrop-blur border border-white border-solid rounded border-opacity-50">
-                    {label}
+                <h3 className="px-4 font-bold text-lg bg-white bg-opacity-10 backdrop-blur border border-white border-solid rounded border-opacity-50 flex justify-between items-center">
+                    <span>{label}</span>
+                    <span className="text-sm bg-gray-700 text-white px-2 py-0.5 rounded-full">{items.length}</span>
                 </h3>
             </div>
             {[...highPrio, ...medPrio, ...lowPrio, ...nonePrio].map((t) => {
