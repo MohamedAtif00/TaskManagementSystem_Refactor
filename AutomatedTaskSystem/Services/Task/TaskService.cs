@@ -1361,7 +1361,7 @@ public class TaskService : ITaskService
         );
     }
 
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CompleteTask(int taskId)
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CompleteTask(int taskId,bool forceComplete = false)
     {
         var task = await _context.Tasks
             .Where(t => !t.Archived && t.Id == taskId)
@@ -1381,7 +1381,7 @@ public class TaskService : ITaskService
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = true, Message = "Invalid auth" }
             );
-        if (task.Status != TaskStatusEnum.Doing)
+        if (task.Status != TaskStatusEnum.Doing && !forceComplete)
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Task may not be completed yet" }
             );
@@ -2569,12 +2569,13 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<BaseResponseService> CreateProcess(List<int> options, int schemaId, int loId)
+    public async Task<BaseResponseService>  CreateProcess(List<int> options, int schemaId, int loId)
     {
         var user = await _authService.GetAuthedUser();
         if (user is null || user.Role != UserRoleEnum.ProjectManger)
             return new BaseResponseService { Error = true, Message = "Invalid auth" };
-        ;
+        
+
         if (options.Count == 0)
             return new BaseResponseService { Error = true, Message = "Please provide Steps" };
 

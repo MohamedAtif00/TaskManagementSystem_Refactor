@@ -82,6 +82,7 @@ const EditLoSchemaForm: React.FC<Props> = ({ schemaId, back, state, update, loId
                 name: state.name,
                 steps: selectedSteps.map((s) => s.stepId),
                 schemaId: state.schema.id,
+                nods:selectedNodes.map(s => s.id),
                 tag: state.tag,
                 template: state.template,
                 environment: state.environment,
