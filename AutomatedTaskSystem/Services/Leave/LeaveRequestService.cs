@@ -77,12 +77,6 @@ namespace AutomatedTaskSystem.Services.Leave
             return true;
         }
 
-
-
-
-
-
-
         // ✅ Read All (optionally filter by user)
         public async Task<ActionResult<ResponseService<List<GetLeaveRequestDto>>>> GetAllVacationsAsync(int? userId = null)
         {
@@ -139,6 +133,29 @@ namespace AutomatedTaskSystem.Services.Leave
                 Message = "Vacation retrieved successfully.",
                 Data = result
             };
+        }
+
+        
+        public async Task<ResponseService<List<GetLeaveRequestDto>>> GetLeaveRequestsByUserId(int userId)
+        {
+            var vacations = await _dataContext.Vacations.Where(x => x.UserId == userId)
+                .Select(x => new GetLeaveRequestDto
+                {
+                    Id = x.Id,
+                    StartDate = DateOnly.FromDateTime(x.StartDate),
+                    EndDate = DateOnly.FromDateTime(x.EndDate),
+                    Reason = x.Reason,
+                    Status = x.Status.ToString()
+                })
+            .ToListAsync();
+
+            return new ResponseService<List<GetLeaveRequestDto>>
+            {
+                Error = false,
+                Message = "Vacations retrieved successfully.",
+                Data = vacations
+            };
+
         }
 
         // ✅ Update

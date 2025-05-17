@@ -1,11 +1,12 @@
-﻿using AutomatedTaskSystem.Dtos.LeaveDtos;
+﻿using System.Threading.Tasks;
+using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Services.Leave;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class LeaveController : ControllerBase
     {
@@ -30,9 +31,18 @@ namespace AutomatedTaskSystem.Controllers
             // Logic to get leave by id
             return Ok(new { message = $"Leave details for ID: {id}" });
         }
+
+
+        [HttpGet("LeaveRequestByUserId/{id}")]
+        public async Task<IActionResult> GetLeavesByUserId(int id) 
+        {
+            var leaves = await _leaveRequestService.GetLeaveRequestsByUserId(id);
+
+            return Ok(leaves);
+        }
         // POST: api/Leave
         [HttpPost]
-        public IActionResult CreateLeave([FromBody] CreateLeaveRequestDto leave)
+        public async Task<IActionResult> CreateLeave([FromBody] CreateLeaveRequestDto leave)
         {
 
             // Validate the leave object
@@ -41,7 +51,7 @@ namespace AutomatedTaskSystem.Controllers
                 return BadRequest("Leave data is required.");
             }
 
-            _leaveRequestService.CreateLeaveRequest(leave);
+            var result = await _leaveRequestService.CreateLeaveRequest(leave);
             // Logic to create a new leave
             return CreatedAtAction(nameof(GetLeaveById), new { id = 1 }, leave);
         }

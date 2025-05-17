@@ -131,6 +131,18 @@ public class DataContext : DbContext
             .HasMany(x => x.Tasks)
             .WithOne(x => x.Sprint)
             .OnDelete(DeleteBehavior.NoAction);
+        modelBuilder
+            .Entity<LeaveRequest>()
+            .Property(x => x.Type)
+            .HasConversion<string>();
+        modelBuilder
+            .Entity<LeaveRequest>()
+            .Property(x => x.Status)
+            .HasConversion<string>();
+        modelBuilder
+            .Entity<Permission>()
+            .Property(x => x.Type)
+            .HasConversion<string>();
     }
 
     public DbSet<Team> Teams => Set<Team>();

@@ -12,6 +12,7 @@ namespace AutomatedTaskSystem.Services.Leave
         //Task<bool> AddLeaveRequest(CreateLeaveRequestDto[] request, int userId);
         Task<bool> DeleteVacationAsync(int id);
         Task<ActionResult<ResponseService<List<GetLeaveRequestDto>>>> GetAllVacationsAsync(int? userId = null);
+        Task<ResponseService<List<GetLeaveRequestDto>>> GetLeaveRequestsByUserId(int userId);
         Task<ActionResult<ResponseService<GetLeaveRequestDto>>> GetVacationByIdAsync(int id);
         Task<bool> UpdateVacationAsync(int id, DateTime startDate, DateTime endDate, string? reason, LeaveRequestStatusEnum status);
     }

@@ -13,10 +13,13 @@ public class User
     public bool OnBoard { get; set; } = false;
     public string Name { get; set; } = "";
     public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.Internal;
-    public int Annual_leave { get; set; }
-    public int Sick_leave { get; set; }
-    public int Emergency_leave { get; set; }
-    public int Permission { get; set; }
+    public int Annual_leave_MAX { get; set; }
+    public int Annual_leave { get; set; } = 0;
+    public int Sick_leave { get; set; } = 0;
+    public int Emergency_leave_MAX { get; set; }
+    public int Emergency_leave { get; set; } = 0;   
+    public int Permission_MAX { get; set; }
+    public int Permission { get; set; } = 0;
     public string HR_code { get; set; } = "";
     public string? Email { get; set; }
     public User? Teamleader { get; set; }

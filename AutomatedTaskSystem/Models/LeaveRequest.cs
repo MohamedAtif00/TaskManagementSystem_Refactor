@@ -7,7 +7,7 @@ namespace AutomatedTaskSystem.Models
         public int Id { get; set; }
 
         public int UserId { get; set; }
-        public User User { get; set; } = new();
+        public User User { get; set; } 
         public int? TeamleaderId { get; set; }
         public int? SectionheadId { get; set; }
 
@@ -15,7 +15,7 @@ namespace AutomatedTaskSystem.Models
         public DateTime EndDate { get; set; }
 
         public string? Reason { get; set; }
-
+        public LeaveRequestType Type { get; set; } = LeaveRequestType.Annual;
         public LeaveRequestStatusEnum Status { get; set; } = LeaveRequestStatusEnum.Pending;
     }
 
@@ -25,5 +25,11 @@ namespace AutomatedTaskSystem.Models
         Pending,
         Approved,
         Rejected
+    }
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum LeaveRequestType { 
+        Annual,
+        Sick,
+        Emergency
     }
 }

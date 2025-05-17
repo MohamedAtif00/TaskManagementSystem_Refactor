@@ -41,5 +41,12 @@ namespace AutomatedTaskSystem.Controllers
 		[HttpGet("mini")]
 		public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetGroupsMinified()
 		=> await _groupService.GetAllGroupsSimple();
+		// GET:
+		// Fetch Teamleader For Group
+		[HttpGet("GetTeamLeader/{id}")]
+		public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetTeamLeaderForGroup(int id)
+			=> await _groupService.GetTmForGroup(id);
+		
+		
 	}
 }

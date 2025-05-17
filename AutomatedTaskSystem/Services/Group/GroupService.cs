@@ -199,14 +199,14 @@ public class GroupService : IGroupService
     public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetTmForGroup(int id)
     {
 
-        var teamLeaders = _context.Users
+        var teamLeaders = await _context.Users
             .Where(u => u.Role == Models.Enums.UserRole.UserRoleEnum.TeamLeader && !u.Archived && u.GroupId == id)
             .Select(u => new Responses.IDName
             {
                 Id = u.Id,
                 Name = u.Name
             })
-            .ToList();
+            .ToListAsync();
 
         return new ResponseService<List<Responses.IDName>>
         {

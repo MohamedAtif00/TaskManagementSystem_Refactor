@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
+using static AutomatedTaskSystem.DTO.Responses;
 
 namespace AutomatedTaskSystem.Services.UserService;
 
@@ -60,7 +61,7 @@ public class UserService : IUserService
                 }
             );
 
-        var newUser = new User
+        var newUser = new Models.User
         {
             Archived = false,
             Code = await GenerateCode(),
@@ -73,9 +74,9 @@ public class UserService : IUserService
             TeamleaderId = req.Role == UserRoleEnum.Member ? req.Teamleader : null,
             AccountType = req.AccountType,
             Email = req.Email,
-            Annual_leave = req.Vacation.Annual,
+            Annual_leave_MAX = req.Vacation.Annual,
             Sick_leave = req.Vacation.Sick,
-            Emergency_leave = req.Vacation.Emergency
+            Emergency_leave_MAX = req.Vacation.Emergency
         };
 
         _context.Users.Add(newUser);
@@ -196,26 +197,52 @@ public class UserService : IUserService
         var users = await _context.Users
             .Where(u => !u.Archived)
             .Include(u => u.Group)
+            .Include(u => u.Teamleader)
             .ToListAsync();
 
         return new ResponseService<List<Responses.UserDTO>>
         {
             Data = users
-                .Select(
-                    u =>
-                        new Responses.UserDTO
+                .Select(u => new Responses.UserDTO
+                {
+                    Id = u.Id,
+                    Archived = u.Archived,
+                    Code = u.Code,
+                    OnBoard = u.OnBoard,
+                    Name = u.Name,
+                    AccountType = u.AccountType,
+                    Annual_leave_MAX = u.Annual_leave_MAX,
+                    Annual_leave = u.Annual_leave,
+                    Sick_leave = u.Sick_leave,
+                    Emergency_leave_MAX = u.Emergency_leave_MAX,
+                    Emergency_leave = u.Emergency_leave,
+                    Permission_MAX = u.Permission_MAX,
+                    Permission = u.Permission,
+                    HrCode = u.HR_code,
+                    Email = u.Email,
+                    TeamleaderId = u.TeamleaderId,
+                    Teamleader = u.Teamleader == null
+                        ? null
+                        : new Responses.UserDTO
                         {
-                            Group = { Id = u.GroupId, Name = u.Group.Name },
-                            Role = u.Role,
-                            Id = u.Id,
-                            Name = u.Name
-                        }
-                )
+                            Id = u.Teamleader.Id,
+                            Name = u.Teamleader.Name
+                        },
+                    GroupId = u.GroupId,
+                    Role = u.Role,
+                    Vacation = new Responses.VacationDto
+                    {
+                        Annual = u.Annual_leave,
+                        Sick = u.Sick_leave,
+                        Emergency = u.Emergency_leave
+                    }
+                })
                 .ToList(),
             Error = false,
             Message = "List of all users"
         };
     }
+
 
     private async Task<string> GenerateCode()
     {
