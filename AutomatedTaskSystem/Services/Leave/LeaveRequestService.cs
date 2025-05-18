@@ -33,7 +33,7 @@ namespace AutomatedTaskSystem.Services.Leave
             // Calculate leave days (inclusive)
             int requestedDays = (endDate - startDate).Days + 1;
 
-            if (user.Annual_leave < requestedDays)
+            if ((user.Annual_leave_MAX - user.Annual_leave) < requestedDays)
                 return false;
 
             var leaveRequest = new Models.LeaveRequest
@@ -42,7 +42,8 @@ namespace AutomatedTaskSystem.Services.Leave
                 StartDate = startDate,
                 EndDate = endDate,
                 Reason = request.Reason,
-                Status = Models.LeaveRequestStatusEnum.Pending
+                Status = Models.LeaveRequestStatusEnum.Pending,
+                Type = request.type
             };
 
             // TeamLeader logic
@@ -59,7 +60,7 @@ namespace AutomatedTaskSystem.Services.Leave
                     leaveRequest.SectionheadId = section.HeadId;
             }
 
-            _dataContext.Vacations.Add(leaveRequest);
+            _dataContext.LeaveRequests.Add(leaveRequest);
 
             // Deduct leave days
             user.Annual_leave -= requestedDays;
@@ -80,7 +81,7 @@ namespace AutomatedTaskSystem.Services.Leave
         // ✅ Read All (optionally filter by user)
         public async Task<ActionResult<ResponseService<List<GetLeaveRequestDto>>>> GetAllVacationsAsync(int? userId = null)
         {
-            var query = _dataContext.Vacations.AsQueryable();
+            var query = _dataContext.LeaveRequests.AsQueryable();
 
             if (userId.HasValue)
                 query = query.Where(v => v.UserId == userId.Value);
@@ -90,8 +91,8 @@ namespace AutomatedTaskSystem.Services.Leave
                 .Select(x => new GetLeaveRequestDto
                 {
                     Id = x.Id,
-                    StartDate = DateOnly.FromDateTime(x.StartDate),
-                    EndDate = DateOnly.FromDateTime(x.EndDate),
+                    StartDate =x.StartDate.ToString(),
+                    EndDate = x.EndDate.ToString(),
                     Reason = x.Reason,
                     Status = x.Status.ToString()
                 })
@@ -108,13 +109,13 @@ namespace AutomatedTaskSystem.Services.Leave
         // ✅ Read Single
         public async Task<ActionResult<ResponseService<GetLeaveRequestDto>>> GetVacationByIdAsync(int id)
         {
-            var result = await _dataContext.Vacations
+            var result = await _dataContext.LeaveRequests
                 .Include(v => v.User)
                  .Select(x => new GetLeaveRequestDto
                  {
                      Id = x.Id,
-                     StartDate = DateOnly.FromDateTime(x.StartDate),
-                     EndDate = DateOnly.FromDateTime(x.EndDate),
+                     StartDate = x.StartDate.ToString(),
+                     EndDate = x.EndDate.ToString(),
                      Reason = x.Reason,
                      Status = x.Status.ToString()
                  })
@@ -138,14 +139,16 @@ namespace AutomatedTaskSystem.Services.Leave
         
         public async Task<ResponseService<List<GetLeaveRequestDto>>> GetLeaveRequestsByUserId(int userId)
         {
-            var vacations = await _dataContext.Vacations.Where(x => x.UserId == userId)
+            var vacations = await _dataContext.LeaveRequests.Where(x => x.UserId == userId)
                 .Select(x => new GetLeaveRequestDto
                 {
                     Id = x.Id,
-                    StartDate = DateOnly.FromDateTime(x.StartDate),
-                    EndDate = DateOnly.FromDateTime(x.EndDate),
+                    StartDate = x.StartDate.ToString(),
+                    EndDate = x.EndDate.ToString(),
                     Reason = x.Reason,
-                    Status = x.Status.ToString()
+                    Status = x.Status.ToString(),
+                    Type = x.Type.ToString(),
+                    DateCreated = x.DateCreated.ToString()
                 })
             .ToListAsync();
 
@@ -161,7 +164,7 @@ namespace AutomatedTaskSystem.Services.Leave
         // ✅ Update
         public async Task<bool> UpdateVacationAsync(int id, DateTime startDate, DateTime endDate, string? reason, LeaveRequestStatusEnum status)
         {
-            var vacation = await _dataContext.Vacations.FindAsync(id);
+            var vacation = await _dataContext.LeaveRequests.FindAsync(id);
             if (vacation == null)
                 return false;
 
@@ -177,11 +180,11 @@ namespace AutomatedTaskSystem.Services.Leave
         // ✅ Delete
         public async Task<bool> DeleteVacationAsync(int id)
         {
-            var vacation = await _dataContext.Vacations.FindAsync(id);
+            var vacation = await _dataContext.LeaveRequests.FindAsync(id);
             if (vacation == null)
                 return false;
 
-            _dataContext.Vacations.Remove(vacation);
+            _dataContext.LeaveRequests.Remove(vacation);
             await _dataContext.SaveChangesAsync();
             return true;
         }

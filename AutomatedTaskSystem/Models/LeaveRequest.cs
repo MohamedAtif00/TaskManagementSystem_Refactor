@@ -10,6 +10,7 @@ namespace AutomatedTaskSystem.Models
         public User User { get; set; } 
         public int? TeamleaderId { get; set; }
         public int? SectionheadId { get; set; }
+        public DateTime? DateCreated { get; init; } = DateTime.Now;
 
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }

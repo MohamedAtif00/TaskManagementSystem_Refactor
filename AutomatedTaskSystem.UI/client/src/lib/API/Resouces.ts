@@ -100,16 +100,42 @@ const RESOURCES = {
 				return false;
 			}
 		},
+		Get_Tm_leaders:async (id:number)=>{
+			try {
+				const res = await fetch(`${url}/groups/GetTeamLeader/${id}`);
+				const data: {
+					data: {id:number,name:string}[];
+					error: boolean;
+					message: string;
+				} = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		}
 	},
 	USERS: {
 		CREATE: async ({
 			name,
 			groupId,
 			role,
+			hrCode,
+			email,
+			teamLeaderId,
+			accountType,
+			vacation,
+			permission
 		}: {
 			name: string;
 			groupId: number;
 			role: UserRole;
+			hrCode:string,
+			email:string,
+			teamLeaderId:number | null,
+			accountType:number,
+			vacation:IVacation
+			permission:number
 		}) => {
 			try {
 				const res = await fetch(`${url}/users`, {

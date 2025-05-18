@@ -131,6 +131,7 @@ public class DataContext : DbContext
             .HasMany(x => x.Tasks)
             .WithOne(x => x.Sprint)
             .OnDelete(DeleteBehavior.NoAction);
+        //////////
         modelBuilder
             .Entity<LeaveRequest>()
             .Property(x => x.Type)
@@ -139,10 +140,25 @@ public class DataContext : DbContext
             .Entity<LeaveRequest>()
             .Property(x => x.Status)
             .HasConversion<string>();
+        modelBuilder.Entity<LeaveRequest>()
+            .Property(x => x.DateCreated);
+
         modelBuilder
             .Entity<Permission>()
             .Property(x => x.Type)
             .HasConversion<string>();
+
+        modelBuilder.Entity<UserChanges>()
+            .HasOne(x => x.User)
+            .WithMany(x => x.UserChanges)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<UserChanges>()
+            .HasOne(x => x.ChangedByUser)
+            .WithMany(x => x.ChangedByUser)
+            .OnDelete(DeleteBehavior.NoAction);
+            
+        
     }
 
     public DbSet<Team> Teams => Set<Team>();
@@ -168,6 +184,7 @@ public class DataContext : DbContext
     public DbSet<RollbackIssue> RollbackIssues => Set<RollbackIssue>();
     public DbSet<Sprint> Sprints => Set<Sprint>();
     public DbSet<SectionGroup> SectionGroups => Set<SectionGroup>();
-    public DbSet<LeaveRequest> Vacations => Set<LeaveRequest>();
+    public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<UserChanges> UserChanges => Set<UserChanges>();
 }

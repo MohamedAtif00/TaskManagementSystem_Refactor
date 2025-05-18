@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AutomatedTaskSystem.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class TaskContextModelSnapshot : ModelSnapshot
+    [Migration("20250518110432_renameLeaveRequest")]
+    partial class renameLeaveRequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -153,7 +155,7 @@ namespace AutomatedTaskSystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
-                    b.Property<DateTime?>("DateCreated")
+                    b.Property<DateTime>("DateCreated")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime>("EndDate")
@@ -896,44 +898,6 @@ namespace AutomatedTaskSystem.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("AutomatedTaskSystem.Models.UserChanges", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("ChangedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("ChangedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ChangedByUserName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Changes")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChangedByUserId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserChanges");
-                });
-
             modelBuilder.Entity("AutomatedTaskSystem.Models.YearModel.Year", b =>
                 {
                     b.Property<int>("Id")
@@ -1389,25 +1353,6 @@ namespace AutomatedTaskSystem.Migrations
                     b.Navigation("Teamleader");
                 });
 
-            modelBuilder.Entity("AutomatedTaskSystem.Models.UserChanges", b =>
-                {
-                    b.HasOne("AutomatedTaskSystem.Models.User", "ChangedByUser")
-                        .WithMany("ChangedByUser")
-                        .HasForeignKey("ChangedByUserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("AutomatedTaskSystem.Models.User", "User")
-                        .WithMany("UserChanges")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("ChangedByUser");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("NodeNode", b =>
                 {
                     b.HasOne("AutomatedTaskSystem.Models.Node", null)
@@ -1538,13 +1483,9 @@ namespace AutomatedTaskSystem.Migrations
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.User", b =>
                 {
-                    b.Navigation("ChangedByUser");
-
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("Tasks");
-
-                    b.Navigation("UserChanges");
 
                     b.Navigation("vacations");
                 });

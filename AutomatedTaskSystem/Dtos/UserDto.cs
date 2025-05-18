@@ -25,6 +25,9 @@ namespace AutomatedTaskSystem.DTO
             public int Permission { get; set; } = 0;
             public string HrCode { get; set; } = "";
             public string? Email { get; set; }
+            public string? Phone { get; set; }
+            public string? Title { get; set; }
+            public bool? IsAchived { get; set; }
             public int? TeamleaderId { get; set; }
             public UserDTO? Teamleader { get; set; }
             public int? GroupId { get; set; }
@@ -39,9 +42,10 @@ namespace AutomatedTaskSystem.DTO
 
         public class VacationDto
         {
-
+            public int Annual_MAX { get; set; }
             public int Annual { get; set; }
             public int Sick { get; set; }
+            public int Emergency_MAX { get; set; }
             public int Emergency { get; set; }
         }
     }
@@ -53,10 +57,11 @@ namespace AutomatedTaskSystem.DTO
             public string Name { get; set; } = "";
             public int GroupId { get; set; }
             public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
-            public string Code { get; set; } = "";
             public int? Teamleader { get; set; }
             public string HrCode { get; set; } = "";
-            public string? Email { get; set; }
+            public string Email { get; set; } = "";
+            public string Phone { get; set; } = "";
+            public string Title { get; set; } = "";
             public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.Internal;
             public VacationDto Vacation { get; set; } = new VacationDto { };
         }

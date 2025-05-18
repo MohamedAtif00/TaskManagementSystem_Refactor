@@ -109,7 +109,7 @@ const UserProfile = () => {
                                 <Typography className="flex  gap-2 text-gray-700 ">
                                     <span className="font-bold">Type:</span> 
                                     <span className="text-[#5570FF]">
-                                        {user.accountType === 0 ? "External":"Enternal"}
+                                        {user. === 0 ? "External":"Enternal"}
                                     </span>
                                 </Typography>
                                 <Typography className="flex  gap-2 text-gray-700 ">

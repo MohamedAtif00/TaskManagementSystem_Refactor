@@ -12,7 +12,74 @@ interface IGroup {
     role: string;
     roleId: number;
 }
+
+interface ICreateUser{
+    archived: boolean;
+    code: string;
+    onBoard: boolean;
+    name: string;
+    group?: {
+        id: number;
+        name: string;
+    };
+    accountType: AccountType;
+    annual_leave_MAX: number;
+    annual_leave: number;
+    sick_leave: number;
+    emergency_leave_MAX: number;
+    emergency_leave: number;
+    permission_MAX: number;
+    permission: number;
+    hrCode: string;
+    email?: string | null;
+    teamleader?: IUser | null;
+    teamleaderId?: number | null;
+    groupId?: number;
+    role: UserRole;
+    vacation?: IVacation;
+ }
+
+ interface IGetUser{
+    id: number;
+ }
+
  interface IUser {
+    id: number;
+    archived: boolean;
+    code: string;
+    onBoard: boolean;
+    name: string;
+    group?: {
+        id: number;
+        name: string;
+    };
+    accountType: AccountType;
+    annual_leave_MAX: number;
+    annual_leave: number;
+    sick_leave: number;
+    emergency_leave_MAX: number;
+    emergency_leave: number;
+    permission_MAX: number;
+    permission: number;
+    hrCode: string;
+    email?: string | null;
+    teamleader?: IUser | null;
+    teamleaderId?: number | null;
+    groupId?: number;
+    role: UserRole;
+    vacation?: IVacation;
+}
+
+interface IVacation{
+    annual:number;
+    sick:number;    
+    emergency:number;
+    annual_MAX:number,
+    emergency_MAX:number
+}
+
+
+interface IUser {
     id: number;
     archived: boolean;
     code: string;

@@ -22,6 +22,8 @@ public class User
     public int Permission { get; set; } = 0;
     public string HR_code { get; set; } = "";
     public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Title { get; set; } 
     public User? Teamleader { get; set; }
     public int? TeamleaderId { get; set; }
     public List<Project> Projects { get; set; } = new List<Project> { };
@@ -29,9 +31,12 @@ public class User
     public Team? Team { get; set; } = null;
     public int? TeamId { get; set; }
     public Group Group { get; set; } = new Group { };
+
     public int GroupId { get; set; }
     [Range(0, 3)]
     public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
     public List<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken> { };
+    public List<UserChanges> UserChanges { get; set; } = new();
+    public List<UserChanges> ChangedByUser { get; set; } = new();
     public List<LeaveRequest>? vacations { get; set; }
 }
