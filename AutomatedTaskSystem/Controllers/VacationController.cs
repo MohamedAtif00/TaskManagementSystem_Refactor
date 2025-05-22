@@ -32,7 +32,7 @@ namespace AutomatedTaskSystem.Controllers
         public async Task<IActionResult> GetAllVacations([FromQuery] int? userId = null)
         {
             var result = await _vacationService.GetAllVacationsAsync(userId);
-            return Ok(result.Value);
+            return Ok(result);
         }
 
         // 🔹 READ BY ID

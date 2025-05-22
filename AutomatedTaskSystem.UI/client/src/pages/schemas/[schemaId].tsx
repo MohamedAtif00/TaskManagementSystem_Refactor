@@ -108,7 +108,7 @@ const Schema = () => {
             </Head>
             <div className="mainContainer">
                 <Header text={schema.name} icon="Schema">
-                    {auth.role === 0 ? (
+                    {auth.role === 0 || auth.role === 4? (
                         <>
                             <QueryButton
                                 icon={<PlusIcon />}
@@ -155,7 +155,7 @@ const Schema = () => {
                         );
                     })}
                 </div>
-                {auth.role === 0 ? (
+                {auth.role === 0 || auth.role === 4? (
                     <>
                         <EditSchema />
                         <AddNode

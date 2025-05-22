@@ -70,7 +70,7 @@ const CreateTask = (props: { refresh: () => void; projectId: number }) => {
                                     { id: 0, name: "None" },
                                     ...users.filter(
                                         (u) =>
-                                            u.group.id ===
+                                            u.group?.id ===
                                             selectTaskBankItem.group.id
                                     ),
                                 ]}

@@ -84,7 +84,7 @@ const NodeItem = ({
                             </div>
                         </div>
                     </div>
-                    {auth.role === 0 ? (
+                    {auth.role === 0 || auth.role === 4?(
                         <div className="flex gap-2">
                             <div>
                                 <Link
@@ -328,7 +328,7 @@ const Step = ({
                 {duration % 60 < 10 ? `0${duration % 60}` : duration % 60}
             </td>
             <td>
-                {auth.role == 0 ? (
+                {auth.role == 0 || auth.role == 4? (
                     <>
                         <div className="flex gap-2 pr-2">
                             <div

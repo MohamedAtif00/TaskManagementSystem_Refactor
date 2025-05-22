@@ -8,6 +8,7 @@ import useTaskPathHandler from "../../taskDetails/useTaskPathHandler.ts";
 interface Props {
     taskId: string | string[];
     refreshTask: () => void;
+    type:string
 }
 
 const AssignTask = (props: Props) => {
@@ -19,7 +20,7 @@ const AssignTask = (props: Props) => {
     });
     const [selectedUser, setSelectedUser] = useState(0);
     const router = useRouter();
-    const pathHandler = useTaskPathHandler();
+    const pathHandler = useTaskPathHandler({type:props.type});
 
     useEffect(() => {
         API.TASKS.TASK_ASSIGNMENT(props.taskId).then((res) => {

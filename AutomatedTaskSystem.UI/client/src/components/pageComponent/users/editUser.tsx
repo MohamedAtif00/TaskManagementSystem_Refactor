@@ -7,6 +7,32 @@ import API from "../../../lib/API";
 import { edit } from "../../../slices/userSlice";
 import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
+import * as z from 'zod';
+
+type UserRole = 0 | 1 | 2 | 3;
+type AccountType = 0 | 1;
+
+const phoneSchema = z.object({
+  phone: z.string()
+    .min(11, "Phone number must be 11 digits")
+    .max(11, "Phone number must be 11 digits")
+    .regex(/^01[0-2|5]{1}[0-9]{8}$/, 
+      "Invalid Egyptian phone number. Must start with 010, 011, 012, or 015 followed by 8 digits")
+});
+
+type PhoneFormData = z.infer<typeof phoneSchema>;
+interface IVacation {
+    annual: number;
+    sick: number;
+    emergency: number;
+    annual_MAX: number;
+    emergency_MAX: number;
+}
+
+interface SimpleInfo {
+    id: number;
+    name: string;
+}
 
 const EditUser = () => {
     const dispatch = useAppDispatch();
@@ -14,29 +40,65 @@ const EditUser = () => {
 
     const [active, setActive] = useState<boolean>(false);
     const [name, setName] = useState("");
-    const [code, setCode] = useState("");
-    const [hrCode, setHrCode] = useState(""); // <-- Add hrCode state
-    const [group, setGroup] = useState<{ id: number; name: string } | null>(null);
-    const [groups, setGroups] = useState<{ id: number; name: string }[]>([]);
-    const [role, setRole] = useState<{ id: UserRole; name: string } | null>(null);
+    const [hrCode, setHrCode] = useState("");
+    const [email, setEmail] = useState("");
+    const [onBoard, setOnBoard] = useState(true);
+    const [archived, setArchived] = useState(false);
+    const [group, setGroup] = useState<SimpleInfo | null>(null);
+    const [groups, setGroups] = useState<SimpleInfo[]>([]);
+    const [role, setRole] = useState<number | null>(null);
     const [accountType, setAccountType] = useState<{ id: AccountType; name: string } | null>(null);
+    const [teamleader, setTeamleader] = useState<SimpleInfo | null>(null);
+    const [teamLeaders, setTeamLeaders] = useState<SimpleInfo[]>([]);
+    const [title,setTite] = useState<string >("")
+    const [phone,setPhone] = useState<string >("") 
+    const [permissionObj, setPermission] = useState<{current:number,max:number} | null>(null);
     const [vacation, setVacation] = useState<IVacation>({
         annual: 0,
         sick: 0,
         emergency: 0,
+        annual_MAX: 0,
+        emergency_MAX: 0,
     });
     const [error, setError] = useState("");
+
+    const roleOptions = [
+        { id: 0, name: "Project Manager" },
+        { id: 1, name: "Section Head" },
+        { id: 2, name: "Team Leader" },
+        { id: 3, name: "Member" },
+    ];
+
+      const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        // Basic phone number formatting
+        const formatted = value
+        .replace(/\D/g, '') // Remove all non-digit characters
+        .replace(/^(\d{3})(\d)/, '($1) $2') // Add parentheses for US format
+        .replace(/^(\d{3})(\d{3})(\d)/, '($1) $2-$3');
+        setPhone(formatted);
+    };
 
     useEffect(() => {
         if (query.form === "edit-user" && query.userId) {
             API.RESOURCES.USERS.GET_ONE(query.userId.toString()).then((res) => {
                 if (res && !res.error) {
-                    const { role, code, group, accountType, vacation, hrCode } = res.data;
+                    const { name, hrCode, email, onBoard, archived, group, role, 
+                            accountType, teamleader, vacation, permission,permission_MAX ,title,phone} = res.data;
 
-                    setName(res.data.name);
-                    setCode(code || "");
-                    setHrCode(hrCode || ""); // <-- Set hrCode value
-                    setGroup(res.data.group);
+                            console.log(res.data);
+                            
+                    setName(name);
+                    setHrCode(hrCode || "");
+                    setEmail(email || "");
+                    setOnBoard(onBoard);
+                    setArchived(archived);
+                    setGroup(group?? null);
+                    setPermission({current:permission,max:permission_MAX} );
+                    setTite(title)
+                    setPhone(phone)
+                    setAccountType(accountType)
+
                     if (accountType === 0 || accountType === 1) {
                         setAccountType({
                             id: accountType,
@@ -50,17 +112,12 @@ const EditUser = () => {
                         annual: vacation?.annual || 0,
                         sick: vacation?.sick || 0,
                         emergency: vacation?.emergency || 0,
+                        annual_MAX: vacation?.annual_MAX || 0,
+                        emergency_MAX: vacation?.emergency_MAX || 0,
                     });
 
-                    setRole(
-                        role === 0
-                            ? { id: role, name: "Project Manager" }
-                            : role === 1
-                            ? { id: role, name: "Section Head" }
-                            : role === 2
-                            ? { id: role, name: "Team Leader" }
-                            : { id: role, name: "Member" }
-                    );
+                    setRole(role);
+                    setTeamleader(teamleader?? null);
                 }
             });
             return setActive(true);
@@ -76,29 +133,65 @@ const EditUser = () => {
         }
     }, [active]);
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    useEffect(() => {
+        if (group?.id) {
+            API.RESOURCES.GROUPS.Get_Tm_leaders(group.id).then((res) => {
+                if (res && !res.error) setTeamLeaders(res.data);
+            });
+        }
+    }, [group]);
+
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        e.stopPropagation()
         setError("");
+        console.log("heello");
+        
 
         if (!name) return setError("Please enter name");
         if (!group) return setError("Please select a group");
         if (!role) return setError("Please select a role");
 
-        API.RESOURCES.USERS.EDIT({
-            id: query.userId!.toString(),
-            name,
-            code,
-            hrCode, // <-- Add hrCode to the request payload
-            groupId: group.id,
-            role: role.id,
-            accountType: accountType?.id ?? 0,
-            vacation,
-        }).then((res) => {
-            if (res && !res.error) {
+        try {
+            const res = await API.RESOURCES.USERS.EDIT({
+                id: query.userId!.toString(),
+                name,
+                hrCode,
+                email,
+                onBoard,
+                archived,
+                groupId: group.id,
+                role,
+                accountType: accountType?.id ?? 0,
+                teamLeaderId: shouldShowTeamLeader(role) ? teamleader?.id ?? null : null,
+                title,
+                phone,
+                vacation,
+                permission:permissionObj?.current??0,
+                permission_MAX:permissionObj?.max??0
+            });
+
+            if (res?.data) {
                 dispatch(edit(res.data));
                 routerPush(pathname);
+            } else if (res?.error) {
+                setError(res.message || "Failed to update user");
             }
-        });
+        } catch (error) {
+            setError("An unexpected error occurred");
+            console.error("Update error:", error);
+        }
+    };
+
+    const handleVacationChange = (field: keyof IVacation, value: string) => {
+        setVacation(prev => ({
+            ...prev,
+            [field]: Number(value)
+        }));
+    };
+
+    const shouldShowTeamLeader = (role: number | null) => {
+        return role === 3 || role === null;
     };
 
     if (!active) return <></>;
@@ -107,76 +200,168 @@ const EditUser = () => {
         <motion.div
             initial={{ backgroundColor: "#00000000" }}
             animate={{ backgroundColor: "#00000055", height: "auto" }}
-            className="z-50 flex items-center justify-center fixed top-0 left-0 right-0 min-h-screen "
+            className="z-50 flex items-center justify-center fixed top-0 left-0 right-0 min-h-screen"
         >
             <motion.div
                 initial={{ opacity: 0.1 }}
                 animate={{ opacity: 1 }}
-                className="bg-white px-5 py-4  rounded-lg  w-[700px]"
+                className="bg-white px-5 py-4 rounded-lg w-[700px] max-h-[90vh] flex flex-col"
             >
-                <h2 className="text-lg mb-5">Edit user</h2>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                    <div className="text-red-600">{error}</div>
+                <h2 className="text-lg mb-4">Edit User</h2>
+                <div className="overflow-y-auto flex-grow">
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                        <div className="text-red-600">{error}</div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <InputTextField label="Name" value={name} handleChange={setName} />
-                        <InputTextField label="Code" value={code} handleChange={setCode} />
-                        <InputTextField label="HR Code" value={hrCode} handleChange={setHrCode} /> {/* <-- Add HR Code input field */}
-
-                        <Dropdown
-                            label="Group"
-                            value={group}
-                            options={groups}
-                            handleChange={setGroup}
-                        />
-
-                        <Dropdown
-                            label="Role"
-                            value={role}
-                            options={[
-                                { id: 0, name: "Project Manager" },
-                                { id: 1, name: "Section Head" },
-                                { id: 2, name: "Team Leader" },
-                                { id: 3, name: "Member" },
-                            ]}
-                            handleChange={setRole as (v: { id: number; name: string }) => void}
-                        />
-
-                        <Dropdown
-                            label="Account Type"
-                            value={accountType}
-                            options={[
-                                { id: 0, name: "Internal" },
-                                { id: 1, name: "External" }
-                            ]}
-                            handleChange={setAccountType as (v: { id: number; name: string }) => void}
-                        />
-                    </div>
-                    {accountType?.id === 0 && (
-                        <div className="mt-4">
-                            <h3 className="text-md font-semibold mb-2">Vacations</h3>
-                            <div className="grid grid-cols-3 gap-4">
-                                <InputTextField
-                                    label="Annual"
-                                    value={vacation.annual.toString()}
-                                    handleChange={(val) => setVacation({ ...vacation, annual: Number(val) })}
+                        <div className="grid grid-cols-2 gap-4">
+                            <InputTextField label="Name" value={name} handleChange={setName} />
+                            <InputTextField label="HR Code" value={hrCode} handleChange={setHrCode} />
+                            <InputTextField label="Email" value={email} handleChange={setEmail} />
+                            <InputTextField label="Title" value={title} handleChange={setTite} />
+                            {/* <InputTextField label="Phone" value={phone} handleChange={setPhone} /> */}
+                            <div>
+                                <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                                    Phone Number
+                                </label>
+                                <input
+                                    id="phone"
+                                    type="tel"
+                                    value={phone}
+                                    onChange={handlePhoneChange}
+                                    placeholder="(123) 456-7890"
+                                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                 />
-                                <InputTextField
-                                    label="Sick"
-                                    value={vacation.sick.toString()}
-                                    handleChange={(val) => setVacation({ ...vacation, sick: Number(val) })}
+                                </div>
+
+
+                            <Dropdown
+                                label="Group"
+                                value={group}
+                                options={groups}
+                                handleChange={setGroup}
+                            />
+
+                            <Dropdown
+                                label="Role"
+                                value={role !== null ? 
+                                    roleOptions.find(option => option.id === role) || null 
+                                    : null
+                                }
+                                options={roleOptions}
+                                handleChange={(selected) => setRole(selected?.id ?? null)}
+                            />
+
+                            <Dropdown
+                                label="Account Type"
+                                value={accountType}
+                                options={[
+                                    { id: 0, name: "Internal" },
+                                    { id: 1, name: "External" }
+                                ]}
+                                handleChange={setAccountType as (v: { id: number; name: string }) => void}
+                            />
+
+                            {group && shouldShowTeamLeader(role) && (
+                                <Dropdown
+                                    label="Team Leader"
+                                    value={teamleader}
+                                    options={teamLeaders}
+                                    handleChange={setTeamleader}
                                 />
-                                <InputTextField
-                                    label="Emergency"
-                                    value={vacation.emergency.toString()}
-                                    handleChange={(val) => setVacation({ ...vacation, emergency: Number(val) })}
+                            )}
+                        </div>
+
+                        {accountType?.id === 0 && (
+                            <div className="mt-4">
+                                <h3 className="text-md font-semibold mb-4">Vacations</h3>
+                                
+                                <div className="mb-6">
+                                    <h4 className="text-sm font-medium mb-2">Maximum Values</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <InputTextField
+                                            label="Annual"
+                                            value={vacation.annual_MAX.toString()}
+                                            handleChange={(val) => handleVacationChange("annual_MAX", val)}
+                                        />
+                                        <InputTextField
+                                            label="Emergency"
+                                            value={vacation.emergency_MAX.toString()}
+                                            handleChange={(val) => handleVacationChange("emergency_MAX", val)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="mb-6">
+                                    <h4 className="text-sm font-medium mb-2">Current Values</h4>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <InputTextField
+                                            label="Annual"
+                                            value={vacation.annual.toString()}
+                                            handleChange={(val) => handleVacationChange("annual", val)}
+                                        />
+                                        <InputTextField
+                                            label="Sick"
+                                            value={vacation.sick.toString()}
+                                            handleChange={(val) => handleVacationChange("sick", val)}
+                                        />
+                                        <InputTextField
+                                            label="Emergency"
+                                            value={vacation.emergency.toString()}
+                                            handleChange={(val) => handleVacationChange("emergency", val)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="mb-6">
+                                    <h4 className="text-sm font-medium mb-2">Permissions</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <InputTextField
+                                            label="Current Permissions"
+                                            value={permissionObj?.current.toString()??'0'}
+                                            handleChange={(val) => setPermission(prev => ({
+                                                current: Number(val),
+                                                max: prev?.max??0  // Always include max to maintain the type
+                                            }))}
+                                        />
+                                        <InputTextField
+                                            label="Max Permissions Allowed"
+                                            value={permissionObj?.max.toString()??'0'}
+                                            handleChange={(val) => setPermission(prev => ({
+                                                current: prev?.current??0,  // Always include current to maintain the type
+                                                max: Number(val)
+                                            }))}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex gap-4 mt-4">
+                            <div className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="onBoard"
+                                    checked={onBoard}
+                                    onChange={(e) => setOnBoard(e.target.checked)}
+                                    className="mr-2"
                                 />
+                                <label htmlFor="onBoard">On Board</label>
+                            </div>
+                            <div className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="archived"
+                                    checked={archived}
+                                    onChange={(e) => setArchived(e.target.checked)}
+                                    className="mr-2"
+                                />
+                                <label htmlFor="archived">Archived</label>
                             </div>
                         </div>
-                    )}
-
-                    <FormConclusion pathname="/resources/users" submittable={true} />
-                </form>
+                        <div className="mt-auto pt-4">
+                            <FormConclusion pathname="/resources/users" submittable={true} />
+                        </div>
+                    </form>
+                </div>
             </motion.div>
         </motion.div>
     );

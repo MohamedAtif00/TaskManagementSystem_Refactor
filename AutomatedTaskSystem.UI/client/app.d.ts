@@ -1,3 +1,4 @@
+
 interface ITeam {
     id: number;
     name: string;
@@ -78,6 +79,36 @@ interface IVacation{
     emergency_MAX:number
 }
 
+interface IGetVacation{
+    annual_leave_MAX: number;
+    annual_leave: number;
+    sick_leave: number;
+    emergency_leave_MAX: number;
+    emergency_leave: number;
+}
+
+interface IGetVacation{
+    id:number,
+    startDate:string,
+    endDate:string,
+    reason:string,
+    status:LeaveRequestStatus
+    type:LeaveRequestType
+    dateCreated:string
+}
+
+
+
+// Define interface for user changes data
+interface IUserChange {
+    id: number;
+    userId: number;
+    changedByUserId: number;
+    changedByUserName: string;
+    action: string;
+    changes: string;
+    changedAt: string;
+}
 
 interface IUser {
     id: number;
@@ -104,6 +135,9 @@ interface IUser {
     groupId?: number;
     role: UserRole;
     vacation?: IVacation;
+    phone:string;
+    title:string;
+    isArchived:boolean
 }
 
 interface IVacation{
@@ -147,6 +181,7 @@ interface IProject {
     year: { id: number; name: string };
     term: boolean;
     status: ProjectStatus;
+    count?:number;
 }
 
 
@@ -255,7 +290,7 @@ type TaskActivityType =
     | 20;
 type TaskPriority = 0 | 1 | 2 | 3;
 type TaskStatus = 0 | 1 | 2 | 3 | 4;
-type UserRole = 0 | 1 | 2 | 3;
+type UserRole = 0 | 1 | 2 | 3| 4;
 type ProjectStatus = 0 | 1 | 2 | 3;
 
 interface ProjectSheet {

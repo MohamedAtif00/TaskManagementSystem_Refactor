@@ -13,15 +13,15 @@ import { ClassNames } from "@emotion/react";
 import { string } from "prop-types";
 
 // Define the types for the user roles and vacation structure
-type UserRole = 0 | 1 | 2 | 3;
-type AccountType = 0 | 1;
+// type UserRole = 0 | 1 | 2 | 3;
+export type AccountType = 0 | 1;
 
-interface IUser {
-    id: number;
-    name: string;
-    role: UserRole;
-    group: { id: number; name: string };
-}
+// interface IUser {
+//     id: number;
+//     name: string;
+//     role: UserRole;
+//     group: { id: number; name: string };
+// }
 
 interface SimpleInfo{id:number,name:string}
 
@@ -54,6 +54,7 @@ const AddUser = () => {
     { id: 1, name: "Section Head" },
     { id: 2, name: "Team Leader" },
     { id: 3, name: "Member" },
+    {id:4 ,name:"Owner"}
 ];
     const [formState, setFormState] = useState<IUserFormState>({
         name: "",
@@ -85,6 +86,7 @@ const AddUser = () => {
         [1, "Section Head"],
         [2, "Team Leader"],
         [3, "Member"],
+        [4,"Owner"]
     ]);
 
     useEffect(() => {
@@ -241,7 +243,7 @@ const AddUser = () => {
                     <h3>
                         {renderRoleName(formState.done.user.role)}{" "}
                         <span className="font-bold">{formState.done.user.name}</span> is added as an{" "}
-                        <span className="font-bold">{formState.done.user.group.name}</span>
+                        <span className="font-bold">{formState.done.user.group?.name}</span>
                     </h3>
                     <div>
                         <div>Code:</div>

@@ -29,6 +29,7 @@ interface Props {
     pause: boolean;
     isReview: boolean;
     priority: TaskPriority;
+    type:string
 }
 
 const TaskAction: React.FC<Props> = ({
@@ -40,10 +41,11 @@ const TaskAction: React.FC<Props> = ({
     flag,
     pause,
     isReview,
+    type
 }) => {
     const [priorityFocus, setPriorityFocus] = useState(false);
     const auth = useAppSelector((s) => s.authSlice);
-    const pathHandler = useTaskPathHandler();
+    const pathHandler = useTaskPathHandler({type:type});
 
     const updatePrio = (value: null | number) => {
         API.TASKS.UPDATE_PRIORITY(
@@ -250,7 +252,7 @@ const TaskAction: React.FC<Props> = ({
                             </button>
                         </Link>
                     )}
-                {auth.role === 0 && (
+                {(auth.role === 0 || auth.role === 4)&& (
                     <button
                         onClick={skipTask}
                         className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-cyan-400 bg-cyan-500 text-white"
@@ -259,7 +261,7 @@ const TaskAction: React.FC<Props> = ({
                         <div>Skip</div>
                     </button>
                 )}
-                {auth.role === 0 && (
+                {(auth.role === 0 || auth.role === 4)&& (
                     <Link
                         href={{
                             pathname: pathHandler(),

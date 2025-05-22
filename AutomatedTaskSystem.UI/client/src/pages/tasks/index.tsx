@@ -21,6 +21,7 @@ const columns: GridColDef[] = [
     { field: "col2", headerName: "Description", width: 300 },
     { field: "col3", headerName: "Year", width: 100 },
     { field: "col4", headerName: "Term", width: 100 },
+    { field: "col5", headerName: "Tasks Num", width: 100 }, // New column for task count
 ];
 
 const Projects = () => {
@@ -116,6 +117,7 @@ const Projects = () => {
                                 col2: p.description,
                                 col3: p.year.name,
                                 col4: p.term ? "Term 2" : "Term 1",
+                                col5: p.count || 0, // Add the task count here
                             };
                         })}
                         columns={columns}

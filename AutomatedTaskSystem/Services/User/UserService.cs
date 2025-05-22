@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.UserTaskDtos;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.ResponseService;
@@ -43,17 +44,22 @@ public class UserService : IUserService
     Requests.UserDTO req
     )
     {
-        var group = await _context.Groups
-            .Where(g => g.Id == req.GroupId && !g.Archived)
-            .FirstOrDefaultAsync();
-        if (group is null)
-            return new NotFoundObjectResult(
-                new BaseResponseService
-                {
-                    Error = true,
-                    Message = $"Group of id:{req.GroupId} is not found"
-                }
-            );
+        Group group = null;
+        if (req.Role != UserRoleEnum.Owner)
+        { 
+            group = await _context.Groups
+                .Where(g => g.Id == req.GroupId && !g.Archived)
+                .FirstOrDefaultAsync();
+            if (group is null)
+                return new NotFoundObjectResult(
+                    new BaseResponseService
+                    {
+                        Error = true,
+                        Message = $"Group of id:{req.GroupId} is not found"
+                    }
+                );
+        
+        }
 
 
         if (req.Email != null && await CheckEmailExist(req.Email))
@@ -70,12 +76,12 @@ public class UserService : IUserService
             Archived = false,
             Code = await GenerateCode(),
             Group = group,
-            GroupId = group.Id,
+            GroupId =group != null? group.Id:null,
             Name = req.Name,
             OnBoard = false,
             Role = req.Role,
             HR_code = req.HrCode,
-            TeamleaderId = req.Role == UserRoleEnum.Member ? req.Teamleader : null,
+            TeamleaderId = req.Role == UserRoleEnum.Member ? req.TeamleaderId : null,
             AccountType = req.AccountType,
             Email = req.Email,
             Annual_leave_MAX = req.Vacation.Annual,
@@ -97,7 +103,7 @@ public class UserService : IUserService
                 User = new Responses.UserDTO
                 {
                     Role = newUser.Role,
-                    Group = { Id = newUser.GroupId, Name = newUser.Group.Name },
+                    Group = { Id = newUser.GroupId??0, Name = newUser.Group.Name },
                     Id = newUser.Id,
                     Name = newUser.Name,
                     Email = newUser.Email,
@@ -187,6 +193,12 @@ public class UserService : IUserService
             user.AccountType = req.AccountType;
         }
 
+        if (user.TeamleaderId != req.TeamleaderId)
+        {
+            changes.Add($"TeamLeaderId changed from '{user.TeamleaderId}' to '{req.TeamleaderId}'");
+            user.TeamleaderId = req.TeamleaderId;
+        }
+
         if (user.Annual_leave != req.Vacation.Annual)
         {
             changes.Add($"Annual leave changed from {user.Annual_leave} to {req.Vacation.Annual}");
@@ -215,6 +227,18 @@ public class UserService : IUserService
         {
             changes.Add($"Emergency leave MAX changed from {user.Emergency_leave_MAX} to {req.Vacation.Emergency_MAX}");
             user.Emergency_leave_MAX = req.Vacation.Emergency_MAX;
+        }
+
+        if (user.Permission_MAX != req.Permission_MAX)
+        {
+            changes.Add($"Permission_MAX changed from {user.Permission_MAX} to {req.Permission_MAX}");
+            user.Permission_MAX = req.Permission_MAX;
+        }
+
+        if (user.Permission != req.Permission)
+        {
+            changes.Add($"Permission_MAX changed from {user.Permission} to {req.Permission}");
+            user.Permission = req.Permission;
         }
 
         if (user.Email != req.Email)
@@ -268,7 +292,9 @@ public class UserService : IUserService
         {
             Data = new Responses.UserDTO
             {
-                Group = { Id = user.GroupId, Name = user.Group.Name },
+                Group = user.Group is not null
+                    ? new IDName { Id = user.GroupId ?? 0, Name = user.Group.Name }
+                    : null,
                 Role = user.Role,
                 Id = user.Id,
                 Name = user.Name,
@@ -291,12 +317,32 @@ public class UserService : IUserService
         });
     }
 
+    public async Task<ActionResult<ResponseService<List<GetUserChangesDto>>>> GetUserChanges(int userId) { 
+        return new ResponseService<List<GetUserChangesDto>>
+        {
+            Data = await _context.UserChanges
+                .Where(uc => uc.UserId == userId)
+                .Select(uc => new GetUserChangesDto
+                {
+                    Id = uc.Id,
+                    UserId = uc.UserId,
+                    ChangedByUserId = uc.ChangedByUserId,
+                    ChangedByUserName = uc.ChangedByUserName,
+                    Action = uc.Action,
+                    Changes = uc.Changes,
+                    ChangedAt = uc.ChangedAt
+                })
+                .ToListAsync(),
+            Error = false,
+            Message = $"User changes of id:{userId}"
+        };
+    }
+
     public async Task<ActionResult<ResponseService<Responses.UserDTO>>> GetUserById(int Id)
     {
-        var user = await _context.Users
-            .Where(u => u.Id == Id && !u.Archived)
+        var user = _context.Users
             .Include(u => u.Group)
-            .FirstOrDefaultAsync();
+            .FirstOrDefault(u => u.Id == Id && !u.Archived);
 
         if (user is null)
             return new NotFoundObjectResult(
@@ -307,7 +353,11 @@ public class UserService : IUserService
         {
             Data = new Responses.UserDTO
             {
-                Group = { Id = user.GroupId, Name = user.Group.Name },
+                Group = user.Group is not null
+                    ? new IDName { Id = user.GroupId ?? 0, Name = user.Group.Name }
+                    : null,
+
+                GroupId = user.GroupId,
                 Role = user.Role,
                 Id = user.Id,
                 Name = user.Name,
@@ -318,6 +368,8 @@ public class UserService : IUserService
                 Phone = user.Phone,
                 Title = user.Title,
                 IsAchived = user.Archived,
+                Permission = user.Permission,
+                Permission_MAX = user.Permission_MAX,
                 Vacation = new Responses.VacationDto
                 {
                     Annual = user.Annual_leave,

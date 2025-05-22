@@ -1,6 +1,6 @@
-﻿using AutomatedTaskSystem.Dtos.PermissionDtos;
-using AutomatedTaskSystem.Models;
+﻿using System.Threading.Tasks;
 using AutomatedTaskSystem.Services.Permission;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers
@@ -16,45 +16,73 @@ namespace AutomatedTaskSystem.Controllers
             _permissionService = permissionService;
         }
 
-        // POST: api/Permission
-        [HttpPost]
-        public async Task<IActionResult> CreatePermission([FromBody] CreatePermissionDto dto)
-        {
-            var success = await _permissionService.AddPermissionAsync(dto);
-            if (!success)
-                return BadRequest(new { error = true, message = "Could not create permission (limit exceeded or user not found)." });
-
-            return Ok(new { error = false, message = "Permission created successfully.",data=success });
-        }
-
         // GET: api/Permission
         [HttpGet]
-        public async Task<IActionResult> GetAllPermissions()
+        public async Task<IActionResult> GetAllPermissions([FromQuery] int? userId, [FromQuery] int? role)
         {
-            var permissions = await _permissionService.GetAllPermissionsAsync();
-            return Ok(new { error = false, data = permissions });
+            var result = await _permissionService.GetAllPermissionsAsync(userId, role);
+            return Ok(result);
         }
 
         // GET: api/Permission/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetPermissionById(int id)
         {
-            var permission = await _permissionService.GetPermissionByIdAsync(id);
-            if (permission == null)
-                return NotFound(new { error = true, message = "Permission not found." });
-
-            return Ok(new { error = false, data = permission });
+            var result = await _permissionService.GetPermissionByIdAsync(id);
+            if (result == null)
+                return NotFound(new { error = true, message = "Permission not found" });
+            return Ok(result);
         }
 
-        // PUT: api/Permission
-        [HttpPut]
-        public async Task<IActionResult> UpdatePermission([FromBody] UpdatePermissionDto dto)
+        // GET: api/Permission/PermissionsByUserId/{id}
+        [HttpGet("PermissionsByUserId/{id}")]
+        public async Task<IActionResult> GetPermissionsByUserId(int id)
         {
-            var success = await _permissionService.UpdatePermissionAsync(dto);
-            if (!success)
-                return BadRequest(new { error = true, message = "Could not update permission (not found or internal error)." });
+            var result = await _permissionService.GetPermissionsByUserIdAsync(id);
+            return Ok(result);
+        }
 
-            return Ok(new { error = false, message = "Permission updated successfully." });
+        // GET: api/Permission/GetSinglePermission/{id}
+        [HttpGet("GetSinglePermission/{id}")]
+        public async Task<IActionResult> GetSinglePermission(int id)
+        {
+            var result = await _permissionService.GetPermissionDetailByIdAsync(id);
+            if (result == null || result.Data == null)
+                return NotFound(new { error = true, message = "Permission not found" });
+            return Ok(result);
+        }
+
+        // POST: api/Permission
+        [HttpPost]
+        public async Task<IActionResult> CreatePermission([FromBody] CreatePermissionDto request)
+        {
+            if (request == null)
+            {
+                return BadRequest("Permission data is required.");
+            }
+
+            var success = await _permissionService.CreatePermissionRequest(request);
+            if (!success)
+                return BadRequest(new { error = true, message = "Could not create permission" });
+
+            return CreatedAtAction(nameof(GetPermissionById), new { id = 0 }, request);
+        }
+
+        // PUT: api/Permission/{id}
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdatePermission(int id, [FromBody] UpdatePermissionDto request)
+        {
+            if (request == null)
+            {
+                return BadRequest("Permission data is required.");
+            }
+
+            request.Id = id; // Ensure ID matches route
+            var success = await _permissionService.UpdatePermissionAsync(request);
+            if (!success)
+                return BadRequest(new { error = true, message = "Could not update permission" });
+
+            return NoContent();
         }
 
         // DELETE: api/Permission/{id}
@@ -63,9 +91,29 @@ namespace AutomatedTaskSystem.Controllers
         {
             var success = await _permissionService.DeletePermissionAsync(id);
             if (!success)
-                return NotFound(new { error = true, message = "Permission not found." });
+                return NotFound(new { error = true, message = "Permission not found" });
 
-            return Ok(new { error = false, message = "Permission deleted successfully." });
+            return NoContent();
+        }
+
+        // POST: api/Permission/Approve
+        [HttpPost("Approve")]
+        public async Task<IActionResult> ApprovePermission([FromBody] ApprovePermissionDto request)
+        {
+            if (request == null)
+            {
+                return BadRequest("Approval data is required.");
+            }
+
+            var success = await _permissionService.ApproveOrRejectPermissionAsync(
+                request.PermissionId,
+                request.IsApproved,
+                request.Comment);
+
+            if (!success)
+                return BadRequest(new { error = true, message = "Could not process approval" });
+
+            return Ok(new { error = false, message = "Permission status updated" });
         }
     }
 }

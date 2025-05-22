@@ -48,7 +48,7 @@ public class UserTaskService : IUserTaskService
                 {
                     Id = u.Id,
                     Name = u.Name,
-                    Group = new BasicInfoDto { Id = u.GroupId, Name = u.Group.Name },
+                    Group = new BasicInfoDto { Id = u.GroupId ?? 0, Name = u.Group.Name },
                     Tasks = new TaskCountDto
                     {
                         Doing = u.Tasks
@@ -100,7 +100,7 @@ public class UserTaskService : IUserTaskService
 
             var users = await _context.Users
                 .Where(u => !u.Archived && u.Role != UserRoleEnum.ProjectManger && u.Role != UserRoleEnum.SectionHead)
-                .Where(u => sectionGroupIds.Contains(u.GroupId))
+                .Where(u => sectionGroupIds.Contains(u.GroupId??0))
                 .Include(u => u.Group)
                 .Include(u => u.Tasks)
                 .ThenInclude(t => t.LearningObjective)
@@ -117,7 +117,7 @@ public class UserTaskService : IUserTaskService
                 {
                     Id = u.Id,
                     Name = u.Name,
-                    Group = new BasicInfoDto { Id = u.GroupId, Name = u.Group.Name },
+                    Group = new BasicInfoDto { Id = u.GroupId ?? 0, Name = u.Group.Name },
                     Tasks = new TaskCountDto
                     {
                         Doing = u.Tasks
@@ -176,7 +176,7 @@ public class UserTaskService : IUserTaskService
                 {
                     Id = u.Id,
                     Name = u.Name,
-                    Group = new BasicInfoDto { Id = u.GroupId, Name = u.Group.Name },
+                    Group = new BasicInfoDto { Id = u.GroupId ?? 0, Name = u.Group.Name },
                     Tasks = new TaskCountDto
                     {
                         Doing = u.Tasks

@@ -75,7 +75,14 @@ const ProjectAssign = ({ handler }: Props) => {
 		const id = router.query.projectId;
 		if (id) {
 			API.PROJECTS.USERS_UNASSIGNED(id).then((res) => {
-				if (res && !res.error) setUsers(res.data);
+				if (res && !res.error) {
+					const formattedUsers = res.data.map((user: IUser): loUser => ({
+						...user,
+						group: user.group ?? { id: 0, name: 'No Group' }, // or skip 'group' if it's optional in loUser
+					}));
+					setUsers(formattedUsers);
+				}
+
 			});
 		}
 	}, [setUsers, router]);

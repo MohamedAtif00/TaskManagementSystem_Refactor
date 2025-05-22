@@ -19,26 +19,59 @@ namespace AutomatedTaskSystem.Controllers
 
         // GET: api/Leave
         [HttpGet]
-        public IActionResult GetAllLeaves()
+        public async Task<IActionResult> GetAllLeaves([FromQuery] int? userId,int? role)
         {
+            var result = await _leaveRequestService.GetAllVacationsAsync(userId,role);
             // Logic to get all leaves
-            return Ok(new { message = "List of all leaves" });
+            return Ok(result);
         }
         // GET: api/Leave/{id}
         [HttpGet("{id}")]
         public IActionResult GetLeaveById(int id)
         {
+
             // Logic to get leave by id
             return Ok(new { message = $"Leave details for ID: {id}" });
         }
+        //[HttpGet("GetBelongToTM/{id}")]
+        //public async Task<IActionResult> GetBelongToTm()
+        //{
+            
+        //}
 
 
-        [HttpGet("LeaveRequestByUserId/{id}")]
+        [HttpGet("LeaveRequestsByUserId/{id}")]
         public async Task<IActionResult> GetLeavesByUserId(int id) 
         {
             var leaves = await _leaveRequestService.GetLeaveRequestsByUserId(id);
 
             return Ok(leaves);
+        }
+
+        [HttpGet("LeaveRequestByUserId/{id}")]
+        public async Task<IActionResult> GetLeaveByUserId(int id)
+        {
+            var leaves = await _leaveRequestService.GetLeaveRequestByUserId(id);
+
+            return Ok(leaves);
+        }
+        [HttpGet("GetSingleOpinion")]
+        public async Task<IActionResult> GetSingleOpinion(int id)
+        {
+            var opinion = await _leaveRequestService.GetSingleOpinion(id);
+            return Ok(opinion);
+        }
+        [HttpPost("CreateOpinion")]
+        public async Task<IActionResult> CreateOpinion([FromBody] CreateOpinionDto opinion)
+        {
+            // Validate the opinion object
+            if (opinion == null)
+            {
+                return BadRequest("Opinion data is required.");
+            }
+            var result = await _leaveRequestService.GiveOpinion(opinion);
+            // Logic to create a new opinion
+            return CreatedAtAction(nameof(GetLeaveById), new { id = 1 }, opinion);
         }
         // POST: api/Leave
         [HttpPost]

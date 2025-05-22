@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Services.UserService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.UserTask;
 using AutomatedTaskSystem.Dtos.UserTask;
+using AutomatedTaskSystem.Dtos.UserTaskDtos;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -47,6 +48,12 @@ namespace AutomatedTaskSystem.Controllers
             Requests.UserDTO req
         ) => await _userService.EditUser(id, req);
 
+        [HttpGet("GetUserChanges/{userId}")]
+        public async Task<ActionResult<ResponseService<List<GetUserChangesDto>>>> GetUserChanges(int userId)
+        
+           => await _userService.GetUserChanges(userId);
+           
+        
         // DELETE:
         // Archive User
         [HttpDelete("{id}")]

@@ -14,7 +14,7 @@ namespace AutomatedTaskSystem.DTO
             public string Code { get; set; } = "";
             public bool OnBoard { get; set; } = false;
             public string Name { get; set; } = "";
-            public IDName Group { get; set; } = new IDName { };
+            public IDName? Group { get; set; } 
             public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.Internal;
             public int Annual_leave_MAX { get; set; }
             public int Annual_leave { get; set; } = 0;
@@ -57,12 +57,14 @@ namespace AutomatedTaskSystem.DTO
             public string Name { get; set; } = "";
             public int GroupId { get; set; }
             public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
-            public int? Teamleader { get; set; }
+            public int? TeamleaderId { get; set; }
             public string HrCode { get; set; } = "";
             public string Email { get; set; } = "";
             public string Phone { get; set; } = "";
             public string Title { get; set; } = "";
             public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.Internal;
+            public int Permission_MAX { get; set; }
+            public int Permission { get; set; }
             public VacationDto Vacation { get; set; } = new VacationDto { };
         }
     }

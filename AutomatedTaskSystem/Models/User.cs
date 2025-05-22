@@ -32,7 +32,7 @@ public class User
     public int? TeamId { get; set; }
     public Group Group { get; set; } = new Group { };
 
-    public int GroupId { get; set; }
+    public int? GroupId { get; set; }
     [Range(0, 3)]
     public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
     public List<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken> { };

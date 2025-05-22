@@ -52,21 +52,21 @@ const AddUser = () => {
 	}, [setSubmittable, name, groupId]);
 
 	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		if (submittable)
-			API.RESOURCES.USERS.CREATE({ name, groupId, role }).then(
-				(res) => {
-					if (res && !res.error) {
-						dispatch(userSlice.add(res.data.user));
-						setDone({
-							code: res.data.code,
-							name: res.data.user.name,
-							group: res.data.user.group.name,
-							status: true,
-						});
-					}
-				}
-			);
+		// e.preventDefault();
+		// if (submittable)
+		// 	API.RESOURCES.USERS.CREATE({ name, groupId, role }).then(
+		// 		(res) => {
+		// 			if (res && !res.error) {
+		// 				dispatch(userSlice.add(res.data.user));
+		// 				setDone({
+		// 					code: res.data.code,
+		// 					name: res.data.user.name,
+		// 					group: res.data.user.group.name,
+		// 					status: true,
+		// 				});
+		// 			}
+		// 		}
+		// 	);
 	};
 
 	if (active)

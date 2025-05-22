@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { logout } from "../../slices/authSlice";
 import NavList from "./navlist";
 import ChartIcon from "../../assets/Icons/Chart";
+import { ReactElement } from "react";
 
 const Sidebar = () => {
 	const dispatch = useAppDispatch();
@@ -35,7 +36,7 @@ const Sidebar = () => {
 					icon="Home"
 					text="Home"
 				/>
-				{auth.role == 0 ? (
+				{auth.role == 0 || auth.role == 4? (
 					<>
 						<Navlink
 							activeCondition={path.includes("/resources")}
@@ -77,32 +78,6 @@ const Sidebar = () => {
 								text="Summaries"
 							/>
 						</NavList>
-						<NavList label="Leaves" icon={ChartIcon}>
-							<Navlink
-								activeCondition={path.includes(
-									"/members-leaves"
-								)}
-								to="/members-leaves"
-								icon="Resources"
-								text="Members Leaves"
-							/>
-							<Navlink
-								activeCondition={path.includes(
-									"/calendar"
-								)}
-								to="/calendar"
-								icon="Schema"
-								text="Calendar"
-							/>
-							<Navlink
-								activeCondition={path.includes(
-									"/myleave"
-								)}
-								to="/myleave"
-								icon="Schema"
-								text="My Leaves"
-							/>
-						</NavList>
 						<Navlink
 							activeCondition={path.includes("/sprint")}
 							to="/sprints"
@@ -119,6 +94,39 @@ const Sidebar = () => {
 					icon="Task"
 					text="Tasks"
 				/>
+				<NavList label="Leaves" icon={ChartIcon}>
+					{([
+						auth.role != 3 ? (
+							<Navlink
+								key="calendar"
+								activeCondition={path.includes("/calendar")}
+								to="/calendar"
+								icon="Schema"
+								text="Calendar"
+							/>
+						) : null,
+
+						auth.role === 4 ? (
+							<Navlink
+								key="members-leaves"
+								activeCondition={path.includes("/members-leaves")}
+								to="/members-leaves"
+								icon="Resources"
+								text="Members Leaves"
+							/>
+						) : null,
+
+						<Navlink
+							key="my-leaves"
+							activeCondition={path.includes("/myleave")}
+							to="/myleave"
+							icon="Schema"
+							text="My Leaves"
+						/>,
+					].filter(Boolean) as ReactElement[])}
+				</NavList>
+
+
 				<Navlink
 				activeCondition={path.includes("/advancedReport")}
 				to="/advancedReport"

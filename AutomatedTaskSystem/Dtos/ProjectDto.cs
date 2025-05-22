@@ -12,6 +12,7 @@ namespace AutomatedTaskSystem.DTO
             public IDName Year { get; set; } = new IDName { };
             public bool Term { get; set; }
             public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
+            public int? Count { get; set; }
         }
 
         public class DetailedProjectDTO

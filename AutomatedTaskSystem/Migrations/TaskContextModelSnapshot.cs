@@ -159,6 +159,9 @@ namespace AutomatedTaskSystem.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("NoteForManager")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Reason")
                         .HasColumnType("nvarchar(max)");
 
@@ -250,6 +253,44 @@ namespace AutomatedTaskSystem.Migrations
                     b.ToTable("Nodes");
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Opinion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("LeaveRequestId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PermissionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeaveRequestId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Opinions");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.Permission", b =>
                 {
                     b.Property<int>("Id")
@@ -261,12 +302,22 @@ namespace AutomatedTaskSystem.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<TimeSpan>("FromTime")
+                        .HasColumnType("time");
+
                     b.Property<DateTime>("PermissionDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Reason")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<TimeSpan>("ToTime")
+                        .HasColumnType("time");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -842,7 +893,7 @@ namespace AutomatedTaskSystem.Migrations
                     b.Property<int>("Emergency_leave_MAX")
                         .HasColumnType("int");
 
-                    b.Property<int>("GroupId")
+                    b.Property<int?>("GroupId")
                         .HasColumnType("int");
 
                     b.Property<string>("HR_code")
@@ -1114,6 +1165,30 @@ namespace AutomatedTaskSystem.Migrations
                     b.Navigation("Schema");
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Opinion", b =>
+                {
+                    b.HasOne("AutomatedTaskSystem.Models.LeaveRequest", "LeaveRequest")
+                        .WithMany("Opinions")
+                        .HasForeignKey("LeaveRequestId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("AutomatedTaskSystem.Models.Permission", "Permission")
+                        .WithMany("Opinions")
+                        .HasForeignKey("PermissionId");
+
+                    b.HasOne("AutomatedTaskSystem.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LeaveRequest");
+
+                    b.Navigation("Permission");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.Permission", b =>
                 {
                     b.HasOne("AutomatedTaskSystem.Models.User", "User")
@@ -1369,9 +1444,7 @@ namespace AutomatedTaskSystem.Migrations
                 {
                     b.HasOne("AutomatedTaskSystem.Models.Group", "Group")
                         .WithMany("Users")
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("GroupId");
 
                     b.HasOne("AutomatedTaskSystem.Models.Team", "Team")
                         .WithMany("Users")
@@ -1467,6 +1540,11 @@ namespace AutomatedTaskSystem.Migrations
                     b.Navigation("Tasks");
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.LeaveRequest", b =>
+                {
+                    b.Navigation("Opinions");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.Lesson", b =>
                 {
                     b.Navigation("LearningObjectives");
@@ -1475,6 +1553,11 @@ namespace AutomatedTaskSystem.Migrations
             modelBuilder.Entity("AutomatedTaskSystem.Models.Node", b =>
                 {
                     b.Navigation("Steps");
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.Permission", b =>
+                {
+                    b.Navigation("Opinions");
                 });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.Project", b =>

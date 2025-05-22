@@ -19,6 +19,8 @@ using AutomatedTaskSystem.Services.UserTask;
 using AutomatedTaskSystem.Services.Sprint;
 using AutomatedTaskSystem.Services.Leave;
 using AutomatedTaskSystem.Services.Permission;
+using AutomatedTaskSystem.Seeding;
+using AutomatedTaskSystem.Services.Email;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -47,5 +49,10 @@ public static class DependancyInjections
         builder.Services.AddScoped<ISprintService, SprintService>();
         builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
         builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+
+        // seeder and email sender
+        builder.Services.AddScoped<DataSeeder>();
+        builder.Services.AddTransient<IEmailService, EmailService>();
     }
 }

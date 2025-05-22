@@ -9,5 +9,6 @@ namespace AutomatedTaskSystem.Dtos.LeaveDtos
         public string StartDate { get; set; }
         public string EndDate { get; set; }
         public string? Reason { get; set; }
+        public string? NoteForManager { get; set; }
     }
 }

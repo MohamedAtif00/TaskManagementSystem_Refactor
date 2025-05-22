@@ -116,7 +116,7 @@
                                     id: u.id,
                                     col0: u.id,
                                     col1: u.name,
-                                    col2: u.group.name,
+                                    col2: u.group?.name,
                                     col3:
                                         u.role === 0
                                             ? "Project Manager"

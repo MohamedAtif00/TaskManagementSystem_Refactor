@@ -1,8 +1,10 @@
+using System.Xml;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Models.SchemaTypesModel;
 using AutomatedTaskSystem.Models.YearModel;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace AutomatedTaskSystem.Data;
 
@@ -143,10 +145,27 @@ public class DataContext : DbContext
         modelBuilder.Entity<LeaveRequest>()
             .Property(x => x.DateCreated);
 
+        var timeOnlyConverter = new ValueConverter<TimeOnly, TimeSpan>(
+           t => t.ToTimeSpan(),
+           ts => TimeOnly.FromTimeSpan(ts));
+
         modelBuilder
             .Entity<Permission>()
             .Property(x => x.Type)
             .HasConversion<string>();
+        modelBuilder
+                        .Entity<Permission>()
+            .Property(x => x.Status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<Permission>()
+            .Property(e => e.FromTime)
+            .HasConversion(timeOnlyConverter);
+
+        modelBuilder.Entity<Permission>()
+           .Property(e => e.ToTime)
+           .HasConversion(timeOnlyConverter);
+
 
         modelBuilder.Entity<UserChanges>()
             .HasOne(x => x.User)
@@ -158,7 +177,11 @@ public class DataContext : DbContext
             .WithMany(x => x.ChangedByUser)
             .OnDelete(DeleteBehavior.NoAction);
             
-        
+        modelBuilder.Entity<Opinion>()
+            .HasOne(x => x.LeaveRequest)
+            .WithMany(x => x.Opinions)
+            .OnDelete(DeleteBehavior.NoAction);
+
     }
 
     public DbSet<Team> Teams => Set<Team>();
@@ -187,4 +210,5 @@ public class DataContext : DbContext
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<UserChanges> UserChanges => Set<UserChanges>();
+    public DbSet<Opinion> Opinions => Set<Opinion>();
 }

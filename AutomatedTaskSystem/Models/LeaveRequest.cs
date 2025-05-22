@@ -16,8 +16,10 @@ namespace AutomatedTaskSystem.Models
         public DateTime EndDate { get; set; }
 
         public string? Reason { get; set; }
+        public string? NoteForManager { get; set; }
         public LeaveRequestType Type { get; set; } = LeaveRequestType.Annual;
         public LeaveRequestStatusEnum Status { get; set; } = LeaveRequestStatusEnum.Pending;
+        public List<Opinion> Opinions { get; set; } = new();
     }
 
     [JsonConverter(typeof(JsonStringEnumConverter))]

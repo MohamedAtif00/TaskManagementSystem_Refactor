@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.UserTaskDtos;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
@@ -17,4 +18,5 @@ public interface IUserService
     );
     Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetUsers();
     Task<ActionResult<BaseResponseService>> ArchiveUser(int id);
+    Task<ActionResult<ResponseService<List<GetUserChangesDto>>>> GetUserChanges(int userId);
 }

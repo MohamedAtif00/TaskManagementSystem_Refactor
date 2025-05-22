@@ -4,6 +4,9 @@ import SCHEMAS from "./Schemas";
 import TASKS from "./tasks";
 import DASHBOARDS from "./dashboard";
 import SPRINTS from "./sprints";
+import LEAVE from "./Leave";
+import PERMISSION from "./Permission";
+
 
 // export const url = "/api";
 export const url = "http://localhost:5238";
@@ -29,7 +32,9 @@ const API = {
     PROJECTS,
     TASKS,
     DASHBOARDS,
-    SPRINTS
+    SPRINTS,
+    LEAVE,
+    PERMISSION
 };
 
 export default API;

@@ -274,7 +274,7 @@ public class ProjectService : IProjectService
                     {
                         Id = user.Id,
                         Name = user.Name,
-                        Group = new Responses.IDName { Id = user.GroupId, Name = user.Group.Name },
+                        Group = new Responses.IDName { Id = user.GroupId ?? 0, Name = user.Group.Name },
                         Role = user.Role
                     }
                 );
@@ -432,7 +432,7 @@ public class ProjectService : IProjectService
                         {
                             Id = u.Id,
                             Name = u.Name,
-                            Group = { Id = u.GroupId, Name = u.Group.Name },
+                            Group = { Id = u.GroupId ?? 0, Name = u.Group.Name },
                             Role = u.Role,
                         }
                 )
@@ -441,7 +441,6 @@ public class ProjectService : IProjectService
             Message = $"List of unassigned users for project of id:{project.Id}"
         };
     }
-
     public async Task<
         ActionResult<ResponseService<List<Responses.ProjectDTO>>>
     > GetUserSpecificProjects()
@@ -471,56 +470,87 @@ public class ProjectService : IProjectService
             );
 
         if (user.Role == UserRoleEnum.ProjectManger)
+        {
+            var allProjects = await _context.Projects
+                .Where(
+                    p =>
+                        !p.Archived
+                        && p.Status != ProjectStatusEnum.Hold
+                        && p.Status != ProjectStatusEnum.Closed
+                )
+                .Include(p => p.Year)
+                .ToListAsync();
+
+            // Get task counts for each project in one query
+            var projectIds = allProjects.Select(p => p.Id).ToList();
+            var taskCounts = await _context.Tasks
+                .Where(t =>
+                    !t.Archived &&
+                    t.LearningObjective != null &&
+                    t.LearningObjective.Lesson != null &&
+                    t.LearningObjective.Lesson.Unit != null &&
+                    projectIds.Contains(t.LearningObjective.Lesson.Unit.ProjectId)
+                )
+                .GroupBy(t => t.LearningObjective.Lesson.Unit.ProjectId)
+                .Select(g => new { ProjectId = g.Key, Count = g.Count() })
+                .ToListAsync();
+
+            var data = allProjects.Select(p => new Responses.ProjectDTO
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                Term = p.Term,
+                Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number },
+                Status = p.Status,
+                Count = taskCounts.FirstOrDefault(tc => tc.ProjectId == p.Id)?.Count ?? 0
+            }).ToList();
+
             return new ResponseService<List<Responses.ProjectDTO>>
             {
                 Error = false,
                 Message = "List of all projects",
-                Data = await _context.Projects
-                    .Where(
-                        p =>
-                            !p.Archived
-                            && p.Status != ProjectStatusEnum.Hold
-                            && p.Status != ProjectStatusEnum.Closed
-                    )
-                    .Include(p => p.Year)
-                    .Select(
-                        p =>
-                            new Responses.ProjectDTO
-                            {
-                                Id = p.Id,
-                                Name = p.Name,
-                                Description = p.Description,
-                                Term = p.Term,
-                                Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number },
-                                Status = p.Status
-                            }
-                    )
-                    .ToListAsync()
+                Data = data
             };
+        }
 
-        var listOfProjects = new List<Responses.ProjectDTO> { };
-
-        foreach (var project in user.Projects)
-            if (
-                !project.Archived
-                && project.Status != ProjectStatusEnum.Hold
-                && project.Status != ProjectStatusEnum.Closed
+        var userProjects = user.Projects
+            .Where(p =>
+                !p.Archived &&
+                p.Status != ProjectStatusEnum.Hold &&
+                p.Status != ProjectStatusEnum.Closed
             )
-                listOfProjects.Add(
-                    new Responses.ProjectDTO
-                    {
-                        Id = project.Id,
-                        Name = project.Name,
-                        Description = project.Description,
-                        Term = project.Term,
-                        Year = new Responses.IDName
-                        {
-                            Id = project.YearId,
-                            Name = project.Year.Number
-                        },
-                        Status = project.Status
-                    }
-                );
+            .ToList();
+
+        var userProjectIds = userProjects.Select(p => p.Id).ToList();
+
+        // Count tasks for user-specific projects
+        var userTaskCounts = await _context.Tasks
+            .Where(t =>
+                !t.Archived &&
+                t.LearningObjective != null &&
+                t.LearningObjective.Lesson != null &&
+                t.LearningObjective.Lesson.Unit != null &&
+                userProjectIds.Contains(t.LearningObjective.Lesson.Unit.ProjectId)
+            )
+            .GroupBy(t => t.LearningObjective.Lesson.Unit.ProjectId)
+            .Select(g => new { ProjectId = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var listOfProjects = userProjects.Select(project => new Responses.ProjectDTO
+        {
+            Id = project.Id,
+            Name = project.Name,
+            Description = project.Description,
+            Term = project.Term,
+            Year = new Responses.IDName
+            {
+                Id = project.YearId,
+                Name = project.Year.Number
+            },
+            Status = project.Status,
+            Count = userTaskCounts.FirstOrDefault(tc => tc.ProjectId == project.Id)?.Count ?? 0
+        }).ToList();
 
         return new ResponseService<List<Responses.ProjectDTO>>
         {
@@ -529,6 +559,7 @@ public class ProjectService : IProjectService
             Data = listOfProjects
         };
     }
+
 
     public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> UnassignToProject(
         int Id,

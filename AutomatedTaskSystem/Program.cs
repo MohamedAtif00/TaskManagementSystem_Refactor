@@ -1,4 +1,4 @@
-global using Microsoft.EntityFrameworkCore;
+﻿global using Microsoft.EntityFrameworkCore;
 using AutomatedTaskSystem.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -9,18 +9,27 @@ using AutomatedTaskSystem.Hub;
 using System.Security.Claims;
 using AutomatedTaskSystem.Services;
 using AutomatedTaskSystem.Middlewares;
+using System;
+using AutomatedTaskSystem.Seeding;
+using AutomatedTaskSystem.Dtos;
+using AutomatedTaskSystem.Converters;
 
 var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 var builder = WebApplication.CreateBuilder(args);
 
 // Services
 builder.Services.AddControllers();
+    //.AddJsonOptions(op =>
+    // {
+    //     op.JsonSerializerOptions.Converters.Add(new TimeOnlyJsonConverter());
+    //});
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Automated Task System API", Version = "1.0" });
     c.CustomSchemaIds(type => type.FullName);
 });
-
+// Add email settings configuration
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
 DependancyInjections.Inject(builder);
 
@@ -90,15 +99,6 @@ builder.Services.AddCors(options =>
                 .WithOrigins("http://localhost:3000")
                 .AllowCredentials()
     );
-
-    // options.AddPolicy("AllowIframeOrigin",
-    //policy =>
-    //{
-    //    policy.WithOrigins("http://172.20.9.30") // Replace with your iframe's origin
-    //          .AllowAnyHeader()
-    //          .AllowAnyMethod()
-    //          .AllowCredentials();
-    //});
 });
 
 
@@ -108,30 +108,6 @@ builder.Services.AddHttpClient("SSRSProxy").ConfigurePrimaryHttpMessageHandler((
 {
     AllowAutoRedirect = false
 });
-
-// register settings 
-//builder.Services.Configure<AppSetting>(
-//    builder.Configuration.GetSection("AppSetting"));
-// reverse proxy configuration
-
-// Load SSRS credentials from configuration
-//var ssrsUsername = builder.Configuration["SSRS:Username"];
-//var ssrsPassword = builder.Configuration["SSRS:Password"];
-//var ssrsAuthHeader = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{ssrsUsername}:{ssrsPassword}"));
-
-
-// Configure YARP with authentication handling
-// Add YARP Reverse Proxy with authentication
-//builder.Services.AddReverseProxy()
-//    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
-//    .AddTransforms(builderContext =>
-//    {
-//        builderContext.AddRequestTransform(async transformContext =>
-//        {
-//            transformContext.ProxyRequest.Headers.Authorization =
-//                new AuthenticationHeaderValue("Basic", ssrsAuthHeader);
-//        });
-//    });
 
 
 using (var serviceScope = builder.Services.BuildServiceProvider().CreateScope())
@@ -144,13 +120,6 @@ using (var serviceScope = builder.Services.BuildServiceProvider().CreateScope())
 var app = builder.Build();
 app.UseCors(MyAllowSpecificOrigins);
 
-//app.UseCors("AllowIframeOrigin");
-//app.UseMiddleware<SsrsRed>();
-//app.UseMiddleware<SSRSProxyMiddleware>();
-//app.UseWhen(context => context.Request.Path.StartsWithSegments("/Reports"), 
-//    appBuilder => { 
-//        appBuilder.UseMiddleware<SSRSProxyMiddleware>();
-//    });
 app.UseMiddleware<ErrorLoggingMiddleware>();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -173,7 +142,12 @@ app.UseSwaggerUI(c =>
 });
 
 
-
+// 👇 Call seeding logic here
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+    await seeder.Seed();
+}
 
 
 app.MapControllers();
