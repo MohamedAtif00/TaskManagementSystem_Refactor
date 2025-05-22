@@ -7,7 +7,7 @@ const useTaskPathHandler = () => {
 
 	useEffect(() => {
 		setIsBoard(router.pathname.includes("board"));
-	})
+	},[router.pathname])
 
 	const projectId = router.query.projectId;
 

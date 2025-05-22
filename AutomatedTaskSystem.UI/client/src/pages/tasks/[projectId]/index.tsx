@@ -10,22 +10,26 @@ const TaskSheet = () => {
     useEffect(() => {
         const preferredView = localStorage.getItem("tasks:view");
 
-        if (preferredView !== null && preferredView === "sheet") 
-            router.replace(`/tasks/${router.query.projectId}/sheet`)
-        else
-            router.replace(`/tasks/${router.query.projectId}/board`)
+        if (preferredView !== null && preferredView === "sheet") {
+            router.replace(`/tasks/${router.query.projectId}/sheet`);
+        } else {
+            router.replace(`/tasks/${router.query.projectId}/board`);
+        }
 
-        return setDone(true);
-    }, [])
+        setDone(true); // Don't return this – it's not a cleanup function.
+    }, [router]); // Include 'router' to fix the ESLint warning
 
     if (done) {
-        <div className="flex items-center justify-center mx-auto h-full">
-            <Head>
-                <title>ATS - Select a view</title>
-            </Head>
-            <div>
+        return (
+            <div className="flex items-center justify-center mx-auto h-full">
+                <Head>
+                    <title>ATS - Select a view</title>
+                </Head>
+                <div>
+                    {/* Maybe display some "Redirecting..." message or similar */}
+                </div>
             </div>
-        </div>
+        );
     }
 
     return (
@@ -36,6 +40,6 @@ const TaskSheet = () => {
             <Loader />
         </div>
     );
-}
+};
 
 export default TaskSheet;

@@ -96,8 +96,8 @@ namespace AutomatedTaskSystem.Controllers
             if (lo == null)
                 return NotFound(new Responses.BadRequestsDTO("Learning Objective not Found"));
 
-            if (req.Steps == null || req.Steps.Count == 0)
-                return NotFound(new Responses.BadRequestsDTO("Please supply steps"));
+            //if (req.Steps.Count > 0)
+            //    return NotFound(new Responses.BadRequestsDTO("Please supply steps"));
 
 
             if (lo.SchemaId != req.SchemaId)
@@ -190,27 +190,7 @@ namespace AutomatedTaskSystem.Controllers
 
 
 
-
-
-
-
-                
-
-
-
                 var lesson = await _context.Lessons.FirstOrDefaultAsync(x => x.Id == lo.LessonId);
-
-              
-
-               // var res = await _taskService.CreateProcess(
-               //    options: req.Steps,
-               //    schemaId: req.SchemaId,
-               //    loId: lo.Id
-               //);
-
-
-                ////////
-
 
 
                 if (schema is null)
@@ -259,7 +239,10 @@ namespace AutomatedTaskSystem.Controllers
             lo.Template = req.Template;
             lo.Tag = req.Tag;
             //lo.Name = req.Name;
-            lo.Name = lo.Name + "_old_" + DateTime.Now.Day+"_"+DateTime.Now.Month;
+            if (lo.SchemaId != req.SchemaId)
+                lo.Name = lo.Name + "_old_" + DateTime.Now.Day+"_"+DateTime.Now.Month;
+            else
+                lo.Name = req.Name;
             lo.DoneAt = DateTime.Now;
             await _context.SaveChangesAsync();
 
