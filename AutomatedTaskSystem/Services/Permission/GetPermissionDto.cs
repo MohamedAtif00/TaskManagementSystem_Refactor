@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Models;
 using static AutomatedTaskSystem.DTO.Responses;
 
@@ -52,6 +53,7 @@ namespace AutomatedTaskSystem.Services.Permission
         public string Status { get; set; } = "";
         public string DateCreated { get; set; } = "";
         public UserDTO User { get; set; } = new UserDTO();
+        public List<GetOpinion> Opinions { get; set; } = new();
     }
 
     public class UpdatePermissionDto

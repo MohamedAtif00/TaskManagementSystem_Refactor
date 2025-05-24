@@ -2,6 +2,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos;
+using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.Email;
@@ -345,6 +346,8 @@ namespace AutomatedTaskSystem.Services.Permission
                 .Include(p => p.User)
                     .ThenInclude(u => u.Teamleader)
                         .ThenInclude(tl => tl.Group)
+                .Include(x => x.Opinions)
+                    .ThenInclude(x => x.User)
                 .ToListAsync();
 
             // Project to DTO with proper calculations
@@ -359,6 +362,14 @@ namespace AutomatedTaskSystem.Services.Permission
                 Duration = CalculateDurationInMinutes(p.FromTime, p.ToTime),
                 Status = p.Status.ToString(),
                 DateCreated = p.CreatedAt.ToString("M/d/yyyy h:mm:ss tt"),
+                Opinions = p.Opinions.Select(x => new GetOpinion { 
+                    Id = x.Id,
+                    PermissionId = p.Id,
+                    Comment = x.Comment,
+                    DateCreated = x.CreatedAt.ToString(),
+                    IsApproved = x.IsApproved,
+                    User = new IDNameWithRole { Id = x.User.Id,Name = x.User.Name,Role = x.User.Role}
+                }).ToList(),
                 User = new UserDTO
                 {
                     Id = p.User.Id,
@@ -391,9 +402,22 @@ namespace AutomatedTaskSystem.Services.Permission
                     Phone = p.User.Phone,
                     Title = p.User.Title,
                     AccountType = p.User.AccountType,
+                    OnBoard = p.User.OnBoard,
+                    Vacation = new VacationDto
+                    {
+                        Annual = p.User.Annual_leave,
+                        Sick = p.User.Sick_leave,
+                        Emergency = p.User.Emergency_leave,
+                        Annual_MAX = p.User.Annual_leave_MAX,
+                        Emergency_MAX = p.User.Emergency_leave_MAX,
+                    },
+                    Annual_leave = p.User.Annual_leave,
+                    Annual_leave_MAX = p.User.Annual_leave_MAX,
+                    Sick_leave = p.User.Sick_leave,
+                    Emergency_leave = p.User.Emergency_leave,
+                    Emergency_leave_MAX = p.User.Emergency_leave_MAX,
                     Permission = p.User.Permission,
                     Permission_MAX = p.User.Permission_MAX,
-                    OnBoard = p.User.OnBoard
                 }
             }).FirstOrDefault();
 
@@ -512,31 +536,57 @@ namespace AutomatedTaskSystem.Services.Permission
 
             if (user == null) throw new Exception("User not found");
 
-            // Get the permission
+            // Get permission request including opinions
             var permission = await _dataContext.Permissions
                 .Include(p => p.User)
+                .Include(p => p.Opinions)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
             if (permission == null) throw new Exception("Permission not found");
 
-            // Check if user is authorized to approve/reject
+            // Authorization check
             if (user.Role != UserRoleEnum.TeamLeader &&
                 user.Role != UserRoleEnum.SectionHead &&
+                user.Role != UserRoleEnum.ProjectManger &&
                 user.Role != UserRoleEnum.Owner)
             {
                 throw new UnauthorizedAccessException("You are not authorized to approve or reject permissions");
             }
 
-            // Owner's decision (or other implementation based on your business rules)
+            // Prevent duplicate opinions
+            if (permission.Opinions.Any(o => o.UserId == user.Id))
+            {
+                throw new Exception("You have already given your opinion on this permission request");
+            }
+
+            // Create opinion
+            var opinion = new Opinion
+            {
+                UserId = user.Id,
+                PermissionId = permission.Id, // Ensure you have this foreign key in Opinion
+                IsApproved = isApproved,
+                Comment = comment,
+                CreatedAt = DateTime.UtcNow,
+                User = user
+            };
+
+            _dataContext.Opinions.Add(opinion);
+
+            // Handle Owner logic (final decision)
             if (user.Role == UserRoleEnum.Owner)
             {
-                // Deduct permission count if approved
+                permission.Status = isApproved
+                    ? PermissionStatusEnum.Approved
+                    : PermissionStatusEnum.Rejected;
+
+                // Adjust permission count if approved
                 if (isApproved)
                 {
                     permission.User.Permission += 1;
                 }
 
-                // Send email notification
+                _dataContext.Permissions.Update(permission);
+
                 var message = new EmailMessage
                 {
                     Subject = "Permission Request Update",
@@ -548,14 +598,15 @@ namespace AutomatedTaskSystem.Services.Permission
                 var result = await _emailService.SendEmailAsync(message);
                 if (!result.Success)
                 {
-                    // Handle email sending failure
-                    return false;
+                    // Optional: Log the email failure
                 }
             }
 
             await _dataContext.SaveChangesAsync();
             return true;
         }
+
+
 
         private async Task<List<Models.User>> GetReceiversAsync(UserRoleEnum userRole)
         {

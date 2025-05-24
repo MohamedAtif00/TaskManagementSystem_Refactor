@@ -12,7 +12,7 @@ import PERMISSION, { IGetOpinion, IGetPermissionDetails, IOpinion, PermissionReq
 const PermissionDetails = () => {
 
    const router = useRouter();
-    const { calandarId } = router.query;
+    const { calendarId } = router.query;
 
   const auth = useAppSelector((s) => s.authSlice);
   // Mock data based on the image
@@ -29,13 +29,13 @@ const parseTime = (date: string, time: string): Date => {
 };
 
   useEffect(() => {
-    console.log(calandarId);
+    console.log(calendarId);
     
     let isMounted = true;
 
     debugger
-        if (calandarId) {
-            fetchPermissionRequest(Number(calandarId)).then(({ leaveDetails }) => {
+        if (calendarId) {
+            fetchPermissionRequest(Number(calendarId)).then(({ leaveDetails }) => {
             if (isMounted) {
             setRequest(leaveDetails.data);
             setApprovals(leaveDetails.data?.opinions)
@@ -56,11 +56,11 @@ const parseTime = (date: string, time: string): Date => {
         return () => {
             isMounted = false;
         };
-    }, [calandarId]);
+    }, [calendarId]);
 
         const fetchPermissionRequest = async (id: number) => {
         try {
-            const leaveDetails = await PERMISSION.GET_DETAILS(Number(calandarId));
+            const leaveDetails = await PERMISSION.GET_DETAILS(Number(calendarId));
             console.log(leaveDetails);
             
             return { leaveDetails };
@@ -84,7 +84,7 @@ const parseTime = (date: string, time: string): Date => {
             await PERMISSION.CREATE_OPINION(op)
 
             // Optional: refetch the leave request to update approvals
-            const { leaveDetails } = await fetchPermissionRequest(Number(calandarId));
+            const { leaveDetails } = await fetchPermissionRequest(Number(calendarId));
             setRequest(leaveDetails.data);
 
             // Clear form
@@ -244,10 +244,11 @@ const parseTime = (date: string, time: string): Date => {
             </div>
           </div>
 
-          <div className="mt-4">
+          {auth.role == 4? <div className="mt-4">
             <span className="text-gray-500">Note: </span>
-            <span className="text-blue-600">{request?.reason}</span>
-          </div>
+            <span className="text-blue-600">{request?.noteToManager}</span>
+          </div>:<></>}
+
 
           {/* Opinions / Approvals */}
           <h2 className="text-lg font-semibold mt-8 mb-4">Opinions</h2>

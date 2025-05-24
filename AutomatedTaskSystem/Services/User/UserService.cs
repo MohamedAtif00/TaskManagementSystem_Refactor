@@ -45,8 +45,8 @@ public class UserService : IUserService
     )
     {
         Group group = null;
-        if (req.Role != UserRoleEnum.Owner)
-        { 
+         if (req.Role != UserRoleEnum.Owner)
+           { 
             group = await _context.Groups
                 .Where(g => g.Id == req.GroupId && !g.Archived)
                 .FirstOrDefaultAsync();
@@ -59,10 +59,10 @@ public class UserService : IUserService
                     }
                 );
         
-        }
+         }
 
 
-        if (req.Email != null && await CheckEmailExist(req.Email))
+         if (req.Email != null && await CheckEmailExist(req.Email))
             return new NotFoundObjectResult(
                 new BaseResponseService
                 {
@@ -71,7 +71,7 @@ public class UserService : IUserService
                 }
             );
 
-        var newUser = new Models.User
+         var newUser = new Models.User
         {
             Archived = false,
             Code = await GenerateCode(),

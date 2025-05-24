@@ -11,7 +11,7 @@ import LEAVE, { IGetLeaveRequestForDetails, IGetOpinion, IOpinion, LeaveRequestS
 const LeaveRequestDetails = () => {
 
    const router = useRouter();
-    const { calandarId } = router.query;
+    const { calendarId } = router.query;
 
   const auth = useAppSelector((s) => s.authSlice);
   // Mock data based on the image
@@ -25,36 +25,36 @@ const LeaveRequestDetails = () => {
 
 
   useEffect(() => {
-    console.log(calandarId);
+    console.log(calendarId);
     
     let isMounted = true;
-        if (calandarId) {
-            fetchLeaveRequest(Number(calandarId)).then(({ leaveDetails }) => {
-            if (isMounted) {
-            setRequest(leaveDetails.data);
-            setApprovals(leaveDetails.data.opinions)
-            console.log(leaveDetails,"after assign");
-            console.log(leaveDetails.data.opinions,"opnions");
-            console.log(auth.id);
-            
-            if((leaveDetails as IGetLeaveRequestForDetails).opinions?.some(x => x.user.id == auth.id))
-            {
-                console.log("commentable");
+        if (calendarId) {
+            fetchLeaveRequest(Number(calendarId)).then(({ leaveDetails }) => {
+              if (isMounted) {
+                setRequest(leaveDetails.data);
+                setApprovals(leaveDetails.data.opinions)
+                console.log(leaveDetails,"after assign");
+                console.log(leaveDetails.data.opinions,"opnions");
+                console.log(auth.id);
                 
-                setCommentable(false)
-                
-            }
-        }
+                if((leaveDetails as IGetLeaveRequestForDetails).opinions?.some(x => x.user.id == auth.id))
+                {
+                    console.log("commentable");
+                    
+                    setCommentable(false)
+                    
+                }
+              }
             });
         }
         return () => {
             isMounted = false;
         };
-    }, [calandarId]);
+    }, [calendarId]);
 
         const fetchLeaveRequest = async (id: number) => {
         try {
-            const leaveDetails = await LEAVE.GET_LEAVE_BY_USER(Number(calandarId));
+            const leaveDetails = await LEAVE.GET_LEAVE_BY_USER(Number(calendarId));
             console.log(leaveDetails);
             
             return { leaveDetails };
@@ -78,9 +78,9 @@ const LeaveRequestDetails = () => {
             await LEAVE.CREATE_OPINION(op)
 
             // Optional: refetch the leave request to update approvals
-            const { leaveDetails } = await fetchLeaveRequest(Number(calandarId));
+            const { leaveDetails } = await fetchLeaveRequest(Number(calendarId));
             setRequest(leaveDetails.data);
-
+            setApprovals(leaveDetails.data.opinions);
             // Clear form
             setComment('');
         } catch (error) {

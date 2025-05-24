@@ -71,7 +71,7 @@ namespace AutomatedTaskSystem.Controllers
             }
             var result = await _leaveRequestService.GiveOpinion(opinion);
             // Logic to create a new opinion
-            return CreatedAtAction(nameof(GetLeaveById), new { id = 1 }, opinion);
+            return Ok(result);
         }
         // POST: api/Leave
         [HttpPost]

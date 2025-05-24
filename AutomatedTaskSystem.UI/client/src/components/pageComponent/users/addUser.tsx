@@ -38,6 +38,7 @@ interface IUserFormState {
     teamleader: SimpleInfo | null;
     vacation: IVacation;
     permission: number;
+    permission_MAX:number,
     error: string;
     done: { code: string; user: IUser } | null;
 }
@@ -74,6 +75,7 @@ const AddUser = () => {
             emergency_MAX: 0
         },
         permission:0,
+        permission_MAX:0,
         error: "",
         done: null as { code: string; user: IUser } | null,
     });
@@ -112,6 +114,7 @@ const AddUser = () => {
     }, [formState.group]);
     
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        debugger
         e.preventDefault();
          e.stopPropagation(); // Add this to prevent event bubbling
         console.log("dsds");
@@ -125,7 +128,8 @@ const AddUser = () => {
             email, 
             vacation, 
             teamleader,
-            permission
+            permission,
+            permission_MAX
         } = formState;
 
         if (!name || !group || !role) {
@@ -145,7 +149,8 @@ const AddUser = () => {
             teamLeaderId: teamleader?.id ?? null,
             accountType: accountType?.id ?? 0,
             vacation,
-            permission
+            permission,
+            permission_MAX
         });
         
         if (res && !res.error) {
@@ -168,7 +173,8 @@ const AddUser = () => {
                     annual_MAX: 0,
                     emergency_MAX: 0
                 },
-                permission
+                permission,
+                permission_MAX
                 ,
                 error: "",
             });
@@ -196,6 +202,13 @@ const AddUser = () => {
         setFormState((prev) => ({
             ...prev,
             permission: value
+        }));
+    };
+
+    const handlePermissionMaxChange = (value: typeof formState['permission_MAX']) => {
+        setFormState((prev) => ({
+            ...prev,
+            permission_MAX: value
         }));
     };
     // Special handling for vacation updates
@@ -357,7 +370,7 @@ const AddUser = () => {
                                     </div>
 
                                     {/* Permission Section */}
-                                    <div>
+                                    {/* <div>
                                         <h4 className="text-sm font-medium mb-2">Permission</h4>
                                         <div className="grid grid-cols-1 gap-4">
                                             <InputTextField
@@ -366,13 +379,28 @@ const AddUser = () => {
                                                 handleChange={(val) => handlePermissionChange(Number(val))}
                                             />
                                         </div>
+                                    </div> */}
+                                    <div className="mb-6">
+                                        <h4 className="text-sm font-medium mb-2">Permissions</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <InputTextField
+                                                label="Current Permissions"
+                                                value={formState.permission.toString()??'0'}
+                                                 handleChange={(val) => handlePermissionChange(Number(val))}
+                                            />
+                                            <InputTextField
+                                                label="Max Permissions Allowed"
+                                                value={formState.permission_MAX.toString()??'0'}
+                                                handleChange={(val) => handlePermissionMaxChange(Number(val))}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}
+                            <div className="mt-auto pt-4"> {/* FormConclusion at the bottom */}
+                                <FormConclusion pathname="/resources/users" submittable={true} />
+                            </div>
                         </form>
-                    </div>
-                    <div className="mt-auto pt-4"> {/* FormConclusion at the bottom */}
-                        <FormConclusion pathname="/resources/users" submittable={true} />
                     </div>
                 </>
             )}

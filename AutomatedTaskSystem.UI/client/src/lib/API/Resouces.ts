@@ -126,7 +126,8 @@ const RESOURCES = {
 			teamLeaderId,
 			accountType,
 			vacation,
-			permission
+			permission,
+			permission_MAX
 		}: {
 			name: string;
 			groupId: number;
@@ -136,7 +137,8 @@ const RESOURCES = {
 			teamLeaderId:number | null,
 			accountType:number,
 			vacation:IVacation
-			permission:number
+			permission:number,
+			permission_MAX:number
 		}) => {
 			try {
 				const res = await fetch(`${url}/users`, {
@@ -144,7 +146,13 @@ const RESOURCES = {
 					headers: {
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify({ name, groupId, role }),
+					body: JSON.stringify({ name, groupId, role,hrCode,
+					email,
+					teamLeaderId,
+					accountType,
+					vacation,
+					permission,
+					permission_MAX }),
 				});
 				const data: {
 					error: boolean;

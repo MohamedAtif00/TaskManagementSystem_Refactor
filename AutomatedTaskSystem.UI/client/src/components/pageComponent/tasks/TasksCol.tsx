@@ -3,9 +3,10 @@ import TaskCard from "./TaskCard";
 interface Props {
     items: TaskInfo[];
     label: string;
+    type:"tasks"|"sprints"
 }
 
-const TaskCol: React.FC<Props> = ({ items, label }) => {
+const TaskCol: React.FC<Props> = ({ items, label,type }) => {
     const highPrio = items.filter((t) => t.priority === 3);
     const medPrio = items.filter((t) => t.priority === 2);
     const lowPrio = items.filter((t) => t.priority === 1);
@@ -37,6 +38,7 @@ const TaskCol: React.FC<Props> = ({ items, label }) => {
                         from={t.from}
                         isRollback={t.isRollback}
                         rollbackCount={t.rollbackCount}
+                        type={type}
                     />
                 );
             })}

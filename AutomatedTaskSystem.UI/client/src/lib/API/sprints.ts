@@ -46,7 +46,7 @@ const SPRINTS = {
         description: string;
         startDate: string;
         endDate: string;
-    }) => {
+    }):Promise<ResponseService<GetAllSprintsResponse>> => {
         try {
             
             console.log(`${name} ${description} ${startDate} ${endDate}`);

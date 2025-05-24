@@ -22,6 +22,7 @@ namespace AutomatedTaskSystem.Services.Email
             _logger = logger;
             _smtpUsername = configuration["EmailCredentials:Username"];
             _smtpPassword = "drlc7n_Z-dud72!O*lko69ke+";
+            //_smtpPassword = "STP678345@#88$_";
         }
 
         public async Task<EmailResult> SendEmailAsync(EmailMessage message)
@@ -49,19 +50,19 @@ namespace AutomatedTaskSystem.Services.Email
                     _emailSettings.StaticReceiver.Name));
 
                 // Add static CCs
-                foreach (var cc in message.CcEmails)
-                {
-                    mailMessage.CC.Add(cc);
-                }
+                //foreach (var cc in message.CcEmails)
+                //{
+                //    mailMessage.CC.Add(cc);
+                //}
 
-                // Add dynamic CCs
-                foreach (var cc in message.CcEmails)
-                {
-                    if (!mailMessage.CC.Any(c => c.Address.Equals(cc, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        mailMessage.CC.Add(cc);
-                    }
-                }
+                //// Add dynamic CCs
+                //foreach (var cc in message.CcEmails)
+                //{
+                //    if (!mailMessage.CC.Any(c => c.Address.Equals(cc, StringComparison.OrdinalIgnoreCase)))
+                //    {
+                //        mailMessage.CC.Add(cc);
+                //    }
+                //}
 
                 // Add attachments
                 foreach (var attachment in message.Attachments)

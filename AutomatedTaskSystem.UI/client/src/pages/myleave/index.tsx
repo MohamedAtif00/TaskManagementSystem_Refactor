@@ -6,28 +6,42 @@ import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import { IGetLeaveRequest, LeaveRequestStatus } from "../../lib/API/Leave";
 import Permission, { ICreatePermission, IPermission, PermissionType } from "../../lib/API/Permission";
+import FileUpload from "../../components/pageComponent/leave/fileUpload";
 
 // Added: New LeaveModal component
-const LeaveModal = ({ isOpen, onClose, onSuccess }:{isOpen:boolean, onClose:()=>void, onSuccess:()=>void}) => {
+
+
+const LeaveModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean; onClose: () => void; onSuccess: () => void }) => {
   const [formData, setFormData] = useState({
     type: '',
     startDate: '',
     endDate: '',
     reason: '',
-    noteToManager:''
+    noteToManager: ''
   });
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const auth = useAppSelector((e) => e.authSlice);
 
+  // Add a handler to receive the file from FileUpload
+  const handleFileChange = (file: File | null) => {
+    setUploadedFile(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    e.stopPropagation()
+    e.stopPropagation();
     if (!auth?.id) return;
 
     // Validate dates
     if (formData.startDate && formData.endDate && new Date(formData.endDate) < new Date(formData.startDate)) {
       setError('تاريخ النهاية لا يمكن أن يكون قبل تاريخ البداية');
+      return;
+    }
+
+    if (formData.type === 'Sick' && !uploadedFile) {
+      setError('يرجى رفع ملف الإجازة المرضية');
       return;
     }
 
@@ -37,18 +51,20 @@ const LeaveModal = ({ isOpen, onClose, onSuccess }:{isOpen:boolean, onClose:()=>
     try {
       const leave = {
         userId: auth.id,
-        type: formData.type as "Annual" | "Sick" | "Emergency",
+        type: formData.type as 'Annual' | 'Sick' | 'Emergency',
         startDate: formData.startDate,
         endDate: formData.endDate,
         reason: formData.reason,
-        noteForManager:formData.noteToManager
+        noteForManager: formData.noteToManager,
+        sickLeaveFile: uploadedFile // You may need to handle this on backend side accordingly
       };
 
       const response = await API.LEAVE.CREATE(leave);
       if (response) {
         onSuccess();
         onClose();
-        setFormData({ type: '', startDate: '', endDate: '', reason: '' ,noteToManager:''});
+        setFormData({ type: '', startDate: '', endDate: '', reason: '', noteToManager: '' });
+        setUploadedFile(null);
       } else {
         setError('Failed to create leave request. Please try again.');
       }
@@ -60,7 +76,7 @@ const LeaveModal = ({ isOpen, onClose, onSuccess }:{isOpen:boolean, onClose:()=>
     }
   };
 
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newStartDate = e.target.value;
     setFormData(prev => ({
       ...prev,
@@ -78,9 +94,10 @@ const LeaveModal = ({ isOpen, onClose, onSuccess }:{isOpen:boolean, onClose:()=>
     }));
   };
 
+  // ... your existing handlers (handleStartDateChange, handleEndDateChange)
+
   if (!isOpen) return null;
 
-  // Calculate min date for end date input
   const minEndDate = formData.startDate || '';
 
   return (
@@ -88,25 +105,22 @@ const LeaveModal = ({ isOpen, onClose, onSuccess }:{isOpen:boolean, onClose:()=>
       <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" dir="rtl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium">إنشاء طلب إجازة</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-500"
-          >
-            {/* <FiX size={20} /> */}
-          </button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-500"></button>
         </div>
-        {error && (
-          <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
-            {error}
-          </div>
-        )}
+        {error && <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">نوع الإجازة</label>
-            <select 
+            <select
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+              onChange={(e) => {
+                setFormData({ ...formData, type: e.target.value });
+                if (e.target.value !== 'Sick') {
+                  setUploadedFile(null); // reset file if not sick leave
+                }
+              }}
               required
             >
               <option value="">اختر نوع الإجازة</option>
@@ -115,10 +129,22 @@ const LeaveModal = ({ isOpen, onClose, onSuccess }:{isOpen:boolean, onClose:()=>
               <option value="Emergency">إجازة طارئة</option>
             </select>
           </div>
+
+          {/* Show FileUpload only for sick leave */}
+          {formData.type === 'Sick' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">رفع ملف الإجازة المرضية</label>
+              <FileUpload
+                onFileChange={(file: File | null) => handleFileChange(file)} // You need to add this prop in your FileUpload
+              />
+            </div>
+          )}
+
+          {/* rest of your form inputs */}
           <div>
             <label className="block text-sm font-medium text-gray-700">تاريخ البداية</label>
-            <input 
-              type="date" 
+            <input
+              type="date"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               value={formData.startDate}
               onChange={handleStartDateChange}
@@ -127,8 +153,8 @@ const LeaveModal = ({ isOpen, onClose, onSuccess }:{isOpen:boolean, onClose:()=>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">تاريخ النهاية</label>
-            <input 
-              type="date" 
+            <input
+              type="date"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               value={formData.endDate}
               onChange={handleEndDateChange}
@@ -138,8 +164,8 @@ const LeaveModal = ({ isOpen, onClose, onSuccess }:{isOpen:boolean, onClose:()=>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">السبب</label>
-            <textarea 
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+            <textarea
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               rows={3}
               value={formData.reason}
               onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
@@ -148,14 +174,15 @@ const LeaveModal = ({ isOpen, onClose, onSuccess }:{isOpen:boolean, onClose:()=>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">ملاحظ للمدير</label>
-            <textarea 
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" 
+            <textarea
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               rows={3}
               value={formData.noteToManager}
               onChange={(e) => setFormData({ ...formData, noteToManager: e.target.value })}
               required
             ></textarea>
           </div>
+
           <div className="flex justify-around space-x-3">
             <button
               type="submit"

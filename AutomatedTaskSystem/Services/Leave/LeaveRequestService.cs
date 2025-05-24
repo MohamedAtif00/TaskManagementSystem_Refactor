@@ -135,15 +135,36 @@ namespace AutomatedTaskSystem.Services.Leave
                     leaveRequest.Status = request.IsApproved
                         ? LeaveRequestStatusEnum.Approved
                         : LeaveRequestStatusEnum.Rejected;
-                    var message = new EmailMessage { Subject = "أجازة", Body = "body", IsHtml = true,CcEmails = new List<string> { leaveRequest.User.Email} };
-                    var result = await _emailService.SendEmailAsync(message);
+                    if (leaveRequest.Status == LeaveRequestStatusEnum.Approved)
+                    {
+                        var senderUser = leaveRequest.User;
+                        var message = new EmailMessage { 
+                            Subject = "أجازة", 
+                            Body = EmailTemplate.CreateTemplate(senderUser.Name,
+                                                                senderUser.Email,
+                                                                leaveRequest.StartDate.ToString(),
+                                                                leaveRequest.EndDate.ToString(),
+                                                                leaveRequest.Type.ToString(),
+                                                                leaveRequest.Reason), 
+                            IsHtml = true, 
+                            CcEmails = new List<string> { leaveRequest.User.Email }
+                        };
+                        var result = await _emailService.SendEmailAsync(message);
 
-                    if (result.Success)
-                    { 
-                    
+                        if (result.Success)
+                        {
+
+                            _dataContext.Opinions.Add(opinion);
+                            _dataContext.LeaveRequests.Update(leaveRequest);
+                        }
+
+                    }
+                    else
+                    {
                         _dataContext.Opinions.Add(opinion);
                         _dataContext.LeaveRequests.Update(leaveRequest);
                     }
+                        
                     break;
 
                 case UserRoleEnum.TeamLeader:
