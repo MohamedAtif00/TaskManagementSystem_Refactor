@@ -7,7 +7,7 @@ namespace AutomatedTaskSystem.Services.Leave
 {
     public interface ILeaveRequestService
     {
-        Task<bool> CreateLeaveRequest(CreateLeaveRequestDto request);
+        Task<ResponseService<bool>> CreateLeaveRequest(CreateLeaveRequestDto request);
 
         //Task<bool> AddLeaveRequest(CreateLeaveRequestDto[] request, int userId);
         Task<bool> DeleteVacationAsync(int id);
@@ -19,5 +19,6 @@ namespace AutomatedTaskSystem.Services.Leave
         Task<bool> UpdateVacationAsync(int id, DateTime startDate, DateTime endDate, string? reason, LeaveRequestStatusEnum status);
         Task<bool> GiveOpinion(CreateOpinionDto request);
         Task<ResponseService<GetOpinion>> GetSingleOpinion(int id);
+        Task<ResponseService<bool>> CancelleLeave(int id);
     }
 }

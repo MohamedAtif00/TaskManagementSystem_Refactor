@@ -5,6 +5,8 @@ import { useRouter } from 'next/router';
 import { format } from 'date-fns';
 import { useAppSelector } from '../../../../app/hooks';
 import LEAVE, { IGetLeaveRequestForDetails, IGetOpinion, IOpinion, LeaveRequestStatus } from '../../../../lib/API/Leave';
+import AttachmentViewer, { Attachment } from '../../../../components/pageComponent/leave/attachmentViewer';
+import { url } from '../../../../lib/API';
 // import { User } from 'lucide-react';
 
 
@@ -21,6 +23,7 @@ const LeaveRequestDetails = () => {
   const [commentable,setCommentable] = useState(true)
 
   const [approvals, setApprovals] = useState<IGetOpinion[] | null>(null);
+  const [attachments,setAttachments] = useState<Attachment[]>([])
 
 
 
@@ -89,6 +92,30 @@ const LeaveRequestDetails = () => {
             setIsSubmitting(false);
         }
     };
+
+    const handleDownloadAttachment = async (attachment: Attachment) => {
+      try {
+        const response = await fetch(`/api/leave-requests/medical-certificate/${request?.id}`, {
+          method: 'GET',
+        });
+
+        if (!response.ok) throw new Error("Failed to download file");
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = attachment.name || "attachment";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error("Error downloading attachment:", error);
+        alert("Failed to download file.");
+      }
+    };
             
 
 
@@ -104,6 +131,53 @@ const LeaveRequestDetails = () => {
         return "text-yellow-600";
     }
   };
+
+   
+
+  const handleClick = async () => {
+    debugger
+
+        const success = await LEAVE.GET_SICK_ATTACHMENT(Number(calendarId));
+        if (!success) {
+          alert("فشل تحميل المرفق الطبي");
+
+      
+    }
+  }
+
+  const handleDownloadMedicalCertificate = async () => {
+  try {
+    const response = await fetch(`${url}/leave/medical-certificate/${calendarId}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch medical certificate");
+    }
+
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get("Content-Disposition");
+    const fileNameMatch = contentDisposition?.match(/filename="?([^"]+)"?/);
+    const fileName = fileNameMatch?.[1] || "medical-certificate";
+
+    // Trigger download
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+
+    return true;
+  } catch (error) {
+    console.error("Error downloading medical certificate:", error);
+    alert("Failed to download medical certificate");
+    return false;
+  }
+};
+
 
   return (
     <div className="bg-gray-50 min-h-screen p-6 w-full">
@@ -189,16 +263,23 @@ const LeaveRequestDetails = () => {
                     </span>
 
                   </div>
-                  <div className="row-span-5">
+                  {request?.type == "Sick" && <div className="row-span-5">
                     <span className="text-gray-500">Attachment: </span>
-                    {/* <div className="mt-2">
-                      <img 
-                        src={request?.attachment} 
-                        alt="Request attachment" 
-                        className="border border-gray-300 rounded-md"
-                      />
-                    </div> */}
-                  </div>
+                    {/* <AttachmentViewer attachments={attachments} onDownload={handleDownloadAttachment} /> */}
+                    {/* <button
+                        onClick={handleClick}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                      >
+                        تحميل المرفق الطبي
+                    </button> */}
+                    <button
+                        onClick={handleDownloadMedicalCertificate}
+                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      >
+                        Download Medical Certificate
+                      </button>
+
+                  </div>}
                   <div>
                     <span className="text-gray-500">Type: </span>
                     <span className="text-blue-600">{request?.type}</span>

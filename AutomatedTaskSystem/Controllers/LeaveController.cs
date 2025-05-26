@@ -1,8 +1,12 @@
 ﻿using System.Threading.Tasks;
+using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Services.Leave;
+using AutomatedTaskSystem.Services.ResponseService;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -11,10 +15,14 @@ namespace AutomatedTaskSystem.Controllers
     public class LeaveController : ControllerBase
     {
         private readonly ILeaveRequestService _leaveRequestService;
+        private readonly DataContext _dataContext;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public LeaveController(ILeaveRequestService leaveRequestService)
+        public LeaveController(ILeaveRequestService leaveRequestService, DataContext dataContext, IWebHostEnvironment webHostEnvironment)
         {
             _leaveRequestService = leaveRequestService;
+            _dataContext = dataContext;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         // GET: api/Leave
@@ -55,6 +63,27 @@ namespace AutomatedTaskSystem.Controllers
 
             return Ok(leaves);
         }
+
+        [HttpGet("medical-certificate/{leaveRequestId}")]
+        public async Task<IActionResult> GetMedicalCertificate(int leaveRequestId)
+        {
+            var leaveRequest = await _dataContext.LeaveRequests
+                .FirstOrDefaultAsync(lr => lr.Id == leaveRequestId);
+
+            if (leaveRequest == null || string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
+                return NotFound("Medical certificate not found.");
+
+            var fullPath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
+
+            if (!System.IO.File.Exists(fullPath))
+                return NotFound("File not found on server.");
+
+            var contentType = GetContentType(fullPath);
+            var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
+
+            return File(fileStream, contentType, leaveRequest.MedicalCertificateFileName);
+        }
+
         [HttpGet("GetSingleOpinion")]
         public async Task<IActionResult> GetSingleOpinion(int id)
         {
@@ -75,7 +104,7 @@ namespace AutomatedTaskSystem.Controllers
         }
         // POST: api/Leave
         [HttpPost]
-        public async Task<IActionResult> CreateLeave([FromBody] CreateLeaveRequestDto leave)
+        public async Task<IActionResult> CreateLeave([FromForm] CreateLeaveRequestDto leave)
         {
 
             // Validate the leave object
@@ -84,9 +113,9 @@ namespace AutomatedTaskSystem.Controllers
                 return BadRequest("Leave data is required.");
             }
 
-            var result = await _leaveRequestService.CreateLeaveRequest(leave);
+            var result = await _leaveRequestService.CreateLeaveRequest(leave);  
             // Logic to create a new leave
-            return CreatedAtAction(nameof(GetLeaveById), new { id = 1 }, leave);
+            return Ok(result);
         }
         // PUT: api/Leave/{id}
         [HttpPut("{id}")]
@@ -95,6 +124,17 @@ namespace AutomatedTaskSystem.Controllers
             // Logic to update leave by id
             return NoContent();
         }
+        [HttpPut("cancel/{id}")]
+        public async Task<IActionResult> CancelLeaveRequest(int id)
+        {
+            var result = await _leaveRequestService.CancelleLeave(id);
+            if (result.Error)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+
         // DELETE: api/Leave/{id}
         [HttpDelete("{id}")]
         public IActionResult DeleteLeave(int id)
@@ -102,5 +142,18 @@ namespace AutomatedTaskSystem.Controllers
             // Logic to delete leave by id
             return NoContent();
         }
+
+
+        private string GetContentType(string path)
+        {
+            var provider = new FileExtensionContentTypeProvider();
+            if (!provider.TryGetContentType(path, out string contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+            return contentType;
+        }
+
+
     }
 }

@@ -34,6 +34,11 @@ interface SimpleInfo {
     name: string;
 }
 
+const ACCOUNT_TYPE_OPTIONS = [
+    { id: 0, name: "Internal" },
+    { id: 1, name: "External" }
+];
+
 const EditUser = () => {
     const dispatch = useAppDispatch();
     const { query, push: routerPush, pathname } = useRouter();
@@ -49,6 +54,7 @@ const EditUser = () => {
     const [role, setRole] = useState<number | null>(null);
     const [accountType, setAccountType] = useState<{ id: AccountType; name: string } | null>(null);
     const [teamleader, setTeamleader] = useState<SimpleInfo | null>(null);
+    const [teamleaderId, setTeamleaderId] = useState<number | null>(null);
     const [teamLeaders, setTeamLeaders] = useState<SimpleInfo[]>([]);
     const [title,setTite] = useState<string >("")
     const [phone,setPhone] = useState<string >("") 
@@ -84,7 +90,7 @@ const EditUser = () => {
             API.RESOURCES.USERS.GET_ONE(query.userId.toString()).then((res) => {
                 if (res && !res.error) {
                     const { name, hrCode, email, onBoard, archived, group, role, 
-                            accountType, teamleader, vacation, permission,permission_MAX ,title,phone} = res.data;
+                            accountType, teamleader,teamleaderId, vacation, permission,permission_MAX ,title,phone} = res.data;
 
                             console.log(res.data);
                             
@@ -97,17 +103,17 @@ const EditUser = () => {
                     setPermission({current:permission,max:permission_MAX} );
                     setTite(title)
                     setPhone(phone)
-                    setAccountType(accountType)
-
-                    if (accountType === 0 || accountType === 1) {
-                        setAccountType({
-                            id: accountType,
-                            name: accountType === 0 ? "Internal" : "External"
-                        });
-                    } else {
-                        setAccountType(null);
-                    }
-
+                    setAccountType(accountType == "Internal"?{id:0,name:"Internal"}:{id:1,name:"External"})
+                    debugger
+                    // if (accountType === 0 || accountType === 1) {
+                    //     setAccountType({
+                    //         id: accountType,
+                    //         name: accountType === 0 ? "Internal" : "External"
+                    //     });
+                    // } else {
+                    //     setAccountType(null);
+                    // }
+                    
                     setVacation({
                         annual: vacation?.annual || 0,
                         sick: vacation?.sick || 0,
@@ -118,6 +124,7 @@ const EditUser = () => {
 
                     setRole(role);
                     setTeamleader(teamleader?? null);
+                    setTeamleaderId(teamleaderId??null)
                 }
             });
             return setActive(true);
@@ -136,7 +143,13 @@ const EditUser = () => {
     useEffect(() => {
         if (group?.id) {
             API.RESOURCES.GROUPS.Get_Tm_leaders(group.id).then((res) => {
-                if (res && !res.error) setTeamLeaders(res.data);
+                debugger
+                if (res && !res.error)
+                {
+                    setTeamLeaders(res.data);
+                    if(teamleaderId)
+                        setTeamleader(res.data.find(x => x.id == teamleaderId) ?? null);
+                }
             });
         }
     }, [group]);
@@ -257,6 +270,7 @@ const EditUser = () => {
                                     { id: 0, name: "Internal" },
                                     { id: 1, name: "External" }
                                 ]}
+                                
                                 handleChange={setAccountType as (v: { id: number; name: string }) => void}
                             />
 

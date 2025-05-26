@@ -89,8 +89,9 @@ public class UserService : IUserService
             Emergency_leave_MAX = req.Vacation.Emergency,
             Title = req.Title,
             Phone = req.Phone,
-           
-        };
+            Permission = req.Permission,
+             Permission_MAX = req.Permission_MAX,   
+         };
 
         _context.Users.Add(newUser);
         await _context.SaveChangesAsync();
@@ -378,7 +379,8 @@ public class UserService : IUserService
                     Annual_MAX = user.Annual_leave_MAX,
                     Emergency_MAX = user.Emergency_leave_MAX
                     
-                }
+                },
+                TeamleaderId = user.TeamleaderId
             },
             Error = false,
             Message = $"User of id:{user.Id}"
@@ -413,6 +415,7 @@ public class UserService : IUserService
                     Permission = u.Permission,
                     HrCode = u.HR_code,
                     Email = u.Email,
+                    
                     TeamleaderId = u.TeamleaderId,
                     Teamleader = u.Teamleader == null
                         ? null

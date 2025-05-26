@@ -183,7 +183,7 @@ interface IGetPermissionDetails {
   opinions?: IOpinion[];
 }
 
-type PermissionRequestStatus = "Pending" | "Approved" | "Rejected";
+type PermissionRequestStatus = "Pending" | "Approved" | "Rejected" | "Cancelled";
 
 export enum PermissionType {
   EarlyDeparture = "EarlyDeparture",
@@ -229,8 +229,7 @@ const PERMISSION = {
       return false;
     }
   },
-
-  CREATE: async (permission: ICreatePermission): Promise<boolean> => {
+  CREATE: async (permission: ICreatePermission): Promise<ResponseService<boolean>> => {
     try {
       const auth = authService.authHeader();
       const res = await fetch(`${url}/Permission`, {
@@ -249,7 +248,6 @@ const PERMISSION = {
       return false;
     }
   },
-
   GET_SINGLE: async (permissionId: number): Promise<ResponseService<IPermission> | false> => {
     try {
       const res = await fetch(`${url}/Permission/${permissionId}`);
@@ -260,7 +258,6 @@ const PERMISSION = {
       return false;
     }
   },
-
   GET_ALL_BY_USER: async (userId: number): Promise<ResponseService<IPermission[]> | false> => {
     try {
       const res = await fetch(`${url}/Permission/PermissionsByUserId/${userId}`);
@@ -271,7 +268,6 @@ const PERMISSION = {
       return false;
     }
   },
-
   GET_DETAILS: async (permissionId: number): Promise<ResponseService<IGetPermissionDetails> | false> => {
     try {
       const res = await fetch(`${url}/Permission/GetSinglePermission/${permissionId}`);
@@ -282,7 +278,6 @@ const PERMISSION = {
       return false;
     }
   },
-
   CREATE_OPINION: async (opinion: IOpinion): Promise<ResponseService<IGetOpinion> | false> => {
     try {
       const auth = authService.authHeader();
@@ -302,7 +297,6 @@ const PERMISSION = {
       return false;
     }
   },
-
   UPDATE: async (permissionId: number, request: Partial<ICreatePermission>): Promise<boolean> => {
     try {
       const auth = authService.authHeader();
@@ -321,7 +315,6 @@ const PERMISSION = {
       return false;
     }
   },
-
   DELETE: async (permissionId: number): Promise<boolean> => {
     try {
       const auth = authService.authHeader();
@@ -338,6 +331,24 @@ const PERMISSION = {
       return false;
     }
   },
+  CANCEL_PERMISSION: async (permissionId: number): Promise<ResponseService<boolean> | false> => {
+  try {
+    const auth = authService.authHeader();
+    const res = await fetch(`${url}/Permission/cancel/${permissionId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...auth
+      }
+    });
+
+    const data: ResponseService<boolean> = await res.json();
+    return data;
+  } catch (error) {
+    console.error("Error cancelling permission:", error);
+    return false;
+  }
+},
 
   GET_BY_SAME_USER: async (): Promise<ResponseService<IPermission[]> | false> => {
     try {

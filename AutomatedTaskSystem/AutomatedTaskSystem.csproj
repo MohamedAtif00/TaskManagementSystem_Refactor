@@ -30,6 +30,7 @@
 
   <ItemGroup>
     <Folder Include="Dtos\PermissionDtos\" />
+    <Folder Include="wwwroot\" />
   </ItemGroup>
 
 </Project>

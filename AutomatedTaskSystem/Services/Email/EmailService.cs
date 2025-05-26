@@ -78,7 +78,7 @@ namespace AutomatedTaskSystem.Services.Email
                     DeliveryMethod = SmtpDeliveryMethod.Network,
                     Timeout = 30000 // 30 seconds
                 };
-
+                    
                 await smtpClient.SendMailAsync(mailMessage);
 
                 result.Success = true;

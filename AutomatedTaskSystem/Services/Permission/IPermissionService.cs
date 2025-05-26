@@ -6,7 +6,7 @@ namespace AutomatedTaskSystem.Services.Permission
     public interface IPermissionService
     {
         // Create a new permission request
-        Task<bool> CreatePermissionRequest(CreatePermissionDto request);
+        Task<ResponseService<bool>> CreatePermissionRequest(CreatePermissionDto request);
 
         // Get all permissions with optional filter by user and role
         Task<ResponseService<List<GetPermissionDto>>> GetAllPermissionsAsync(int? userId = null, int? role = null);
@@ -28,5 +28,6 @@ namespace AutomatedTaskSystem.Services.Permission
 
         // Approve or reject a permission
         Task<bool> ApproveOrRejectPermissionAsync(int id, bool isApproved, string comment);
+        Task<ResponseService<bool>> CancelPermissionAsync(int permissionId);
     }
 }

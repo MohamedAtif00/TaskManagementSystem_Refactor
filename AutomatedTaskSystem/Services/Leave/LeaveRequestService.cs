@@ -1,5 +1,5 @@
-﻿using AutomatedTaskSystem.Data;
-using AutomatedTaskSystem.DTO;
+﻿using System.Net.Mail;
+using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Models;
@@ -17,36 +17,148 @@ namespace AutomatedTaskSystem.Services.Leave
         private readonly DataContext _dataContext;
         private readonly ITokenService _tokenService;
         private readonly IEmailService _emailService;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public LeaveRequestService(DataContext dataContext, ITokenService tokenService, IEmailService emailService)
+        public LeaveRequestService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IWebHostEnvironment webHostEnvironment)
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
             _emailService = emailService;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         // ✅ Create
-        public async Task<bool> CreateLeaveRequest(CreateLeaveRequestDto request)
+        //public async Task<bool> CreateLeaveRequest(CreateLeaveRequestDto request)
+        //{
+        //    var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
+        //    if (user == null) return false;
+
+        //    // Parse and validate dates
+        //    if (!DateTime.TryParse(request.StartDate, out var startDate) ||
+        //        !DateTime.TryParse(request.EndDate, out var endDate))
+        //        return false;
+
+        //    if (endDate < startDate)
+        //        return false;
+
+        //    // Calculate leave days (inclusive)
+        //    int requestedDays = (endDate - startDate).Days + 1;
+
+        //    if ((user.Annual_leave_MAX - user.Annual_leave) < requestedDays)
+        //        return false;
+
+        //    var leaveRequest = new LeaveRequest
+        //    {
+        //        UserId = user.Id,
+        //        StartDate = startDate,
+        //        EndDate = endDate,
+        //        Reason = request.Reason,
+        //        Status = Models.LeaveRequestStatusEnum.Pending,
+        //        Type = request.type,
+        //        NoteForManager = request.NoteForManager,
+        //        DateCreated = DateTime.Now
+        //    };
+
+        //    // TeamLeader logic
+        //    if (user.Role == UserRoleEnum.TeamLeader)
+        //    {
+        //        leaveRequest.TeamleaderId = user.Id;
+
+        //        // Assign SectionHeadId based on user's group
+        //        var section = await _dataContext.Sections
+        //            .Where(s => s.SectionGroups.Any(g => g.GroupId == user.GroupId))
+        //            .FirstOrDefaultAsync();
+
+        //        if (section != null)
+        //            leaveRequest.SectionheadId = section.HeadId;
+        //    }
+
+        //    _dataContext.LeaveRequests.Add(leaveRequest);
+
+        //    // Notify receivers
+        //    var receivers = await GetReceiversAsync(user.Role);
+        //    foreach (var receiver in receivers)
+        //    {
+        //        Console.WriteLine($"Notify user {receiver.Id} about the new vacation request.");
+        //        // Optional: implement actual notification (e.g., SignalR)
+        //    }
+
+        //    await _dataContext.SaveChangesAsync();
+        //    return true;
+        //}
+
+        // Enhanced service method
+        public async Task<ResponseService<bool>> CreateLeaveRequest(CreateLeaveRequestDto request)
         {
+            var response = new ResponseService<bool>();
+
             var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
-            if (user == null) return false;
+            if (user == null)
+            {
+                response.Error = true;
+                response.Message = "User not found.";
+                response.Data = false;
+                return response;
+            }
 
             // Parse and validate dates
             if (!DateTime.TryParse(request.StartDate, out var startDate) ||
                 !DateTime.TryParse(request.EndDate, out var endDate))
-                return false;
+            {
+                response.Error = true;
+                response.Message = "Invalid start or end date.";
+                response.Data = false;
+                return response;
+            }
 
             if (endDate < startDate)
-                return false;
+            {
+                response.Error = true;
+                response.Message = "End date cannot be earlier than start date.";
+                response.Data = false;
+                return response;
+            }
 
-            //if(await _dataContext.LeaveRequests.AnyAsync(x => x.UserId == user.Id && x.Status == LeaveRequestStatusEnum.Pending))
-            //    return false;
+            int requestedDays = CalculateWorkingDays(startDate,endDate);
 
-            // Calculate leave days (inclusive)
-            int requestedDays = (endDate - startDate).Days + 1;
+            if (request.type == LeaveRequestType.Annual || request.type == LeaveRequestType.Emergency)
+            {
+                var pendingLeaveDays = await _dataContext.LeaveRequests
+                    .Where(lr => lr.UserId == user.Id &&
+                                 (lr.Type == LeaveRequestType.Annual || lr.Type == LeaveRequestType.Emergency) &&
+                                 lr.Status == LeaveRequestStatusEnum.Pending)
+                    .Select(lr => EF.Functions.DateDiffDay(lr.StartDate, lr.EndDate) + 1)
+                    .SumAsync();
 
-            if ((user.Annual_leave_MAX - user.Annual_leave) < requestedDays)
-                return false;
+                int remainingLeave = user.Annual_leave_MAX - user.Annual_leave;
+
+                if ((pendingLeaveDays + requestedDays) > remainingLeave)
+                {
+                    response.Error = true;
+                    response.Message = "Requested leave exceeds available leave balance.";
+                    response.Data = false;
+                    return response;
+                }
+            }
+
+            if (request.type == LeaveRequestType.Sick)
+            {
+                if (requestedDays > 3 && request.MedicalCertificate == null)
+                {
+                    response.Error = true;
+                    response.Message = "Medical certificate is required for sick leave longer than 3 days.";
+                    response.Data = false;
+                    return response;
+                }
+
+                if (request.MedicalCertificate != null && !IsValidMedicalCertificate(request.MedicalCertificate))
+                {
+                    response.Error = true;
+                    response.Message = "Invalid medical certificate file.";
+                    response.Data = false;
+                    return response;
+                }
+            }
 
             var leaveRequest = new LeaveRequest
             {
@@ -65,7 +177,6 @@ namespace AutomatedTaskSystem.Services.Leave
             {
                 leaveRequest.TeamleaderId = user.Id;
 
-                // Assign SectionHeadId based on user's group
                 var section = await _dataContext.Sections
                     .Where(s => s.SectionGroups.Any(g => g.GroupId == user.GroupId))
                     .FirstOrDefaultAsync();
@@ -74,23 +185,36 @@ namespace AutomatedTaskSystem.Services.Leave
                     leaveRequest.SectionheadId = section.HeadId;
             }
 
-            _dataContext.LeaveRequests.Add(leaveRequest);
-
-            // Deduct leave days
-            //user.Annual_leave -= requestedDays;
-            //_dataContext.Users.Update(user);
-
-            // Notify receivers
-            var receivers = await GetReceiversAsync(user.Role);
-            foreach (var receiver in receivers)
+            try
             {
-                Console.WriteLine($"Notify user {receiver.Id} about the new vacation request.");
-                // Optional: implement actual notification (e.g., SignalR)
+                _dataContext.LeaveRequests.Add(leaveRequest);
+                await _dataContext.SaveChangesAsync();
+
+                if (request.type == LeaveRequestType.Sick && request.MedicalCertificate != null)
+                {
+                    var medicalCertPath = await SaveMedicalCertificate(request.MedicalCertificate, leaveRequest.Id);
+                    leaveRequest.MedicalCertificatePath = medicalCertPath;
+                    leaveRequest.MedicalCertificateFileName = request.MedicalCertificate.FileName;
+
+                    _dataContext.LeaveRequests.Update(leaveRequest);
+                    await _dataContext.SaveChangesAsync();
+                }
+
+                response.Data = true;
+                response.Message = "Leave request created successfully.";
+            }
+            catch (Exception ex)
+            {
+                response.Error = true;
+                response.Message = $"An error occurred while saving the leave request: {ex.Message}";
+                response.Data = false;
             }
 
-            await _dataContext.SaveChangesAsync();
-            return true;
+            return response;
         }
+
+
+
 
         public async Task<bool> GiveOpinion(CreateOpinionDto request)
         {
@@ -135,36 +259,53 @@ namespace AutomatedTaskSystem.Services.Leave
                     leaveRequest.Status = request.IsApproved
                         ? LeaveRequestStatusEnum.Approved
                         : LeaveRequestStatusEnum.Rejected;
+
                     if (leaveRequest.Status == LeaveRequestStatusEnum.Approved)
                     {
                         var senderUser = leaveRequest.User;
-                        var message = new EmailMessage { 
-                            Subject = "أجازة", 
+                        var message = new EmailMessage
+                        {
+                            Subject = "أجازة",
                             Body = EmailTemplate.CreateTemplate(senderUser.Name,
                                                                 senderUser.Email,
-                                                                leaveRequest.StartDate.ToString(),
-                                                                leaveRequest.EndDate.ToString(),
-                                                                leaveRequest.Type.ToString(),
-                                                                leaveRequest.Reason), 
-                            IsHtml = true, 
+                                                                leaveRequest.StartDate.ToString("yyyy-MM-dd"),
+                                                                leaveRequest.EndDate.ToString("yyyy-MM-dd"),
+                                                                CalculateWorkingDays(leaveRequest.StartDate,leaveRequest.EndDate),
+                                                                leaveRequest.Type,
+                                                                leaveRequest.User.HR_code),
+                            IsHtml = true,
                             CcEmails = new List<string> { leaveRequest.User.Email }
                         };
-                        var result = await _emailService.SendEmailAsync(message);
 
-                        if (result.Success)
+                        // Add medical certificate attachment if it exists
+                        if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
                         {
+                            var fullFilePath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
+                            if (File.Exists(fullFilePath))
+                            {
+                                var fileName = Path.GetFileName(fullFilePath);
+                                var attachment = new System.Net.Mail.Attachment(fullFilePath);
+                                attachment.Name = fileName;
 
-                            _dataContext.Opinions.Add(opinion);
-                            _dataContext.LeaveRequests.Update(leaveRequest);
+                                message.Attachments.Add(attachment);
+                            }
                         }
 
+                        var result = await _emailService.SendEmailAsync(message);
+                        if (result.Success)
+                        {
+                            _dataContext.Opinions.Add(opinion);
+                            
+                            _dataContext.Users.Update(user);
+                            _dataContext.LeaveRequests.Update(leaveRequest);
+                        }
                     }
                     else
                     {
                         _dataContext.Opinions.Add(opinion);
                         _dataContext.LeaveRequests.Update(leaveRequest);
-                    }
                         
+                    }
                     break;
 
                 case UserRoleEnum.TeamLeader:
@@ -470,6 +611,63 @@ namespace AutomatedTaskSystem.Services.Leave
             return true;
         }
 
+        public async Task<ResponseService<bool>> CancelleLeave(int id)
+        {
+            try
+            {
+                var leaveRequest = await _dataContext.LeaveRequests
+                    .Include(x => x.User)
+                    .FirstOrDefaultAsync(x => x.Id == id);
+
+                if (leaveRequest == null)
+                    return new ResponseService<bool> { Error = true, Message = "Leave request not found.", Data = false };
+
+                var now = DateTime.Now;
+
+                if (leaveRequest.StartDate > now || leaveRequest.Status == LeaveRequestStatusEnum.Rejected)
+                {
+                    leaveRequest.Status = LeaveRequestStatusEnum.Cancelled;
+                    //leaveRequest.upda = DateTime.UtcNow;
+                    await _dataContext.SaveChangesAsync();
+
+                    var senderUser = leaveRequest.User;
+
+                    var message = new EmailMessage
+                    {
+                        Subject = "إلغاء طلب الأجازة",
+                        Body = EmailTemplate.CreateLeaveCancellationTemplate(
+                                    senderUser.Name,
+                                    senderUser.Email,
+                                    leaveRequest.StartDate.ToString("yyyy-MM-dd"),
+                                    leaveRequest.EndDate.ToString("yyyy-MM-dd"),
+                                    (int)(leaveRequest.EndDate - leaveRequest.StartDate).TotalDays + 1,
+                                    leaveRequest.Type,
+                                    senderUser.HR_code),
+                        IsHtml = true,
+                        CcEmails = new List<string> { senderUser.Email }
+                    };
+
+                    // TODO: Send email using your email service
+
+                    return new ResponseService<bool> { Error = false, Message = "Leave cancelled successfully.", Data = true };
+                }
+
+                return new ResponseService<bool>
+                {
+                    Error = true,
+                    Message = "You cannot cancel a leave that has already passed or is currently active.",
+                    Data = false
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ResponseService<bool> { Error = true, Message = "An error occurred.", Data = false };
+            }
+        }
+
+
+
+
 
         private async Task<List<Models.User>> GetReceiversAsync(UserRoleEnum userRole)
         {
@@ -509,5 +707,74 @@ namespace AutomatedTaskSystem.Services.Leave
 
             return workingDays;
         }
+
+
+        private bool IsValidMedicalCertificate(IFormFile file)
+        {
+            // Check file size (max 10MB)
+            const long maxFileSize = 10 * 1024 * 1024;
+            if (file.Length > maxFileSize)
+                return false;
+
+            // Check file extension
+            var allowedExtensions = new[] { ".pdf", ".jpg", ".jpeg", ".png" };
+            var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            if (!allowedExtensions.Contains(fileExtension))
+                return false;
+
+            // Check MIME type
+            var allowedMimeTypes = new[]
+            {
+                "application/pdf",
+                "image/jpeg",
+                "image/jpg",
+                "image/png"
+            };
+
+            return allowedMimeTypes.Contains(file.ContentType.ToLowerInvariant());
+        }
+        // Save medical certificate
+        private async Task<string> SaveMedicalCertificate(IFormFile file, int requestId)
+        {
+            var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "medical-certificates");
+            Directory.CreateDirectory(uploadsFolder);
+
+            var fileExtension = Path.GetExtension(file.FileName);
+            var fileName = $"medical_req_{requestId}_{DateTime.Now:yyyyMMdd_HHmmss}{fileExtension}";
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            using (var fileStream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(fileStream);
+            }
+
+            return Path.Combine("uploads", "medical-certificates", fileName);
+        }
+
+
+        //private string GetContentType(string fileName)
+        //{
+        //    var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        //    return extension switch
+        //    {
+        //        ".pdf" => "application/pdf",
+        //        ".jpg" or ".jpeg" => "image/jpeg",
+        //        ".png" => "image/png",
+        //        ".gif" => "image/gif",
+        //        ".doc" => "application/msword",
+        //        ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        //        _ => "application/octet-stream"
+        //    };
+        //}
     }
+
+
+    // EmailAttachment class:
+    //public class EmailAttachment
+    //{
+    //    public string FileName { get; set; }
+    //    public byte[] Content { get; set; }
+    //    public string ContentType { get; set; }
+    //}
 }

@@ -208,22 +208,44 @@ namespace AutomatedTaskSystem.Services.Permission
         }
 
         // Create a new permission request
-        public async Task<bool> CreatePermissionRequest(CreatePermissionDto request)
+        public async Task<ResponseService<bool>> CreatePermissionRequest(CreatePermissionDto request)
         {
-            var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
-            if (user == null) return false;
+            var response = new ResponseService<bool>();
 
-            // Parse and validate times
+            var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
+            if (user == null)
+            {
+                response.Error = true;
+                response.Message = "المستخدم غير موجود.";
+                return response;
+            }
+
+            // Parse and validate time ranges
             if (!TimeOnly.TryParse(request.From, out var fromTime) ||
                 !TimeOnly.TryParse(request.To, out var toTime))
-                return false;
+            {
+                response.Error = true;
+                response.Message = "الوقت غير صالح.";
+                return response;
+            }
 
             if (toTime < fromTime)
-                return false;
+            {
+                response.Error = true;
+                response.Message = "وقت النهاية يجب أن يكون بعد وقت البداية.";
+                return response;
+            }
 
-            // Check if the user has reached their permission limit
-            if ((user.Permission_MAX - user.Permission) < 1)
-                return false;
+            // Check if the user has remaining permissions
+            int totalPendingPermissions = await _dataContext.Permissions
+                .CountAsync(p => p.UserId == user.Id && p.Status == PermissionStatusEnum.Pending);
+
+            if ((user.Permission_MAX - user.Permission - totalPendingPermissions) < 1)
+            {
+                response.Error = true;
+                response.Message = "لقد تجاوزت الحد الأقصى لطلبات الإذن المتاحة.";
+                return response;
+            }
 
             var permission = new Models.Permission
             {
@@ -233,22 +255,36 @@ namespace AutomatedTaskSystem.Services.Permission
                 FromTime = fromTime,
                 ToTime = toTime,
                 PermissionDate = DateTime.Parse(request.PermissionDate),
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.Now,
+                Status = PermissionStatusEnum.Pending
             };
-                
-            _dataContext.Permissions.Add(permission);
 
-            // Notify receivers
-            var receivers = await GetReceiversAsync(user.Role);
-            foreach (var receiver in receivers)
+            try
             {
-                Console.WriteLine($"Notify user {receiver.Id} about the new permission request.");
-                // Optional: implement actual notification (e.g., SignalR)
-            }
+                _dataContext.Permissions.Add(permission);
+                await _dataContext.SaveChangesAsync();
 
-            await _dataContext.SaveChangesAsync();
-            return true;
-        }   
+                // Notify receivers
+                var receivers = await GetReceiversAsync(user.Role);
+                foreach (var receiver in receivers)
+                {
+                    Console.WriteLine($"Notify user {receiver.Id} about the new permission request.");
+                    // Optional: Add SignalR or notification service here
+                }
+
+                response.Data = true;
+                response.Message = "تم تقديم طلب الإذن بنجاح.";
+                return response;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error while creating permission request: {ex.Message}");
+                response.Error = true;
+                response.Message = "حدث خطأ أثناء إنشاء طلب الإذن.";
+                return response;
+            }
+        }
+
 
         // Get all permissions with optional filter by user
         public async Task<ResponseService<List<GetPermissionDto>>> GetAllPermissionsAsync(int? userId = null, int? role = null)
@@ -514,6 +550,79 @@ namespace AutomatedTaskSystem.Services.Permission
             return true;
         }
 
+        public async Task<ResponseService<bool>> CancelPermissionAsync(int permissionId)
+        {
+            try
+            {
+                var permission = await _dataContext.Permissions
+                    .Include(x => x.User)
+                    .FirstOrDefaultAsync(x => x.Id == permissionId);
+
+                if (permission == null)
+                {
+                    return new ResponseService<bool>
+                    {
+                        Error = true,
+                        Message = "Permission not found.",
+                        Data = false
+                    };
+                }
+
+                var now = DateTime.Now.Date;
+
+                // Allow cancel if permission is scheduled in the future or was rejected
+                if (permission.PermissionDate.Date > now || permission.Status == PermissionStatusEnum.Rejected)
+                {
+                    permission.Status = PermissionStatusEnum.Cancelled;
+                    permission.UpdatedAt = DateTime.UtcNow;
+                    await _dataContext.SaveChangesAsync();
+
+                    var senderUser = permission.User;
+
+                    var message = new EmailMessage
+                    {
+                        Subject = "إلغاء طلب الإذن",
+                        Body = EmailTemplate.CreatePermissionCancellationTemplate(
+                                    senderUser.Name,
+                                    senderUser.Email,
+                                    permission.PermissionDate.ToString("yyyy-MM-dd"),
+                                    permission.FromTime.ToString("hh\\:mm"),
+                                    permission.ToTime.ToString("hh\\:mm"),
+                                    permission.Type),
+                        IsHtml = true,
+                        CcEmails = new List<string> { senderUser.Email }
+                    };
+
+                    // TODO: Send email using your email service
+
+                    return new ResponseService<bool>
+                    {
+                        Error = false,
+                        Message = "Permission cancelled successfully.",
+                        Data = true
+                    };
+                }
+
+                return new ResponseService<bool>
+                {
+                    Error = true,
+                    Message = "You cannot cancel a permission that has already passed or is currently active.",
+                    Data = false
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ResponseService<bool>
+                {
+                    Error = true,
+                    Message = "An error occurred while cancelling the permission.",
+                    Data = false
+                };
+            }
+        }
+
+
+
         // Delete a permission
         public async Task<bool> DeletePermissionAsync(int id)
         {
@@ -589,8 +698,13 @@ namespace AutomatedTaskSystem.Services.Permission
 
                 var message = new EmailMessage
                 {
-                    Subject = "Permission Request Update",
-                    Body = $"Your permission request has been {(isApproved ? "approved" : "rejected")}. {comment}",
+                    Subject = "طلب أذن",
+                    Body =EmailTemplate.CreatePermissionTemplate(permission.User.Name,
+                                                                 permission.User.Email,
+                                                                 permission.PermissionDate.ToString("yyyy-MM-dd"),
+                                                                 permission.FromTime.ToString("hh:mm tt"),
+                                                                 permission.ToTime.ToString("hh:mm tt"),
+                                                                 permission.Type),
                     IsHtml = true,
                     CcEmails = new List<string> { permission.User.Email }
                 };

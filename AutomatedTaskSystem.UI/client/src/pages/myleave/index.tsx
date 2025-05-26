@@ -4,84 +4,136 @@ import { format } from "date-fns";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
-import { IGetLeaveRequest, LeaveRequestStatus } from "../../lib/API/Leave";
+import LEAVE, { ICreateLeave, IGetLeaveRequest, LeaveRequestStatus, LeaveRequestType } from "../../lib/API/Leave";
 import Permission, { ICreatePermission, IPermission, PermissionType } from "../../lib/API/Permission";
+import { FiX } from "react-icons/fi";
 import FileUpload from "../../components/pageComponent/leave/fileUpload";
+import PERMISSION from "../../lib/API/Permission";
+import { toast } from "react-toastify";
 
-// Added: New LeaveModal component
+type CancelTarget = {
+  id: number;
+  type: 'leave' | 'permission';
+};
 
 
-const LeaveModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean; onClose: () => void; onSuccess: () => void }) => {
+
+const LeaveModal = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onSuccess: () => void;
+}) => {
   const [formData, setFormData] = useState({
-    type: '',
+    type: '' as LeaveRequestType,
     startDate: '',
     endDate: '',
     reason: '',
     noteToManager: ''
   });
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  
+  const [medicalCertificate, setMedicalCertificate] = useState<File | null>(null);
+  const [supportingDocuments, setSupportingDocuments] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  
+  // Mock auth - replace with your actual auth
   const auth = useAppSelector((e) => e.authSlice);
 
-  // Add a handler to receive the file from FileUpload
-  const handleFileChange = (file: File | null) => {
-    setUploadedFile(file);
+  const handleMedicalCertificateChange = (file: File | null) => {
+    setMedicalCertificate(file);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!auth?.id) return;
-
-    // Validate dates
-    if (formData.startDate && formData.endDate && new Date(formData.endDate) < new Date(formData.startDate)) {
-      setError('تاريخ النهاية لا يمكن أن يكون قبل تاريخ البداية');
-      return;
+  const handleSupportingDocumentChange = (file: File | null) => {
+    if (file) {
+      setSupportingDocuments(prev => [...prev, file]);
     }
+  };
 
-    if (formData.type === 'Sick' && !uploadedFile) {
-      setError('يرجى رفع ملف الإجازة المرضية');
-      return;
-    }
+  const removeSupportingDocument = (index: number) => {
+    setSupportingDocuments(prev => prev.filter((_, i) => i !== index));
+  };
 
+  const validateForm = (): boolean => {
     setError('');
+
+    if (!formData.type || !formData.startDate || !formData.endDate || !formData.reason) {
+      setError('يرجى ملء جميع الحقول المطلوبة');
+      return false;
+    }
+
+    if (new Date(formData.endDate) < new Date(formData.startDate)) {
+      setError('تاريخ النهاية لا يمكن أن يكون قبل تاريخ البداية');
+      return false;
+    }
+
+    if (formData.type === 'Sick') {
+      const daysDifference = Math.ceil(
+        (new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) / (1000 * 3600 * 24)
+      ) + 1;
+
+      if (daysDifference > 3 && !medicalCertificate) {
+        setError('الإجازة المرضية لأكثر من 3 أيام تتطلب شهادة طبية');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async () => {
+    if (!auth?.id) return;
+    if (!validateForm()) return;
+
     setIsSubmitting(true);
 
     try {
-      const leave = {
+      const leaveData: ICreateLeave = {
         userId: auth.id,
-        type: formData.type as 'Annual' | 'Sick' | 'Emergency',
+        type: formData.type,
         startDate: formData.startDate,
         endDate: formData.endDate,
         reason: formData.reason,
-        noteForManager: formData.noteToManager,
-        sickLeaveFile: uploadedFile // You may need to handle this on backend side accordingly
+        noteToManager: formData.noteToManager,
+        medicalCertificate: medicalCertificate || undefined,
       };
 
-      const response = await API.LEAVE.CREATE(leave);
-      if (response) {
+      const response = await LEAVE.CREATE(leaveData); // returns { data, error, message }
+      debugger
+      if (response?.error) {
+        toast.error(response.message || 'حدث خطأ. يرجى المحاولة مرة أخرى.');
+      } else if (response?.data) {
+        toast.success('تم إنشاء طلب الإجازة بنجاح.');
         onSuccess();
         onClose();
-        setFormData({ type: '', startDate: '', endDate: '', reason: '', noteToManager: '' });
-        setUploadedFile(null);
+        resetForm();
       } else {
-        setError('Failed to create leave request. Please try again.');
+        toast.warning('فشل في إنشاء طلب الإجازة. يرجى المحاولة مرة أخرى.');
       }
     } catch (error) {
       console.error('Error creating leave request:', error);
-      setError('An error occurred. Please try again.');
+      toast.error('حدث خطأ. يرجى المحاولة مرة أخرى.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-    const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const resetForm = () => {
+    setFormData({ type: '' as LeaveRequestType,  startDate: '', endDate: '', reason: '', noteToManager: '' });
+    setMedicalCertificate(null);
+    setSupportingDocuments([]);
+    setError('');
+  };
+
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newStartDate = e.target.value;
     setFormData(prev => ({
       ...prev,
       startDate: newStartDate,
-      // Reset endDate if it's now before the new start date
       endDate: prev.endDate && new Date(prev.endDate) < new Date(newStartDate) ? '' : prev.endDate
     }));
   };
@@ -94,34 +146,47 @@ const LeaveModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean; onClose: 
     }));
   };
 
-  // ... your existing handlers (handleStartDateChange, handleEndDateChange)
-
   if (!isOpen) return null;
 
   const minEndDate = formData.startDate || '';
+  const isSickLeave = formData.type === 'Sick';
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" dir="rtl">
+      <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white" dir="rtl">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-medium">إنشاء طلب إجازة</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-500"></button>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-500"
+            disabled={isSubmitting}
+          >
+            <FiX className="h-6 w-6" />
+          </button>
         </div>
-        {error && <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">نوع الإجازة</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              نوع الإجازة <span className="text-red-500">*</span>
+            </label>
             <select
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               value={formData.type}
               onChange={(e) => {
-                setFormData({ ...formData, type: e.target.value });
+                setFormData({ ...formData, type: e.target.value as LeaveRequestType});
                 if (e.target.value !== 'Sick') {
-                  setUploadedFile(null); // reset file if not sick leave
+                  setMedicalCertificate(null);
                 }
               }}
               required
+              disabled={isSubmitting}
             >
               <option value="">اختر نوع الإجازة</option>
               <option value="Annual">إجازة سنوية</option>
@@ -130,77 +195,137 @@ const LeaveModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean; onClose: 
             </select>
           </div>
 
-          {/* Show FileUpload only for sick leave */}
-          {formData.type === 'Sick' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">رفع ملف الإجازة المرضية</label>
-              <FileUpload
-                onFileChange={(file: File | null) => handleFileChange(file)} // You need to add this prop in your FileUpload
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                تاريخ البداية <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={formData.startDate}
+                onChange={handleStartDateChange}
+                required
+                disabled={isSubmitting}
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                تاريخ النهاية <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                value={formData.endDate}
+                onChange={handleEndDateChange}
+                min={minEndDate}
+                required
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
+
+          {isSickLeave && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                الشهادة الطبية
+                {formData.startDate && formData.endDate && 
+                 Math.ceil((new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) / (1000 * 3600 * 24)) + 1 > 3 && 
+                 <span className="text-red-500"> *</span>
+                }
+              </label>
+              <FileUpload
+                onFileChange={handleMedicalCertificateChange}
+                accept=".pdf,.jpg,.jpeg,.png"
+                maxSize={10 * 1024 * 1024}
+                label="اختر الشهادة الطبية"
+              />
+              {formData.startDate && formData.endDate && 
+               Math.ceil((new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) / (1000 * 3600 * 24)) + 1 > 3 && (
+                <p className="text-xs text-gray-600 mt-1">
+                  الشهادة الطبية مطلوبة للإجازات المرضية أكثر من 3 أيام
+                </p>
+              )}
             </div>
           )}
 
-          {/* rest of your form inputs */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">تاريخ البداية</label>
-            <input
-              type="date"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              value={formData.startDate}
-              onChange={handleStartDateChange}
-              required
+          {/* <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              مستندات إضافية (اختيارية)
+            </label>
+            <FileUpload
+              onFileChange={handleSupportingDocumentChange}
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+              maxSize={5 * 1024 * 1024}
+              label="اختر مستند إضافي"
             />
-          </div>
+            
+            {supportingDocuments.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <p className="text-sm font-medium text-gray-700">المستندات المرفقة:</p>
+                {supportingDocuments.map((doc, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <span className="text-sm text-gray-700">{doc.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeSupportingDocument(index)}
+                      className="text-red-500 hover:text-red-700"
+                      disabled={isSubmitting}
+                    >
+                      <FiX className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div> */}
+
           <div>
-            <label className="block text-sm font-medium text-gray-700">تاريخ النهاية</label>
-            <input
-              type="date"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              value={formData.endDate}
-              onChange={handleEndDateChange}
-              min={minEndDate}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">السبب</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              السبب <span className="text-red-500">*</span>
+            </label>
             <textarea
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               rows={3}
               value={formData.reason}
               onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
               required
-            ></textarea>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">ملاحظ للمدير</label>
-            <textarea
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              rows={3}
-              value={formData.noteToManager}
-              onChange={(e) => setFormData({ ...formData, noteToManager: e.target.value })}
-              required
+              disabled={isSubmitting}
             ></textarea>
           </div>
 
-          <div className="flex justify-around space-x-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              ملاحظة للمدير
+            </label>
+            <textarea
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              rows={3}
+              value={formData.noteToManager}
+              onChange={(e) => setFormData({ ...formData, noteToManager: e.target.value })}
+              disabled={isSubmitting}
+            ></textarea>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4">
             <button
-              type="submit"
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+              disabled={isSubmitting}
+            >
+              إلغاء
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-600 disabled:opacity-50"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'جاري الإرسال...' : 'إرسال'}
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              disabled={isSubmitting}
-            >
-              إلغاء
-            </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
@@ -220,6 +345,7 @@ const PermissionModal = ({ isOpen, onClose, onSuccess }: {isOpen: boolean, onClo
   const [error, setError] = useState('');
   const auth = useAppSelector((e) => e.authSlice);
 
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -229,37 +355,40 @@ const PermissionModal = ({ isOpen, onClose, onSuccess }: {isOpen: boolean, onClo
     setIsSubmitting(true);
 
     try {
-    const payload: ICreatePermission = {
+      const payload: ICreatePermission = {
         userId: auth.id,
         type: formData.type,
         date: formData.date,
-        from: formData.from, // ✅ Correct casing
-        to: formData.to,     // ✅ Correct casing
+        from: formData.from,
+        to: formData.to,
         reason: formData.reason,
-        PermissionDate:formData.PermissionDate
-        };
+        PermissionDate: formData.PermissionDate,
+      };
 
+      const response = await Permission.CREATE(payload); // expected: ResponseService<boolean>
 
-
-      const response = await Permission.CREATE(payload);
-      debugger
-      if (response) {
+      if (response && !response.error && response.data) {
+        toast.success(response.message || 'تم إنشاء طلب الإذن بنجاح');
         onSuccess();
         onClose();
-        setFormData({ 
+        setFormData({
           type: '' as PermissionType,
           date: '',
           from: '',
           to: '',
-          reason: '' ,
-          PermissionDate:''
+          reason: '',
+          PermissionDate: ''
         });
       } else {
-        setError('فشل إنشاء طلب الإذن. يرجى المحاولة مرة أخرى.');
+        const errorMsg = response?.message || 'فشل إنشاء طلب الإذن. يرجى المحاولة مرة أخرى.';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (error) {
       console.error('Error creating permission request:', error);
-      setError('حدث خطأ. يرجى المحاولة مرة أخرى.');
+      const fallbackError = 'حدث خطأ. يرجى المحاولة مرة أخرى.';
+      setError(fallbackError);
+      toast.error(fallbackError);
     } finally {
       setIsSubmitting(false);
     }
@@ -391,6 +520,11 @@ const LeaveManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [user,setUser] = useState<IUser|null>(null);
 
+  // cancel vars
+const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
+
+
  
   const LeaveBalanceCard = ({ title, used, total, color }:{title:string,used:number,total:number,color:string}) => (
     <div className="bg-white p-4 rounded-lg shadow-md">
@@ -419,6 +553,8 @@ const LeaveManagement = () => {
           return "bg-yellow-100 text-yellow-800";
         case "Rejected":
           return "bg-red-100 text-red-800";
+        case "Cancelled":
+          return "bg-red-700 text-white"
         default:
           return "bg-gray-100 text-gray-800";
       }
@@ -441,7 +577,6 @@ const LeaveManagement = () => {
         debugger
         if (user && 'data' in user) {
           setUser(user.data);
-          console.log(allLeaves);
         }
       }catch(error){
         console.error('Error fetching data:', error);
@@ -457,9 +592,9 @@ const LeaveManagement = () => {
   useEffect(() => {
     
     const fetchData = async () => {
-  if (!auth?.id) return;
+    if (!auth?.id) return;
 
-  setIsLoading(true);
+   setIsLoading(true);
     try {
       // Fetch leaves
       const leavesResponse = await API.LEAVE.GET_ALL_BY_USER(auth.id);
@@ -467,21 +602,17 @@ const LeaveManagement = () => {
       if (leavesResponse && 'data' in leavesResponse) {
         setAllLeaves(leavesResponse.data);
         setFilteredLeaves(leavesResponse.data);
-        console.log(allLeaves);
       }
 
    
       // Fetch permissions with better error handling
       const permissionsResponse = await Permission.GET_ALL_BY_USER(auth.id);
-      console.log('Raw permissions response:', permissionsResponse);
       debugger  
       if (permissionsResponse && !permissionsResponse.error) {
         // Ensure data exists and is an array
         if (Array.isArray(permissionsResponse.data)) {
           setAllPermissions(permissionsResponse.data);
-          setFilteredPermissions(permissionsResponse.data);
-          console.log(allPermissions);
-          
+          setFilteredPermissions(permissionsResponse.data);          
         } else {
           console.error('Permissions data is not an array:', permissionsResponse.data);
         }
@@ -578,9 +709,7 @@ const LeaveManagement = () => {
         setFilteredLeaves(leavesResponse.data);
       }
 
-      const permissionsResponse = await Permission.GET_ALL_BY_USER(auth.id);
-      console.log(permissionsResponse);
-      
+      const permissionsResponse = await Permission.GET_ALL_BY_USER(auth.id);      
       if (permissionsResponse) {
         setAllPermissions(permissionsResponse);
         setFilteredPermissions(permissionsResponse);
@@ -591,6 +720,66 @@ const LeaveManagement = () => {
       setIsLoading(false);
     }
   }, [auth?.id]);
+
+ const handleCancelLeave = async (leaveId: number) => {
+    try {
+      const response = await LEAVE.CANCEL_LEAVE(leaveId);
+
+      if (response.error) {
+        toast.error(response.message);
+        return;
+      }
+
+      toast.success('Leave cancelled successfully.');
+      setAllLeaves(prev =>
+        prev.map(leave =>
+          leave.id === leaveId ? { ...leave, status: 'Cancelled' } : leave
+        )
+      );
+    } catch (error) {
+      console.error('Error cancelling leave:', error);
+      toast.error('An unexpected error occurred.');
+    }
+  };
+
+
+  const handleCancelPermission = async (permissionId: number) => {
+    try {
+      const response = await PERMISSION.CANCEL_PERMISSION(permissionId);
+      debugger
+      if (response.error) {
+        toast.error(response.message);
+        return;
+      }
+
+      toast.success('Permission cancelled successfully.');
+      setAllPermissions(prev =>
+        prev.map(permission =>
+          permission.id === permissionId ? { ...permission, status: 'Cancelled' } : permission
+        )
+      );
+    } catch (error) {
+      console.error('Error cancelling permission:', error);
+      toast.error('An unexpected error occurred.');
+    }
+  };
+
+
+
+  const handleCancel = async () => {
+    if (!cancelTarget) return;
+
+    if (cancelTarget.type === 'leave') {
+      await handleCancelLeave(cancelTarget.id);
+    } else if (cancelTarget.type === 'permission') {
+      await handleCancelPermission(cancelTarget.id);
+    }
+
+    setIsCancelModalOpen(false);
+  };
+
+
+
 
   return (
     <div className="min-h-screen bg-gray-50 w-full">
@@ -701,9 +890,9 @@ const LeaveManagement = () => {
                     <option value="">All</option>
                     {activeTab === "leaves" ? (
                       <>
-                        <option value="Annual Leave">Annual Leave</option>
-                        <option value="Sick Leave">Sick Leave</option>
-                        <option value="Emergency Leave">Emergency Leave</option>
+                        <option value="Annual">Annual Leave</option>
+                        <option value="Sick">Sick Leave</option>
+                        <option value="Emergency">Emergency Leave</option>
                       </>
                     ) : (
                       <>
@@ -777,6 +966,7 @@ const LeaveManagement = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                       </>
                     ) : (
                       <>
@@ -784,6 +974,7 @@ const LeaveManagement = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                       </>
                     )}
                   </tr>
@@ -801,6 +992,18 @@ const LeaveManagement = () => {
                               <StatusBadge status={leave.status} />
                             </td>
                           }
+                           <td className="px-3 py-4 whitespace-nowrap  text-sm font-medium text-center">
+                            {leave.status != 'Cancelled'&& leave.status != 'Rejected' && (
+                             <button
+                              onClick={() => {
+                                setCancelTarget({ id: leave.id, type: 'leave' });
+                                setIsCancelModalOpen(true);
+                              }}
+                            >
+                              Cancel Leave
+                            </button>
+                            )}
+                          </td>
                         </tr>
                       ))
                     :Array.isArray(filteredPermissions) && filteredPermissions.map((permission) => (
@@ -817,6 +1020,18 @@ const LeaveManagement = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <StatusBadge status={permission.status} />
                         </td>
+                         <td className="px-3 py-4 whitespace-nowrap  text-sm font-medium text-center">
+                            {permission.status != 'Cancelled'&& permission.status != 'Rejected' && (
+                             <button
+                              onClick={() => {
+                                setCancelTarget({ id: permission.id, type: 'permission' });
+                                setIsCancelModalOpen(true);
+                              }}
+                            >
+                              Cancel Permission
+                            </button>
+                            )}
+                          </td>
                       </tr>
                     ))}
 
@@ -845,6 +1060,31 @@ const LeaveManagement = () => {
         onClose={() => setIsLeaveModalOpen(false)} 
         onSuccess={refreshData}
       />
+      {isCancelModalOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+            <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Confirm Cancellation</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Are you sure you want to cancel this {cancelTarget?.type} request?
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setIsCancelModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                No, Keep It
+              </button>
+              <button
+                onClick={handleCancel}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+              >
+                Yes, Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <PermissionModal 
         isOpen={isPermissionModalOpen} 
         onClose={() => setIsPermissionModalOpen(false)}

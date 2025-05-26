@@ -195,16 +195,7 @@ const parseTime = (date: string, time: string): Date => {
                     </span>
 
                   </div>
-                  <div className="row-span-5">
-                    <span className="text-gray-500">Attachment: </span>
-                    {/* <div className="mt-2">
-                      <img 
-                        src={request?.attachment} 
-                        alt="Request attachment" 
-                        className="border border-gray-300 rounded-md"
-                      />
-                    </div> */}
-                  </div>
+                  
                   <div>
                     <span className="text-gray-500">Type: </span>
                     <span className="text-blue-600">{request?.type}</span>

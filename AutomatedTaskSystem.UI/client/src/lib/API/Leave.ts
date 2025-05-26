@@ -14,6 +14,7 @@ interface ILeave {
 
 interface ICreateLeave extends ILeave {
   userId?: number;
+  medicalCertificate?:File | null;
 }
 
 
@@ -38,7 +39,7 @@ interface IGetLeaveRequest extends ILeave{
 
 
 type LeaveRequestType = "Annual"|"Sick"|"Emergency"
-type LeaveRequestStatus = "Pending"|"Approved"|"Rejected"
+type LeaveRequestStatus = "Pending"|"Approved"|"Rejected"|"Cancelled";
 
 
 interface IOpinion{
@@ -69,6 +70,7 @@ interface IGetLeaveRequestForDetails extends ILeave{
     dateCreated:string,
     user:IUser,
     opinions:IOpinion[]
+
 }
 
 interface IGetOpinion extends IOpinion{
@@ -126,24 +128,58 @@ const LEAVE = {
     console.error(error);
     return false;
   }
-},
-
-
-  CREATE: async (leave: ICreateLeave): Promise<boolean> => {
+  },
+  CREATE: async (leaveData: ICreateLeave): Promise<ResponseService<boolean>> => {
     try {
-      const res = await fetch(`${url}/Leave`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(leave),
-      });
+      // Create FormData for file upload
+      const formData = new FormData();
       
+      // Add basic form fields
+      if (leaveData?.userId !== undefined && leaveData?.userId !== null) {
+          formData.append('UserId', leaveData.userId.toString());
+        }
+
+      formData.append('Type', leaveData.type);
+      formData.append('StartDate', leaveData.startDate);
+      formData.append('EndDate', leaveData.endDate);
+      if (leaveData.reason !== undefined && leaveData.reason !== null) {
+        formData.append('Reason', leaveData.reason);
+      }
+
+
+      
+      // Add optional note for manager
+      if (leaveData.noteToManager) {
+        formData.append('NoteForManager', leaveData.noteToManager);
+      }
+
+      // Add medical certificate if provided
+      if (leaveData.medicalCertificate) {
+        formData.append('MedicalCertificate', leaveData.medicalCertificate);
+      }
+
+      // Add supporting documents if provided
+      // if (leaveData.supportingDocuments && leaveData.supportingDocuments.length > 0) {
+      //   leaveData.supportingDocuments.forEach((doc, index) => {
+      //     formData.append('SupportingDocuments', doc);
+      //   });
+      // }
+
+      const res = await fetch(`${url}/Leave`, {
+        
+        method: "POST",
+        // Don't set Content-Type header - let browser set it with boundary for FormData
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
 
       const data: boolean = await res.json();
       return data;
     } catch (error) {
-      console.error(error);
+      console.error('Error creating leave request:', error);
       return false;
     }
   },
@@ -158,6 +194,7 @@ const LEAVE = {
     }
 
   },
+  
   GET_ALL_BY_USER:async(userId:number)=>{
     try {
       const res = await fetch(`${url}/Leave/LeaveRequestsByUserId/${userId}`);
@@ -213,7 +250,59 @@ const LEAVE = {
       console.error(error);
       return false;
     }
+  },
+  GET_SICK_ATTACHMENT : async (leaveRequestId: number) => {
+    try {
+      const response = await fetch(`${url}/medical-certificate/${leaveRequestId}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch medical certificate");
+      }
+
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const fileNameMatch = contentDisposition?.match(/filename="?([^"]+)"?/);
+      const fileName = fileNameMatch?.[1] || "medical-certificate";
+
+      // Trigger download
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      return true;
+    } catch (error) {
+      console.error("Error downloading medical certificate:", error);
+      return false;
+    }
+  },
+  CANCEL_LEAVE: async (leaveRequestId: number): Promise<ResponseService<boolean> | false> => {
+  try {
+    const auth = authService.authHeader();
+    const res = await fetch(`${url}/Leave/cancel/${leaveRequestId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...auth
+      }
+    });
+
+    const data: ResponseService<boolean> = await res.json();
+    return data;
+  } catch (error) {
+    console.error("Error cancelling leave:", error);
+    return false;
   }
+},
+
+
+
 };
 
 // Use 'export type' for types to avoid the error when 'isolatedModules' is enabled.

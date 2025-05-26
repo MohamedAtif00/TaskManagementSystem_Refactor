@@ -25,7 +25,7 @@ namespace AutomatedTaskSystem.Controllers
         }
 
         // GET: api/Permission/{id}
-        [HttpGet("{id}")]
+        [HttpGet("{id}")] 
         public async Task<IActionResult> GetPermissionById(int id)
         {
             var result = await _permissionService.GetPermissionByIdAsync(id);
@@ -62,10 +62,10 @@ namespace AutomatedTaskSystem.Controllers
             }
 
             var success = await _permissionService.CreatePermissionRequest(request);
-            if (!success)
+            if (success.Error)
                 return BadRequest(new { error = true, message = "Could not create permission" });
 
-            return CreatedAtAction(nameof(GetPermissionById), new { id = 0 }, request);
+            return Ok(success);
         }
 
         // PUT: api/Permission/{id}
@@ -84,6 +84,17 @@ namespace AutomatedTaskSystem.Controllers
 
             return NoContent();
         }
+
+        [HttpPut("cancel/{id}")]
+        public async Task<IActionResult> CancelPermission(int id)
+        {
+            var result = await _permissionService.CancelPermissionAsync(id);
+            if (result.Error)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
 
         // DELETE: api/Permission/{id}
         [HttpDelete("{id}")]

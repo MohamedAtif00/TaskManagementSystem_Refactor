@@ -17,6 +17,8 @@ namespace AutomatedTaskSystem.Models
 
         public string? Reason { get; set; }
         public string? NoteForManager { get; set; }
+        public string? MedicalCertificatePath { get; set; }
+        public string? MedicalCertificateFileName { get; set; }
         public LeaveRequestType Type { get; set; } = LeaveRequestType.Annual;
         public LeaveRequestStatusEnum Status { get; set; } = LeaveRequestStatusEnum.Pending;
         public List<Opinion> Opinions { get; set; } = new();
@@ -27,7 +29,8 @@ namespace AutomatedTaskSystem.Models
     {
         Pending,
         Approved,
-        Rejected
+        Rejected,
+        Cancelled
     }
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum LeaveRequestType { 

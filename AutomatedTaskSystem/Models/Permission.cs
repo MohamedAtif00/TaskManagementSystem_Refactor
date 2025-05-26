@@ -34,6 +34,7 @@
         { 
             Pending,
             Approved,
-            Rejected
+            Rejected,
+            Cancelled
         }
     }
