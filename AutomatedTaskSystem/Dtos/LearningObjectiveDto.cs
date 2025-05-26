@@ -13,6 +13,7 @@ namespace AutomatedTaskSystem.DTO
             public string Template { get; set; } = "";
             public int SchemaId { get; set; }
 			public List<int> Steps { get; set; } = new List<int>{};
+			public List<int> Nods { get; set; } = new List<int>{};
         }
     }
 }

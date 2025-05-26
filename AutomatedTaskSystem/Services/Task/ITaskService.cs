@@ -35,7 +35,7 @@ public interface ITaskService
         string? clarification
     );
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ProceedTask(int taskId);
-    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CompleteTask(int taskId);
+    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CompleteTask(int taskId,bool forceComplete  = false);
     Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(int projectId);
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> SkipTask(int id);
     Task<ActionResult<ResponseService<List<GetNodeAheadDto>>>> GetSchemaSteps(int id);

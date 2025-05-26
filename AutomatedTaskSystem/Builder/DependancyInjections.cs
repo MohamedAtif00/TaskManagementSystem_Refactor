@@ -17,6 +17,7 @@ using AutomatedTaskSystem.Services.DashboardService;
 using AutomatedTaskSystem.Services.RollbackService;
 using AutomatedTaskSystem.Services.UserTask;
 using AutomatedTaskSystem.Services.Sprint;
+using AutomatedTaskSystem.Services.Lesson;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -43,5 +44,6 @@ public static class DependancyInjections
         builder.Services.AddScoped<ISchemaService, SchemaService>();
         builder.Services.AddScoped<IYearService, YearService>();
         builder.Services.AddScoped<ISprintService, SprintService>();
+        builder.Services.AddScoped<ILessonService, LessonService>();
     }
 }

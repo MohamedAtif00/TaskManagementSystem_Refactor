@@ -408,6 +408,7 @@ const PROJECTS = {
                         name: string;
                         tag: string;
                         environment: string;
+                        nods?:number[];
                         template: string;
                         schemaId: number;
                         steps: number[];

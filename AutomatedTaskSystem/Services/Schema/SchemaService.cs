@@ -117,7 +117,7 @@ public class SchemaService : ISchemaService
 
         var projects = new List<Project> { };
         var units = new List<Unit> { };
-        var lessons = new List<Lesson> { };
+        var lessons = new List<Models.Lesson> { };
         var los = new List<LearningObjective> { };
 
         foreach (var task in activeTasks)
