@@ -102,7 +102,7 @@ const LeaveModal = ({
       };
 
       const response = await LEAVE.CREATE(leaveData); // returns { data, error, message }
-      debugger
+      
       if (response?.error) {
         toast.error(response.message || 'حدث خطأ. يرجى المحاولة مرة أخرى.');
       } else if (response?.data) {
@@ -574,7 +574,7 @@ const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
       setIsLoading(true);
       try{
         const user = await API.LEAVE.GET_USER_INFO(auth.id);
-        debugger
+        
         if (user && 'data' in user) {
           setUser(user.data);
         }
@@ -598,7 +598,7 @@ const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
     try {
       // Fetch leaves
       const leavesResponse = await API.LEAVE.GET_ALL_BY_USER(auth.id);
-      debugger
+      
       if (leavesResponse && 'data' in leavesResponse) {
         setAllLeaves(leavesResponse.data);
         setFilteredLeaves(leavesResponse.data);
@@ -607,7 +607,7 @@ const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
    
       // Fetch permissions with better error handling
       const permissionsResponse = await Permission.GET_ALL_BY_USER(auth.id);
-      debugger  
+        
       if (permissionsResponse && !permissionsResponse.error) {
         // Ensure data exists and is an array
         if (Array.isArray(permissionsResponse.data)) {
@@ -746,7 +746,7 @@ const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
   const handleCancelPermission = async (permissionId: number) => {
     try {
       const response = await PERMISSION.CANCEL_PERMISSION(permissionId);
-      debugger
+      
       if (response.error) {
         toast.error(response.message);
         return;

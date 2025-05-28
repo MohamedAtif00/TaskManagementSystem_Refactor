@@ -9,16 +9,18 @@ interface Props {
     taskId: number;
     comment?: IComment;
     update: () => void;
+    type:"tasks"|"sprints"
 }
 
 const EditCommentForm: React.FC<Props> = ({
     taskId,
     comment,
     update,
+    type
 }) => {
     const [content, setContent] = useState(comment ? comment.content : "");
     const router = useRouter();
-    const pathHandler = useTaskPathHandler();
+    const pathHandler = useTaskPathHandler({type});
 
     const handleSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
         e.preventDefault();

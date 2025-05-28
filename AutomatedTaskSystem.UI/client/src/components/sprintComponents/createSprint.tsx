@@ -36,10 +36,10 @@ const CreateSprint = () => {
         setActive(false);
     }, [query]);
 
-    useEffect(()=>{
-        console.log(state[0]);
+    // useEffect(()=>{
+    //     console.log(state[0]);
         
-    },[state])
+    // },[state])
 
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -56,10 +56,8 @@ const CreateSprint = () => {
                 endDate: state[0].endDate.toISOString()
             }) ;
 
-            console.log(response);
             
             if (response && !response.error) {
-                console.log("Sprint created:", response.message);
 
                 push(pathname); // Close modal
             }else if(response.error){

@@ -12,12 +12,12 @@ namespace AutomatedTaskSystem.Migrations
              name: "Vacations",
              newName: "LeaveRequests");  // Change to your desired table name
 
-            migrationBuilder.AddColumn<DateTime>(
-               name: "DateCreated",
-               table: "LeaveRequest",  // Replace with your actual table name
-               type: "datetime2",
-               nullable: true,
-               defaultValueSql: "GETDATE()"); // Or defaultValue: DateTime.UtcNow
+            //migrationBuilder.AddColumn<DateTime>(
+            //   name: "DateCreated",
+            //   table: "LeaveRequest",  // Replace with your actual table name
+            //   type: "datetime2",
+            //   nullable: true,
+            //   defaultValueSql: "GETDATE()"); // Or defaultValue: DateTime.UtcNow
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

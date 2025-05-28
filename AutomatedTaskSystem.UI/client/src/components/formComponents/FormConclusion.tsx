@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useRouter } from "next/router";
 
 type ConclusionType = "danger" | "chill" | "teal" | "orange" | "emerald";
 
@@ -18,16 +19,17 @@ const FormConclusion: React.FC<Props> = ({
     type,
     pathname,
 }: Props) => {
+    const router = useRouter();
     return (
         <div className="flex justify-between gap-4 font-bold">
-            <Link
+            {/* <Link
                 className="py-2 flex items-center justify-center border-2 border-solid border-black grow"
                 href={pathname}
-            >
-                <button type="button">
+            > */}
+                <button className="py-2 flex items-center justify-center border-2 border-solid border-black grow" type="button" onClick={()=>router.back()}>
                     {text && text.cancel ? text.cancel : "Back"}
                 </button>
-            </Link>
+            {/* </Link> */}
             <button
                 type="submit"
                 className={`${

@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { ReactNode,useContext,useState } from "react";
+
+
 
 interface Props {
     children?: JSX.Element | JSX.Element[];
     icon?: ({ className }: { className?: string }) => JSX.Element;
-    label: string;
+    label: string | ReactNode;
 }
 
 const NavList: React.FC<Props> = ({ children, icon: Icon, label }) => {
     const [toggle, setToggle] = useState(false);
+ 
 
     const handleToggle = () => setToggle((ps) => !ps);
 

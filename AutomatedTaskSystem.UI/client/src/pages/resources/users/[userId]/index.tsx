@@ -15,7 +15,8 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TableRow
+    TableRow,
+    Menu
 } from "@mui/material";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -24,6 +25,11 @@ import API from "../../../../lib/API";
 import UserProfileIcone from "../../../../assets/Icons/UserProfile";
 import PersonIcon from "../../../../assets/Icons/Person";
 import Tab from "../../../../components/Tab/Tab";
+import PERMISSION, { IPermission, PermissionRequestStatus } from "../../../../lib/API/Permission";
+import ExportButton from "../../../../components/button/ExportButton";
+import React from "react";
+import EditUser from "../../../../components/pageComponent/users/editUser";
+// import MoreVertIcon from "@mui/icons-material/MoreVert";
 
 const buttonStyle: CSSProperties = {
     paddingLeft: "55px",
@@ -55,9 +61,16 @@ const UserProfile = () => {
     const [userChangesList, setUserChangesList] = useState<IUserChange[]>([]); 
     const [view, setView] = useState<"vacancies" | "updates" | "permission">("vacancies");
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [permissions, setPermissions] = useState<IPermission[]>([]);
+      const [loading, setLoading] = useState<boolean>(true);
+
+
+
+        const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const open = Boolean(anchorEl);
 
     useEffect(() => {
-        console.log(router.query);
+        //console.log(router.query);
         
         if (userId) {
             API.RESOURCES.USERS.GET_ONE(Number(userId)).then((res) => {
@@ -72,11 +85,11 @@ const UserProfile = () => {
     useEffect(() => {
         if (userId) {
             API.LEAVE.GET_ALL_BY_USER(Number(userId)).then((res) => {
-                console.log(res);
+                //console.log(res);
                 
                 if (res && !res.error) {
                     setVacanciesList(res.data ?? []);
-                    console.log(res.data, 'inside effect');
+                    //console.log(res.data, 'inside effect');
                 }
             });
         }
@@ -88,12 +101,54 @@ const UserProfile = () => {
             setIsLoading(true);
             API.RESOURCES.USERS.GET_USER_CHANGES(Number(userId)).then((res) => {
                 if (res && !res.error) {
-                    setUserChangesList(res.data ?? []);
+                    const sortedUserChanges = (res.data ?? []).sort((a, b) => {
+                        return new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime();
+                    });
+                    setUserChangesList(sortedUserChanges);
                 }
                 setIsLoading(false);
             });
         }
     }, [router.isReady]);
+
+
+      useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        setLoading(true);
+        const response = await PERMISSION.GET_ALL_BY_USER(Number(userId));
+        
+        if (response && !response.error) {
+          setPermissions(response.data);
+        }
+      } catch (err) {
+        console.error("Error fetching permissions", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPermissions();
+  }, [userId]); // re-run if userId changes
+
+  const getStatusColor = (status: PermissionRequestStatus): string => {
+  switch (status) {
+    case 'Pending': return '#FFA500';
+    case 'Approved': return '#4CAF50';
+    case 'Rejected': return '#F44336';
+    default: return '#9E9E9E';
+  }
+};
+
+const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'success' | 'error' | 'default' => {
+  switch (status) {
+    case 'Pending': return 'warning';
+    case 'Approved': return 'success';
+    case 'Rejected': return 'error';
+    default: return 'default';
+  }
+};
+
     
     if (!user) return <Typography>Loading...</Typography>;
 
@@ -107,6 +162,32 @@ const UserProfile = () => {
             minute: '2-digit'
         });
     };
+
+
+
+      const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+            setAnchorEl(event.currentTarget);
+        };
+
+        const handleClose = () => {
+            setAnchorEl(null);
+        };
+
+      const handleEdit = () => {
+            router.push({
+                pathname: `/resources/users/${user.id}`,
+                query: {
+                form: "edit-user",
+                userId: user.id,
+                },
+            });
+            handleClose();
+            };
+
+        const handleDelete = () => {
+            console.log("Delete user", user);
+            handleClose();
+        };
 
     return (
         <div className="w-full flex align-middle justify-center">
@@ -123,13 +204,42 @@ const UserProfile = () => {
 
                 {/* Add background color to only the header */}
                 <Box sx={{ p: 4, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    
                     {/* User Profile Paper */}
                     <Paper elevation={3} sx={{ p: 3 }} className="flex flex-col md:flex-row justify-between gap-4 bg-white shadow-md rounded-xl">
+                    
                     {/* User Info Section */}
                     <Box className="space-y-2   rounded-lg border border-gray-200 w-full md:w-2/3">
-                        <Typography variant="body1"  className="flex items-center gap-2 font-bold text-lg">
-                        {user.name}
-                        </Typography>
+                          <Grid sx={{ display: "flex" }} className="justify-between w-full">
+                                <Typography variant="body1" className="flex items-center gap-2 font-bold text-lg">
+                                    {user.name}
+                                </Typography>
+
+                                {/* <button
+                                    onClick={handleMenuClick}
+                                    className="text-xl font-bold px-2 py-1 hover:bg-gray-100 rounded"
+                                >
+                                    ...
+                                </button>
+
+                                <Menu
+                                    anchorEl={anchorEl}
+                                    open={open}
+                                    onClose={handleClose}
+                                    anchorOrigin={{
+                                    vertical: "bottom",
+                                    horizontal: "right",
+                                    }}
+                                    transformOrigin={{
+                                    vertical: "top",
+                                    horizontal: "right",
+                                    }}
+                                >
+                                    <MenuItem onClick={handleEdit}>Edit</MenuItem>
+                                    <MenuItem onClick={handleDelete}>Delete</MenuItem>
+                                </Menu> */}
+                                </Grid>
+
                         {user.code && (
                             <Typography className="flex items-center gap-2  text-[#22648C] text-[14px]">
                               {user.code}
@@ -200,8 +310,8 @@ const UserProfile = () => {
                     </Box>
 
                     {/* Leave Info Section */}
-                    <div className="flex justify-between  items-end border-t-2 border-gray-300 pt-4  w-full md:w-1/3 "
-                    style={{borderTop:"1px solid #D1D5DB"}}
+                    <div className="flex justify-between  items-end   pt-4  w-full md:w-1/3 "
+                    // style={{borderTop:"1px solid #D1D5DB"}}
                     >
 
                         {[
@@ -232,6 +342,32 @@ const UserProfile = () => {
                         </div>
                         ))}
                     </div>
+                    <div className="">
+
+                        <button
+                            onClick={handleMenuClick}
+                            className="text-xl font-bold px-2 py-1 hover:bg-gray-100 rounded"
+                        >
+                            ...
+                        </button>
+                    </div>
+
+                    <Menu
+                        anchorEl={anchorEl}
+                        open={open}
+                        onClose={handleClose}
+                        anchorOrigin={{
+                        vertical: "bottom",
+                        horizontal: "right",
+                        }}
+                        transformOrigin={{
+                        vertical: "top",
+                        horizontal: "right",
+                        }}
+                    >
+                        <MenuItem onClick={handleEdit}>Edit</MenuItem>
+                        {/* <MenuItem onClick={handleDelete}>Delete</MenuItem> */}
+                    </Menu>
                     </Paper>
                     <div className="relative mt-20">
 
@@ -321,7 +457,7 @@ const UserProfile = () => {
                                         <TableCell>Vacancy Type</TableCell>
                                         <TableCell>Status</TableCell>
                                         <TableCell>Vacancy Date</TableCell>
-                                        <TableCell align="center">Actions</TableCell>
+                                        {/* <TableCell align="center">Actions</TableCell> */}
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -336,10 +472,10 @@ const UserProfile = () => {
                                             {new Date(vacancy.startDate).toLocaleDateString('en-GB')}
                                             {/* Shows as "05/05/2025" */}
                                             </TableCell>
-                                            <TableCell align="center">
+                                            {/* <TableCell align="center"> */}
                                             {/* Replace with icons or buttons as needed */}
-                                            Edit | Delete
-                                            </TableCell>
+                                            {/* Edit | Delete */}
+                                            {/* </TableCell> */}
                                         </TableRow>
                                         ))}
                                     </TableBody>
@@ -370,9 +506,10 @@ const UserProfile = () => {
                                     </FormControl>
                                     </Grid>
                                     <Grid item xs={12} sm={3}>
-                                    <Button fullWidth variant="contained" color="success" sx={buttonStyle}>
+                                    {/* <Button fullWidth variant="contained" color="success" sx={buttonStyle}>
                                         Export CSV
-                                    </Button>
+                                    </Button> */}
+                                    <ExportButton data={permissions}></ExportButton>
                                     </Grid>
                                     <Grid item xs={12} sm={3}>
                                     <Button fullWidth variant="contained" color="primary" sx={buttonStyle}>
@@ -392,47 +529,37 @@ const UserProfile = () => {
                                         Remaining:
                                     </Typography>
                                     <Typography variant="body1" fontWeight="bold" color="primary">
-                                        1 / 2
+                                        {user.permission} / {user.permission_MAX}
                                     </Typography>
                                     </Box>
                                 </Box>
 
                                 <Grid container spacing={2}>
                                     {/* Pending Permission Card */}
-                                    <Grid item xs={12} sm={6}>
-                                    <Paper elevation={1} sx={{ p: 2, borderLeft: '4px solid #FFA500' }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <Typography variant="subtitle1" fontWeight="bold">
-                                            Morning Permission
-                                        </Typography>
-                                        <Chip label="Pending" color="warning" size="small" />
-                                        </Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                        12/12/2024
-                                        </Typography>
-                                    </Paper>
+                                    <Grid container spacing={2}>
+                                     {permissions?.map((perm) => (
+                                        <Grid item xs={12} sm={6} key={perm.id}>
+                                        <Paper elevation={1} sx={{ p: 2, borderLeft: `4px solid ${getStatusColor(perm.status)}` }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Typography variant="subtitle1" fontWeight="bold">
+                                                {perm.type}
+                                            </Typography>
+                                            <Chip label={perm.status} color={getStatusChipColor(perm.status)} size="small" />
+                                            </Box>
+                                            <Typography variant="body2" color="text.secondary">
+                                            {new Date(perm.permissionDate).toLocaleDateString()}
+                                            </Typography>
+                                        </Paper>
+                                        </Grid>
+                                    ))}
                                     </Grid>
 
-                                    {/* Accepted Permission Card */}
-                                    <Grid item xs={12} sm={6}>
-                                    <Paper elevation={1} sx={{ p: 2, borderLeft: '4px solid #4CAF50' }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <Typography variant="subtitle1" fontWeight="bold">
-                                            Morning Permission
-                                        </Typography>
-                                        <Chip label="Accepted" color="success" size="small" />
-                                        </Box>
-                                        <Typography variant="body2" color="text.secondary">
-                                        12/12/2024
-                                        </Typography>
-                                    </Paper>
-                                    </Grid>
                                 </Grid>
                                 </Paper>
                             </>
                         ) : ( 
                             <>
-                                <Paper sx={{ p: 3, paddingTop: 0 }} elevation={2}>
+                                {/* <Paper sx={{ p: 3, paddingTop: 0 }} elevation={2}>
                                 <Grid container spacing={2} justifyContent={"flex-end"}>
                                     <Grid item xs={12} sm={6}>
                                     <TextField
@@ -461,7 +588,7 @@ const UserProfile = () => {
                                     </Button>
                                     </Grid>
                                 </Grid>
-                                </Paper>
+                                </Paper> */}
 
                                 <Paper sx={{ p: 3 }} elevation={2}>
                                 <TableContainer component={Paper}>
@@ -520,6 +647,8 @@ const UserProfile = () => {
                     </div>
                 </Box>
             </div>
+            <EditUser />
+            
         </div>
     );
 };

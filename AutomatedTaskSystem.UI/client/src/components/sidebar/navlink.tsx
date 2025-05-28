@@ -5,7 +5,7 @@ import SchemaIcon from "../../assets/Icons/Schema";
 import Link from "next/link";
 import ProjectIcon from "../../assets/Icons/Project";
 import TaskIcon from "../../assets/Icons/Task";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import SprintIcon from "../../assets/Icons/Sprint";
 
 const Navlink = ({
@@ -14,8 +14,8 @@ const Navlink = ({
     to,
     activeCondition,
 }: {
-    icon: "Home" | "Resources" | "Schema" | "Project" | "Task" |"Sprint"| "Advanced Report" |"None";
-    text: string;
+    icon: "Home" | "Resources" | "Schema" | "Project" | "Task" | "Sprint" | "Advanced Report" | "None";
+    text: ReactNode;
     to: string;
     activeCondition: boolean;
 }) => {

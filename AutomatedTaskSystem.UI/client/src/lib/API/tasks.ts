@@ -248,7 +248,7 @@ const TASKS = {
 			} = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			// console.log(error);
 			return false;
 		}
 	},
@@ -273,7 +273,7 @@ const TASKS = {
 			} = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			// console.log(error);
 			return false;
 		}
 	},
@@ -316,7 +316,7 @@ const TASKS = {
 			} = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			//console.log(error);
 			return false;
 		}
 	},
@@ -337,7 +337,7 @@ const TASKS = {
 			} = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			//console.log(error);
 			return false;
 		}
 	},
@@ -358,7 +358,7 @@ const TASKS = {
 			} = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			//console.log(error);
 			return false;
 		}
 	},
@@ -379,7 +379,7 @@ const TASKS = {
 			} = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			//console.log(error);
 			return false;
 		}
 	},
@@ -398,7 +398,7 @@ const TASKS = {
 			const data: { id: number; name: string }[] = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			//console.log(error);
 			return false;
 		}
 	},
@@ -420,7 +420,7 @@ const TASKS = {
 			} = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			//console.log(error);
 			return false;
 		}
 	},
@@ -448,7 +448,7 @@ const TASKS = {
 			const data: CommonResponse = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			//console.log(error);
 			return false;
 		}
 	},
@@ -468,7 +468,7 @@ const TASKS = {
 			const data: ResponseService<NodeAhead[]> = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			//console.log(error);
 			return false;
 		}
 	},
@@ -493,7 +493,7 @@ const TASKS = {
 			} = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			//console.log(error);
 			return false;
 		}
 	},
@@ -518,7 +518,7 @@ const TASKS = {
 			} = await res.json();
 			return data;
 		} catch (error) {
-			console.log(error);
+			//console.log(error);
 			return false;
 		}
 	},

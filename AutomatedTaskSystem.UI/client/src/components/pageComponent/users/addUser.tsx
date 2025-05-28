@@ -11,6 +11,8 @@ import { ClassNames } from "@emotion/react";
 // import Permission from "../../../lib/API/Permission";
 // import { IGroup, IVacation } from "../../../../app";
 import { string } from "prop-types";
+import { Code } from "lucide-react";
+import Link from "next/link";
 
 // Define the types for the user roles and vacation structure
 // type UserRole = 0 | 1 | 2 | 3;
@@ -48,7 +50,10 @@ const AddUser = () => {
     const dispatch = useAppDispatch();
     const { query, pathname } = useRouter();
     const [teamLeaders, setTeamLeaders] = useState<{ id: number; name: string }[]>([]);
-
+    const [error, setError] = useState("");
+  const [done, setDone] = useState<{ code: string; user: IUser } | null>(
+        null
+    );
     
     const roleOptions = [
     { id: 0, name: "Project Manager" },
@@ -118,6 +123,7 @@ const AddUser = () => {
         e.preventDefault();
          e.stopPropagation(); // Add this to prevent event bubbling
         console.log("dsds");
+        setError("");
         
         const { 
             name, 
@@ -140,7 +146,7 @@ const AddUser = () => {
         }
         console.log(e);
         
-        const res = await API.RESOURCES.USERS.CREATE({
+        API.RESOURCES.USERS.CREATE({
             name,
             role,
             groupId: group.id,
@@ -151,35 +157,40 @@ const AddUser = () => {
             vacation,
             permission,
             permission_MAX
-        });
+        }).then(res=>{
+
+
+            if (res && !res.error) {
+                // dispatch(add(res.data.user));
+                setFormState({
+                    ...formState,
+                    name: "",
+                    hrCode: "",
+                    group: null,
+                    role: null,
+                    teamleader: null,
+                    accountType: null,
+                    email: null,
+                    onBoard: true,
+                    archived: false,
+                    vacation: {
+                        annual: 0,
+                        sick: 0,
+                        emergency: 0,
+                        annual_MAX: 0,
+                        emergency_MAX: 0
+                    },
+                    permission,
+                    permission_MAX
+                    ,
+                    error: "",
+                });
+               setDone(res.data);
+                dispatch(add(res.data.user));
+                // router.push(pathname);
+            }
+        })
         
-        if (res && !res.error) {
-            dispatch(add(res.data.user));
-            setFormState({
-                ...formState,
-                name: "",
-                hrCode: "",
-                group: null,
-                role: null,
-                teamleader: null,
-                accountType: null,
-                email: null,
-                onBoard: true,
-                archived: false,
-                vacation: {
-                    annual: 0,
-                    sick: 0,
-                    emergency: 0,
-                    annual_MAX: 0,
-                    emergency_MAX: 0
-                },
-                permission,
-                permission_MAX
-                ,
-                error: "",
-            });
-            router.push(pathname);
-        }
     };
 
     const handleChange = (field: keyof typeof formState) => (value: any) => {
@@ -251,32 +262,38 @@ const AddUser = () => {
             animate={{ opacity: 1 }}
             className="bg-white px-5 py-4 rounded-lg w-[700px] max-h-[90vh] flex flex-col" // Added max-h and flex-col
         >
-            {formState.done ? (
-                <div className="flex flex-col gap-4">
-                    <h3>
-                        {renderRoleName(formState.done.user.role)}{" "}
-                        <span className="font-bold">{formState.done.user.name}</span> is added as an{" "}
-                        <span className="font-bold">{formState.done.user.group?.name}</span>
-                    </h3>
-                    <div>
-                        <div>Code:</div>
-                        <div className="font-bold text-2xl text-center">
-                            {formState.done.code}
+            {done ? (
+                        <div className="flex flex-col gap-4">
+                            <h3>
+                                {done.user.role === 0
+                                    ? "Project Manager"
+                                    : done.user.role === 1
+                                    ? "Section Head"
+                                    : done.user.role === 2
+                                    ? "Team Leader"
+                                    : "Member"}{" "}
+                                <span className="font-bold">
+                                    {done.user.name}
+                                </span>{" "}
+                                is added as an{" "}
+                                <span className="font-bold">
+                                    {done.user.group?.name}
+                                </span>
+                            </h3>
+                            <div>
+                                <div>Code:</div>
+                                <div className="font-bold text-2xl text-center">
+                                    {done.code}
+                                </div>
+                            </div>
+                            <div className="flex justify-center">
+                                <Link href={{ pathname }}>
+                                    <button onClick={()=>setDone(null)} className="h-10 bg-black text-white font-bold px-4">
+                                        Done
+                                    </button>
+                                </Link>
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex justify-center">
-                        <button
-                            onClick={() => {
-                                setActive(false);
-                                setFormState((prev) => ({ ...prev, done: null }));
-                                router.push(pathname);
-                            }}
-                            className="h-10 bg-black text-white font-bold px-4"
-                        >
-                            Done
-                        </button>
-                    </div>
-                </div>
             ) : (
                 <>
                     <h2 className="text-lg mb-4">Add User</h2> {/* Added mb-4 for spacing */}

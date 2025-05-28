@@ -19,21 +19,23 @@ import { url } from "../lib/API";
 // export default connection;
 
 
-
 let connection: signalR.HubConnection | null = null;
 
-if (typeof window !== "undefined") {
-  connection = new signalR.HubConnectionBuilder()
-    .withUrl(`${url}/userhub`, {
-      skipNegotiation: true,
-      transport: signalR.HttpTransportType.WebSockets,
-      accessTokenFactory: () => {
-        return localStorage.getItem("access-token") || "";
-      },
-    })
-    .withAutomaticReconnect()
-    .configureLogging(signalR.LogLevel.Information)
-    .build();
+export function getConnection(): signalR.HubConnection | null {
+  if (!connection && typeof window !== "undefined") {
+    connection = new signalR.HubConnectionBuilder()
+      .withUrl(`${url}/userhub`, {
+        skipNegotiation: true,
+        transport: signalR.HttpTransportType.WebSockets,
+        accessTokenFactory: () => localStorage.getItem("access-token") || "",
+      })
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Information)
+      .build();
+  }
+  return connection;
 }
 
-export default connection;
+export default getConnection();
+
+

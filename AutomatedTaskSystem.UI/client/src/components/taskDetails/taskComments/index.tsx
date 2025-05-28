@@ -12,6 +12,7 @@ interface Props {
     updateTask: (value: SetStateAction<ITask | undefined>) => void;
     comments: IComment[];
     reload: () => void;
+     type:"tasks"|"sprints"
 }
 
 interface CommentProps {
@@ -22,6 +23,7 @@ interface CommentProps {
     isEdited: boolean;
     isDeleted: boolean;
     taskId: number;
+     type:"tasks"|"sprints"
 }
 
 const Comment: React.FC<CommentProps> = ({
@@ -32,10 +34,11 @@ const Comment: React.FC<CommentProps> = ({
     isDeleted,
     taskId,
     id,
+    type
 }) => {
     const auth = useAppSelector((u) => u.authSlice);
     const formatted = dateHandler(date);
-    const pathHandler = useTaskPathHandler();
+    const pathHandler = useTaskPathHandler({type});
 
     return (
         <div
@@ -117,6 +120,7 @@ const TaskComments: React.FC<Props> = (props) => {
                     user={c.user}
                     isEdited={c.isEdited}
                     isDeleted={c.isDeleted}
+                    type={props.type}
                 />
             ))}
         </div>

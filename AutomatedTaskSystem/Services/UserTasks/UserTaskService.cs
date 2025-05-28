@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Dtos.UserTask;
+using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
@@ -100,7 +101,7 @@ public class UserTaskService : IUserTaskService
 
             var users = await _context.Users
                 .Where(u => !u.Archived && u.Role != UserRoleEnum.ProjectManger && u.Role != UserRoleEnum.SectionHead)
-                .Where(u => sectionGroupIds.Contains(u.GroupId??0))
+                .Where(u => sectionGroupIds.Contains(u.GroupId ?? 0))
                 .Include(u => u.Group)
                 .Include(u => u.Tasks)
                 .ThenInclude(t => t.LearningObjective)
@@ -216,6 +217,88 @@ public class UserTaskService : IUserTaskService
 
         throw new NotImplementedException();
     }
+
+    //public async Task<ActionResult<ResponseService<List<UserTaskDto>>>> GetAvailableUsersTasks()
+    //{
+    //    var user = await _authService.GetAuthedUser();
+    //    if (user is null)
+    //        return new UnauthorizedObjectResult(new BaseResponseService
+    //        {
+    //            Error = true,
+    //            Message = "Invalid Auth"
+    //        });
+
+    //    IQueryable<User> query = _context.Users
+    //        .AsNoTracking()
+    //        .Where(u => !u.Archived && u.Role != UserRoleEnum.ProjectManger);
+
+    //    if (user.Role == UserRoleEnum.SectionHead)
+    //    {
+    //        var sectionGroupIds = await _context.SectionGroups
+    //            .Where(sg => sg.Section.HeadId == user.Id && !sg.Section.Archived)
+    //            .Select(sg => sg.GroupId)
+    //            .ToListAsync();
+
+    //        if (!sectionGroupIds.Any())
+    //            return new BadRequestObjectResult(new BaseResponseService
+    //            {
+    //                Error = false,
+    //                Message = "Section groups not found"
+    //            });
+
+    //        query = query.Where(u =>
+    //            u.Role != UserRoleEnum.SectionHead &&
+    //            sectionGroupIds.Contains(u.GroupId ?? 0)
+    //        );
+    //    }
+    //    else if (user.Role == UserRoleEnum.TeamLeader)
+    //    {
+    //        query = query.Where(u =>
+    //            u.Role != UserRoleEnum.SectionHead &&
+    //            u.GroupId == user.GroupId
+    //        );
+    //    }
+    //    else if (user.Role != UserRoleEnum.ProjectManger)
+    //    {
+    //        throw new NotImplementedException();
+    //    }
+
+    //    var result = await query
+    //        .Select(u => new UserTaskDto
+    //        {
+    //            Id = u.Id,
+    //            Name = u.Name,
+    //            Group = new BasicInfoDto
+    //            {
+    //                Id = u.GroupId ?? 0,
+    //                Name = u.Group != null ? u.Group.Name : string.Empty
+    //            },
+    //            Tasks = new TaskCountDto
+    //            {
+    //                Doing = u.Tasks.Count(t =>
+    //                    !t.Archived &&
+    //                    t.Status == TaskStatusEnum.Doing &&
+    //                    t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Closed &&
+    //                    t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
+    //                ),
+    //                Todo = u.Tasks.Count(t =>
+    //                    !t.Archived &&
+    //                    t.Status == TaskStatusEnum.ToDo &&
+    //                    t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Closed &&
+    //                    t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
+    //                )
+    //            }
+    //        })
+    //        .ToListAsync();
+
+    //    return new ResponseService<List<UserTaskDto>>
+    //    {
+    //        Data = result,
+    //        Error = false,
+    //        Message = "List of User Tasks"
+    //    };
+    //}
+
 
 
     public async Task<ActionResult<ResponseService<UserTaskInfo>>> GetUserTasks(int id)

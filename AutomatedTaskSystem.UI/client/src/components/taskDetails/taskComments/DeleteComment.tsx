@@ -8,15 +8,17 @@ interface Props {
     taskId: number;
     comment?: IComment;
     update: () => void;
+     type:"tasks"|"sprints"
 }
 
 const DeleteCommentForm: React.FC<Props> = ({
     taskId,
     comment,
     update,
+    type
 }) => {
     const router = useRouter();
-    const pathHandler = useTaskPathHandler();
+    const pathHandler = useTaskPathHandler({type});
 
     const handleSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
         e.preventDefault();

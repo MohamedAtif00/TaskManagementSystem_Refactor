@@ -56,13 +56,13 @@ namespace AutomatedTaskSystem.Services.Email
                 //}
 
                 //// Add dynamic CCs
-                //foreach (var cc in message.CcEmails)
-                //{
-                //    if (!mailMessage.CC.Any(c => c.Address.Equals(cc, StringComparison.OrdinalIgnoreCase)))
-                //    {
-                //        mailMessage.CC.Add(cc);
-                //    }
-                //}
+                foreach (var cc in message.CcEmails)
+                {
+                    if (!mailMessage.CC.Any(c => c.Address.Equals(cc, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        mailMessage.CC.Add(cc);
+                    }
+                }
 
                 // Add attachments
                 foreach (var attachment in message.Attachments)

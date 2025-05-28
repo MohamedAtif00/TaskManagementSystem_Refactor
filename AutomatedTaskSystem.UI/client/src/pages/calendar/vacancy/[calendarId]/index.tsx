@@ -28,21 +28,21 @@ const LeaveRequestDetails = () => {
 
 
   useEffect(() => {
-    console.log(calendarId);
+    //console.log(calendarId);
     
     let isMounted = true;
         if (calendarId) {
             fetchLeaveRequest(Number(calendarId)).then(({ leaveDetails }) => {
-              if (isMounted) {
+              if (isMounted && leaveDetails.data) {
                 setRequest(leaveDetails.data);
                 setApprovals(leaveDetails.data.opinions)
-                console.log(leaveDetails,"after assign");
-                console.log(leaveDetails.data.opinions,"opnions");
-                console.log(auth.id);
+                //console.log(leaveDetails,"after assign");
+                //console.log(leaveDetails.data.opinions,"opnions");
+                //console.log(auth.id);
                 
                 if((leaveDetails as IGetLeaveRequestForDetails).opinions?.some(x => x.user.id == auth.id))
                 {
-                    console.log("commentable");
+                    //console.log("commentable");
                     
                     setCommentable(false)
                     
@@ -58,7 +58,7 @@ const LeaveRequestDetails = () => {
         const fetchLeaveRequest = async (id: number) => {
         try {
             const leaveDetails = await LEAVE.GET_LEAVE_BY_USER(Number(calendarId));
-            console.log(leaveDetails);
+            //console.log(leaveDetails);
             
             return { leaveDetails };
         } catch (error) {
@@ -135,7 +135,7 @@ const LeaveRequestDetails = () => {
    
 
   const handleClick = async () => {
-    debugger
+    
 
         const success = await LEAVE.GET_SICK_ATTACHMENT(Number(calendarId));
         if (!success) {
@@ -226,7 +226,11 @@ const LeaveRequestDetails = () => {
                 </div>
                 <div>
                   <span className="text-gray-500">Role: </span>
-                  <span className="text-blue-600">{request?.user?.hrCode}</span>
+                   <span className="text-[#5570FF]">
+                                    {request?.user?.role === 0 ? "Project Manager" : 
+                                    request?.user?.role === 1 ? "Section Head" :
+                                    request?.user?.role === 2 ? "Team Leader" : "Member"}
+                                    </span>
                 </div>
               </div>
             </div>

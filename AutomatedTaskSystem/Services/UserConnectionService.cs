@@ -12,7 +12,7 @@ namespace AutomatedTaskSystem.Services
 
         public UserConnectionService(IServiceScopeFactory serviceScopeFactory)
         {
-            _cleanupTimer = new Timer(RemoveInactiveUsers, null, TimeSpan.Zero, TimeSpan.FromSeconds(2));
+            _cleanupTimer = new Timer(RemoveInactiveUsers, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
             _serviceScopeFactory = serviceScopeFactory;
         }
 

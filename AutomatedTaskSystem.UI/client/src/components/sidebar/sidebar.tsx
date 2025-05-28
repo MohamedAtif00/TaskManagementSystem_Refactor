@@ -6,13 +6,19 @@ import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { logout } from "../../slices/authSlice";
 import NavList from "./navlist";
 import ChartIcon from "../../assets/Icons/Chart";
-import { ReactElement } from "react";
+import { ReactElement, useContext, useEffect } from "react";
+import {  useSignalR } from "../connection/connection";
+import { SignalRContext } from "../connection/connectionProvider";
+
 
 const Sidebar = () => {
 	const dispatch = useAppDispatch();
 	const user = useAppSelector((s) => s.authSlice);
 	const path = useRouter().pathname;
 	const auth = useAppSelector((s) => s.authSlice);
+	const router = useRouter()
+	
+	 const { connection, connectionState, pendingNumber } = useContext(SignalRContext);
 
 	const logoutHandler = () => {
 		authService.logout().then(() => {
@@ -20,11 +26,18 @@ const Sidebar = () => {
 		});
 	};
 
+
+useEffect(() => {
+  console.log("🔄 Sidebar - pendingNumber:", pendingNumber);
+  console.log("🔄 Sidebar - connectionState:", connectionState);
+}, [pendingNumber, connectionState]);
+
 	return (
 		<div id={styles.sidebar}>
 			<h3>ATS</h3>
 			<div className={styles.profile}>
-				<div>{user.name}</div>
+				
+				<div onClick={()=> router.push(`/resources/users/${auth.id}`)}>{user.name}</div>
 				<div className={styles.profileInfo}>
 					<div>{user.group}</div>
 				</div>
@@ -94,7 +107,18 @@ const Sidebar = () => {
 					icon="Task"
 					text="Tasks"
 				/>
-				<NavList label="Leaves" icon={ChartIcon}>
+				<NavList
+					icon={ChartIcon}
+					label={
+						<span className="flex items-center gap-2">
+						Leaves
+						{pendingNumber !== 0 && (
+							<span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+						)}
+						</span>
+					}
+>
+
 					{([
 						auth.role != 3 ? (
 							<Navlink
@@ -102,9 +126,20 @@ const Sidebar = () => {
 								activeCondition={path.includes("/calendar")}
 								to="/calendar"
 								icon="Schema"
-								text="Calendar"
+								text={
+								<span className="flex items-center gap-1">
+									Calendar
+									{pendingNumber !== 0 && (
+									<span className="ml-1 bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+										{pendingNumber}
+									</span>
+									)}
+								</span>
+								}
+
 							/>
-						) : null,
+							) : null,
+
 
 						auth.role === 4 ? (
 							<Navlink
@@ -127,12 +162,12 @@ const Sidebar = () => {
 				</NavList>
 
 
-				<Navlink
+				{(auth.role < 3 || auth.role == 4)&& <Navlink
 				activeCondition={path.includes("/advancedReport")}
 				to="/advancedReport"
 				icon="Task"
 				text="Advanced Report"
-				/>
+				/>}
 
 			</div>
 			<div className={styles.logoutButton} onClick={logoutHandler}>

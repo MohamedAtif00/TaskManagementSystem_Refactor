@@ -104,7 +104,7 @@ public class UserService : IUserService
                 User = new Responses.UserDTO
                 {
                     Role = newUser.Role,
-                    Group = { Id = newUser.GroupId??0, Name = newUser.Group.Name },
+                    Group = req.Role == UserRoleEnum.Owner?  null:new IDName{ Id = newUser.GroupId??0, Name = newUser.Group.Name },
                     Id = newUser.Id,
                     Name = newUser.Name,
                     Email = newUser.Email,
@@ -167,6 +167,12 @@ public class UserService : IUserService
 
         // Create a list to track changes
         var changes = new List<string>();
+
+        if (user.Archived != req.Archived)
+        {
+            changes.Add($"Archive changed from {user.Archived} to {req.Archived}");
+            user.Archived = req.Archived;
+        }
 
         // Check and record each change
         if (user.Name != req.Name)

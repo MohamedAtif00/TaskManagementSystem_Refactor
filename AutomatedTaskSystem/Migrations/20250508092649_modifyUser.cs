@@ -9,9 +9,9 @@ namespace AutomatedTaskSystem.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            //migrationBuilder.DropForeignKey(
-            //    name: "FK_Groups_Sections_SectionId",
-            //    table: "Groups");
+            migrationBuilder.DropForeignKey(
+                name: "FK_Groups_Sections_SectionId",
+                table: "Groups");
 
             migrationBuilder.DropTable(
                 name: "NodeDependencies");

@@ -82,7 +82,7 @@ const Calendar = () => {
       const response = await LEAVE.GET_ALL_DB({userId:auth.id,role:auth.role});
       debugger
       if (response && response.data ) {
-        console.log(response);
+        //console.log(response);
         
         const transformedData = response.data.map((item:IGetAllLeavesRequest) => ({
           id: item.id,
@@ -121,7 +121,7 @@ const Calendar = () => {
     try {
       // Actual API call to get permissions
       const response = await PERMISSION.GET_ALL();
-      console.log(response,"response");
+      //console.log(response,"response");
       if (response && response.data && !response.error) {
         const transformedData = response.data.map((item:IPermission) => ({
           id: item.id,
@@ -138,8 +138,8 @@ const Calendar = () => {
 
         setPermissions(transformedData);
         setFilteredPermissions(transformedData);
-        console.log(permissions);
-        console.log(transformedData);
+        //console.log(permissions);
+        //console.log(transformedData);
         
         
       } else {

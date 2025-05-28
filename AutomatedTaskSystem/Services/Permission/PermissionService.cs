@@ -570,47 +570,94 @@ namespace AutomatedTaskSystem.Services.Permission
 
                 var now = DateTime.Now.Date;
 
-                // Allow cancel if permission is scheduled in the future or was rejected
-                if (permission.PermissionDate.Date > now || permission.Status == PermissionStatusEnum.Rejected)
+                if (permission.PermissionDate.Date < now)
                 {
-                    permission.Status = PermissionStatusEnum.Cancelled;
-                    permission.UpdatedAt = DateTime.UtcNow;
-                    await _dataContext.SaveChangesAsync();
-
-                    var senderUser = permission.User;
-
-                    var message = new EmailMessage
+                    // Past date
+                    if (permission.Status == PermissionStatusEnum.Approved || permission.Status == PermissionStatusEnum.Rejected)
                     {
-                        Subject = "إلغاء طلب الإذن",
-                        Body = EmailTemplate.CreatePermissionCancellationTemplate(
+                        return new ResponseService<bool>
+                        {
+                            Error = true,
+                            Message = "You cannot cancel a permission that has already passed and was approved or rejected.",
+                            Data = false
+                        };
+                    }
+
+                    if (permission.Status == PermissionStatusEnum.Pending)
+                    {
+                        // Allow cancel but no email
+                        permission.Status = PermissionStatusEnum.Cancelled;
+                        permission.UpdatedAt = DateTime.UtcNow;
+
+                        await _dataContext.SaveChangesAsync();
+
+                        return new ResponseService<bool>
+                        {
+                            Error = false,
+                            Message = "Pending permission cancelled (date already passed).",
+                            Data = true
+                        };
+                    }
+                }
+                else
+                {
+                    // Future or today
+                    if (permission.Status == PermissionStatusEnum.Pending || permission.Status == PermissionStatusEnum.Approved)
+                    {
+                        permission.Status = PermissionStatusEnum.Cancelled;
+                        permission.UpdatedAt = DateTime.UtcNow;
+
+                        // Send email only if it was approved
+                        if (permission.Status == PermissionStatusEnum.Approved)
+                        {
+                            var senderUser = permission.User;
+
+                            var message = new EmailMessage
+                            {
+                                Subject = "إلغاء طلب الإذن",
+                                Body = EmailTemplate.CreatePermissionCancellationTemplate(
                                     senderUser.Name,
                                     senderUser.Email,
                                     permission.PermissionDate.ToString("yyyy-MM-dd"),
-                                    permission.FromTime.ToString("hh\\:mm"),
-                                    permission.ToTime.ToString("hh\\:mm"),
+                                    permission.FromTime.ToString(@"hh\:mm"),
+                                    permission.ToTime.ToString(@"hh\:mm"),
                                     permission.Type),
-                        IsHtml = true,
-                        CcEmails = new List<string> { senderUser.Email }
-                    };
+                                IsHtml = true,
+                                CcEmails = new List<string> { senderUser.Email }
+                            };
 
-                    // TODO: Send email using your email service
+                            var emailResult = await _emailService.SendEmailAsync(message);
 
-                    return new ResponseService<bool>
-                    {
-                        Error = false,
-                        Message = "Permission cancelled successfully.",
-                        Data = true
-                    };
+                            if (!emailResult.Success)
+                            {
+                                return new ResponseService<bool>
+                                {
+                                    Error = true,
+                                    Message = "The permission was cancelled, but the email notification failed.",
+                                    Data = false
+                                };
+                            }
+                        }
+
+                        await _dataContext.SaveChangesAsync();
+
+                        return new ResponseService<bool>
+                        {
+                            Error = false,
+                            Message = "Permission cancelled successfully.",
+                            Data = true
+                        };
+                    }
                 }
 
                 return new ResponseService<bool>
                 {
                     Error = true,
-                    Message = "You cannot cancel a permission that has already passed or is currently active.",
+                    Message = "You cannot cancel a permission with the current status and date.",
                     Data = false
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return new ResponseService<bool>
                 {
@@ -620,6 +667,7 @@ namespace AutomatedTaskSystem.Services.Permission
                 };
             }
         }
+
 
 
 

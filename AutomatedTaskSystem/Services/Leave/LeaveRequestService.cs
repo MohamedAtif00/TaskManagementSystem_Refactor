@@ -2,12 +2,14 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
+using AutomatedTaskSystem.Hub;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.Email;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using static AutomatedTaskSystem.DTO.Responses;
 
 namespace AutomatedTaskSystem.Services.Leave
@@ -18,13 +20,15 @@ namespace AutomatedTaskSystem.Services.Leave
         private readonly ITokenService _tokenService;
         private readonly IEmailService _emailService;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly IHubContext<UserHub> _hubContext;
 
-        public LeaveRequestService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IWebHostEnvironment webHostEnvironment)
+        public LeaveRequestService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IWebHostEnvironment webHostEnvironment, IHubContext<UserHub> hubContext)
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
             _emailService = emailService;
             _webHostEnvironment = webHostEnvironment;
+            _hubContext = hubContext;
         }
 
         // ✅ Create
@@ -277,6 +281,16 @@ namespace AutomatedTaskSystem.Services.Leave
                             CcEmails = new List<string> { leaveRequest.User.Email }
                         };
 
+                        await _hubContext.Clients.User(leaveRequest.UserId.ToString()).SendAsync("LeaveRequestOpinion", new
+                        {
+                            isApproved = true,
+                            message = "The leave request has been approved"
+                        });
+                        await _hubContext.Clients.User(user.Id.ToString()).SendAsync("UpdatePendings", new
+                        {
+                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync()
+                        });
+
                         // Add medical certificate attachment if it exists
                         if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
                         {
@@ -304,7 +318,16 @@ namespace AutomatedTaskSystem.Services.Leave
                     {
                         _dataContext.Opinions.Add(opinion);
                         _dataContext.LeaveRequests.Update(leaveRequest);
-                        
+                        await _hubContext.Clients.User(leaveRequest.UserId.ToString()).SendAsync("LeaveRequestOpinion", new
+                        {
+                            isApproved = false,
+                            message = "The leave request has been approved"
+                        });
+                        await _hubContext.Clients.User(user.Id.ToString()).SendAsync("UpdatePendings", new
+                        {
+                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync()
+                        });
+
                     }
                     break;
 
@@ -320,6 +343,10 @@ namespace AutomatedTaskSystem.Services.Leave
             }
 
             await _dataContext.SaveChangesAsync();
+            //await _hubContext.Clients.User(user.Id.ToString()).SendAsync("UpdatePendings", new
+            //{
+            //    pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync()
+            //});
             return true;
         }
         public async Task<List<GetOpinion>> GetAllOpinionsForLeaveRequest(int leaveRequestId) { 
@@ -624,32 +651,71 @@ namespace AutomatedTaskSystem.Services.Leave
 
                 var now = DateTime.Now;
 
-                if (leaveRequest.StartDate > now || leaveRequest.Status == LeaveRequestStatusEnum.Rejected)
+                if (leaveRequest.StartDate > now &&
+                    (leaveRequest.Status == LeaveRequestStatusEnum.Pending || leaveRequest.Status == LeaveRequestStatusEnum.Approved))
                 {
+                    var senderUser = leaveRequest.User;
+                    bool wasApproved = leaveRequest.Status == LeaveRequestStatusEnum.Approved;
+
                     leaveRequest.Status = LeaveRequestStatusEnum.Cancelled;
-                    //leaveRequest.upda = DateTime.UtcNow;
+
+                    if (wasApproved)
+                    {
+                        var leaveDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
+
+                        // Refund leave days
+                        switch (leaveRequest.Type)
+                        {
+                            case LeaveRequestType.Annual:
+                                senderUser.Annual_leave += leaveDays;
+                                break;
+
+                            case LeaveRequestType.Emergency:
+                                senderUser.Emergency_leave += leaveDays;
+                                break;
+
+                            case LeaveRequestType.Sick:
+                                senderUser.Sick_leave += leaveDays;
+                                break;
+                        }
+
+                        // Prepare email
+                        var message = new EmailMessage
+                        {
+                            Subject = "إلغاء طلب الأجازة",
+                            Body = EmailTemplate.CreateLeaveCancellationTemplate(
+                                        senderUser.Name,
+                                        senderUser.Email,
+                                        leaveRequest.StartDate.ToString("yyyy-MM-dd"),
+                                        leaveRequest.EndDate.ToString("yyyy-MM-dd"),
+                                        leaveDays,
+                                        leaveRequest.Type,
+                                        senderUser.HR_code),
+                            IsHtml = true,
+                            CcEmails = new List<string> { senderUser.Email }
+                        };
+
+                        var result = await _emailService.SendEmailAsync(message);
+
+                        if (!result.Success)
+                        {
+                            return new ResponseService<bool>
+                            {
+                                Error = true,
+                                Message = "The email wasn't sent. Please contact support.",
+                                Data = false
+                            };
+                        }
+                    }
+
                     await _dataContext.SaveChangesAsync();
 
-                    var senderUser = leaveRequest.User;
-
-                    var message = new EmailMessage
+                    return new ResponseService<bool>
                     {
-                        Subject = "إلغاء طلب الأجازة",
-                        Body = EmailTemplate.CreateLeaveCancellationTemplate(
-                                    senderUser.Name,
-                                    senderUser.Email,
-                                    leaveRequest.StartDate.ToString("yyyy-MM-dd"),
-                                    leaveRequest.EndDate.ToString("yyyy-MM-dd"),
-                                    (int)(leaveRequest.EndDate - leaveRequest.StartDate).TotalDays + 1,
-                                    leaveRequest.Type,
-                                    senderUser.HR_code),
-                        IsHtml = true,
-                        CcEmails = new List<string> { senderUser.Email }
+                        Error = false,
+                        Message = "Leave cancelled successfully.",
+                        Data = true
                     };
-
-                    // TODO: Send email using your email service
-
-                    return new ResponseService<bool> { Error = false, Message = "Leave cancelled successfully.", Data = true };
                 }
 
                 return new ResponseService<bool>
@@ -664,6 +730,7 @@ namespace AutomatedTaskSystem.Services.Leave
                 return new ResponseService<bool> { Error = true, Message = "An error occurred.", Data = false };
             }
         }
+
 
 
 
@@ -692,21 +759,29 @@ namespace AutomatedTaskSystem.Services.Leave
 
         private static int CalculateWorkingDays(DateTime startDate, DateTime endDate)
         {
-            int workingDays = 0;
-            DateTime date = startDate;
+            if (startDate > endDate)
+                return 0;
 
-            while (date <= endDate)
+            int workingDays = 0;
+
+            for (DateTime date = startDate; date <= endDate; date = date.AddDays(1))
             {
-                if (date.DayOfWeek != DayOfWeek.Saturday &&
-                    date.DayOfWeek != DayOfWeek.Friday)
+                if (IsWorkingDay(date))
                 {
                     workingDays++;
                 }
-                date = date.AddDays(1);
             }
 
             return workingDays;
         }
+
+        private static bool IsWorkingDay(DateTime date)
+        {
+            // Define working days (e.g., Sunday to Thursday)
+            return date.DayOfWeek != DayOfWeek.Friday &&
+                   date.DayOfWeek != DayOfWeek.Saturday;
+        }
+
 
 
         private bool IsValidMedicalCertificate(IFormFile file)

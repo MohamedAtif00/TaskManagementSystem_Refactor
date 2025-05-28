@@ -6,7 +6,7 @@ import Dropdown from "../../formComponents/DropDown";
 import API from "../../../lib/API";
 import { edit } from "../../../slices/userSlice";
 import { motion } from "framer-motion";
-import { useAppDispatch } from "../../../app/hooks";
+import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 import * as z from 'zod';
 
 type UserRole = 0 | 1 | 2 | 3;
@@ -41,13 +41,14 @@ const ACCOUNT_TYPE_OPTIONS = [
 
 const EditUser = () => {
     const dispatch = useAppDispatch();
-    const { query, push: routerPush, pathname } = useRouter();
+    const { query, push: routerPush, pathname,back } = useRouter();
+    const auth = useAppSelector(x => x.authSlice)
 
-    const [active, setActive] = useState<boolean>(false);
+    const [active, setActive] = useState<boolean>(true);
     const [name, setName] = useState("");
     const [hrCode, setHrCode] = useState("");
     const [email, setEmail] = useState("");
-    const [onBoard, setOnBoard] = useState(true);
+    // const [onBoard, setOnBoard] = useState(true);
     const [archived, setArchived] = useState(false);
     const [group, setGroup] = useState<SimpleInfo | null>(null);
     const [groups, setGroups] = useState<SimpleInfo[]>([]);
@@ -59,6 +60,7 @@ const EditUser = () => {
     const [title,setTite] = useState<string >("")
     const [phone,setPhone] = useState<string >("") 
     const [permissionObj, setPermission] = useState<{current:number,max:number} | null>(null);
+    // const [isArchived,setArchive] = useState<boolean>(false)
     const [vacation, setVacation] = useState<IVacation>({
         annual: 0,
         sick: 0,
@@ -89,15 +91,14 @@ const EditUser = () => {
         if (query.form === "edit-user" && query.userId) {
             API.RESOURCES.USERS.GET_ONE(query.userId.toString()).then((res) => {
                 if (res && !res.error) {
-                    const { name, hrCode, email, onBoard, archived, group, role, 
-                            accountType, teamleader,teamleaderId, vacation, permission,permission_MAX ,title,phone} = res.data;
+                    const { name, hrCode, email, archived, group, role, 
+                            accountType, teamleader,teamleaderId, vacation, permission,permission_MAX ,title,phone,isArchived} = res.data;
 
-                            console.log(res.data);
                             
                     setName(name);
                     setHrCode(hrCode || "");
                     setEmail(email || "");
-                    setOnBoard(onBoard);
+                    // setOnBoard(onBoard);
                     setArchived(archived);
                     setGroup(group?? null);
                     setPermission({current:permission,max:permission_MAX} );
@@ -121,7 +122,7 @@ const EditUser = () => {
                         annual_MAX: vacation?.annual_MAX || 0,
                         emergency_MAX: vacation?.emergency_MAX || 0,
                     });
-
+                    setArchived(isArchived);
                     setRole(role);
                     setTeamleader(teamleader?? null);
                     setTeamleaderId(teamleaderId??null)
@@ -158,7 +159,6 @@ const EditUser = () => {
         e.preventDefault();
         e.stopPropagation()
         setError("");
-        console.log("heello");
         
 
         if (!name) return setError("Please enter name");
@@ -171,7 +171,7 @@ const EditUser = () => {
                 name,
                 hrCode,
                 email,
-                onBoard,
+                // onBoard,
                 archived,
                 groupId: group.id,
                 role,
@@ -186,7 +186,8 @@ const EditUser = () => {
 
             if (res?.data) {
                 dispatch(edit(res.data));
-                routerPush(pathname);
+                // routerPush(pathname);
+                back()
             } else if (res?.error) {
                 setError(res.message || "Failed to update user");
             }
@@ -225,12 +226,15 @@ const EditUser = () => {
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                         <div className="text-red-600">{error}</div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <InputTextField label="Name" value={name} handleChange={setName} />
-                            <InputTextField label="HR Code" value={hrCode} handleChange={setHrCode} />
-                            <InputTextField label="Email" value={email} handleChange={setEmail} />
-                            <InputTextField label="Title" value={title} handleChange={setTite} />
-                            {/* <InputTextField label="Phone" value={phone} handleChange={setPhone} /> */}
+                       <div className="grid grid-cols-2 gap-4">
+                            {/* Always show Email field */}
+                            <InputTextField
+                                label="Email"
+                                value={email}
+                                handleChange={setEmail}
+                            />
+
+                            {/* Always show Phone field */}
                             <div>
                                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
                                     Phone Number
@@ -243,48 +247,58 @@ const EditUser = () => {
                                     placeholder="(123) 456-7890"
                                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                 />
-                                </div>
+                            </div>
 
+                            {/* Show rest of the fields only if role !== 3 */}
+                            {auth.role !== 3 && (
+                                <>
+                                    <InputTextField label="Name" value={name} handleChange={setName} />
+                                    <InputTextField label="HR Code" value={hrCode} handleChange={setHrCode} />
+                                    <InputTextField label="Title" value={title} handleChange={setTite} />
 
-                            <Dropdown
-                                label="Group"
-                                value={group}
-                                options={groups}
-                                handleChange={setGroup}
-                            />
+                                    <Dropdown
+                                        label="Group"
+                                        value={group}
+                                        options={groups}
+                                        handleChange={setGroup}
+                                    />
 
-                            <Dropdown
-                                label="Role"
-                                value={role !== null ? 
-                                    roleOptions.find(option => option.id === role) || null 
-                                    : null
-                                }
-                                options={roleOptions}
-                                handleChange={(selected) => setRole(selected?.id ?? null)}
-                            />
+                                    <Dropdown
+                                        label="Role"
+                                        value={
+                                            role !== null
+                                                ? roleOptions.find((option) => option.id === role) || null
+                                                : null
+                                        }
+                                        options={roleOptions}
+                                        handleChange={(selected) => setRole(selected?.id ?? null)}
+                                    />
 
-                            <Dropdown
-                                label="Account Type"
-                                value={accountType}
-                                options={[
-                                    { id: 0, name: "Internal" },
-                                    { id: 1, name: "External" }
-                                ]}
-                                
-                                handleChange={setAccountType as (v: { id: number; name: string }) => void}
-                            />
+                                    <Dropdown
+                                        label="Account Type"
+                                        value={accountType}
+                                        options={[
+                                            { id: 0, name: "Internal" },
+                                            { id: 1, name: "External" }
+                                        ]}
+                                        handleChange={setAccountType as (v: { id: number; name: string }) => void}
+                                    />
 
-                            {group && shouldShowTeamLeader(role) && (
-                                <Dropdown
-                                    label="Team Leader"
-                                    value={teamleader}
-                                    options={teamLeaders}
-                                    handleChange={setTeamleader}
-                                />
+                                    {group && shouldShowTeamLeader(role) && (
+                                        <Dropdown
+                                            label="Team Leader"
+                                            value={teamleader}
+                                            options={teamLeaders}
+                                            handleChange={setTeamleader}
+                                        />
+                                    )}
+                                </>
                             )}
                         </div>
 
-                        {accountType?.id === 0 && (
+
+
+                        {auth.role !== 3 &&accountType?.id === 0 && (
                             <div className="mt-4">
                                 <h3 className="text-md font-semibold mb-4">Vacations</h3>
                                 
@@ -349,17 +363,7 @@ const EditUser = () => {
                             </div>
                         )}
 
-                        <div className="flex gap-4 mt-4">
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="onBoard"
-                                    checked={onBoard}
-                                    onChange={(e) => setOnBoard(e.target.checked)}
-                                    className="mr-2"
-                                />
-                                <label htmlFor="onBoard">On Board</label>
-                            </div>
+                        {auth.role !== 3 &&<div className="flex gap-4 mt-4">
                             <div className="flex items-center">
                                 <input
                                     type="checkbox"
@@ -370,7 +374,7 @@ const EditUser = () => {
                                 />
                                 <label htmlFor="archived">Archived</label>
                             </div>
-                        </div>
+                        </div>}
                         <div className="mt-auto pt-4">
                             <FormConclusion pathname="/resources/users" submittable={true} />
                         </div>

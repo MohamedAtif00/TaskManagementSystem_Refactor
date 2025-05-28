@@ -37,7 +37,7 @@ const columns: GridColDef[] = [
         sortComparator: (A, B) => {
             const a = A.toLowerCase(),
                 b = B.toLowerCase();
-            console.log(a, b);
+            //console.log(a, b);
             return a > b ? 1 : b > a ? -1 : 0;
         },
     },

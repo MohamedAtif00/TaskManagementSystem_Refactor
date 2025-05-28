@@ -23,7 +23,7 @@ const Sprints = () => {
     useEffect(() => {
         API.SPRINTS.GET_ALL_SPRINTS().then((res) => {
             if (res && !res.error) setSprints(res.value.data);
-            console.log(sprints);
+            //console.log(sprints);
             
         });
     }, []);

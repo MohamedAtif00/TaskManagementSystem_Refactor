@@ -170,7 +170,7 @@ const RESOURCES = {
 				name,
 				hrCode,
 				email,
-				onBoard,
+				// onBoard,
 				archived,
 				groupId,
 				role,
@@ -186,7 +186,7 @@ const RESOURCES = {
 				name: string;
 				hrCode: string;
 				email: string;
-				onBoard: boolean;
+				// onBoard: boolean;
 				archived: boolean;
 				groupId: number;
 				role: number;
@@ -211,7 +211,7 @@ const RESOURCES = {
 							name, 
 							hrCode,
 							email,
-							onBoard,
+							// onBoard,
 							archived,
 							groupId, 
 							role,

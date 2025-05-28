@@ -29,23 +29,23 @@ const parseTime = (date: string, time: string): Date => {
 };
 
   useEffect(() => {
-    console.log(calendarId);
+    //console.log(calendarId);
     
     let isMounted = true;
 
-    debugger
+    
         if (calendarId) {
             fetchPermissionRequest(Number(calendarId)).then(({ leaveDetails }) => {
             if (isMounted) {
             setRequest(leaveDetails.data);
             setApprovals(leaveDetails.data?.opinions)
-            console.log(leaveDetails,"after assign");
-            console.log(leaveDetails.data?.opinions,"opnions");
-            console.log(auth.id);
+            //console.log(leaveDetails,"after assign");
+            //console.log(leaveDetails.data?.opinions,"opnions");
+            //console.log(auth.id);
             
             if((leaveDetails as IGetPermissionDetails).opinions?.some(x => x.user?.id == auth.id))
             {
-                console.log("commentable");
+                //console.log("commentable");
                 
                 setCommentable(false)
                 
@@ -61,7 +61,7 @@ const parseTime = (date: string, time: string): Date => {
         const fetchPermissionRequest = async (id: number) => {
         try {
             const leaveDetails = await PERMISSION.GET_DETAILS(Number(calendarId));
-            console.log(leaveDetails);
+            //console.log(leaveDetails);
             
             return { leaveDetails };
         } catch (error) {
@@ -156,9 +156,13 @@ const parseTime = (date: string, time: string): Date => {
                   <span className="text-gray-500">Phone: </span>
                   <span className="text-blue-600">{request?.user?.phone}</span>
                 </div>
-                <div>
+                 <div>
                   <span className="text-gray-500">Role: </span>
-                  <span className="text-blue-600">{request?.user?.hrCode}</span>
+                   <span className="text-[#5570FF]">
+                                    {request?.user?.role === 0 ? "Project Manager" : 
+                                    request?.user?.role === 1 ? "Section Head" :
+                                    request?.user?.role === 2 ? "Team Leader" : "Member"}
+                                    </span>
                 </div>
               </div>
             </div>
