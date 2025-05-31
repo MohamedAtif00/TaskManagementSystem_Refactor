@@ -5,7 +5,7 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import LEAVE, { ICreateLeave, IGetLeaveRequest, LeaveRequestStatus, LeaveRequestType } from "../../lib/API/Leave";
-import Permission, { ICreatePermission, IPermission, PermissionType } from "../../lib/API/Permission";
+import Permission, { ICreatePermission, IPermission, PermissionRequestStatus, PermissionType } from "../../lib/API/Permission";
 import { FiX } from "react-icons/fi";
 import FileUpload from "../../components/pageComponent/leave/fileUpload";
 import PERMISSION from "../../lib/API/Permission";
@@ -544,8 +544,8 @@ const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
     </div>
   );
 
-  const StatusBadge = ({ status }: { status: LeaveRequestStatus }) => {
-    const getStatusColor = (status: LeaveRequestStatus) => {
+  const StatusBadge = ({ status }: { status: LeaveRequestStatus | PermissionRequestStatus}) => {
+    const getStatusColor = (status: LeaveRequestStatus | PermissionRequestStatus) => {
       switch (status) {
         case "Approved":
           return "bg-green-100 text-green-800";
@@ -600,8 +600,8 @@ const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
       const leavesResponse = await API.LEAVE.GET_ALL_BY_USER(auth.id);
       
       if (leavesResponse && 'data' in leavesResponse) {
-        setAllLeaves(leavesResponse.data);
-        setFilteredLeaves(leavesResponse.data);
+        setAllLeaves(leavesResponse.data??[]);
+        setFilteredLeaves(leavesResponse.data??[]);
       }
 
    
@@ -705,14 +705,14 @@ const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
     try {
       const leavesResponse = await API.LEAVE.GET_ALL_BY_USER(auth.id);
       if (leavesResponse && 'data' in leavesResponse) {
-        setAllLeaves(leavesResponse.data);
-        setFilteredLeaves(leavesResponse.data);
+        setAllLeaves(leavesResponse.data??[]);
+        setFilteredLeaves(leavesResponse.data??[]);
       }
 
       const permissionsResponse = await Permission.GET_ALL_BY_USER(auth.id);      
       if (permissionsResponse) {
-        setAllPermissions(permissionsResponse);
-        setFilteredPermissions(permissionsResponse);
+        setAllPermissions(permissionsResponse.data??[]);
+        setFilteredPermissions(permissionsResponse.data??[]);
       }
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -725,17 +725,21 @@ const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
     try {
       const response = await LEAVE.CANCEL_LEAVE(leaveId);
 
-      if (response.error) {
-        toast.error(response.message);
-        return;
-      }
+      if(response != false)
+      {
+        if (response.error) {
+          toast.error(response.message??"");
+          return;
+        }
+  
+        toast.success('Leave cancelled successfully.');
+        setAllLeaves(prev =>
+          prev.map(leave =>
+            leave.id === leaveId ? { ...leave, status: LeaveRequestStatus.Cancelled } : leave
+          )
+        );
 
-      toast.success('Leave cancelled successfully.');
-      setAllLeaves(prev =>
-        prev.map(leave =>
-          leave.id === leaveId ? { ...leave, status: 'Cancelled' } : leave
-        )
-      );
+      }
     } catch (error) {
       console.error('Error cancelling leave:', error);
       toast.error('An unexpected error occurred.');
@@ -746,18 +750,20 @@ const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
   const handleCancelPermission = async (permissionId: number) => {
     try {
       const response = await PERMISSION.CANCEL_PERMISSION(permissionId);
-      
-      if (response.error) {
-        toast.error(response.message);
-        return;
+      if(response != false)
+      {
+        if (response.error) {
+          toast.error(response.message);
+          return;
+        }
+  
+        toast.success('Permission cancelled successfully.');
+        setAllPermissions(prev =>
+          prev.map(permission =>
+            permission.id === permissionId ? { ...permission, status: PermissionRequestStatus.Cancelled } : permission
+          )
+        );
       }
-
-      toast.success('Permission cancelled successfully.');
-      setAllPermissions(prev =>
-        prev.map(permission =>
-          permission.id === permissionId ? { ...permission, status: 'Cancelled' } : permission
-        )
-      );
     } catch (error) {
       console.error('Error cancelling permission:', error);
       toast.error('An unexpected error occurred.');
@@ -1021,7 +1027,7 @@ const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
                           <StatusBadge status={permission.status} />
                         </td>
                          <td className="px-3 py-4 whitespace-nowrap  text-sm font-medium text-center">
-                            {permission.status != 'Cancelled'&& permission.status != 'Rejected' && (
+                            {permission.status != 'Cancelled'&& permission.status != PermissionRequestStatus.Rejected && (
                              <button
                               onClick={() => {
                                 setCancelTarget({ id: permission.id, type: 'permission' });

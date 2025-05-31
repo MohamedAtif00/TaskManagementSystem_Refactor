@@ -35,27 +35,47 @@ const parseTime = (date: string, time: string): Date => {
 
     
         if (calendarId) {
-            fetchPermissionRequest(Number(calendarId)).then(({ leaveDetails }) => {
-            if (isMounted) {
-            setRequest(leaveDetails.data);
-            setApprovals(leaveDetails.data?.opinions)
-            //console.log(leaveDetails,"after assign");
-            //console.log(leaveDetails.data?.opinions,"opnions");
-            //console.log(auth.id);
-            
-            if((leaveDetails as IGetPermissionDetails).opinions?.some(x => x.user?.id == auth.id))
-            {
-                //console.log("commentable");
-                
-                setCommentable(false)
-                
-            }
-        }
-            });
-        }
-        return () => {
-            isMounted = false;
-        };
+          // Make sure fetchPermissionRequest is defined and returns the expected Promise structure
+          // Example:
+          // const fetchPermissionRequest = async (id: number) => {
+          //     const response = await PERMISSION.GET_SINGLE_PERMISSION(id); // Your actual API call
+          //     return { leaveDetails: response }; // Assuming 'response' is false | ResponseService<IGetPermissionDetails>
+          // };
+
+          fetchPermissionRequest(Number(calendarId)).then(({ leaveDetails }) => {
+              if (isMounted) {
+                  // *** THE ESSENTIAL FIX IS HERE: Type Guarding ***
+                  // Check if leaveDetails is truthy (not false) AND that its 'data' property exists
+                  if (leaveDetails && leaveDetails.data) {
+                      // Inside this 'if' block, TypeScript has narrowed the type:
+                      // - 'leaveDetails' is now guaranteed to be ResponseService<IGetPermissionDetails>
+                      // - 'leaveDetails.data' is now guaranteed to be IGetPermissionDetails
+
+                      setRequest(leaveDetails.data); // Set the single object
+                      setApprovals(leaveDetails.data.opinions??null); // Access opinions directly from leaveDetails.data
+
+                      // Access opinions from leaveDetails.data, as it's the IGetPermissionDetails object
+                      if (leaveDetails.data.opinions?.some(x => x.user?.id === auth.id)) {
+                          // console.log("commentable");
+                          setCommentable(false);
+                      } else {
+                          setCommentable(true); // Default to commentable if not found
+                      }
+                  } else {
+                      // Handle the case where leaveDetails is false or leaveDetails.data is null/undefined
+                      console.warn("Failed to fetch permission details or no data received.");
+                      setRequest(null);
+                      setApprovals(null); // Reset approvals
+                      setCommentable(true); // Reset commentable state if no data
+                  }
+              }
+          });
+      }
+
+      // ... rest of your useEffect cleanup ...
+      return () => {
+          isMounted = false;
+      };
     }, [calendarId]);
 
         const fetchPermissionRequest = async (id: number) => {
@@ -71,21 +91,22 @@ const parseTime = (date: string, time: string): Date => {
     };
 
 
-    const handleSubmitOpinion = async (status: 'Approved' | 'Rejected') => {
+    const handleSubmitOpinion = async (status: PermissionRequestStatus.Approved | PermissionRequestStatus.Rejected) => {
         setIsSubmitting(true);
         try {
             let op:IOpinion = {
                 permissionId: request?.id??0,
                 comment:comment,
                 status:status,
-                isApproved:status == "Approved"?true:false,
+                isApproved:status == PermissionRequestStatus.Approved?true:false,
                 user:{id:auth.id,name:auth.name,role:auth.role}
             }
             await PERMISSION.CREATE_OPINION(op)
 
             // Optional: refetch the leave request to update approvals
             const { leaveDetails } = await fetchPermissionRequest(Number(calendarId));
-            setRequest(leaveDetails.data);
+            if(leaveDetails)
+            setRequest(leaveDetails?.data??null);
 
             // Clear form
             setComment('');
@@ -101,11 +122,14 @@ const parseTime = (date: string, time: string): Date => {
   // Function to get status color based on status
   const getStatusColor = (status: PermissionRequestStatus): string => {
     switch(status) {
-      case "Approved":
+      case PermissionRequestStatus.Approved:
         return "text-green-600";
-      case "Rejected":
+      case PermissionRequestStatus.Rejected:
         return "text-red-600";
-      case "Pending":
+      case PermissionRequestStatus.Pending:
+        return "text-yellow-600";
+      case PermissionRequestStatus.Cancelled:
+         return "text-red-600";
       default:
         return "text-yellow-600";
     }
@@ -206,7 +230,7 @@ const parseTime = (date: string, time: string): Date => {
                   </div>
                   <div>
                     <span className="text-gray-500">Final status: </span>
-                    <span className={`${getStatusColor(request?.status??"Pending")}`}>{request?.status}</span>
+                    <span className={`${getStatusColor(request?.status??PermissionRequestStatus.Pending)}`}>{request?.status}</span>
                   </div>
                   <div>
                     <span className="text-gray-500">Starts at: </span>
@@ -260,7 +284,7 @@ const parseTime = (date: string, time: string): Date => {
                 </div>
                 <div>
                   <span className="text-gray-500">Status: </span>
-                  <span className={`${getStatusColor(approval.isApproved?"Approved":"Rejected")}`}>{approval.isApproved?"Approved":"Rejected"}</span>
+                  <span className={`${getStatusColor(approval.isApproved?PermissionRequestStatus.Approved:PermissionRequestStatus.Rejected)}`}>{approval.isApproved?"Approved":"Rejected"}</span>
                 </div>
               </div>
               <div>
@@ -281,14 +305,14 @@ const parseTime = (date: string, time: string): Date => {
                 <div className="flex space-x-4">
                 <button
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
-                    onClick={() => handleSubmitOpinion('Approved')}
+                    onClick={() => handleSubmitOpinion(PermissionRequestStatus.Approved)}
                     disabled={isSubmitting || !comment.trim()}
                 >
                     Approve
                 </button>
                 <button
                     className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
-                    onClick={() => handleSubmitOpinion('Rejected')}
+                    onClick={() => handleSubmitOpinion(PermissionRequestStatus.Rejected)}
                     disabled={isSubmitting || !comment.trim()}
                 >
                     Reject

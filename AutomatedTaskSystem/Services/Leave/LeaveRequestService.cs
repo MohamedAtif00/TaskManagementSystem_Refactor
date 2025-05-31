@@ -2,6 +2,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
+using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Hub;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.UserRole;
@@ -10,6 +11,7 @@ using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using static AutomatedTaskSystem.DTO.Responses;
 
 namespace AutomatedTaskSystem.Services.Leave
@@ -21,8 +23,11 @@ namespace AutomatedTaskSystem.Services.Leave
         private readonly IEmailService _emailService;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly IHubContext<UserHub> _hubContext;
-
-        public LeaveRequestService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IWebHostEnvironment webHostEnvironment, IHubContext<UserHub> hubContext)
+        public LeaveRequestService(DataContext dataContext,
+                                   ITokenService tokenService,
+                                   IEmailService emailService,
+                                   IWebHostEnvironment webHostEnvironment,
+                                   IHubContext<UserHub> hubContext )
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
@@ -30,67 +35,6 @@ namespace AutomatedTaskSystem.Services.Leave
             _webHostEnvironment = webHostEnvironment;
             _hubContext = hubContext;
         }
-
-        // ✅ Create
-        //public async Task<bool> CreateLeaveRequest(CreateLeaveRequestDto request)
-        //{
-        //    var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
-        //    if (user == null) return false;
-
-        //    // Parse and validate dates
-        //    if (!DateTime.TryParse(request.StartDate, out var startDate) ||
-        //        !DateTime.TryParse(request.EndDate, out var endDate))
-        //        return false;
-
-        //    if (endDate < startDate)
-        //        return false;
-
-        //    // Calculate leave days (inclusive)
-        //    int requestedDays = (endDate - startDate).Days + 1;
-
-        //    if ((user.Annual_leave_MAX - user.Annual_leave) < requestedDays)
-        //        return false;
-
-        //    var leaveRequest = new LeaveRequest
-        //    {
-        //        UserId = user.Id,
-        //        StartDate = startDate,
-        //        EndDate = endDate,
-        //        Reason = request.Reason,
-        //        Status = Models.LeaveRequestStatusEnum.Pending,
-        //        Type = request.type,
-        //        NoteForManager = request.NoteForManager,
-        //        DateCreated = DateTime.Now
-        //    };
-
-        //    // TeamLeader logic
-        //    if (user.Role == UserRoleEnum.TeamLeader)
-        //    {
-        //        leaveRequest.TeamleaderId = user.Id;
-
-        //        // Assign SectionHeadId based on user's group
-        //        var section = await _dataContext.Sections
-        //            .Where(s => s.SectionGroups.Any(g => g.GroupId == user.GroupId))
-        //            .FirstOrDefaultAsync();
-
-        //        if (section != null)
-        //            leaveRequest.SectionheadId = section.HeadId;
-        //    }
-
-        //    _dataContext.LeaveRequests.Add(leaveRequest);
-
-        //    // Notify receivers
-        //    var receivers = await GetReceiversAsync(user.Role);
-        //    foreach (var receiver in receivers)
-        //    {
-        //        Console.WriteLine($"Notify user {receiver.Id} about the new vacation request.");
-        //        // Optional: implement actual notification (e.g., SignalR)
-        //    }
-
-        //    await _dataContext.SaveChangesAsync();
-        //    return true;
-        //}
-
         // Enhanced service method
         public async Task<ResponseService<bool>> CreateLeaveRequest(CreateLeaveRequestDto request)
         {
@@ -123,30 +67,54 @@ namespace AutomatedTaskSystem.Services.Leave
                 return response;
             }
 
-            int requestedDays = CalculateWorkingDays(startDate,endDate);
+            int requestedDays = CalculateWorkingDays(startDate, endDate);
 
-            if (request.type == LeaveRequestType.Annual || request.type == LeaveRequestType.Emergency)
+            // --- Start of Revised Leave Type Specific Logic ---
+
+            if (request.type == LeaveRequestType.Annual)
             {
-                var pendingLeaveDays = await _dataContext.LeaveRequests
+                var pendingAnnualLeaveDays = await _dataContext.LeaveRequests
                     .Where(lr => lr.UserId == user.Id &&
-                                 (lr.Type == LeaveRequestType.Annual || lr.Type == LeaveRequestType.Emergency) &&
+                                 lr.Type == LeaveRequestType.Annual && // Filter specifically for Annual
                                  lr.Status == LeaveRequestStatusEnum.Pending)
                     .Select(lr => EF.Functions.DateDiffDay(lr.StartDate, lr.EndDate) + 1)
                     .SumAsync();
 
-                int remainingLeave = user.Annual_leave_MAX - user.Annual_leave;
+                int remainingAnnualLeave = user.Annual_leave_MAX - user.Annual_leave;
 
-                if ((pendingLeaveDays + requestedDays) > remainingLeave)
+                if ((pendingAnnualLeaveDays + requestedDays) > remainingAnnualLeave)
                 {
                     response.Error = true;
-                    response.Message = "Requested leave exceeds available leave balance.";
+                    response.Message = $"Requested annual leave exceeds available annual leave balance. Remaining: {remainingAnnualLeave - pendingAnnualLeaveDays} days.";
                     response.Data = false;
                     return response;
                 }
             }
-
-            if (request.type == LeaveRequestType.Sick)
+            else if (request.type == LeaveRequestType.Emergency)
             {
+                var pendingEmergencyLeaveDays = await _dataContext.LeaveRequests
+                    .Where(lr => lr.UserId == user.Id &&
+                                 lr.Type == LeaveRequestType.Emergency && // Filter specifically for Emergency
+                                 lr.Status == LeaveRequestStatusEnum.Pending)
+                    .Select(lr => EF.Functions.DateDiffDay(lr.StartDate, lr.EndDate) + 1)
+                    .SumAsync();
+
+                int remainingEmergencyLeave = user.Emergency_leave_MAX - user.Emergency_leave;
+
+                if ((pendingEmergencyLeaveDays + requestedDays) > remainingEmergencyLeave)
+                {
+                    response.Error = true;
+                    response.Message = $"Requested emergency leave exceeds available emergency leave balance. Remaining: {remainingEmergencyLeave - pendingEmergencyLeaveDays} days.";
+                    response.Data = false;
+                    return response;
+                }
+            }
+            else if (request.type == LeaveRequestType.Sick)
+            {
+                // Sick leave doesn't typically have a MAX or cumulative balance like annual/emergency
+                // but often has rules around medical certificates.
+                // Assuming no "Sick_leave_MAX" and it's just tracked as taken.
+
                 if (requestedDays > 3 && request.MedicalCertificate == null)
                 {
                     response.Error = true;
@@ -163,6 +131,11 @@ namespace AutomatedTaskSystem.Services.Leave
                     return response;
                 }
             }
+            // Add other leave types if applicable (e.g., Unpaid, Maternity, etc.) with their specific checks
+            // If a leave type doesn't have a quota, it won't enter these if blocks.
+
+            // --- End of Revised Leave Type Specific Logic ---
+
 
             var leaveRequest = new LeaveRequest
             {
@@ -176,7 +149,7 @@ namespace AutomatedTaskSystem.Services.Leave
                 DateCreated = DateTime.Now
             };
 
-            // TeamLeader logic
+            // TeamLeader logic (unchanged)
             if (user.Role == UserRoleEnum.TeamLeader)
             {
                 leaveRequest.TeamleaderId = user.Id;
@@ -204,6 +177,25 @@ namespace AutomatedTaskSystem.Services.Leave
                     await _dataContext.SaveChangesAsync();
                 }
 
+                var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
+
+                if (owner != null)
+                {
+                    var ownerClient = _hubContext.Clients.User(owner.Id.ToString());
+
+                    await ownerClient.SendAsync("UpdatePendings", new
+                    {
+                        pendings = await _dataContext.LeaveRequests.Where(x => x.Status == LeaveRequestStatusEnum.Pending).CountAsync(),
+                        isNewRequest = true,
+                        newLeaveRequestId = leaveRequest.Id
+                    });
+
+                }
+                else
+                {
+                    Console.WriteLine("Warning: No user with Role.Owner found to send SignalR update.");
+                }
+
                 response.Data = true;
                 response.Message = "Leave request created successfully.";
             }
@@ -216,10 +208,6 @@ namespace AutomatedTaskSystem.Services.Leave
 
             return response;
         }
-
-
-
-
         public async Task<bool> GiveOpinion(CreateOpinionDto request)
         {
             // Get current user
@@ -243,7 +231,8 @@ namespace AutomatedTaskSystem.Services.Leave
                 throw new Exception("You have already given your opinion on this request");
             }
 
-            // Create new opinion
+            // Create new opinion object, but DON'T add it to context yet
+            // We'll add it only if the main action (like email sending for approval) succeeds
             var opinion = new Opinion
             {
                 UserId = user.Id,
@@ -253,43 +242,26 @@ namespace AutomatedTaskSystem.Services.Leave
                 CreatedAt = DateTime.UtcNow,
             };
 
-            _dataContext.Opinions.Add(opinion);
-
             // Handle different roles
             switch (user.Role)
             {
                 case UserRoleEnum.Owner:
-                    // Owner's decision is final
-                    leaveRequest.Status = request.IsApproved
-                        ? LeaveRequestStatusEnum.Approved
-                        : LeaveRequestStatusEnum.Rejected;
-
-                    if (leaveRequest.Status == LeaveRequestStatusEnum.Approved)
+                    if (request.IsApproved) // Owner approves
                     {
                         var senderUser = leaveRequest.User;
                         var message = new EmailMessage
                         {
                             Subject = "أجازة",
                             Body = EmailTemplate.CreateTemplate(senderUser.Name,
-                                                                senderUser.Email,
-                                                                leaveRequest.StartDate.ToString("yyyy-MM-dd"),
-                                                                leaveRequest.EndDate.ToString("yyyy-MM-dd"),
-                                                                CalculateWorkingDays(leaveRequest.StartDate,leaveRequest.EndDate),
-                                                                leaveRequest.Type,
-                                                                leaveRequest.User.HR_code),
+                                                             senderUser.Email,
+                                                             leaveRequest.StartDate.ToString("yyyy-MM-dd"),
+                                                             leaveRequest.EndDate.ToString("yyyy-MM-dd"),
+                                                             CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
+                                                             leaveRequest.Type,
+                                                             leaveRequest.User.HR_code),
                             IsHtml = true,
                             CcEmails = new List<string> { leaveRequest.User.Email }
                         };
-
-                        await _hubContext.Clients.User(leaveRequest.UserId.ToString()).SendAsync("LeaveRequestOpinion", new
-                        {
-                            isApproved = true,
-                            message = "The leave request has been approved"
-                        });
-                        await _hubContext.Clients.User(user.Id.ToString()).SendAsync("UpdatePendings", new
-                        {
-                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync()
-                        });
 
                         // Add medical certificate attachment if it exists
                         if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
@@ -300,53 +272,89 @@ namespace AutomatedTaskSystem.Services.Leave
                                 var fileName = Path.GetFileName(fullFilePath);
                                 var attachment = new System.Net.Mail.Attachment(fullFilePath);
                                 attachment.Name = fileName;
-
                                 message.Attachments.Add(attachment);
                             }
                         }
 
-                        var result = await _emailService.SendEmailAsync(message);
-                        if (result.Success)
+                        var emailResult = await _emailService.SendEmailAsync(message);
+
+                        if (emailResult.Success)
                         {
+                            // Only if email succeeds, then update status, user leave, and add opinion
+                            leaveRequest.Status = LeaveRequestStatusEnum.Approved;
+
+                            // --- START: Update user leave based on leave type ---
+                            int approvedDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
+
+                            switch (leaveRequest.Type)
+                            {
+                                case LeaveRequestType.Annual:
+                                    senderUser.Annual_leave += approvedDays;
+                                    break;
+                                case LeaveRequestType.Emergency:
+                                    senderUser.Emergency_leave += approvedDays;
+                                    break;
+                                case LeaveRequestType.Sick:
+                                    // Assuming Sick_leave tracks total sick days taken.
+                                    // If it's more about "remaining sick days", adjust logic.
+                                    senderUser.Sick_leave += approvedDays;
+                                    break;
+                                    // Add other leave types here if they also deplete a tracked balance
+                                    // case LeaveRequestType.Unpaid: // Unpaid leave usually doesn't deduct from a "MAX"
+                                    //    break;
+                            }
+                            // --- END: Update user leave based on leave type ---
+
                             _dataContext.Opinions.Add(opinion);
-                            
-                            _dataContext.Users.Update(user);
-                            _dataContext.LeaveRequests.Update(leaveRequest);
+                            _dataContext.Users.Update(user); // Mark user for update
+                            _dataContext.LeaveRequests.Update(leaveRequest); // Mark leave request for update
+
+                            // Send SignalR notification to the user who requested the leave
+                            await _hubContext.Clients.User(leaveRequest.UserId.ToString()).SendAsync("LeaveRequestOpinion", new
+                            {
+                                isApproved = true,
+                                message = "Your leave request has been approved."
+                            });
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Error sending approval email for LeaveRequest {leaveRequest.Id}: {emailResult.Message}");
+                            throw new Exception("Leave request could not be fully processed due to email delivery failure. Please try again or contact support.");
                         }
                     }
-                    else
+                    else // Owner rejects (request.IsApproved is false)
                     {
+                        leaveRequest.Status = LeaveRequestStatusEnum.Rejected;
                         _dataContext.Opinions.Add(opinion);
                         _dataContext.LeaveRequests.Update(leaveRequest);
+
                         await _hubContext.Clients.User(leaveRequest.UserId.ToString()).SendAsync("LeaveRequestOpinion", new
                         {
                             isApproved = false,
-                            message = "The leave request has been approved"
+                            message = "Your leave request has been rejected."
                         });
-                        await _hubContext.Clients.User(user.Id.ToString()).SendAsync("UpdatePendings", new
-                        {
-                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync()
-                        });
-
                     }
                     break;
 
                 case UserRoleEnum.TeamLeader:
                 case UserRoleEnum.ProjectManger:
+                    // For TL/PM, they just add their opinion. No direct status change or user leave update here.
                     _dataContext.Opinions.Add(opinion);
-                    // Just record the opinion, don't change status
-                    // Optional: You could add logic to check if all required TL/PMs have approved
                     break;
 
                 default:
                     throw new UnauthorizedAccessException("You are not authorized to give opinions on leave requests");
             }
 
+            // This SaveChangesAsync will commit all changes marked above (opinion, user update, leave request status update)
             await _dataContext.SaveChangesAsync();
-            //await _hubContext.Clients.User(user.Id.ToString()).SendAsync("UpdatePendings", new
-            //{
-            //    pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync()
-            //});
+
+            // Update pendings for the user who gave the opinion (could be the owner)
+            await _hubContext.Clients.User(user.Id.ToString()).SendAsync("UpdatePendings", new
+            {
+                pendings = await _dataContext.LeaveRequests.Where(x => x.Status == LeaveRequestStatusEnum.Pending).CountAsync()
+            });
+
             return true;
         }
         public async Task<List<GetOpinion>> GetAllOpinionsForLeaveRequest(int leaveRequestId) { 
@@ -381,52 +389,109 @@ namespace AutomatedTaskSystem.Services.Leave
             };
         }
 
-        // ✅ Read All (optionally filter by user)
-        public async Task<ResponseService<List<GetLeaveRequestDto>>> GetAllVacationsAsync(int? userId = null, int? role = null)
+        public async Task<ResponseService<PageList<GetLeaveRequestDto>>> GetAllVacationsAsync(
+                  int? userId = null,
+                  int? role = null,
+                  int page = 1,
+                  int pageSize = 10,
+                  string? searchTerm = null,
+                  string? fromDate = null,
+                  string? toDate = null,
+                  string? status = null,
+                  string? type = null,
+                  bool disablePagination = false // New parameter: Set to true to get all data
+              )
         {
             var query = _dataContext.LeaveRequests
                 .Include(v => v.User)
                 .AsQueryable();
 
-            // If role is TeamLeader (e.g., 2), show leave requests of their team members
+            // 1. Apply Role-Based Filtering
             if (role == (int)UserRoleEnum.TeamLeader && userId.HasValue)
             {
                 query = query.Where(v => v.User.TeamleaderId == userId.Value);
             }
-            // If role is Coordinator (e.g., 1), show all users – do nothing
-            //else (role == (int)UserRoleEnum.ProjectManger && userId.HasValue)
-            //else
-            //{
-            //    // If normal user, show only their own leave requests
-            //    query = query.Where(v => v.UserId == userId.Value);
-            //}
 
-            var result = await query
-                .Select(x => new GetLeaveRequestDto
+
+            // 2. Apply Search Term Filtering
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                query = query.Where(v => v.User.Name.Contains(searchTerm) ||
+                                         v.Reason.Contains(searchTerm));
+            }
+
+            // 3. Apply Date Range Filtering
+            if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate, out DateTime parsedFromDate))
+            {
+                query = query.Where(v => v.StartDate.Date >= parsedFromDate.Date);
+            }
+
+            if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate, out DateTime parsedToDate))
+            {
+                query = query.Where(v => v.EndDate.Date <= parsedToDate.Date);
+            }
+
+            // 4. Apply Status Filtering
+            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse(typeof(LeaveRequestStatusEnum), status, true, out var parsedStatus))
+            {
+                query = query.Where(v => v.Status == (LeaveRequestStatusEnum)parsedStatus);
+            }
+
+            // 5. Apply Type Filtering
+            if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse(typeof(LeaveRequestType), type, true, out var parsedType))
+            {
+                query = query.Where(v => v.Type == (LeaveRequestType)parsedType);
+            }
+
+            // --- ORDERING IS CRUCIAL FOR PAGINATION/CONSISTENCY ---
+            // Always order the query before applying Skip/Take or ToListAsync
+            query = query.OrderByDescending(v => v.DateCreated);
+
+            // Project to DTO before pagination/materialization for efficiency
+            var projectedQuery = query.Select(x => new GetLeaveRequestDto
+            {
+                Id = x.Id,
+                StartDate = x.StartDate.ToString("yyyy-MM-dd"),
+                EndDate = x.EndDate.ToString("yyyy-MM-dd"),
+                Reason = x.Reason,
+                Status = x.Status.ToString(),
+                Duration = CalculateWorkingDays(x.StartDate, x.EndDate),
+                Type = x.Type.ToString(),
+                user = new IDName
                 {
-                    Id = x.Id,
-                    StartDate = x.StartDate.ToString("yyyy-MM-dd"),
-                    EndDate = x.EndDate.ToString("yyyy-MM-dd"),
-                    Reason = x.Reason,
-                    Status = x.Status.ToString(),
-                    Duration = CalculateWorkingDays(x.StartDate,x.EndDate),
-                    Type = x.Type.ToString(),
-                    user = new IDName
-                    {
-                        Id = x.User.Id,
-                        Name = x.User.Name
-                    },
-                    DateCreated = x.DateCreated.ToString()
-                })
-                .ToListAsync();
+                    Id = x.User.Id,
+                    Name = x.User.Name
+                },
+                DateCreated = x.DateCreated.ToString()
+            });
 
-            return new ResponseService<List<GetLeaveRequestDto>>
+            PageList<GetLeaveRequestDto> pagedResult;
+
+            if (disablePagination)
+            {
+                // If pagination is disabled, get all matching items
+                var allItems = await projectedQuery.ToListAsync();
+                // Create a PageList with all items, setting page/pageSize/totalCount appropriately
+                pagedResult = new PageList<GetLeaveRequestDto>(allItems, 1, allItems.Count > 0 ? allItems.Count : 1, allItems.Count);
+            }
+            else
+            {
+                // Apply pagination as usual
+                pagedResult = await PageList<GetLeaveRequestDto>.CreateAsync(
+                    projectedQuery,
+                    page,
+                    pageSize
+                );
+            }
+
+            return new ResponseService<PageList<GetLeaveRequestDto>>
             {
                 Error = false,
                 Message = "Vacations retrieved successfully.",
-                Data = result
+                Data = pagedResult
             };
         }
+
 
 
         //public async Task<ResponseService<List<GetLeaveRequestDto>>> GetBelongToTm()

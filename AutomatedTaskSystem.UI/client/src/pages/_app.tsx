@@ -30,7 +30,7 @@ const MyApp = ({ Component, pageProps }: AppProps) => {
         <Provider store={store}>
             <Auth>
                 <SignalRProvider >
-                    <ToastContainer position="top-right" autoClose={3000} />
+                    <ToastContainer position="top-right" autoClose={10000} />
                     <div
                         id="app"
                         className={[inter.className, "bg-slate-200"].join(" ")}

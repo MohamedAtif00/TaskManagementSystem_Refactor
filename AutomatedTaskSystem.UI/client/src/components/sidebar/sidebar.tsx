@@ -18,7 +18,7 @@ const Sidebar = () => {
 	const auth = useAppSelector((s) => s.authSlice);
 	const router = useRouter()
 	
-	 const { connection, connectionState, pendingNumber } = useContext(SignalRContext);
+	const { connection, connectionState, pendingNumber } = useContext(SignalRContext);
 
 	const logoutHandler = () => {
 		authService.logout().then(() => {

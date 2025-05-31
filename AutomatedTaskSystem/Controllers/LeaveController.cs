@@ -27,10 +27,40 @@ namespace AutomatedTaskSystem.Controllers
 
         // GET: api/Leave
         [HttpGet]
-        public async Task<IActionResult> GetAllLeaves([FromQuery] int? userId,int? role)
+        public async Task<IActionResult> GetAllLeaves(
+            [FromQuery] int? userId,
+            [FromQuery] int? role,
+            [FromQuery] int page = 1, // Add pagination parameter
+            [FromQuery] int pageSize = 10, // Add pagination parameter
+            [FromQuery] string? searchTerm = null, // Add search term parameter
+            [FromQuery] string? fromDate = null, // Add filter for fromDate
+            [FromQuery] string? toDate = null, // Add filter for toDate
+            [FromQuery] string? status = null, // Add filter for status
+            [FromQuery] string? type = null, // Add filter for type
+            [FromQuery] bool disablePagination = false // Add filter for type
+        )
         {
-            var result = await _leaveRequestService.GetAllVacationsAsync(userId,role);
-            // Logic to get all leaves
+            // Pass all the received query parameters to the service method
+            var result = await _leaveRequestService.GetAllVacationsAsync(
+                userId,
+                role,
+                page,
+                pageSize,
+                searchTerm,
+                fromDate,
+                toDate,
+                status,
+                type,
+                disablePagination
+            );
+
+            // Check if the service method returned an error
+            if (result.Error)
+            {
+                return BadRequest(result); // Return 400 Bad Request if there's an error
+            }
+
+            // Return 200 OK with the paginated data
             return Ok(result);
         }
         // GET: api/Leave/{id}

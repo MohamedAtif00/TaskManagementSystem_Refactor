@@ -3,6 +3,7 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
+using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.Email;
@@ -14,186 +15,7 @@ using static AutomatedTaskSystem.DTO.Responses;
 
 namespace AutomatedTaskSystem.Services.Permission
 {
-    //public class PermissionService : IPermissionService
-    //{
-    //    private readonly DataContext _context;
-    //    private readonly ITokenService _tokenService;
-
-    //    public PermissionService(DataContext context, ITokenService tokenService)
-    //    {
-    //        _context = context;
-    //        _tokenService = tokenService;
-    //    }
-
-    //    public async Task<bool> AddPermissionAsync(CreatePermissionDto permission)
-    //    {
-    //        try
-    //        {
-    //            var user = _tokenService.GetUserIdFromToken();
-    //            if (user == null) return false;
-
-    //            var userId = Convert.ToInt32(user.Data);
-
-    //            // Define your custom month range: 21st - 20th
-    //            var today = DateTime.UtcNow;
-    //            DateTime periodStart, periodEnd;
-
-    //            if (today.Day >= 21)
-    //            {
-    //                periodStart = new DateTime(today.Year, today.Month, 21);
-    //                periodEnd = periodStart.AddMonths(1).AddDays(-1); // Until 20th of next month
-    //            }
-    //            else
-    //            {
-    //                periodEnd = new DateTime(today.Year, today.Month, 20);
-    //                periodStart = periodEnd.AddMonths(-1).AddDays(1); // From 21st of previous month
-    //            }
-
-    //            // Ensure time and date values are parsable
-    //            if (!TimeOnly.TryParse(permission.From, out var fromTime))
-    //                return false;
-
-    //            if (!TimeOnly.TryParse(permission.To, out var toTime))
-    //                return false;
-
-    //            if (!DateTime.TryParse(permission.Date, out var permissionDate))
-    //                return false;
-
-    //            // Limit to 2 permissions within this custom period
-    //            var totalPermissions = await _context.Permissions
-    //                .Where(p => p.UserId == userId &&
-    //                            p.CreatedAt >= periodStart &&
-    //                            p.CreatedAt <= periodEnd)
-    //                .CountAsync();
-
-    //            if (totalPermissions >= 2)
-    //                return false;
-
-    //            // Create and save the new permission
-    //            var newPermission = new Models.Permission
-    //            {
-    //                UserId = userId,
-    //                Type = permission.Type,
-    //                Reason = permission.Reason,
-    //                FromTime = fromTime,
-    //                ToTime = toTime,
-    //                PermissionDate = permissionDate,
-    //                CreatedAt = DateTime.UtcNow
-    //            };
-
-    //            await _context.Permissions.AddAsync(newPermission);
-    //            await _context.SaveChangesAsync();
-
-    //            return true;
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            // You can add logging here
-    //            return false;
-    //        }
-    //    }
-
-
-
-
-    //    public async Task<List<GetPermissionDto>> GetAllPermissionsAsync()
-    //    {
-    //        return await _context.Permissions
-    //            .Include(p => p.User) // optional if you need user data
-    //            .OrderByDescending(p => p.CreatedAt)
-    //            .Select(p => new GetPermissionDto
-    //            {
-    //                Id = p.Id,
-    //                Type = p.Type,
-    //                Reason = p.Reason,
-    //                PermissionDate = p.PermissionDate,
-    //                CreatedAt = p.CreatedAt,
-    //                User = p.User == null ? null : new Responses.IDName
-    //                {
-    //                    Id = p.User.Id,
-    //                    Name = p.User.Name
-    //                }
-    //            })
-    //            .ToListAsync();
-    //    }
-
-
-    //    public async Task<Models.Permission?> GetPermissionByIdAsync(int id)
-    //    {
-    //        return await _context.Permissions
-    //            .Include(p => p.User) // Optional
-    //            .FirstOrDefaultAsync(p => p.Id == id);
-    //    }
-
-    //    public async Task<bool> UpdatePermissionAsync(UpdatePermissionDto dto)
-    //    {
-    //        try
-    //        {
-    //            var permission = await _context.Permissions.FirstOrDefaultAsync(p => p.Id == dto.Id);
-    //            if (permission == null) return false;
-
-    //            permission.Type = dto.Type;
-    //            permission.Reason = dto.Reason;
-    //            permission.UpdatedAt = DateTime.UtcNow;
-
-    //            _context.Permissions.Update(permission);
-    //            await _context.SaveChangesAsync();
-    //            return true;
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            // Log ex.Message
-    //            return false;
-    //        }
-    //    }
-
-    //    public async Task<bool> DeletePermissionAsync(int id)
-    //    {
-    //        try
-    //        {
-    //            var permission = await _context.Permissions.FindAsync(id);
-    //            if (permission == null) return false;
-
-    //            _context.Permissions.Remove(permission);
-    //            await _context.SaveChangesAsync();
-    //            return true;
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            // Log ex.Message
-    //            return false;
-    //        }
-    //    }
-    //    public async Task<ResponseService<List<GetPermissionDto>>> GetPermissionsForSameUser()
-    //    {
-    //        try
-    //        {
-    //            var userId =Convert.ToInt32( _tokenService.GetUserIdFromToken().Data);
-
-    //            if (userId == null) return new ResponseService<List<GetPermissionDto>> { Error = true, Message = "User not found" };
-    //            var permissions = await _context.Permissions
-    //                .Where(p => p.UserId == Convert.ToInt32(userId))
-    //                .Select(p => new GetPermissionDto
-    //                {
-    //                    Id = p.Id,
-    //                    Type = p.Type,
-    //                    Reason = p.Reason,
-    //                    PermissionDate = p.PermissionDate,
-    //                    CreatedAt = p.CreatedAt,
-    //                    From = p.FromTime.ToString(),
-    //                    To = p.ToTime.ToString()
-    //                })
-    //                .ToListAsync();
-    //            return new ResponseService<List<GetPermissionDto>> { Error = false, Data = permissions };
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            // Log ex.Message
-    //            return new ResponseService<List<GetPermissionDto>> { Error = true, Message = "Internal server error" };
-    //        }
-    //    }
-    //}
-
+   
     public class PermissionService : IPermissionService
     {
         private readonly DataContext _dataContext;
@@ -287,25 +109,62 @@ namespace AutomatedTaskSystem.Services.Permission
 
 
         // Get all permissions with optional filter by user
-        public async Task<ResponseService<List<GetPermissionDto>>> GetAllPermissionsAsync(int? userId = null, int? role = null)
+        public async Task<ResponseService<PageList<GetPermissionDto>>> GetAllPermissionsAsync(
+       int? userId = null,
+       int? role = null,
+       int page = 1, // Pagination parameter
+       int pageSize = 10, // Pagination parameter
+       string? searchTerm = null, // Search term
+       string? date = null, // Filter for specific permission date
+       string? status = null, // Filter for status
+       string? type = null // Filter for type
+   )
         {
             var query = _dataContext.Permissions
                 .Include(p => p.User)
                 .AsQueryable();
 
-            // If role is TeamLeader, show permissions of their team members
+            // 1. Apply Role-Based Filtering
             if (role == (int)UserRoleEnum.TeamLeader && userId.HasValue)
             {
+                // If TeamLeader, show permissions of their direct team members
                 query = query.Where(p => p.User.TeamleaderId == userId.Value);
             }
-            // If userId is provided and not a TeamLeader, show only that user's permissions
-            else if (userId.HasValue)
+
+            // 2. Apply Search Term Filtering
+            if (!string.IsNullOrWhiteSpace(searchTerm))
             {
-                query = query.Where(p => p.UserId == userId.Value);
+                // Example: Search by user name or reason
+                query = query.Where(p => p.User.Name.Contains(searchTerm) ||
+                                         p.Reason.Contains(searchTerm));
             }
 
-            var result = await query
-                .Select(p => new GetPermissionDto
+            // 3. Apply Specific Date Filtering (for 'date' filter)
+            if (!string.IsNullOrWhiteSpace(date) && DateTime.TryParse(date, out DateTime parsedDate))
+            {
+                // Filter where PermissionDate is exactly the parsed date
+                query = query.Where(p => p.PermissionDate.Date == parsedDate.Date);
+            }
+
+            // 4. Apply Status Filtering
+            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse(typeof(PermissionStatusEnum), status, true, out var parsedStatus))
+            {
+                query = query.Where(p => p.Status == (PermissionStatusEnum)parsedStatus);
+            }
+
+            // 5. Apply Type Filtering
+            if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse(typeof(PermissionType), type, true, out var parsedType))
+            {
+                query = query.Where(p => p.Type == (PermissionType)parsedType);
+            }
+
+            // --- ORDERING IS CRUCIAL FOR PAGINATION ---
+            // Always order the query before applying Skip/Take
+            query = query.OrderByDescending(p => p.CreatedAt); // Order by creation date
+
+            // 6. Apply Pagination using your PageList class
+            var pagedResult = await PageList<GetPermissionDto>.CreateAsync(
+                query.Select(p => new GetPermissionDto // Select DTO *before* pagination to optimize
                 {
                     Id = p.Id,
                     Type = p.Type.ToString(),
@@ -313,22 +172,24 @@ namespace AutomatedTaskSystem.Services.Permission
                     FromTime = p.FromTime.ToString("HH:mm"),
                     ToTime = p.ToTime.ToString("HH:mm"),
                     PermissionDate = p.PermissionDate.ToString("yyyy-MM-dd"),
-                    Duration = CalculateDurationInMinutes(p.FromTime, p.ToTime),
+                    Duration = CalculateDurationInMinutes(p.FromTime, p.ToTime), // Assuming CalculateDurationInMinutes is defined
                     Status = p.Status.ToString(),
-                    User = new IDName
+                    User = new IDName // Changed to 'User'
                     {
                         Id = p.User.Id,
                         Name = p.User.Name
                     },
-                    DateCreated = p.CreatedAt.ToString()
-                })
-                .ToListAsync();
+                    DateCreated = p.CreatedAt.ToString() // Assuming CreatedAt maps to DateCreated
+                }),
+                page,
+                pageSize
+            );
 
-            return new ResponseService<List<GetPermissionDto>>
+            return new ResponseService<PageList<GetPermissionDto>>
             {
                 Error = false,
                 Message = "Permissions retrieved successfully.",
-                Data = result
+                Data = pagedResult // Return the PageList object
             };
         }
 

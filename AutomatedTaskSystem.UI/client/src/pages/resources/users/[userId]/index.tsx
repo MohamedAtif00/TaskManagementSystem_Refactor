@@ -29,6 +29,7 @@ import PERMISSION, { IPermission, PermissionRequestStatus } from "../../../../li
 import ExportButton from "../../../../components/button/ExportButton";
 import React from "react";
 import EditUser from "../../../../components/pageComponent/users/editUser";
+import { IGetLeaveRequest } from "../../../../lib/API/Leave";
 // import MoreVertIcon from "@mui/icons-material/MoreVert";
 
 const buttonStyle: CSSProperties = {
@@ -57,7 +58,7 @@ const UserProfile = () => {
 
     const [user, setUser] = useState<IUser | null>(null);
     const [vacancies, setVacancies] = useState<IVacation | null>(null);
-    const [vacanciesList, setVacanciesList] = useState<IGetVacation[]>([]);
+    const [vacanciesList, setVacanciesList] = useState<IGetLeaveRequest[]>([]);
     const [userChangesList, setUserChangesList] = useState<IUserChange[]>([]); 
     const [view, setView] = useState<"vacancies" | "updates" | "permission">("vacancies");
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -119,7 +120,7 @@ const UserProfile = () => {
         const response = await PERMISSION.GET_ALL_BY_USER(Number(userId));
         
         if (response && !response.error) {
-          setPermissions(response.data);
+          setPermissions(response.data??[]);
         }
       } catch (err) {
         console.error("Error fetching permissions", err);
@@ -133,18 +134,18 @@ const UserProfile = () => {
 
   const getStatusColor = (status: PermissionRequestStatus): string => {
   switch (status) {
-    case 'Pending': return '#FFA500';
-    case 'Approved': return '#4CAF50';
-    case 'Rejected': return '#F44336';
+    case PermissionRequestStatus.Pending: return '#FFA500';
+    case PermissionRequestStatus.Approved: return '#4CAF50';
+    case PermissionRequestStatus.Rejected: return '#F44336';
     default: return '#9E9E9E';
   }
 };
 
 const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'success' | 'error' | 'default' => {
   switch (status) {
-    case 'Pending': return 'warning';
-    case 'Approved': return 'success';
-    case 'Rejected': return 'error';
+    case PermissionRequestStatus.Pending: return 'warning';
+    case PermissionRequestStatus.Approved: return 'success';
+    case PermissionRequestStatus.Rejected: return 'error';
     default: return 'default';
   }
 };

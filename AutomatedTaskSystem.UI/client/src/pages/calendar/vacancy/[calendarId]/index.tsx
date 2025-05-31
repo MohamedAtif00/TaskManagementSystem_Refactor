@@ -33,7 +33,7 @@ const LeaveRequestDetails = () => {
     let isMounted = true;
         if (calendarId) {
             fetchLeaveRequest(Number(calendarId)).then(({ leaveDetails }) => {
-              if (isMounted && leaveDetails.data) {
+              if (isMounted&&leaveDetails != false && leaveDetails?.data) {
                 setRequest(leaveDetails.data);
                 setApprovals(leaveDetails.data.opinions)
                 //console.log(leaveDetails,"after assign");
@@ -68,7 +68,7 @@ const LeaveRequestDetails = () => {
     };
 
 
-    const handleSubmitOpinion = async (status: 'Approved' | 'Rejected') => {
+    const handleSubmitOpinion = async (status: LeaveRequestStatus.Approved | LeaveRequestStatus.Rejected) => {
         setIsSubmitting(true);
         try {
             let op:IOpinion = {
@@ -82,8 +82,13 @@ const LeaveRequestDetails = () => {
 
             // Optional: refetch the leave request to update approvals
             const { leaveDetails } = await fetchLeaveRequest(Number(calendarId));
-            setRequest(leaveDetails.data);
-            setApprovals(leaveDetails.data.opinions);
+            if (leaveDetails && leaveDetails.data) {
+                setRequest(leaveDetails.data);
+                setApprovals(leaveDetails?.data.opinions);
+            } else {
+                // Otherwise, set the state to null (e.g., if API returned no data, or an error)
+                setRequest(null);
+            }
             // Clear form
             setComment('');
         } catch (error) {
@@ -290,7 +295,7 @@ const LeaveRequestDetails = () => {
                   </div>
                   <div>
                     <span className="text-gray-500">Final status: </span>
-                    <span className={`${getStatusColor(request?.status??"Pending")}`}>{request?.status}</span>
+                    <span className={`${getStatusColor(request?.status??LeaveRequestStatus.Pending )}`}>{request?.status}</span>
                   </div>
                   <div>
                     <span className="text-gray-500">Starts at: </span>
@@ -341,7 +346,7 @@ const LeaveRequestDetails = () => {
                 </div>
                 <div>
                   <span className="text-gray-500">Status: </span>
-                  <span className={`${getStatusColor(approval.isApproved?"Approved":"Rejected")}`}>{approval.isApproved?"Approved":"Rejected"}</span>
+                  <span className={`${getStatusColor(approval.isApproved?LeaveRequestStatus.Approved:LeaveRequestStatus.Rejected)}`}>{approval.isApproved?"Approved":"Rejected"}</span>
                 </div>
               </div>
               <div>
@@ -362,14 +367,14 @@ const LeaveRequestDetails = () => {
                 <div className="flex space-x-4">
                 <button
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
-                    onClick={() => handleSubmitOpinion('Approved')}
+                    onClick={() => handleSubmitOpinion(LeaveRequestStatus.Approved)}
                     disabled={isSubmitting || !comment.trim()}
                 >
                     Approve
                 </button>
                 <button
                     className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
-                    onClick={() => handleSubmitOpinion('Rejected')}
+                    onClick={() => handleSubmitOpinion(LeaveRequestStatus.Rejected)}
                     disabled={isSubmitting || !comment.trim()}
                 >
                     Reject

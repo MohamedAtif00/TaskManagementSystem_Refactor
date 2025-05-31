@@ -1,4 +1,5 @@
-﻿using AutomatedTaskSystem.Services.ResponseService;
+﻿using AutomatedTaskSystem.Helper;
+using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Services.Permission
@@ -9,7 +10,6 @@ namespace AutomatedTaskSystem.Services.Permission
         Task<ResponseService<bool>> CreatePermissionRequest(CreatePermissionDto request);
 
         // Get all permissions with optional filter by user and role
-        Task<ResponseService<List<GetPermissionDto>>> GetAllPermissionsAsync(int? userId = null, int? role = null);
 
         // Get a single permission by ID
         Task<ActionResult<ResponseService<GetPermissionDto>>> GetPermissionByIdAsync(int id);
@@ -29,5 +29,6 @@ namespace AutomatedTaskSystem.Services.Permission
         // Approve or reject a permission
         Task<bool> ApproveOrRejectPermissionAsync(int id, bool isApproved, string comment);
         Task<ResponseService<bool>> CancelPermissionAsync(int permissionId);
+        Task<ResponseService<PageList<GetPermissionDto>>> GetAllPermissionsAsync(int? userId = null, int? role = null, int page = 1, int pageSize = 10, string? searchTerm = null, string? date = null, string? status = null, string? type = null);
     }
 }

@@ -67,6 +67,17 @@ namespace AutomatedTaskSystem.Services
             }
         }
 
+        /// <summary>
+        /// Gets the IDs of all users currently marked as connected.
+        /// </summary>
+        /// <returns>A list of user IDs.</returns>
+        public List<string> GetOnlineUserIds()
+        {
+            return _userStatuses
+                .Where(kvp => kvp.Value.IsConnected)
+                .Select(kvp => kvp.Key)
+                .ToList();
+        }
 
         private void PauseUserTasks(string userId)
         {

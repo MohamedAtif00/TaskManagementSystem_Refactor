@@ -1,4 +1,5 @@
 ﻿using AutomatedTaskSystem.Dtos.LeaveDtos;
+using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +13,6 @@ namespace AutomatedTaskSystem.Services.Leave
         //Task<bool> AddLeaveRequest(CreateLeaveRequestDto[] request, int userId);
         Task<bool> DeleteVacationAsync(int id);
         Task<List<GetOpinion>> GetAllOpinionsForLeaveRequest(int leaveRequestId);
-        Task<ResponseService<List<GetLeaveRequestDto>>> GetAllVacationsAsync(int? userId = null,int? role = null);
         Task<ResponseService<List<GetLeaveRequestDto>>> GetLeaveRequestsByUserId(int userId);
         Task<ResponseService<GetSingleLeaveRequestDto>> GetLeaveRequestByUserId(int userId);
         Task<ActionResult<ResponseService<GetLeaveRequestDto>>> GetVacationByIdAsync(int id);
@@ -20,5 +20,6 @@ namespace AutomatedTaskSystem.Services.Leave
         Task<bool> GiveOpinion(CreateOpinionDto request);
         Task<ResponseService<GetOpinion>> GetSingleOpinion(int id);
         Task<ResponseService<bool>> CancelleLeave(int id);
+        Task<ResponseService<PageList<GetLeaveRequestDto>>> GetAllVacationsAsync(int? userId = null, int? role = null, int page = 1, int pageSize = 10, string? searchTerm = null, string? fromDate = null, string? toDate = null, string? status = null, string? type = null, bool disablePagination = false);
     }
 }
