@@ -194,42 +194,60 @@ namespace AutomatedTaskSystem.Services.Permission
         }
 
         // Get a single permission by ID
-        public async Task<ActionResult<ResponseService<GetPermissionDto>>> GetPermissionByIdAsync(int id)
+        public async Task<ResponseService<PageList<GetPermissionDto>>> GetPermissionByIdAsync(int userId, int page, int pageSize)
         {
-            var result = await _dataContext.Permissions
-                .Include(p => p.User)
-                .Select(p => new GetPermissionDto
-                {
-                    Id = p.Id,
-                    Type = p.Type.ToString(),
-                    Reason = p.Reason,
-                    FromTime = p.FromTime.ToString("HH:mm"),
-                    ToTime = p.ToTime.ToString("HH:mm"),
-                    PermissionDate = p.PermissionDate.ToString("yyyy-MM-dd"),
-                    Status = p.Status.ToString(),
-                    Duration = CalculateDurationInMinutes(p.FromTime, p.ToTime),
-                    User = new IDName
+            try
+            {
+                var query = _dataContext.Permissions
+                    .Where(p => p.User.Id == userId) // Filter by User.Id
+                    .Include(p => p.User)
+                    .Select(p => new GetPermissionDto
                     {
-                        Id = p.User.Id,
-                        Name = p.User.Name
-                    },
-                    DateCreated = p.CreatedAt.ToString("M/d/yyyy h:mm:ss tt")
-                })
-                .FirstOrDefaultAsync(p => p.Id == id);
+                        Id = p.Id,
+                        Type = p.Type.ToString(),
+                        Reason = p.Reason,
+                        FromTime = p.FromTime.ToString("HH:mm"),
+                        ToTime = p.ToTime.ToString("HH:mm"),
+                        PermissionDate = p.PermissionDate.ToString("yyyy-MM-dd"),
+                        Status = p.Status.ToString(),
+                        Duration = CalculateDurationInMinutes(p.FromTime, p.ToTime),
+                        User = new IDName
+                        {
+                            Id = p.User.Id,
+                            Name = p.User.Name
+                        },
+                        DateCreated = p.CreatedAt.ToString("M/d/yyyy h:mm:ss tt")
+                    });
 
-            if (result == null) return new ResponseService<GetPermissionDto>
-            {
-                Error = true,
-                Message = "Permission not found.",
-                Data = null
-            };
+                var paginatedPermissions = await PageList<GetPermissionDto>.CreateAsync(query, page, pageSize);
 
-            return new ResponseService<GetPermissionDto>
+                if (paginatedPermissions.items == null || !paginatedPermissions.items.Any())
+                {
+                    return new ResponseService<PageList<GetPermissionDto>>
+                    {
+                        Error = false, // Consider if an empty list is an error or not. Often it's not.
+                        Message = "No permissions found for this user.",
+                        Data = paginatedPermissions
+                    };
+                }
+
+                return new ResponseService<PageList<GetPermissionDto>>
+                {
+                    Error = false,
+                    Message = "Permissions retrieved successfully.",
+                    Data = paginatedPermissions
+                };
+            }
+            catch (Exception ex)
             {
-                Error = false,
-                Message = "Permission retrieved successfully.",
-                Data = result
-            };
+                // Log the exception (e.g., using a logging framework)
+                return new ResponseService<PageList<GetPermissionDto>>
+                {
+                    Error = true,
+                    Message = $"An error occurred: {ex.Message}",
+                    Data = null
+                };
+            }
         }
 
         // Get a detailed permission by ID

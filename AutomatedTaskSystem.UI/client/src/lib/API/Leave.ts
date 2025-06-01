@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { url } from ".";
 import authService from "../Auth";
 
@@ -231,14 +232,58 @@ const LEAVE = {
         }
     },
 
-    GET_ALL_BY_USER: async (userId: number): Promise<ResponseService<IGetLeaveRequest[]> | false> => {
+   GET_ALL_BY_USER: async (
+        userId: number,
+        params?: Record<string, string | number | boolean | undefined | Date>
+    ): Promise<ResponseService<PageList<IGetLeaveRequest[]>>> => {
         try {
-            const res = await fetch(`${url}/Leave/LeaveRequestsByUserId/${userId}`);
-            const data: ResponseService<IGetLeaveRequest[]> = await res.json();
+          debugger
+            const finalParams: IGetAllLeavesRequest = { 
+                ...params, 
+                userId: userId
+            };
+
+            const filteredParams = Object.entries(finalParams).reduce((acc, [key, value]) => {
+                if (value !== undefined && value !== null && String(value).trim() !== '') {
+                    if (value instanceof Date) {
+                        acc[key] = format(value, 'yyyy-MM-dd');
+                    } else {
+                        acc[key] = String(value);
+                    }
+                }
+                return acc;
+            }, {} as Record<string, string>);
+
+            const query = Object.keys(filteredParams).length > 0
+                ? `?${new URLSearchParams(filteredParams).toString()}`
+                : "";
+
+            const res = await fetch(`${url}/Leave/LeaveRequestsByUserId${query}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...authService.authHeader()
+                }
+            });
+
+            if (!res.ok) {
+                const errorResponse = await res.json().catch(() => ({ message: res.statusText }));
+                console.error(`HTTP error! Status: ${res.status}, Message: ${errorResponse.message}`);
+                return {
+                    error: true,
+                    message: errorResponse.message || `HTTP error! status: ${res.status}`,
+                    data: undefined
+                };
+            }
+
+            const data: ResponseService<PageList<IGetLeaveRequest[]>> = await res.json();
             return data;
         } catch (error) {
-            console.error(error);
-            return false;
+            console.error('Error fetching leaves by user:', error);
+            return {
+                error: true,
+                message: error instanceof Error ? error.message : 'Unknown error occurred',
+                data: undefined
+            };
         }
     },
     GET_LEAVE_BY_USER: async (userId: number): Promise<ResponseService<IGetLeaveRequestForDetails> | false> => {

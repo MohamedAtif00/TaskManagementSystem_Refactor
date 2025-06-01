@@ -52,12 +52,16 @@ namespace AutomatedTaskSystem.Controllers
         }
 
         // GET: api/Permission/{id}
-        [HttpGet("{id}")] 
-        public async Task<IActionResult> GetPermissionById(int id)
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetPermissionsByUserId(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
         {
-            var result = await _permissionService.GetPermissionByIdAsync(id);
-            if (result == null)
-                return NotFound(new { error = true, message = "Permission not found" });
+            var result = await _permissionService.GetPermissionByIdAsync(id, page, pageSize);
+
+            if (result.Error)
+            {
+                return StatusCode(500, result); // Or BadRequest depending on the error type
+            }
+
             return Ok(result);
         }
 

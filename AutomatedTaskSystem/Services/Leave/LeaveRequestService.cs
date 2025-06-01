@@ -7,6 +7,7 @@ using AutomatedTaskSystem.Hub;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.Email;
+using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using Microsoft.AspNetCore.Mvc;
@@ -23,17 +24,20 @@ namespace AutomatedTaskSystem.Services.Leave
         private readonly IEmailService _emailService;
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly IHubContext<UserHub> _hubContext;
+        private readonly INotificationService _notificationService;
         public LeaveRequestService(DataContext dataContext,
                                    ITokenService tokenService,
                                    IEmailService emailService,
                                    IWebHostEnvironment webHostEnvironment,
-                                   IHubContext<UserHub> hubContext )
+                                   IHubContext<UserHub> hubContext,
+                                   INotificationService notificationService)
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
             _emailService = emailService;
             _webHostEnvironment = webHostEnvironment;
             _hubContext = hubContext;
+            _notificationService = notificationService;
         }
         // Enhanced service method
         public async Task<ResponseService<bool>> CreateLeaveRequest(CreateLeaveRequestDto request)
@@ -214,21 +218,27 @@ namespace AutomatedTaskSystem.Services.Leave
             var userId = _tokenService.GetUserIdFromToken();
             var user = await _dataContext.Users
                 .FirstOrDefaultAsync(x => x.Id == Convert.ToInt32(userId.Data));
+            await _notificationService.ErrorNotification(userId.ToString(), "This user is not exist");
+            var ownerClient = _hubContext.Clients.User(user?.Id.ToString());
+            await ownerClient.SendAsync("ReceiveError", new
+            {
+                mesage = "hello"
+            });
 
-            if (user == null) throw new Exception("User not found");
+            if (user == null) _notificationService.ErrorNotification(userId.ToString(),"This user is not exist");
 
             // Get the leave request with existing opinions
             var leaveRequest = await _dataContext.LeaveRequests
-                .Include(x => x.User)
+                .Include(x => x.User)   
                 .Include(lr => lr.Opinions)
                 .FirstOrDefaultAsync(lr => lr.Id == request.LeaveRequestId);
 
-            if (leaveRequest == null) throw new Exception("Leave request not found");
-
+            if (leaveRequest == null) _notificationService.ErrorNotification(userId.ToString(), "Leave request not found");
             // Check if user already gave opinion on this request
             if (leaveRequest.Opinions.Any(o => o.UserId == user.Id))
             {
-                throw new Exception("You have already given your opinion on this request");
+                _notificationService.ErrorNotification(userId.ToString(), "You have already given your opinion on this request");
+                //throw new Exception("You have already given your opinion on this request");
             }
 
             // Create new opinion object, but DON'T add it to context yet
@@ -319,7 +329,8 @@ namespace AutomatedTaskSystem.Services.Leave
                         else
                         {
                             Console.WriteLine($"Error sending approval email for LeaveRequest {leaveRequest.Id}: {emailResult.Message}");
-                            throw new Exception("Leave request could not be fully processed due to email delivery failure. Please try again or contact support.");
+                            _notificationService.ErrorNotification(userId.ToString(), "Leave request could not be fully processed due to email delivery failure. Please try again or contact support.");
+                            //throw new Exception("Leave request could not be fully processed due to email delivery failure. Please try again or contact support.");
                         }
                     }
                     else // Owner rejects (request.IsApproved is false)
@@ -343,7 +354,9 @@ namespace AutomatedTaskSystem.Services.Leave
                     break;
 
                 default:
-                    throw new UnauthorizedAccessException("You are not authorized to give opinions on leave requests");
+                    _notificationService.ErrorNotification(userId.ToString(), "You are not authorized to give opinions on this leave request");
+                    //throw new UnauthorizedAccessException("You are not authorized to give opinions on leave requests");
+                    break;
             }
 
             // This SaveChangesAsync will commit all changes marked above (opinion, user update, leave request status update)
@@ -642,38 +655,117 @@ namespace AutomatedTaskSystem.Services.Leave
         }
 
 
-        public async Task<ResponseService<List<GetLeaveRequestDto>>> GetLeaveRequestsByUserId(int userId)
+        public async Task<ResponseService<PageList<GetLeaveRequestDto>>> GetLeaveRequestsByUserId(
+            int userId,
+            int page,
+            int pageSize,
+            string? searchTerm,
+            string? fromDate,
+            string? toDate,
+            string? status,
+            string? type,
+            bool disablePagination)
         {
-            var leaveRequests = await _dataContext.LeaveRequests
-                .Where(x => x.UserId == userId)
-                .Include(x => x.User)
-                .ThenInclude(x => x.Group)
-                .ToListAsync();
-
-            var vacations = leaveRequests.Select(x => new GetLeaveRequestDto
+            try
             {
-                Id = x.Id,
-                StartDate = x.StartDate.ToString("M/d/yyyy h:mm:ss tt"),
-                EndDate = x.EndDate.ToString("M/d/yyyy h:mm:ss tt"),
-                Duration = CalculateWorkingDays(x.StartDate, x.EndDate.AddDays(-1)),
-                Reason = x.Reason,
-                Status = x.Status.ToString(),
-                Type = x.Type.ToString(),
-                DateCreated = x.DateCreated?.ToString("M/d/yyyy h:mm:ss tt"),
-                user = new IDName
+                // 1. Build the IQueryable for LeaveRequests, filtered by UserId and including related entities
+                var query = _dataContext.LeaveRequests
+                    .Where(x => x.UserId == userId)
+                    .Include(x => x.User)
+                    .ThenInclude(x => x.Group)
+                    .AsQueryable(); // Start with AsQueryable to allow for conditional filtering
+
+                // Apply filters conditionally
+                if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
-                    Id = x.User.Id,
-                    Name = x.User.Name
+                    query = query.Where(x =>
+                        x.Reason.Contains(searchTerm) ||
+                        x.User.Name.Contains(searchTerm) ||
+                        x.Type.ToString().Contains(searchTerm) ||
+                        x.Status.ToString().Contains(searchTerm)
+                    );
                 }
-            }).ToList();
 
+                if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate, out DateTime parsedFromDate))
+                {
+                    query = query.Where(x => x.StartDate >= parsedFromDate);
+                }
 
-            return new ResponseService<List<GetLeaveRequestDto>>
+                if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate, out DateTime parsedToDate))
+                {
+                    // Add one day to include the entire 'toDate'
+                    query = query.Where(x => x.EndDate <= parsedToDate.AddDays(1));
+                }
+
+                if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse(typeof(LeaveRequestStatusEnum), status, true, out var parsedStatus))
+                {
+                    query = query.Where(x => x.Status == (LeaveRequestStatusEnum)parsedStatus);
+                }
+
+                if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse(typeof(LeaveRequestType), type, true, out var parsedType))
+                {
+                    query = query.Where(x => x.Type == (LeaveRequestType)parsedType);
+                }
+
+                // Project the query to GetLeaveRequestDto *after* filtering
+                var projectedQuery = query.Select(x => new GetLeaveRequestDto
+                {
+                    Id = x.Id,
+                    StartDate = x.StartDate.ToString("M/d/yyyy h:mm:ss tt"),
+                    EndDate = x.EndDate.ToString("M/d/yyyy h:mm:ss tt"),
+                    Duration = CalculateWorkingDays(x.StartDate, x.EndDate.AddDays(-1)), // Assuming CalculateWorkingDays is accessible
+                    Reason = x.Reason,
+                    Status = x.Status.ToString(),
+                    Type = x.Type.ToString(),
+                    DateCreated = x.DateCreated.HasValue ? x.DateCreated.Value.ToString("M/d/yyyy h:mm:ss tt") : null,
+                    user = new IDName
+                    {
+                        Id = x.User.Id,
+                        Name = x.User.Name
+                    }
+                });
+
+                PageList<GetLeaveRequestDto> paginatedLeaveRequests;
+
+                if (disablePagination)
+                {
+                    var allItems = await projectedQuery.ToListAsync();
+                    paginatedLeaveRequests = new PageList<GetLeaveRequestDto>(allItems, allItems.Count, 1, allItems.Count);
+                }
+                else
+                {
+                    // Use PageList.CreateAsync to paginate the query
+                    paginatedLeaveRequests = await PageList<GetLeaveRequestDto>.CreateAsync(projectedQuery, page, pageSize);
+                }
+
+                if (paginatedLeaveRequests.items == null || !paginatedLeaveRequests.items.Any())
+                {
+                    return new ResponseService<PageList<GetLeaveRequestDto>>
+                    {
+                        Error = false,
+                        Message = "No leave requests found for this user with the applied filters.",
+                        Data = paginatedLeaveRequests
+                    };
+                }
+
+                return new ResponseService<PageList<GetLeaveRequestDto>>
+                {
+                    Error = false,
+                    Message = "Leave requests retrieved successfully.",
+                    Data = paginatedLeaveRequests
+                };
+            }
+            catch (Exception ex)
             {
-                Error = false,
-                Message = "Leave requests retrieved successfully.",
-                Data = vacations
-            };
+                // Log the exception (e.g., using a logging framework like Serilog, NLog, or built-in ILogger)
+                Console.WriteLine($"Error in GetLeaveRequestsByUserId: {ex.Message}");
+                return new ResponseService<PageList<GetLeaveRequestDto>>
+                {
+                    Error = true,
+                    Message = $"An error occurred while retrieving leave requests: {ex.Message}",
+                    Data = null
+                };
+            }
         }
         // ✅ Update
         public async Task<bool> UpdateVacationAsync(int id, DateTime startDate, DateTime endDate, string? reason, LeaveRequestStatusEnum status)

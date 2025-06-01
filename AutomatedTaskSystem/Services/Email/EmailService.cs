@@ -50,10 +50,11 @@ namespace AutomatedTaskSystem.Services.Email
                     _emailSettings.StaticReceiver.Name));
 
                 // Add static CCs
-                //foreach (var cc in message.CcEmails)
-                //{
-                //    mailMessage.CC.Add(cc);
-                //}
+                foreach (var cc in message.CcEmails)
+                {
+                    mailMessage.CC.Add(cc);
+                }
+
 
                 //// Add dynamic CCs
                 //foreach (var cc in message.CcEmails)

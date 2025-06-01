@@ -157,15 +157,25 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
             }
         };
 
+        const onReveiveError = (data:any)=>{
+            debugger
+            console.log("ReceiveError received:", data);
+            
+            toast.error(data.message);
+
+        }
+
         // ... (rest of your useEffect with connection.on/off calls)
         connection.on("LeaveRequestOpinion", onLeaveRequestOpinion);
         connection.on("OnConnectedMessage", onUpdatePendings);
         connection.on("UpdatePendings", onUpdatePendings);
+        connection.on("ReceiveError", onReveiveError);
 
         return () => {
             connection.off("LeaveRequestOpinion", onLeaveRequestOpinion);
             connection.off("OnConnectedMessage", onUpdatePendings);
             connection.off("UpdatePendings", onUpdatePendings);
+            connection.off("ReceiveError", onReveiveError);
         };
     }, [connectionState]); // No 'navigate' in dependency array for Next.js Link
 

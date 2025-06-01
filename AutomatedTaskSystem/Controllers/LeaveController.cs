@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
+using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Services.Leave;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Hosting;
@@ -74,16 +75,53 @@ namespace AutomatedTaskSystem.Controllers
         //[HttpGet("GetBelongToTM/{id}")]
         //public async Task<IActionResult> GetBelongToTm()
         //{
-            
+
         //}
 
 
-        [HttpGet("LeaveRequestsByUserId/{id}")]
-        public async Task<IActionResult> GetLeavesByUserId(int id) 
+        [HttpGet("LeaveRequestsByUserId")] // Removed {id} from the route
+        public async Task<IActionResult> GetLeaveRequestsByUserId(
+            [FromQuery] int? userId,
+            [FromQuery] int? role, // Keep role if you plan to use it for authorization/filtering later
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? searchTerm = null,
+            [FromQuery] string? fromDate = null,
+            [FromQuery] string? toDate = null,
+            [FromQuery] string? status = null,
+            [FromQuery] string? type = null,
+            [FromQuery] bool disablePagination = false)
         {
-            var leaves = await _leaveRequestService.GetLeaveRequestsByUserId(id);
+            // Basic validation for userId if it's mandatory
+            if (!userId.HasValue)
+            {
+                return BadRequest(new ResponseService<PageList<GetLeaveRequestDto>>
+                {
+                    Error = true,
+                    Message = "User ID is required."
+                });
+            }
 
-            return Ok(leaves);
+            var result = await _leaveRequestService.GetLeaveRequestsByUserId(
+                userId.Value, // Pass the userId as a non-nullable int
+                page,
+                pageSize,
+                searchTerm,
+                fromDate,
+                toDate,
+                status,
+                type,
+                disablePagination
+            );
+
+            if (result.Error)
+            {
+                // Depending on the nature of the error, you might return different status codes.
+                // For general service errors, 500 is often appropriate.
+                return StatusCode(500, result);
+            }
+
+            return Ok(result);
         }
 
         [HttpGet("LeaveRequestByUserId/{id}")]
