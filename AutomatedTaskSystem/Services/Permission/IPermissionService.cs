@@ -39,7 +39,9 @@ namespace AutomatedTaskSystem.Services.Permission
         Task<ResponseService<PageList<GetPermissionDto>>> GetAllPermissionsAsync(int? userId = null, int? role = null, int page = 1, int pageSize = 10, string? searchTerm = null, string? date = null, string? status = null, string? type = null);
         Task<ResponseService<PageList<GetPermissionDto>>> GetPermissionByIdAsync(int userId, int page, int pageSize);
         Task<ResponseService<GetSinglePermissionDto>> GetPermissionDetailByIdAsync(int permissionId);
-        Task<ResponseService<List<GetPermissionDto>>> GetPermissionsByUserIdAsync(int userId);
+        Task<ResponseService<PageList<GetPermissionDto>>> GetPermissionsByUserId(int userId, int page, int pageSize, string? searchTerm, string? fromDate, string? toDate, string? status, string? type, bool disablePagination);
+
+        //Task<ResponseService<List<GetPermissionDto>>> GetPermissionsByUserIdAsync(int userId);
         Task<bool> UpdatePermissionAsync(UpdatePermissionDto request);
     }
 }

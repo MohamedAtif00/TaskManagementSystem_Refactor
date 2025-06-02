@@ -35,21 +35,9 @@ const parseTime = (date: string, time: string): Date => {
 
     
         if (calendarId) {
-          // Make sure fetchPermissionRequest is defined and returns the expected Promise structure
-          // Example:
-          // const fetchPermissionRequest = async (id: number) => {
-          //     const response = await PERMISSION.GET_SINGLE_PERMISSION(id); // Your actual API call
-          //     return { leaveDetails: response }; // Assuming 'response' is false | ResponseService<IGetPermissionDetails>
-          // };
-
           fetchPermissionRequest(Number(calendarId)).then(({ leaveDetails }) => {
               if (isMounted) {
-                  // *** THE ESSENTIAL FIX IS HERE: Type Guarding ***
-                  // Check if leaveDetails is truthy (not false) AND that its 'data' property exists
                   if (leaveDetails && leaveDetails.data) {
-                      // Inside this 'if' block, TypeScript has narrowed the type:
-                      // - 'leaveDetails' is now guaranteed to be ResponseService<IGetPermissionDetails>
-                      // - 'leaveDetails.data' is now guaranteed to be IGetPermissionDetails
 
                       setRequest(leaveDetails.data); // Set the single object
                       setApprovals(leaveDetails.data.opinions??null); // Access opinions directly from leaveDetails.data
@@ -306,14 +294,14 @@ const parseTime = (date: string, time: string): Date => {
                 <button
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
                     onClick={() => handleSubmitOpinion(PermissionRequestStatus.Approved)}
-                    disabled={isSubmitting || !comment.trim()}
+                    disabled={isSubmitting }
                 >
                     Approve
                 </button>
                 <button
                     className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
                     onClick={() => handleSubmitOpinion(PermissionRequestStatus.Rejected)}
-                    disabled={isSubmitting || !comment.trim()}
+                    disabled={isSubmitting}
                 >
                     Reject
                 </button>

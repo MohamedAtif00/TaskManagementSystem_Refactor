@@ -218,31 +218,42 @@ namespace AutomatedTaskSystem.Services.Leave
             var userId = _tokenService.GetUserIdFromToken();
             var user = await _dataContext.Users
                 .FirstOrDefaultAsync(x => x.Id == Convert.ToInt32(userId.Data));
-            await _notificationService.ErrorNotification(userId.ToString(), "This user is not exist");
-            var ownerClient = _hubContext.Clients.User(user?.Id.ToString());
-            await ownerClient.SendAsync("ReceiveError", new
-            {
-                mesage = "hello"
-            });
 
-            if (user == null) _notificationService.ErrorNotification(userId.ToString(),"This user is not exist");
+            // Initial user check
+            if (user == null)
+            {
+                await _notificationService.ErrorNotification(userId.ToString(), "This user does not exist.");
+                // Optionally, you might want to return false or throw an exception here
+                return false;
+            }
 
             // Get the leave request with existing opinions
             var leaveRequest = await _dataContext.LeaveRequests
-                .Include(x => x.User)   
+                .Include(x => x.User)
                 .Include(lr => lr.Opinions)
                 .FirstOrDefaultAsync(lr => lr.Id == request.LeaveRequestId);
 
-            if (leaveRequest == null) _notificationService.ErrorNotification(userId.ToString(), "Leave request not found");
+            if (leaveRequest == null)
+            {
+                await _notificationService.ErrorNotification(userId.ToString(), "Leave request not found.");
+                return false;
+            }
+
+            // --- NEW: Check if the leave request is cancelled ---
+            if (leaveRequest.Status == LeaveRequestStatusEnum.Cancelled)
+            {
+                await _notificationService.ErrorNotification(userId.ToString(), "Cannot give opinion on a cancelled leave request.");
+                return false;
+            }
+            // --- END NEW CHECK ---
+
             // Check if user already gave opinion on this request
             if (leaveRequest.Opinions.Any(o => o.UserId == user.Id))
             {
-                _notificationService.ErrorNotification(userId.ToString(), "You have already given your opinion on this request");
-                //throw new Exception("You have already given your opinion on this request");
+                await _notificationService.ErrorNotification(userId.ToString(), "You have already given your opinion on this request.");
+                return false;
             }
 
-            // Create new opinion object, but DON'T add it to context yet
-            // We'll add it only if the main action (like email sending for approval) succeeds
             var opinion = new Opinion
             {
                 UserId = user.Id,
@@ -263,12 +274,12 @@ namespace AutomatedTaskSystem.Services.Leave
                         {
                             Subject = "أجازة",
                             Body = EmailTemplate.CreateTemplate(senderUser.Name,
-                                                             senderUser.Email,
-                                                             leaveRequest.StartDate.ToString("yyyy-MM-dd"),
-                                                             leaveRequest.EndDate.ToString("yyyy-MM-dd"),
-                                                             CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
-                                                             leaveRequest.Type,
-                                                             leaveRequest.User.HR_code),
+                                                                senderUser.Email,
+                                                                leaveRequest.StartDate.ToString("yyyy-MM-dd"),
+                                                                leaveRequest.EndDate.ToString("yyyy-MM-dd"),
+                                                                CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
+                                                                leaveRequest.Type,
+                                                                leaveRequest.User.HR_code),
                             IsHtml = true,
                             CcEmails = new List<string> { leaveRequest.User.Email }
                         };
@@ -290,10 +301,8 @@ namespace AutomatedTaskSystem.Services.Leave
 
                         if (emailResult.Success)
                         {
-                            // Only if email succeeds, then update status, user leave, and add opinion
                             leaveRequest.Status = LeaveRequestStatusEnum.Approved;
 
-                            // --- START: Update user leave based on leave type ---
                             int approvedDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
 
                             switch (leaveRequest.Type)
@@ -305,21 +314,14 @@ namespace AutomatedTaskSystem.Services.Leave
                                     senderUser.Emergency_leave += approvedDays;
                                     break;
                                 case LeaveRequestType.Sick:
-                                    // Assuming Sick_leave tracks total sick days taken.
-                                    // If it's more about "remaining sick days", adjust logic.
                                     senderUser.Sick_leave += approvedDays;
                                     break;
-                                    // Add other leave types here if they also deplete a tracked balance
-                                    // case LeaveRequestType.Unpaid: // Unpaid leave usually doesn't deduct from a "MAX"
-                                    //    break;
                             }
-                            // --- END: Update user leave based on leave type ---
 
                             _dataContext.Opinions.Add(opinion);
-                            _dataContext.Users.Update(user); // Mark user for update
-                            _dataContext.LeaveRequests.Update(leaveRequest); // Mark leave request for update
+                            _dataContext.Users.Update(senderUser);
+                            _dataContext.LeaveRequests.Update(leaveRequest);
 
-                            // Send SignalR notification to the user who requested the leave
                             await _hubContext.Clients.User(leaveRequest.UserId.ToString()).SendAsync("LeaveRequestOpinion", new
                             {
                                 isApproved = true,
@@ -329,8 +331,8 @@ namespace AutomatedTaskSystem.Services.Leave
                         else
                         {
                             Console.WriteLine($"Error sending approval email for LeaveRequest {leaveRequest.Id}: {emailResult.Message}");
-                            _notificationService.ErrorNotification(userId.ToString(), "Leave request could not be fully processed due to email delivery failure. Please try again or contact support.");
-                            //throw new Exception("Leave request could not be fully processed due to email delivery failure. Please try again or contact support.");
+                            await _notificationService.ErrorNotification(userId.ToString(), "Leave request could not be fully processed due to email delivery failure. Please try again or contact support.");
+                            return false;
                         }
                     }
                     else // Owner rejects (request.IsApproved is false)
@@ -349,20 +351,16 @@ namespace AutomatedTaskSystem.Services.Leave
 
                 case UserRoleEnum.TeamLeader:
                 case UserRoleEnum.ProjectManger:
-                    // For TL/PM, they just add their opinion. No direct status change or user leave update here.
                     _dataContext.Opinions.Add(opinion);
                     break;
 
                 default:
-                    _notificationService.ErrorNotification(userId.ToString(), "You are not authorized to give opinions on this leave request");
-                    //throw new UnauthorizedAccessException("You are not authorized to give opinions on leave requests");
-                    break;
+                    await _notificationService.ErrorNotification(userId.ToString(), "You are not authorized to give opinions on this leave request.");
+                    return false;
             }
 
-            // This SaveChangesAsync will commit all changes marked above (opinion, user update, leave request status update)
             await _dataContext.SaveChangesAsync();
 
-            // Update pendings for the user who gave the opinion (could be the owner)
             await _hubContext.Clients.User(user.Id.ToString()).SendAsync("UpdatePendings", new
             {
                 pendings = await _dataContext.LeaveRequests.Where(x => x.Status == LeaveRequestStatusEnum.Pending).CountAsync()
@@ -713,7 +711,7 @@ namespace AutomatedTaskSystem.Services.Leave
                     Id = x.Id,
                     StartDate = x.StartDate.ToString("M/d/yyyy h:mm:ss tt"),
                     EndDate = x.EndDate.ToString("M/d/yyyy h:mm:ss tt"),
-                    Duration = CalculateWorkingDays(x.StartDate, x.EndDate.AddDays(-1)), // Assuming CalculateWorkingDays is accessible
+                    Duration = CalculateWorkingDays(x.StartDate, x.EndDate), // Assuming CalculateWorkingDays is accessible
                     Reason = x.Reason,
                     Status = x.Status.ToString(),
                     Type = x.Type.ToString(),
@@ -808,9 +806,9 @@ namespace AutomatedTaskSystem.Services.Leave
 
                 var now = DateTime.Now;
 
-                if (leaveRequest.StartDate > now &&
-                    (leaveRequest.Status == LeaveRequestStatusEnum.Pending || leaveRequest.Status == LeaveRequestStatusEnum.Approved))
-                {
+                if ((leaveRequest.Status == LeaveRequestStatusEnum.Pending) ||
+                      (leaveRequest.Status == LeaveRequestStatusEnum.Approved && leaveRequest.StartDate > now))
+                    {
                     var senderUser = leaveRequest.User;
                     bool wasApproved = leaveRequest.Status == LeaveRequestStatusEnum.Approved;
 

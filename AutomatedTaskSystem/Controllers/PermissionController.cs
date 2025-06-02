@@ -52,26 +52,44 @@ namespace AutomatedTaskSystem.Controllers
         }
 
         // GET: api/Permission/{id}
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetPermissionsByUserId(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        [HttpGet("GetPermissionsByUserId/{userId}")]
+        public async Task<IActionResult> GetPermissionsByUserId(
+                int userId,
+                [FromQuery] int page = 1,
+                [FromQuery] int pageSize = 10,
+                [FromQuery] string? searchTerm = null,
+                [FromQuery] string? fromDate = null,
+                [FromQuery] string? toDate = null,
+                [FromQuery] string? status = null,
+                [FromQuery] string? type = null,
+                [FromQuery] bool disablePagination = false)
         {
-            var result = await _permissionService.GetPermissionByIdAsync(id, page, pageSize);
+            var result = await _permissionService.GetPermissionsByUserId(
+                userId,
+                page,
+                pageSize,
+                searchTerm,
+                fromDate,
+                toDate,
+                status,
+                type,
+                disablePagination);
 
             if (result.Error)
             {
-                return StatusCode(500, result); // Or BadRequest depending on the error type
+                return StatusCode(500, result);
             }
 
             return Ok(result);
         }
 
         // GET: api/Permission/PermissionsByUserId/{id}
-        [HttpGet("PermissionsByUserId/{id}")]
-        public async Task<IActionResult> GetPermissionsByUserId(int id)
-        {
-            var result = await _permissionService.GetPermissionsByUserIdAsync(id);
-            return Ok(result);
-        }
+        //[HttpGet("PermissionsByUserId/{id}")]
+        //public async Task<IActionResult> GetPermissionsByUserId(int id)
+        //{
+        //    var result = await _permissionService.GetPermissionsByUserIdAsync(id);
+        //    return Ok(result);
+        //}
 
         // GET: api/Permission/GetSinglePermission/{id}
         [HttpGet("GetSinglePermission/{id}")]

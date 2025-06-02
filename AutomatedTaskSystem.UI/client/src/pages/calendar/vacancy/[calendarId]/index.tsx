@@ -368,14 +368,14 @@ const LeaveRequestDetails = () => {
                 <button
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
                     onClick={() => handleSubmitOpinion(LeaveRequestStatus.Approved)}
-                    disabled={isSubmitting || !comment.trim()}
+                    disabled={isSubmitting }
                 >
                     Approve
                 </button>
                 <button
                     className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 disabled:opacity-50"
                     onClick={() => handleSubmitOpinion(LeaveRequestStatus.Rejected)}
-                    disabled={isSubmitting || !comment.trim()}
+                    disabled={isSubmitting}
                 >
                     Reject
                 </button>

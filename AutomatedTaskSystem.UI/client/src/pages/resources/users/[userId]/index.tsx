@@ -4,32 +4,22 @@ import {
     Chip,
     Grid,
     Paper,
-    Select,
     MenuItem,
-    FormControl,
-    InputLabel,
-    TextField,
-    Button,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     Menu
 } from "@mui/material";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { CSSProperties, useEffect, useState } from "react";
+import { CSSProperties, useEffect, useState, useMemo, useCallback } from "react";
 import API from "../../../../lib/API";
 import UserProfileIcone from "../../../../assets/Icons/UserProfile";
-import PersonIcon from "../../../../assets/Icons/Person";
 import Tab from "../../../../components/Tab/Tab";
-import PERMISSION, { IPermission, PermissionRequestStatus } from "../../../../lib/API/Permission";
+import PERMISSION, { IPermission, PermissionRequestStatus, PermissionType } from "../../../../lib/API/Permission";
 import ExportButton from "../../../../components/button/ExportButton";
 import React from "react";
 import EditUser from "../../../../components/pageComponent/users/editUser";
-import { IGetLeaveRequest } from "../../../../lib/API/Leave";
+import LEAVE, { IGetLeaveRequest, LeaveRequestStatus, LeaveRequestType } from "../../../../lib/API/Leave";
+import DataTable from "../../../../components/table/tablePagination"; // Import DataTable
+import { format } from "date-fns";
 // import MoreVertIcon from "@mui/icons-material/MoreVert";
 
 const buttonStyle: CSSProperties = {
@@ -40,6 +30,14 @@ const buttonStyle: CSSProperties = {
     textTransform: "none",
     borderRadius: "8px",
 };
+
+// Interface for Filter Configuration items used by DataTable
+interface FilterConfigItem {
+  key: string;
+  label: string;
+  type: "text" | "select" | "date" | "number";
+  options?: { value: string | number; label: string }[];
+}
 
 // Define interface for user changes data
 interface IUserChange {
@@ -57,80 +55,172 @@ const UserProfile = () => {
     const { userId } = router.query;
 
     const [user, setUser] = useState<IUser | null>(null);
-    const [vacancies, setVacancies] = useState<IVacation | null>(null);
-    const [vacanciesList, setVacanciesList] = useState<IGetLeaveRequest[]>([]);
-    const [userChangesList, setUserChangesList] = useState<IUserChange[]>([]); 
+    const [userVacationInfo, setUserVacationInfo] = useState<IVacation | null>(null);
     const [view, setView] = useState<"vacancies" | "updates" | "permission">("vacancies");
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [permissions, setPermissions] = useState<IPermission[]>([]);
-      const [loading, setLoading] = useState<boolean>(true);
 
+    // State for Vacancies DataTable
+    const [vacancyData, setVacancyData] = useState<IGetLeaveRequest[]>([]);
+    const [totalVacancies, setTotalVacancies] = useState(0);
+    const [vacancyPage, setVacancyPage] = useState(1);
+    const [vacancyPageSize, setVacancyPageSize] = useState(10);
+    const [vacancyDtFilters, setVacancyDtFilters] = useState<Record<string, any>>({});
+    const [vacancySearch, setVacancySearch] = useState("");
+    const [vacancyLoading, setVacancyLoading] = useState(true);
 
+    // State for Permissions DataTable
+    const [permissionData, setPermissionData] = useState<IPermission[]>([]);
+    const [totalPermissions, setTotalPermissions] = useState(0);
+    const [permissionPage, setPermissionPage] = useState(1);
+    const [permissionPageSize, setPermissionPageSize] = useState(10);
+    const [permissionDtFilters, setPermissionDtFilters] = useState<Record<string, any>>({});
+    const [permissionSearch, setPermissionSearch] = useState("");
+    const [permissionLoading, setPermissionLoading] = useState(true);
 
-        const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
+    // State for User Changes (Updates) DataTable
+    const [userChangesData, setUserChangesData] = useState<IUserChange[]>([]);
+    const [allUserChangesData, setAllUserChangesData] = useState<IUserChange[]>([]); // For client-side filtering
+    const [userChangesLoading, setUserChangesLoading] = useState(true);
+
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const open = Boolean(anchorEl);
+
+    const formatDate = useCallback((dateString: string | null | undefined) => {
+        if (!dateString) return "N/A";
+        return format(new Date(dateString), "dd MMM yyyy, hh:mm a");
+    }, []);
+
+    const formatDateOnly = useCallback((dateString: string | null | undefined) => {
+        if (!dateString) return "N/A";
+        return format(new Date(dateString), "dd MMM yyyy");
+    }, []);
 
     useEffect(() => {
-        //console.log(router.query);
-        
         if (userId) {
             API.RESOURCES.USERS.GET_ONE(Number(userId)).then((res) => {
                 if (res && !res.error) {
                     setUser(res.data);
-                    setVacancies(res.data.vacation ?? null);
+                    setUserVacationInfo(res.data.vacation ?? null);
                 }
             });
         }
-    }, [router.isReady]);
-    
-    useEffect(() => {
-        if (userId) {
-            API.LEAVE.GET_ALL_BY_USER(Number(userId)).then((res) => {
-                //console.log(res);
-                
-                if (res && !res.error) {
-                    setVacanciesList(res.data ?? []);
-                    //console.log(res.data, 'inside effect');
-                }
-            });
-        }
-    }, [router.isReady]);
+    }, [userId]);
 
-    // New effect to fetch user changes history
+    // Fetch Vacancies
     useEffect(() => {
-        if (userId) {
-            setIsLoading(true);
+        if (userId && view === "vacancies") {
+            setVacancyLoading(true);
+            const params = {
+                page: vacancyPage,
+                pageSize: vacancyPageSize,
+                searchTerm: vacancySearch || undefined,
+                ...vacancyDtFilters,
+            };
+            API.LEAVE.GET_ALL_BY_USER(Number(userId), params).then((res) => {
+                if (res && !res.error && res.data) {
+                    setVacancyData(res.data.items ?? []);
+                    setTotalVacancies(res.data.totalCount ?? 0);
+                } else {
+                    setVacancyData([]);
+                    setTotalVacancies(0);
+                }
+                setVacancyLoading(false);
+            });
+        }
+    }, [userId, view, vacancyPage, vacancyPageSize, vacancyDtFilters, vacancySearch]);
+
+    // Fetch Permissions
+    useEffect(() => {
+        if (userId && view === "permission") {
+            setPermissionLoading(true);
+            const params = {
+                page: permissionPage,
+                pageSize: permissionPageSize,
+                searchTerm: permissionSearch || undefined,
+                ...permissionDtFilters,
+            };
+            PERMISSION.GET_ALL_BY_USER(Number(userId), params).then((res) => {
+                if (res && !res.error && res.data) {
+                    setPermissionData(res.data.items ?? []);
+                    setTotalPermissions(res.data.totalCount ?? 0);
+                } else {
+                    setPermissionData([]);
+                    setTotalPermissions(0);
+                }
+                setPermissionLoading(false);
+            });
+        }
+    }, [userId, view, permissionPage, permissionPageSize, permissionDtFilters, permissionSearch]);
+
+    // Fetch User Changes History (Updates) - Assumes client-side pagination/filtering for this one
+    useEffect(() => {
+        if (userId && view === "updates") {
+            setUserChangesLoading(true);
             API.RESOURCES.USERS.GET_USER_CHANGES(Number(userId)).then((res) => {
                 if (res && !res.error) {
                     const sortedUserChanges = (res.data ?? []).sort((a, b) => {
                         return new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime();
                     });
-                    setUserChangesList(sortedUserChanges);
+                    setAllUserChangesData(sortedUserChanges); // Store all for client-side filtering
+                    setUserChangesData(sortedUserChanges); // Initially display all
                 }
-                setIsLoading(false);
+                setUserChangesLoading(false);
             });
         }
-    }, [router.isReady]);
+    }, [userId, view]);
 
 
-      useEffect(() => {
-    const fetchPermissions = async () => {
-      try {
-        setLoading(true);
-        const response = await PERMISSION.GET_ALL_BY_USER(Number(userId));
-        
-        if (response && !response.error) {
-          setPermissions(response.data??[]);
-        }
-      } catch (err) {
-        console.error("Error fetching permissions", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const handleVacancyTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, any>, searchText: string) => {
+        setVacancyPage(page);
+        setVacancyPageSize(itemsPerPage);
+        setVacancyDtFilters(filters);
+        setVacancySearch(searchText);
+    }, []);
 
-    fetchPermissions();
-  }, [userId]); // re-run if userId changes
+    const handlePermissionTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, any>, searchText: string) => {
+        setPermissionPage(page);
+        setPermissionPageSize(itemsPerPage);
+        setPermissionDtFilters(filters);
+        setPermissionSearch(searchText);
+    }, []);
+
+    const handleUserChangesTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, any>, searchText: string) => {
+        // For client-side, DataTable handles pagination. We just update our state if needed for other purposes.
+        // Filtering and search are also handled by DataTable internally when serverSide=false.
+        // This callback is mostly for server-side, but good to have the structure.
+        // For client-side, the `data` prop to DataTable will be `allUserChangesData`
+        // and `totalCount` will be `allUserChangesData.length`.
+    }, []);
+
+
+    const transformedVacancyData = useMemo(() => vacancyData.map(v => ({
+        "ID": v.id,
+        "Request Date": formatDateOnly(v.dateCreated),
+        "Vacancy Type": v.type,
+        "Status": v.status,
+        "Start Date": formatDateOnly(v.startDate),
+        "End Date": formatDateOnly(v.endDate),
+        "Duration": `${v.duration} day(s)`,
+    })), [vacancyData, formatDateOnly]);
+
+    const transformedPermissionData = useMemo(() => permissionData.map(p => ({
+        "ID": p.id,
+        "Request Date": formatDateOnly(p.dateCreated),
+        "Permission Type": p.type,
+        "Status": p.status,
+        "Permission Date": formatDateOnly(p.permissionDate),
+        "From": p.fromTime,
+        "To": p.toTime,
+        "Duration": p.duration,
+    })), [permissionData, formatDateOnly]);
+
+    const transformedUserChangesData = useMemo(() => allUserChangesData.map(change => ({
+        "ID": change.id,
+        "Changed At": formatDate(change.changedAt),
+        "Action": change.action,
+        "Changes": change.changes,
+        "Changed By": change.changedByUserName,
+    })), [allUserChangesData, formatDate]);
+
 
   const getStatusColor = (status: PermissionRequestStatus): string => {
   switch (status) {
@@ -150,21 +240,37 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
   }
 };
 
-    
-    if (!user) return <Typography>Loading...</Typography>;
+    const commonStatusRenderer = useCallback((value: string) => {
+        let colorClass = '';
+        let bgColorClass = '';
+        switch (value?.toLowerCase()) {
+            case 'approved':
+            case 'accepted':
+                colorClass = 'text-green-700';
+                bgColorClass = 'bg-green-100';
+                break;
+            case 'rejected':
+            case 'cancelled':
+                colorClass = 'text-red-700';
+                bgColorClass = 'bg-red-100';
+                break;
+            case 'pending':
+                colorClass = 'text-yellow-700';
+                bgColorClass = 'bg-yellow-100';
+                break;
+            default:
+                colorClass = 'text-gray-700';
+                bgColorClass = 'bg-gray-100';
+        }
+        return <Chip label={value} size="small" className={`${colorClass} ${bgColorClass}`} />;
+    }, []);
 
-    // Function to format date for display
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-GB', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-
+    const vacancyColumnRenderers = useMemo(() => ({ "Status": commonStatusRenderer }), [commonStatusRenderer]);
+    const permissionColumnRenderers = useMemo(() => ({ "Status": commonStatusRenderer }), [commonStatusRenderer]);
+    const userChangesColumnRenderers = useMemo(() => ({
+        "Action": (value: string) => commonStatusRenderer(value),
+        "Changes": (value: string) => value.split(';').map((item, idx) => <div key={idx}>{item.trim()}</div>)
+    }), [commonStatusRenderer]);
 
       const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
             setAnchorEl(event.currentTarget);
@@ -189,6 +295,48 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
             console.log("Delete user", user);
             handleClose();
         };
+
+    const vacancyFilterConfig: FilterConfigItem[] = useMemo(() => [
+        { key: 'status', label: 'Status', type: 'select', options: Object.values(LeaveRequestStatus).map(s => ({ value: s, label: s })) },
+        { key: 'type', label: 'Type', type: 'select', options: Object.values(LeaveRequestType).map(t => ({ value: t, label: t })) },
+        { key: 'startDate', label: 'Start Date After', type: 'date' },
+        { key: 'endDate', label: 'End Date Before', type: 'date' },
+    ], []);
+
+    const permissionFilterConfig: FilterConfigItem[] = useMemo(() => [
+        { key: 'status', label: 'Status', type: 'select', options: Object.values(PermissionRequestStatus).map(s => ({ value: s, label: s })) },
+        { key: 'type', label: 'Type', type: 'select', options: Object.values(PermissionType).map(t => ({ value: t, label: t })) },
+        { key: 'permissionDate', label: 'Permission Date', type: 'date' },
+    ], []);
+
+    const userChangesFilterConfig: FilterConfigItem[] = useMemo(() => [
+        { key: 'action', label: 'Action', type: 'select', options: [
+            {value: "Created", label: "Created"}, 
+            {value: "Updated", label: "Updated"},
+            {value: "Deleted", label: "Deleted"}
+        ]},
+        { key: 'changedByUserName', label: 'Changed By', type: 'text' },
+        { key: 'changedAt', label: 'Changed After', type: 'date' }, // Note: DataTable date filter is exact match. For range, you'd need two date filters or custom logic.
+    ], []);
+
+    const handleTabChange = (newView: "vacancies" | "updates" | "permission") => {
+        setView(newView);
+        // Reset pagination and filters for the new tab to ensure fresh data load
+        if (newView === "vacancies") {
+            setVacancyPage(1);
+            setVacancyDtFilters({});
+            setVacancySearch("");
+        } else if (newView === "permission") {
+            setPermissionPage(1);
+            setPermissionDtFilters({});
+            setPermissionSearch("");
+        } else if (newView === "updates") {
+            // For client-side, DataTable's internal state will reset on data/config change.
+            // No explicit reset needed here for page/filters if DataTable handles it.
+        }
+    };
+
+    if (!user) return <Typography>Loading...</Typography>;
 
     return (
         <div className="w-full flex align-middle justify-center">
@@ -273,7 +421,7 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
                                 <Typography className="flex items-center gap-2 text-gray-700">
                                     <span className="font-bold w-fit">HR Code:</span> 
                                     <span className="text-[#5570FF]">
-                                    {user.accountType === 0 ? "External" : "Internal"}
+                                    {user.hrCode}
                                     </span>
                                 </Typography>
                                 </div>
@@ -316,9 +464,9 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
                     >
 
                         {[
-                        { label: "Annual", value: vacancies?.annual, total: 20 },
-                        { label: "Sick", value: vacancies?.sick },
-                        { label: "Emergency", value: vacancies?.emergency, total: 5 },
+                        { label: "Annual", value: userVacationInfo?.annual, total: userVacationInfo?.annual_MAX },
+                        { label: "Sick", value: userVacationInfo?.sick , total: userVacationInfo?.sick }, // Assuming sick leave doesn't have a MAX in the same way
+                        { label: "Emergency", value: userVacationInfo?.emergency, total: userVacationInfo?.emergency_MAX },
                         ].map((leave, index) => (
                         <div
                             key={leave.label}
@@ -333,11 +481,11 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
                                 {leave.label}
                             </Typography>
 
-                            {leave.label != "Sick"? <Typography variant="body1" component="p" className="text-gray-600 font-light">
-                                <span className="text-blue-500 font-bold text-lg">{leave.value}</span> / {leave.total}
+                            {leave.label !== "Sick" ? <Typography variant="body1" component="p" className="text-gray-600 font-light">
+                                <span className="text-blue-500 font-bold text-lg">{leave.value ?? 0}</span> / {leave.total ?? 0}
                             </Typography>:<>
                             <Typography variant="body1" component="p" className="text-gray-600 font-light">
-                                <span className="text-blue-500 font-bold text-lg">{leave.value}</span> 
+                                <span className="text-blue-500 font-bold text-lg">{leave.value ?? 0}</span>
                             </Typography>
                             </>}
                         </div>
@@ -372,155 +520,43 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
                     </Paper>
                     <div className="relative mt-20">
 
-                        <div className="flex gap-2 items-end h-9 absolute " style={{top:-52}}>
+                        <div className="flex gap-2 items-end h-9 absolute " style={{top:-37}}>
                             <Tab
                                 label="Vacancies"
                                 active={view === "vacancies"}
                                 style={{borderTopLeftRadius:16,borderTopRightRadius:16}}
-                                onClick={()=> setView("vacancies")}
+                                onClick={()=> handleTabChange("vacancies")}
                             />
                             <Tab
                                 label="Permission"
                                 active={view === "permission"}
                                 style={{borderTopLeftRadius:16,borderTopRightRadius:16}}
-                                onClick={()=> setView("permission")}
+                                onClick={()=> handleTabChange("permission")}
                             />
                             <Tab
                                 label="Updates"
                                 active={view === "updates"}
                                 style={{borderTopLeftRadius:16,borderTopRightRadius:16}}
-                                onClick={()=> setView("updates")}
+                                onClick={()=> handleTabChange("updates")}
                             />
                         </div>
 
-                        {/* Filters Paper */}
                         {view === "vacancies" ? (
-                            <>
-                                <Paper sx={{ p: 3, paddingTop: 0 }} elevation={2}>
-                                <Grid container spacing={2} justifyContent={"flex-end"}>
-                                    <Grid item xs={12} sm={3}>
-                                    <TextField
-                                        fullWidth
-                                        label="Vacancy From"
-                                        type="date"
-                                        InputLabelProps={{ shrink: true }}
-                                    />
-                                    </Grid>
-                                    <Grid item xs={12} sm={3}>
-                                    <TextField
-                                        fullWidth
-                                        label="Vacancy To"
-                                        type="date"
-                                        InputLabelProps={{ shrink: true }}
-                                    />
-                                    </Grid>
-                                    <Grid item xs={12} sm={3}>
-                                    <FormControl fullWidth>
-                                        <InputLabel>Status</InputLabel>
-                                        <Select label="Status">
-                                        <MenuItem value="">All</MenuItem>
-                                        <MenuItem value="accepted">Accepted</MenuItem>
-                                        <MenuItem value="rejected">Rejected</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                    </Grid>
-                                    <Grid item xs={12} sm={3}>
-                                        <FormControl fullWidth >
-                                            <InputLabel>Type</InputLabel>
-                                            <Select label="Type">
-                                            <MenuItem value="">All</MenuItem>
-                                            <MenuItem value="Annual">Annual</MenuItem>
-                                            <MenuItem value="Sick">Sick</MenuItem>
-                                            <MenuItem value="Emergency">Emergency</MenuItem>
-                                            </Select>
-                                        </FormControl>
-                                    </Grid>
-                                    <Grid item xs={12} sm={3}>
-                                    <Button fullWidth variant="contained" color="success"  sx={buttonStyle}>
-                                        Export CSV
-                                    </Button>
-                                    </Grid>
-                                    <Grid item xs={12} sm={3}>
-                                    <Button fullWidth variant="contained" color="primary"  sx={buttonStyle }>
-                                        Apply Filter
-                                    </Button>
-                                    </Grid>
-                                </Grid>
-                                </Paper>
-
-                                <Paper sx={{ p: 3 }} elevation={2}>
-                                <TableContainer component={Paper}>
-                                    <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                        <TableCell>ID</TableCell>
-                                        <TableCell>Request Date</TableCell>
-                                        <TableCell>Vacancy Type</TableCell>
-                                        <TableCell>Status</TableCell>
-                                        <TableCell>Vacancy Date</TableCell>
-                                        {/* <TableCell align="center">Actions</TableCell> */}
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {vacanciesList.map((vacancy) => (
-                                        <TableRow key={vacancy.id}>
-                                            <TableCell>{vacancy.id}</TableCell>
-                                            <TableCell>{new Date(vacancy.dateCreated).toLocaleDateString('en-GB') || "N/A"}</TableCell>
-                                            <TableCell>{vacancy.type}</TableCell>
-                                            <TableCell>{vacancy.status}</TableCell>
-                                            
-                                            <TableCell>
-                                            {new Date(vacancy.startDate).toLocaleDateString('en-GB')}
-                                            {/* Shows as "05/05/2025" */}
-                                            </TableCell>
-                                            {/* <TableCell align="center"> */}
-                                            {/* Replace with icons or buttons as needed */}
-                                            {/* Edit | Delete */}
-                                            {/* </TableCell> */}
-                                        </TableRow>
-                                        ))}
-                                    </TableBody>
-                                    </Table>
-                                </TableContainer>
-                                </Paper>
-                            </>
+                            <Paper sx={{ p: 3, mt:0 }} elevation={2}>
+                                <DataTable
+                                    data={transformedVacancyData}
+                                    totalCount={totalVacancies}
+                                    onPageChange={handleVacancyTableChange}
+                                    itemsPerPage={vacancyPageSize}
+                                    loading={vacancyLoading}
+                                    filterConfig={vacancyFilterConfig}
+                                    columnRenderers={vacancyColumnRenderers}
+                                    serverSide={true}
+                                />
+                            </Paper>
                         ) : (view === "permission" ? (
                             <>
-                                <Paper sx={{ p: 3, paddingTop: 0 }} elevation={2}>
-                                <Grid container spacing={2} justifyContent={"flex-end"}>
-                                    <Grid item xs={12} sm={3}>
-                                    <FormControl fullWidth>
-                                        <InputLabel>Year</InputLabel>
-                                        <Select label="Year">
-                                        <MenuItem value="2025">2025</MenuItem>
-                                        <MenuItem value="2024">2024</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                    </Grid>
-                                    <Grid item xs={12} sm={3}>
-                                    <FormControl fullWidth>
-                                        <InputLabel>Month</InputLabel>
-                                        <Select label="Month">
-                                        <MenuItem value="October">October</MenuItem>
-                                        <MenuItem value="November">November</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                    </Grid>
-                                    <Grid item xs={12} sm={3}>
-                                    {/* <Button fullWidth variant="contained" color="success" sx={buttonStyle}>
-                                        Export CSV
-                                    </Button> */}
-                                    <ExportButton data={permissions}></ExportButton>
-                                    </Grid>
-                                    <Grid item xs={12} sm={3}>
-                                    <Button fullWidth variant="contained" color="primary" sx={buttonStyle}>
-                                        Apply Filter
-                                    </Button>
-                                    </Grid>
-                                </Grid>
-                                </Paper>
-
-                                <Paper sx={{ p: 3, mt: 2 }} elevation={2}>
+                                <Paper sx={{ p: 3, mt:0 }} elevation={2}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
                                     <Typography variant="h6" fontWeight="bold">
                                     Permissions
@@ -530,118 +566,38 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
                                         Remaining:
                                     </Typography>
                                     <Typography variant="body1" fontWeight="bold" color="primary">
-                                        {user.permission} / {user.permission_MAX}
+                                        {user.permission ?? 0} / {user.permission_MAX ?? 0}
                                     </Typography>
+                                        <Box sx={{ml: 2}}>
+                                            <ExportButton data={transformedPermissionData} filename={`user_${userId}_permissions.csv`}></ExportButton>
+                                        </Box>
                                     </Box>
                                 </Box>
-
-                                <Grid container spacing={2}>
-                                    {/* Pending Permission Card */}
-                                    <Grid container spacing={2}>
-                                     {permissions?.map((perm) => (
-                                        <Grid item xs={12} sm={6} key={perm.id}>
-                                        <Paper elevation={1} sx={{ p: 2, borderLeft: `4px solid ${getStatusColor(perm.status)}` }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Typography variant="subtitle1" fontWeight="bold">
-                                                {perm.type}
-                                            </Typography>
-                                            <Chip label={perm.status} color={getStatusChipColor(perm.status)} size="small" />
-                                            </Box>
-                                            <Typography variant="body2" color="text.secondary">
-                                            {new Date(perm.permissionDate).toLocaleDateString()}
-                                            </Typography>
-                                        </Paper>
-                                        </Grid>
-                                    ))}
-                                    </Grid>
-
-                                </Grid>
+                                <DataTable
+                                    data={transformedPermissionData}
+                                    totalCount={totalPermissions}
+                                    onPageChange={handlePermissionTableChange}
+                                    itemsPerPage={permissionPageSize}
+                                    loading={permissionLoading}
+                                    filterConfig={permissionFilterConfig}
+                                    columnRenderers={permissionColumnRenderers}
+                                    serverSide={true}
+                                />
                                 </Paper>
                             </>
                         ) : ( 
                             <>
-                                {/* <Paper sx={{ p: 3, paddingTop: 0 }} elevation={2}>
-                                <Grid container spacing={2} justifyContent={"flex-end"}>
-                                    <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Date From"
-                                        type="date"
-                                        InputLabelProps={{ shrink: true }}
+                                <Paper sx={{ p: 3, mt:0 }} elevation={2}>
+                                     <DataTable
+                                        data={transformedUserChangesData} // Use allUserChangesData for client-side
+                                        totalCount={allUserChangesData.length} // Total count is length of all data for client-side
+                                        onPageChange={handleUserChangesTableChange} // May not be strictly needed for client-side if DataTable handles it
+                                        itemsPerPage={10} // Default items per page
+                                        loading={userChangesLoading}
+                                        filterConfig={userChangesFilterConfig}
+                                        columnRenderers={userChangesColumnRenderers}
+                                        serverSide={false} // Client-side pagination and filtering
                                     />
-                                    </Grid>
-                                    <Grid item xs={12} sm={6}>
-                                    <TextField
-                                        fullWidth
-                                        label="Date To"
-                                        type="date"
-                                        InputLabelProps={{ shrink: true }}
-                                    />
-                                    </Grid>
-                                    <Grid item xs={12} sm={3}>
-                                    <Button fullWidth variant="contained" color="success" sx={buttonStyle}>
-                                        Export CSV
-                                    </Button>
-                                    </Grid>
-                                    <Grid item xs={12} sm={3}>
-                                    <Button fullWidth variant="contained" color="primary" sx={buttonStyle}>
-                                        Apply Filter
-                                    </Button>
-                                    </Grid>
-                                </Grid>
-                                </Paper> */}
-
-                                <Paper sx={{ p: 3 }} elevation={2}>
-                                <TableContainer component={Paper}>
-                                    <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                        <TableCell>ID</TableCell>
-                                        <TableCell>Changed At</TableCell>
-                                        <TableCell>Action</TableCell>
-                                        <TableCell>Changes</TableCell>
-                                        <TableCell>Changed By</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {isLoading ? (
-                                            <TableRow>
-                                                <TableCell colSpan={5} align="center">Loading user changes...</TableCell>
-                                            </TableRow>
-                                        ) : userChangesList.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={5} align="center">No changes history available</TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            userChangesList.map((change) => (
-                                                <TableRow key={change.id}>
-                                                    <TableCell>{change.id}</TableCell>
-                                                    <TableCell>{formatDate(change.changedAt)}</TableCell>
-                                                    <TableCell>
-                                                        <Chip 
-                                                            label={change.action} 
-                                                            color={
-                                                                change.action === "Updated" ? "primary" : 
-                                                                change.action === "Created" ? "success" : 
-                                                                change.action === "Deleted" ? "error" : "default"
-                                                            } 
-                                                            size="small" 
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {change.changes.split(';').map((changeItem, index) => (
-                                                            <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                                                                {changeItem.trim()}
-                                                            </Typography>
-                                                        ))}
-                                                    </TableCell>
-                                                    <TableCell>{change.changedByUserName}</TableCell>
-                                                </TableRow>
-                                            ))
-                                        )}
-                                    </TableBody>
-                                    </Table>
-                                </TableContainer>
                                 </Paper>
                             </>
                         ))}

@@ -4,12 +4,14 @@ using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Helper;
+using AutomatedTaskSystem.Hub;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.Email;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using static AutomatedTaskSystem.DTO.Responses;
 
@@ -21,12 +23,13 @@ namespace AutomatedTaskSystem.Services.Permission
         private readonly DataContext _dataContext;
         private readonly ITokenService _tokenService;
         private readonly IEmailService _emailService;
-
-        public PermissionService(DataContext dataContext, ITokenService tokenService, IEmailService emailService)
+        private readonly IHubContext<UserHub> _hubContext;
+        public PermissionService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IHubContext<UserHub> hubContext)
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
             _emailService = emailService;
+            _hubContext = hubContext;
         }
 
         // Create a new permission request
@@ -34,76 +37,138 @@ namespace AutomatedTaskSystem.Services.Permission
         {
             var response = new ResponseService<bool>();
 
-            var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
-            if (user == null)
-            {
-                response.Error = true;
-                response.Message = "المستخدم غير موجود.";
-                return response;
-            }
-
-            // Parse and validate time ranges
-            if (!TimeOnly.TryParse(request.From, out var fromTime) ||
-                !TimeOnly.TryParse(request.To, out var toTime))
-            {
-                response.Error = true;
-                response.Message = "الوقت غير صالح.";
-                return response;
-            }
-
-            if (toTime < fromTime)
-            {
-                response.Error = true;
-                response.Message = "وقت النهاية يجب أن يكون بعد وقت البداية.";
-                return response;
-            }
-
-            // Check if the user has remaining permissions
-            int totalPendingPermissions = await _dataContext.Permissions
-                .CountAsync(p => p.UserId == user.Id && p.Status == PermissionStatusEnum.Pending);
-
-            if ((user.Permission_MAX - user.Permission - totalPendingPermissions) < 1)
-            {
-                response.Error = true;
-                response.Message = "لقد تجاوزت الحد الأقصى لطلبات الإذن المتاحة.";
-                return response;
-            }
-
-            var permission = new Models.Permission
-            {
-                UserId = user.Id,
-                Type = request.Type,
-                Reason = request.Reason,
-                FromTime = fromTime,
-                ToTime = toTime,
-                PermissionDate = DateTime.Parse(request.PermissionDate),
-                CreatedAt = DateTime.Now,
-                Status = PermissionStatusEnum.Pending
-            };
-
             try
             {
+                var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
+                if (user == null)
+                {
+                    response.Error = true;
+                    response.Message = "User not found.";
+                    return response;
+                }
+
+                // --- Time range parsing and validation (still relevant for individual permission request) ---
+                if (!TimeOnly.TryParse(request.From, out var fromTime) ||
+                    !TimeOnly.TryParse(request.To, out var toTime))
+                {
+                    response.Error = true;
+                    response.Message = "Invalid time format.";
+                    return response;
+                }
+
+                if (toTime < fromTime)
+                {
+                    response.Error = true;
+                    response.Message = "End time cannot be earlier than start time.";
+                    return response;
+                }
+
+                // --- NEW LOGIC: Calculate remaining *number* of permissions ---
+
+                // Get count of pending permission requests for the user
+                var pendingPermissionCount = await _dataContext.Permissions
+                    .Where(p => p.UserId == user.Id && p.Status == PermissionStatusEnum.Pending)
+                    .CountAsync(); // Using CountAsync() instead of SumAsync()
+
+                // Calculate remaining permission slots
+                // user.Permission_MAX is total allowed, user.Permission is already used/approved.
+                // pendingPermissionCount are currently requested and not yet approved.
+                var remainingPermissionSlots = Math.Max(0, user.Permission_MAX - (user.Permission + pendingPermissionCount));
+
+                // Validation: Check if there's at least 1 permission slot available for the new request
+                if (remainingPermissionSlots <= 0) // If no slots or negative, it's insufficient
+                {
+                    return new ResponseService<bool>
+                    {
+                        Error = true,
+                        Message = $"Insufficient permission balance. " +
+                                  $"Requested: 1 permission, " + // Each request consumes 1 permission slot
+                                  $"Available: {remainingPermissionSlots} permissions",
+                        Data = false
+                    };
+                }
+
+                // --- Create permission request (remains largely the same) ---
+
+                // Parse permission date - still good to be robust here
+                if (!DateTime.TryParse(request.PermissionDate, out var permissionDate))
+                {
+                    response.Error = true;
+                    response.Message = "Invalid permission date format.";
+                    return response;
+                }
+
+                var permission = new Models.Permission
+                {
+                    UserId = user.Id,
+                    Type = request.Type,
+                    Reason = request.Reason,
+                    FromTime = fromTime,
+                    ToTime = toTime,
+                    PermissionDate = permissionDate,
+                    CreatedAt = DateTime.Now,
+                    Status = PermissionStatusEnum.Pending
+                };
+
+                // TeamLeader logic (remains the same)
+                if (user.Role == UserRoleEnum.TeamLeader)
+                {
+                    permission.TeamleaderId = user.Id;
+                    var section = await _dataContext.Sections
+                        .Where(s => s.SectionGroups.Any(g => g.GroupId == user.GroupId))
+                        .FirstOrDefaultAsync();
+
+                    if (section != null)
+                        permission.SectionheadId = section.HeadId;
+                }
+
                 _dataContext.Permissions.Add(permission);
                 await _dataContext.SaveChangesAsync();
 
-                // Notify receivers
-                var receivers = await GetReceiversAsync(user.Role);
-                foreach (var receiver in receivers)
-                {
-                    Console.WriteLine($"Notify user {receiver.Id} about the new permission request.");
-                    // Optional: Add SignalR or notification service here
-                }
+                // Notify via SignalR
+                await NotifyNewPermissionRequest(permission.Id);
 
                 response.Data = true;
-                response.Message = "تم تقديم طلب الإذن بنجاح.";
-                return response;
+                response.Message = "Permission request created successfully.";
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error while creating permission request: {ex.Message}");
                 response.Error = true;
-                response.Message = "حدث خطأ أثناء إنشاء طلب الإذن.";
-                return response;
+                response.Message = $"An error occurred: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        private async System.Threading.Tasks.Task NotifyNewPermissionRequest(int permissionId)
+        {
+            try
+            {
+                // Get total pending requests count
+                var pendingCount = await _dataContext.Permissions
+                    .CountAsync(p => p.Status == PermissionStatusEnum.Pending);
+
+                // Notify owner
+                var owner = await _dataContext.Users
+                    .FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
+
+                if (owner != null)
+                {
+                    await _hubContext.Clients.User(owner.Id.ToString())
+                        .SendAsync("UpdatePendings", new
+                        {
+                            pendings = pendingCount,
+                            isNewRequest = true,
+                            newPermissionId = permissionId
+                        });
+                }
+                return;
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the main operation
+                Console.WriteLine($"Error notifying new permission: {ex.Message}");
+                return;
             }
         }
 
@@ -345,40 +410,118 @@ namespace AutomatedTaskSystem.Services.Permission
         }
 
         // Get all permissions for a specific user
-        public async Task<ResponseService<List<GetPermissionDto>>> GetPermissionsByUserIdAsync(int userId)
+        public async Task<ResponseService<PageList<GetPermissionDto>>> GetPermissionsByUserId(
+            int userId,
+            int page,
+            int pageSize,
+            string? searchTerm,
+            string? fromDate,
+            string? toDate,
+            string? status,
+            string? type,
+            bool disablePagination)
         {
-            var permissions = await _dataContext.Permissions
-                .Where(p => p.UserId == userId)
-                .Include(p => p.User)
-                .ThenInclude(u => u.Group)
-                .ToListAsync();
-
-            var permissionDtos = permissions.Select(p => new GetPermissionDto
+            try
             {
-                Id = p.Id,
-                Type = p.Type.ToString(),
-                Reason = p.Reason,
-                FromTime = p.FromTime.ToString("HH:mm"),
-                ToTime = p.ToTime.ToString("HH:mm"),
-                PermissionDate = p.PermissionDate.ToString("yyyy-MM-dd"),
-                Status = p.Status.ToString(),
-                Duration = CalculateDurationInMinutes(p.FromTime, p.ToTime),
-                User = new IDName
+                // 1. Build the IQueryable for Permissions, filtered by UserId and including related entities
+                var query = _dataContext.Permissions
+                    .Where(p => p.User.Id == userId)
+                    .Include(p => p.User)
+                    .AsQueryable();
+
+                // Apply filters conditionally
+                if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
-                    Id = p.User.Id,
-                    Name = p.User.Name
-                },
-                DateCreated = p.CreatedAt.ToString("M/d/yyyy h:mm:ss tt")
-            }).ToList();
+                    query = query.Where(p =>
+                        p.Reason.Contains(searchTerm) ||
+                        p.User.Name.Contains(searchTerm) ||
+                        p.Type.ToString().Contains(searchTerm) ||
+                        p.Status.ToString().Contains(searchTerm)
+                    );
+                }
 
-            return new ResponseService<List<GetPermissionDto>>
+                if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate, out DateTime parsedFromDate))
+                {
+                    query = query.Where(p => p.PermissionDate >= parsedFromDate);
+                }
+
+                if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate, out DateTime parsedToDate))
+                {
+                    // Add one day to include the entire 'toDate'
+                    query = query.Where(p => p.PermissionDate <= parsedToDate.AddDays(1));
+                }
+
+                if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse(typeof(PermissionStatusEnum), status, true, out var parsedStatus))
+                {
+                    query = query.Where(p => p.Status == (PermissionStatusEnum)parsedStatus);
+                }
+
+                if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse(typeof(PermissionType), type, true, out var parsedType))
+                {
+                    query = query.Where(p => p.Type == (PermissionType)parsedType);
+                }
+
+                // Project the query to GetPermissionDto after filtering
+                var projectedQuery = query.Select(p => new GetPermissionDto
+                {
+                    Id = p.Id,
+                    Type = p.Type.ToString(),
+                    Reason = p.Reason,
+                    FromTime = p.FromTime.ToString("HH:mm"),
+                    ToTime = p.ToTime.ToString("HH:mm"),
+                    PermissionDate = p.PermissionDate.ToString("yyyy-MM-dd"),
+                    Status = p.Status.ToString(),
+                    Duration = CalculateDurationInMinutes(p.FromTime, p.ToTime),
+                    User = new IDName
+                    {
+                        Id = p.User.Id,
+                        Name = p.User.Name
+                    },
+                    DateCreated = p.CreatedAt.ToString("M/d/yyyy h:mm:ss tt")
+                });
+
+                PageList<GetPermissionDto> paginatedPermissions;
+
+                if (disablePagination)
+                {
+                    var allItems = await projectedQuery.ToListAsync();
+                    paginatedPermissions = new PageList<GetPermissionDto>(allItems, allItems.Count, 1, allItems.Count);
+                }
+                else
+                {
+                    // Use PageList.CreateAsync to paginate the query
+                    paginatedPermissions = await PageList<GetPermissionDto>.CreateAsync(projectedQuery, page, pageSize);
+                }
+
+                if (paginatedPermissions.items == null || !paginatedPermissions.items.Any())
+                {
+                    return new ResponseService<PageList<GetPermissionDto>>
+                    {
+                        Error = false,
+                        Message = "No permissions found for this user with the applied filters.",
+                        Data = paginatedPermissions
+                    };
+                }
+
+                return new ResponseService<PageList<GetPermissionDto>>
+                {
+                    Error = false,
+                    Message = "Permissions retrieved successfully.",
+                    Data = paginatedPermissions
+                };
+            }
+            catch (Exception ex)
             {
-                Error = false,
-                Message = "User permissions retrieved successfully.",
-                Data = permissionDtos
-            };
+                // Log the exception
+                Console.WriteLine($"Error in GetPermissionsByUserId: {ex.Message}");
+                return new ResponseService<PageList<GetPermissionDto>>
+                {
+                    Error = true,
+                    Message = $"An error occurred while retrieving permissions: {ex.Message}",
+                    Data = null
+                };
+            }
         }
-
         // Update a permission
         public async Task<bool> UpdatePermissionAsync(UpdatePermissionDto request)
         {
@@ -483,10 +626,6 @@ namespace AutomatedTaskSystem.Services.Permission
                     // Future or today
                     if (permission.Status == PermissionStatusEnum.Pending || permission.Status == PermissionStatusEnum.Approved)
                     {
-                        permission.Status = PermissionStatusEnum.Cancelled;
-                        permission.UpdatedAt = DateTime.UtcNow;
-
-                        // Send email only if it was approved
                         if (permission.Status == PermissionStatusEnum.Approved)
                         {
                             var senderUser = permission.User;
@@ -517,6 +656,10 @@ namespace AutomatedTaskSystem.Services.Permission
                                 };
                             }
                         }
+                        permission.Status = PermissionStatusEnum.Cancelled;
+                        permission.UpdatedAt = DateTime.UtcNow;
+
+                        // Send email only if it was approved
 
                         await _dataContext.SaveChangesAsync();
 
@@ -563,7 +706,7 @@ namespace AutomatedTaskSystem.Services.Permission
         }
 
         // Approve or reject a permission
-        public async Task<bool> ApproveOrRejectPermissionAsync(int id, bool isApproved, string comment)
+        public async Task<bool> ApproveOrRejectPermissionAsync(int id, bool isApproved, string? comment)
         {
             // Get current user
             var userId = _tokenService.GetUserIdFromToken();
@@ -648,7 +791,11 @@ namespace AutomatedTaskSystem.Services.Permission
         }
 
 
-
+        private static decimal CalculateDurationInHours(DateTime fromTime, DateTime toTime)
+        {
+            // Calculate total hours with decimal precision
+            return (decimal)(toTime - fromTime).TotalHours;
+        }
         private async Task<List<Models.User>> GetReceiversAsync(UserRoleEnum userRole)
         {
             List<UserRoleEnum> rolesToNotify = userRole switch

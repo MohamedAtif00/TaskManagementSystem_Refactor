@@ -22,7 +22,6 @@
     <Compile Remove="Dtos\PermissionDtos\UpdatePermissionDto.cs" />
     <Compile Remove="Migrations\20250526172242_init.cs" />
     <Compile Remove="Migrations\20250526172242_init.Designer.cs" />
-    <Compile Remove="Migrations\DataContextModelSnapshot.cs" />
     <Compile Remove="Migrations\TaskContextModelSnapshot.cs" />
   </ItemGroup>
 

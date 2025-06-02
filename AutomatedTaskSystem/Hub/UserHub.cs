@@ -34,7 +34,8 @@ namespace AutomatedTaskSystem.Hub
                     {
                         await Clients.User(userId).SendAsync("OnConnectedMessage", new
                         {
-                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync()
+                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync()+
+                                await _dataContext.Permissions.Where(x => x.Status == Models.PermissionStatusEnum.Pending).CountAsync()
                         }); 
                     }
                 }

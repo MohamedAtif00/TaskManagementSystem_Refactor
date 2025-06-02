@@ -11,12 +11,20 @@ import FileUpload from "../../components/pageComponent/leave/fileUpload";
 // Removed redundant PERMISSION import, Permission is already imported above
 // import PERMISSION from "../../lib/API/Permission";
 import { toast } from "react-toastify";
-import DataTable from "../../components/table/tablePagination"; // Assuming this is your DataTable component
+import  DataTable  from "../../components/table/tablePagination"; // Assuming this is your DataTable component
 
 type CancelTarget = {
   id: number;
   type: 'leave' | 'permission';
 };
+
+// Interface for Filter Configuration items used by DataTable
+interface FilterConfigItem {
+  key: string;
+  label: string;
+  type: "text" | "select" | "date" | "number";
+  options?: { value: string | number; label: string }[];
+}
 
 // IUser interface might be defined elsewhere, ensure it's available
 interface IUser {
@@ -297,8 +305,8 @@ const LeaveManagement = () => {
   const auth = useAppSelector((e) => e.authSlice);
   const [activeTab, setActiveTab] = useState<"leaves" | "permissions">("leaves");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({ status: '', startDate: '', endDate: '', type: '' });
+  // const [showFilters, setShowFilters] = useState(false); // Will be removed as DataTable handles filters
+  // const [filters, setFilters] = useState({ status: '', startDate: '', endDate: '', type: '' }); // Will be replaced by DataTable's internal filters
 
   const [allLeaves, setAllLeaves] = useState<IGetLeaveRequest[]>([]);
   const [totalLeavesCount, setTotalLeavesCount] = useState<number>(0);
@@ -311,17 +319,44 @@ const LeaveManagement = () => {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<CancelTarget | null>(null);
 
+  // State for Leaves DataTable
   const [leaveDataTablePage, setLeaveDataTablePage] = useState<number>(1);
   const [leaveDataTableItemsPerPage, setLeaveDataTableItemsPerPage] = useState<number>(10);
   const [leaveDataTableSearchText, setLeaveDataTableSearchText] = useState<string>("");
-  // leaveDataTableFilters can be used if DataTable has its own filter inputs via filterConfig
-  // const [leaveDataTableFilters, setLeaveDataTableFilters] = useState<Record<string, any>>({});
+  const [leaveDataTableDtFilters, setLeaveDataTableDtFilters] = useState<Record<string, any>>({});
 
+  // State for Permissions DataTable
   const [permissionDataTablePage, setPermissionDataTablePage] = useState<number>(1);
   const [permissionDataTableItemsPerPage, setPermissionDataTableItemsPerPage] = useState<number>(10);
   const [permissionDataTableSearchText, setPermissionDataTableSearchText] = useState<string>("");
-  // const [permissionDataTableFilters, setPermissionDataTableFilters] = useState<Record<string, any>>({});
+  const [permissionDataTableDtFilters, setPermissionDataTableDtFilters] = useState<Record<string, any>>({});
 
+
+  const leaveTableFilterConfig: FilterConfigItem[] = useMemo(() => [
+    { key: 'status', label: 'Status', type: 'select', options: [ { value: "all", label: "All" }, ...Object.values(LeaveRequestStatus).map(s => ({ value: s, label: s })) ] },
+    { key: 'type', label: 'Type', type: 'select', options: [ { value: "all", label: "All" }, ...Object.values(LeaveRequestType).map(t => ({ value: t, label: t })) ] },
+    { key: 'fromDate', label: 'Start Date', type: 'date' },
+    { key: 'toDate', label: 'End Date', type: 'date' },
+  ], []);
+
+  const permissionTableFilterConfig: FilterConfigItem[] = useMemo(() => [
+    { key: 'status', label: 'Status', type: 'select', options: [ { value: "all", label: "All" }, ...Object.values(PermissionRequestStatus).map(s => ({ value: s, label: s })) ] },
+    { key: 'type', label: 'Type', type: 'select', options: [ { value: "all", label: "All" }, ...Object.values(PermissionType).map(t => ({ value: t, label: t })) ] },
+    { key: 'date', label: 'Date', type: 'date' },
+  ], []);
+
+  const resetFiltersAndPage = () => {
+    if (activeTab === "leaves") {
+      setLeaveDataTablePage(1);
+      setLeaveDataTableDtFilters({});
+      setLeaveDataTableSearchText("");
+    } else {
+      setPermissionDataTablePage(1);
+      setPermissionDataTableDtFilters({});
+      setPermissionDataTableSearchText("");
+    }
+  };
+  
 
   const LeaveBalanceCard = ({ title, used, total, color }: { title: string, used: number, total: number, color: string }) => (
     <div className="bg-white p-4 rounded-lg shadow-md">
@@ -376,11 +411,13 @@ const LeaveManagement = () => {
         page: leaveDataTablePage,
         pageSize: leaveDataTableItemsPerPage,
         searchTerm: leaveDataTableSearchText || undefined,
-        status: filters.status || undefined,
-        type: filters.type || undefined,
-        fromDate: filters.startDate || undefined,
-        toDate: filters.endDate || undefined,
+        status: leaveDataTableDtFilters.status && leaveDataTableDtFilters.status !== "all" ? leaveDataTableDtFilters.status : undefined,
+        type: leaveDataTableDtFilters.type && leaveDataTableDtFilters.type !== "all" ? leaveDataTableDtFilters.type : undefined,
+        fromDate: leaveDataTableDtFilters.fromDate || undefined,
+        toDate: leaveDataTableDtFilters.toDate || undefined,
       };
+      Object.keys(params).forEach(key => params[key] === undefined && delete params[key]);
+
       try {
         const response = await API.LEAVE.GET_ALL_BY_USER(auth.id, params);
         if (response && response.data && !response.error) {
@@ -404,10 +441,12 @@ const LeaveManagement = () => {
         page: permissionDataTablePage,
         pageSize: permissionDataTableItemsPerPage,
         searchTerm: permissionDataTableSearchText || undefined,
-        status: filters.status || undefined,
-        type: filters.type || undefined,
-        date: filters.startDate || undefined, // Assuming startDate from component filter is used for 'date'
+        status: permissionDataTableDtFilters.status && permissionDataTableDtFilters.status !== "all" ? permissionDataTableDtFilters.status : undefined,
+        type: permissionDataTableDtFilters.type && permissionDataTableDtFilters.type !== "all" ? permissionDataTableDtFilters.type : undefined,
+        date: permissionDataTableDtFilters.date || undefined,
       };
+      Object.keys(params).forEach(key => params[key] === undefined && delete params[key]);
+
       try {
         // Assuming Permission.GET_ALL_BY_USER is adapted for pagination/filtering
         const response = await Permission.GET_ALL_BY_USER(auth.id, params);
@@ -433,39 +472,21 @@ const LeaveManagement = () => {
       fetchPermissions();
     }
   }, [
-    auth.id, activeTab, filters,
-    leaveDataTablePage, leaveDataTableItemsPerPage, leaveDataTableSearchText,
-    permissionDataTablePage, permissionDataTableItemsPerPage, permissionDataTableSearchText
+    auth.id, activeTab,
+    leaveDataTablePage, leaveDataTableItemsPerPage, leaveDataTableSearchText, leaveDataTableDtFilters,
+    permissionDataTablePage, permissionDataTableItemsPerPage, permissionDataTableSearchText, permissionDataTableDtFilters
   ]);
 
 
   const refreshData = useCallback(() => {
-    // This will trigger the main useEffect to refetch data with current parameters
     if (activeTab === "leaves") {
-        // To ensure re-fetch, we can slightly change a dependency or use a dedicated refresh trigger
-        // For simplicity, directly calling the fetch logic or relying on state change from onPageChange
-        // If onPageChange is not called, we might need a refresh trigger state.
-        // For now, let's assume the main useEffect will handle it if its dependencies are set correctly.
-        // A more explicit way:
-        const currentFilters = filters;
-        const currentPage = leaveDataTablePage;
-        const currentItemsPerPage = leaveDataTableItemsPerPage;
-        const currentSearchText = leaveDataTableSearchText;
-        // Re-set one of the states to trigger the effect, or call fetch function directly
-        // This is a bit of a hack, a dedicated refresh trigger state is cleaner
-        setLeaveDataTablePage(1); // Reset to page 1 on refresh or keep current
-        setTimeout(() => setLeaveDataTablePage(currentPage), 0);
-
-
+      setLeaveDataTablePage(1); // Reset to page 1, useEffect will fetch with current filters/search
     } else {
-        const currentFilters = filters;
-        const currentPage = permissionDataTablePage;
-        const currentItemsPerPage = permissionDataTableItemsPerPage;
-        const currentSearchText = permissionDataTableSearchText;
-        setPermissionDataTablePage(1);
-        setTimeout(() => setPermissionDataTablePage(currentPage), 0);
+      setPermissionDataTablePage(1); // Reset to page 1, useEffect will fetch with current filters/search
     }
-  }, [activeTab, filters, leaveDataTablePage, leaveDataTableItemsPerPage, leaveDataTableSearchText, permissionDataTablePage, permissionDataTableItemsPerPage, permissionDataTableSearchText]);
+  }, [activeTab]);
+
+
 
 
   const handleCancelAction = async (target: CancelTarget) => {
@@ -518,36 +539,65 @@ const LeaveManagement = () => {
     "Start Date": (value: string) => formatDateForTable(value),
     "End Date": (value: string) => formatDateForTable(value),
     "Status": (value: LeaveRequestStatus) => <StatusBadge status={value} />,
-    "Actions": (value: number, row: any) => (
-      row.Status !== LeaveRequestStatus.Cancelled && row.Status !== LeaveRequestStatus.Rejected && (
-        <button onClick={() => { setCancelTarget({ id: value, type: 'leave' }); setIsCancelModalOpen(true); }} className="text-red-600 hover:text-red-800">Cancel</button>
-      )
-    ),
+    "Actions": (value: number, row: any) => {
+      const isDisabled = row.Status === LeaveRequestStatus.Cancelled || row.Status === LeaveRequestStatus.Rejected;
+      return (
+        <div className="relative group">
+          <button
+            onClick={() => { setCancelTarget({ id: value, type: 'leave' }); setIsCancelModalOpen(true); }}
+            className={`text-red-600 hover:text-red-800 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={isDisabled}
+          >
+            Cancel
+          </button>
+          {isDisabled && (
+            <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-gray-700 text-white text-xs rounded py-1 px-2 z-10 whitespace-nowrap">
+              🚫 Cannot Cancel
+            </span>
+          )}
+        </div>
+      );
+    },
   };
 
   const permissionColumnRenderers = {
     "Date": (value: string) => formatDateForTable(value),
     "Status": (value: PermissionRequestStatus) => <StatusBadge status={value} />,
-    "Actions": (value: number, row: any) => (
-      row.Status !== PermissionRequestStatus.Cancelled && row.Status !== PermissionRequestStatus.Rejected && (
-        <button onClick={() => { setCancelTarget({ id: value, type: 'permission' }); setIsCancelModalOpen(true); }} className="text-red-600 hover:text-red-800">Cancel</button>
-      )
-    ),
+    "Actions": (value: number, row: any) => {
+      const isDisabled = row.Status === PermissionRequestStatus.Cancelled || row.Status === PermissionRequestStatus.Rejected;
+      return (
+        <div className="relative group">
+          <button
+            onClick={() => { setCancelTarget({ id: value, type: 'permission' }); setIsCancelModalOpen(true); }}
+            className={`text-red-600 hover:text-red-800 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={isDisabled}
+          >
+            Cancel
+          </button>
+          {isDisabled && (
+            <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 hidden group-hover:block bg-gray-700 text-white text-xs rounded py-1 px-2 z-10 whitespace-nowrap">
+              🚫 Cannot Cancel
+            </span>
+          )}
+        </div>
+      );
+    },
   };
 
-  const handleLeaveTableChange = (page: number, itemsPerPage: number, _dtFilters: Record<string, any>, searchText: string) => {
+  const handleLeaveTableChange = (page: number, itemsPerPage: number, dtInternalFilters: Record<string, any>, searchText: string) => {
     setLeaveDataTablePage(page);
     setLeaveDataTableItemsPerPage(itemsPerPage);
+    setLeaveDataTableDtFilters(dtInternalFilters);
     setLeaveDataTableSearchText(searchText);
-    // setLeaveDataTableFilters(dtFilters); // If using DataTable's own filters
   };
 
-  const handlePermissionTableChange = (page: number, itemsPerPage: number, _dtFilters: Record<string, any>, searchText: string) => {
+  const handlePermissionTableChange = (page: number, itemsPerPage: number, dtInternalFilters: Record<string, any>, searchText: string) => {
     setPermissionDataTablePage(page);
     setPermissionDataTableItemsPerPage(itemsPerPage);
+    setPermissionDataTableDtFilters(dtInternalFilters);
     setPermissionDataTableSearchText(searchText);
-    // setPermissionDataTableFilters(dtFilters); // If using DataTable's own filters
   };
+
 
   return (
     <div className="min-h-screen bg-gray-50 w-full">
@@ -597,50 +647,11 @@ const LeaveManagement = () => {
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">{activeTab === "leaves" ? "Leave Applications" : "Permission Requests"}</h2>
-              <button onClick={() => setShowFilters(!showFilters)} className="flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                {/* <FiFilter className="mr-2 h-4 w-4" />  */}
-                Filter
-              </button>
+              {/* The "Filter" button and external filter UI are removed as DataTable will handle filtering */}
             </div>
-            {showFilters && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
-                    <option value="">All</option>
-                    {Object.values(LeaveRequestStatus).map(status => <option key={status} value={status}>{status}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                  <select className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value={filters.type} onChange={(e) => setFilters({ ...filters, type: e.target.value })}>
-                    <option value="">All</option>
-                    {activeTab === "leaves" ? Object.values(LeaveRequestType).map(type => <option key={type} value={type}>{type}</option>)
-                      : Object.values(PermissionType).map(type => <option key={type} value={type}>{type}</option>)}
-                  </select>
-                </div>
-                {activeTab === "leaves" ? (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                      <input type="date" className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value={filters.startDate} onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                      <input type="date" className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value={filters.endDate} onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} min={filters.startDate} />
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                    <input type="date" className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" value={filters.startDate} onChange={(e) => setFilters({ ...filters, startDate: e.target.value, endDate: '' })} />
-                  </div>
-                )}
-                <div className="lg:col-start-4 flex justify-end">
-                  <button onClick={() => setFilters({ status: '', startDate: '', endDate: '', type: '' })} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Clear Filters</button>
-                </div>
-              </div>
-            )}
+             <div className="flex justify-end mt-2 mb-2">
+                <button onClick={resetFiltersAndPage} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Clear All Filters & Search</button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -651,6 +662,7 @@ const LeaveManagement = () => {
                 onPageChange={handleLeaveTableChange}
                 itemsPerPage={leaveDataTableItemsPerPage}
                 loading={isLoading}
+                filterConfig={leaveTableFilterConfig} // Pass filterConfig for leaves
                 columnRenderers={leaveColumnRenderers}
                 serverSide={true} // Enable server-side operations
               />
@@ -661,6 +673,7 @@ const LeaveManagement = () => {
                 onPageChange={handlePermissionTableChange}
                 itemsPerPage={permissionDataTableItemsPerPage}
                 loading={isLoading}
+                filterConfig={permissionTableFilterConfig} // Pass filterConfig for permissions
                 columnRenderers={permissionColumnRenderers}
                 serverSide={true} // Enable server-side operations
               />

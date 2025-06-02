@@ -92,7 +92,7 @@ interface IGetPermissionDetails {
 
 interface IOpinion {
     permissionId: number;
-    comment: string;
+    comment?: string;
     status: PermissionRequestStatus;
     isApproved?: boolean;
     user?: { id: number; name: string; role: number };
@@ -222,7 +222,7 @@ const PERMISSION = {
             }, {} as Record<string, string>);
 
             const queryString = new URLSearchParams(filteredParams).toString();
-            const fullUrl = `${url}/Permission/PermissionsByUserId/${userId}${queryString ? `?${queryString}` : ""}`;
+            const fullUrl = `${url}/Permission/GetPermissionsByUserId/${userId}${queryString ? `?${queryString}` : ""}`;
 
             const res = await fetch(fullUrl);
 

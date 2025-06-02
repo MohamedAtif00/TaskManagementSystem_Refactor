@@ -69,6 +69,7 @@ interface IGetLeaveRequest extends ILeave {
     status: LeaveRequestStatus;
     duration: number
     user: { id: number; name: string; role: number } | null
+    dateCreated:string
 }
 
  enum LeaveRequestType {
