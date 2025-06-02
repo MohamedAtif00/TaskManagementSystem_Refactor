@@ -29,7 +29,7 @@ public class UserTaskService : IUserTaskService
                 new BaseResponseService { Error = true, Message = "Invalid Auth" }
             );
 
-        if (user.Role == UserRoleEnum.ProjectManger)
+        if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
         {
             var users = await _context.Users
                 .Where(u => !u.Archived && u.Role != UserRoleEnum.ProjectManger)
@@ -87,7 +87,7 @@ public class UserTaskService : IUserTaskService
             };
         }
 
-        if (user.Role == UserRoleEnum.SectionHead)
+        if (user.Role == UserRoleEnum.SectionHead )
         {
             var sectionGroupIds = await _context.SectionGroups
                 .Where(sg => sg.Section.HeadId == user.Id && !sg.Section.Archived)

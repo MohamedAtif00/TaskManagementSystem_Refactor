@@ -38,7 +38,7 @@ namespace AutomatedTaskSystem.Middlewares
             var logContent = new StringBuilder();
             logContent.AppendLine($"Time: {DateTime.UtcNow:O}");
             logContent.AppendLine($"Request Path: {context.Request.Path}");
-            logContent.AppendLine($"Query: {context.Request.QueryString}");
+            logContent.AppendLine($"Query: {context.Request.QueryString}"); 
             logContent.AppendLine($"Method: {context.Request.Method}");
             logContent.AppendLine("Exception:");
             logContent.AppendLine(ex.ToString());

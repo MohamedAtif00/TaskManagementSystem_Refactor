@@ -127,6 +127,7 @@ const PERMISSION = {
         params?: Record<string, string | number | boolean | undefined> // Added undefined for optional params
     ): Promise<ResponseService<IGetAllPermissionsApiResponse> | false> => { // Changed return type
         try {
+            const auth = authService.authHeader();
             // Filter out undefined, null, or empty string values from params
             const filteredParams = Object.entries(params || {}).reduce((acc, [key, value]) => {
                 if (value !== undefined && value !== null && String(value).trim() !== '') {
@@ -135,11 +136,18 @@ const PERMISSION = {
                 return acc;
             }, {} as Record<string, string>);
 
+
             const query = Object.keys(filteredParams).length > 0
                 ? `?${new URLSearchParams(filteredParams).toString()}`
                 : "";
 
-            const res = await fetch(`${url}/Permission${query}`);
+            const res = await fetch(`${url}/Permission${query}`, {
+                method: 'GET', // Or other HTTP methods like 'POST', 'PUT', etc.
+                headers: {
+                    "Content-Type": "application/json",
+                    ...auth
+                },
+            });
             const response: ResponseService<IGetAllPermissionsApiResponse> = await res.json();
             return response;
         } catch (error) {

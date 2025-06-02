@@ -33,6 +33,7 @@ namespace AutomatedTaskSystem.Seeding
                     Email = "emanKhalil",
                     Phone = "123456789",
                     AccountType = Models.Enums.AccountTypeEnum.Internal,
+                    
                     Vacation = new Responses.VacationDto
                     {
                         Annual = 0,

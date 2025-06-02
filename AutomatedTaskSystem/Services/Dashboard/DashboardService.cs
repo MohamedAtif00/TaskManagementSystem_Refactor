@@ -52,7 +52,7 @@ public class DashboardService : IDashboardService
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );
-        if (user.Role != UserRoleEnum.ProjectManger)
+        if (user.Role != UserRoleEnum.ProjectManger && user.Role != UserRoleEnum.Owner)
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );

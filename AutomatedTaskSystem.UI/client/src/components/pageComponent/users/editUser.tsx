@@ -105,7 +105,7 @@ const EditUser = () => {
                     setTite(title)
                     setPhone(phone)
                     setAccountType(accountType == "Internal"?{id:0,name:"Internal"}:{id:1,name:"External"})
-                    debugger
+                    
                     // if (accountType === 0 || accountType === 1) {
                     //     setAccountType({
                     //         id: accountType,
@@ -144,7 +144,7 @@ const EditUser = () => {
     useEffect(() => {
         if (group?.id) {
             API.RESOURCES.GROUPS.Get_Tm_leaders(group.id).then((res) => {
-                debugger
+                
                 if (res && !res.error)
                 {
                     setTeamLeaders(res.data);
@@ -161,9 +161,9 @@ const EditUser = () => {
         setError("");
         
 
-        if (!name) return setError("Please enter name");
-        if (!group) return setError("Please select a group");
-        if (!role) return setError("Please select a role");
+        // if (!name) return setError("Please enter name");
+        // if (!group) return setError("Please select a group");
+        // if (!role) return setError("Please select a role");
 
         try {
             const res = await API.RESOURCES.USERS.EDIT({

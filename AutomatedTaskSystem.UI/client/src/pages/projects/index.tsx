@@ -186,7 +186,7 @@ const Projects = () => {
     const auth = useAppSelector((s) => s.authSlice);
     const router = useRouter();
 
-    if (!auth.isAuth || auth.role !== 0) router.replace("/");
+    if (!auth.isAuth || (auth.role !== 0 && auth.role !== 4)) router.replace("/");
 
     useEffect(() => {
         API.PROJECTS.GET_ALL().then((res) => {

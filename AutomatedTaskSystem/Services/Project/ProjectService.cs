@@ -469,7 +469,7 @@ public class ProjectService : IProjectService
                 new BaseResponseService { Error = true, Message = $"User of id:{uid} is not found" }
             );
 
-        if (user.Role == UserRoleEnum.ProjectManger)
+        if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
         {
             var allProjects = await _context.Projects
                 .Where(

@@ -84,6 +84,7 @@ public class UserService : IUserService
             TeamleaderId = req.Role == UserRoleEnum.Member ? req.TeamleaderId : null,
             AccountType = req.AccountType,
             Email = req.Email,
+            Annual_leave = req.Vacation.Annual,
             Annual_leave_MAX = req.Vacation.Annual,
             Sick_leave = req.Vacation.Sick,
             Emergency_leave_MAX = req.Vacation.Emergency,
@@ -156,7 +157,7 @@ public class UserService : IUserService
         var group = await _context.Groups
             .Where(g => g.Id == req.GroupId && !g.Archived)
             .FirstOrDefaultAsync();
-        if (group is null)
+        if (group is null && user.Role != UserRoleEnum.Owner)
             return new NotFoundObjectResult(
                 new BaseResponseService
                 {
@@ -168,6 +169,16 @@ public class UserService : IUserService
         // Create a list to track changes
         var changes = new List<string>();
 
+        if (user.Role != UserRoleEnum.Owner)
+        {
+            if (user.GroupId != req.GroupId)
+            {
+                changes.Add($"Group changed from '{user.Group?.Name}' (ID:{user.GroupId}) to '{group.Name}' (ID:{req.GroupId})");
+                user.Group = group;
+                user.GroupId = group.Id;
+            }
+        }
+        
         if (user.Archived != req.Archived)
         {
             changes.Add($"Archive changed from {user.Archived} to {req.Archived}");
@@ -181,12 +192,6 @@ public class UserService : IUserService
             user.Name = req.Name;
         }
 
-        if (user.GroupId != req.GroupId)
-        {
-            changes.Add($"Group changed from '{user.Group?.Name}' (ID:{user.GroupId}) to '{group.Name}' (ID:{req.GroupId})");
-            user.Group = group;
-            user.GroupId = group.Id;
-        }
 
         if (user.Role != req.Role)
         {
@@ -271,6 +276,7 @@ public class UserService : IUserService
             changes.Add($"HR code changed from '{user.HR_code}' to '{req.HrCode}'");
             user.HR_code = req.HrCode;
         }
+        
 
         // Check if there are any changes to record
         if (changes.Any())

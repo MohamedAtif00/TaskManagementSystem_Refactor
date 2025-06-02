@@ -11,6 +11,7 @@ using AutomatedTaskSystem.Services.Email;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using static AutomatedTaskSystem.DTO.Responses;
@@ -175,87 +176,154 @@ namespace AutomatedTaskSystem.Services.Permission
 
         // Get all permissions with optional filter by user
         public async Task<ResponseService<PageList<GetPermissionDto>>> GetAllPermissionsAsync(
-       int? userId = null,
-       int? role = null,
-       int page = 1, // Pagination parameter
-       int pageSize = 10, // Pagination parameter
-       string? searchTerm = null, // Search term
-       string? date = null, // Filter for specific permission date
-       string? status = null, // Filter for status
-       string? type = null // Filter for type
-   )
+          int? userId = null,
+          int? role = null,
+          int page = 1, // Pagination parameter
+          int pageSize = 10, // Pagination parameter
+          string? searchTerm = null, // Search term
+          string? date = null, // Filter for specific permission date
+          string? status = null, // Filter for status
+          string? type = null // Filter for type
+      )
         {
-            var query = _dataContext.Permissions
-                .Include(p => p.User)
-                .AsQueryable();
-
-            // 1. Apply Role-Based Filtering
-            if (role == (int)UserRoleEnum.TeamLeader && userId.HasValue)
+            try
             {
-                // If TeamLeader, show permissions of their direct team members
-                query = query.Where(p => p.User.TeamleaderId == userId.Value);
-            }
+                var query = _dataContext.Permissions
+                    .Include(p => p.User)
+                    .AsQueryable();
 
-            // 2. Apply Search Term Filtering
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                // Example: Search by user name or reason
-                query = query.Where(p => p.User.Name.Contains(searchTerm) ||
-                                         p.Reason.Contains(searchTerm));
-            }
+                // 1. Get current user's ID from token
+                var userIdtokenResult = _tokenService.GetUserIdFromToken();
 
-            // 3. Apply Specific Date Filtering (for 'date' filter)
-            if (!string.IsNullOrWhiteSpace(date) && DateTime.TryParse(date, out DateTime parsedDate))
-            {
-                // Filter where PermissionDate is exactly the parsed date
-                query = query.Where(p => p.PermissionDate.Date == parsedDate.Date);
-            }
-
-            // 4. Apply Status Filtering
-            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse(typeof(PermissionStatusEnum), status, true, out var parsedStatus))
-            {
-                query = query.Where(p => p.Status == (PermissionStatusEnum)parsedStatus);
-            }
-
-            // 5. Apply Type Filtering
-            if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse(typeof(PermissionType), type, true, out var parsedType))
-            {
-                query = query.Where(p => p.Type == (PermissionType)parsedType);
-            }
-
-            // --- ORDERING IS CRUCIAL FOR PAGINATION ---
-            // Always order the query before applying Skip/Take
-            query = query.OrderByDescending(p => p.CreatedAt); // Order by creation date
-
-            // 6. Apply Pagination using your PageList class
-            var pagedResult = await PageList<GetPermissionDto>.CreateAsync(
-                query.Select(p => new GetPermissionDto // Select DTO *before* pagination to optimize
+                // Check if the user ID was successfully retrieved from the token
+                if (userIdtokenResult.Data == null)
                 {
-                    Id = p.Id,
-                    Type = p.Type.ToString(),
-                    Reason = p.Reason,
-                    FromTime = p.FromTime.ToString("HH:mm"),
-                    ToTime = p.ToTime.ToString("HH:mm"),
-                    PermissionDate = p.PermissionDate.ToString("yyyy-MM-dd"),
-                    Duration = CalculateDurationInMinutes(p.FromTime, p.ToTime), // Assuming CalculateDurationInMinutes is defined
-                    Status = p.Status.ToString(),
-                    User = new IDName // Changed to 'User'
+                    //_logService.LogError(null, "Authentication error: Could not retrieve user ID from token in GetAllPermissionsAsync.");
+                    return new ResponseService<PageList<GetPermissionDto>>
                     {
-                        Id = p.User.Id,
-                        Name = p.User.Name
-                    },
-                    DateCreated = p.CreatedAt.ToString() // Assuming CreatedAt maps to DateCreated
-                }),
-                page,
-                pageSize
-            );
+                        Error = true,
+                        Message = "Authentication error: Could not retrieve user ID from token.",
+                        Data = null // No data in case of error
+                    };
+                }
 
-            return new ResponseService<PageList<GetPermissionDto>>
+                // Convert the user ID from token to int
+                int currentUserId;
+                if (!int.TryParse(userIdtokenResult.Data, out currentUserId))
+                {
+                    //_logService.LogError(null, "Invalid user ID format from token: {UserIdData} in GetAllPermissionsAsync.", userIdtokenResult.Data);
+                    return new ResponseService<PageList<GetPermissionDto>>
+                    {
+                        Error = true,
+                        Message = "Authentication error: Invalid user ID format.",
+                        Data = null
+                    };
+                }
+
+                // Retrieve the current user from the database
+                var currentUser = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == currentUserId);
+
+                if (currentUser == null)
+                {
+                    //_logService.LogError(null, "Current user with ID {UserId} not found in GetAllPermissionsAsync.", currentUserId);
+                    return new ResponseService<PageList<GetPermissionDto>>
+                    {
+                        Error = true,
+                        Message = "Authentication error: Current user not found in the database.",
+                        Data = null
+                    };
+                }
+
+                // 2. Apply Role-Based Filtering
+                // If the current user is a TeamLeader and a userId is provided, filter by team members
+                if (currentUser.Role == UserRoleEnum.TeamLeader && userId.HasValue)
+                {
+                    // Filter permissions of their direct team members (those whose TeamleaderId matches the current user's ID)
+                    query = query.Where(p => p.User.TeamleaderId == currentUserId);
+                }
+                // If a specific userId is requested (and current user is not a TeamLeader or no userId was passed for team filtering)
+                else if (userId.HasValue)
+                {
+                    // Filter by the specific userId provided in the request
+                    query = query.Where(p => p.UserId == userId.Value);
+                }
+                // If no userId is specified and current user is not a TeamLeader (or team filtering already applied),
+                // default to showing permissions for the current user
+                //else
+                //{
+                //    query = query.Where(p => p.UserId == currentUserId);
+                //}
+
+
+                // 3. Apply Search Term Filtering
+                if (!string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    query = query.Where(p => p.User.Name.Contains(searchTerm) ||
+                                              p.Reason.Contains(searchTerm));
+                }
+
+                // 4. Apply Specific Date Filtering
+                if (!string.IsNullOrWhiteSpace(date) && DateTime.TryParse(date, out DateTime parsedDate))
+                {
+                    query = query.Where(p => p.PermissionDate.Date == parsedDate.Date);
+                }
+
+                // 5. Apply Status Filtering
+                if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse(typeof(PermissionStatusEnum), status, true, out var parsedStatus))
+                {
+                    query = query.Where(p => p.Status == (PermissionStatusEnum)parsedStatus);
+                }
+
+                // 6. Apply Type Filtering
+                if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse(typeof(PermissionType), type, true, out var parsedType))
+                {
+                    query = query.Where(p => p.Type == (PermissionType)parsedType);
+                }
+
+                // --- ORDERING IS CRUCIAL FOR PAGINATION ---
+                query = query.OrderByDescending(p => p.CreatedAt);
+
+                // 7. Apply Pagination
+                var pagedResult = await PageList<GetPermissionDto>.CreateAsync(
+                    query.Select(p => new GetPermissionDto
+                    {
+                        Id = p.Id,
+                        Type = p.Type.ToString(),
+                        Reason = p.Reason,
+                        FromTime = p.FromTime.ToString("HH:mm"),
+                        ToTime = p.ToTime.ToString("HH:mm"),
+                        PermissionDate = p.PermissionDate.ToString("yyyy-MM-dd"),
+                        Duration = CalculateDurationInMinutes(p.FromTime, p.ToTime), // Assuming CalculateDurationInMinutes is defined
+                        Status = p.Status.ToString(),
+                        User = new IDName
+                        {
+                            Id = p.User.Id,
+                            Name = p.User.Name
+                        },
+                        DateCreated = p.CreatedAt.ToString()
+                    }),
+                    page,
+                    pageSize
+                );
+
+                //_logService.LogInformation("Permissions retrieved successfully for user {CurrentUserId}.", currentUserId);
+                return new ResponseService<PageList<GetPermissionDto>>
+                {
+                    Error = false,
+                    Message = "Permissions retrieved successfully.",
+                    Data = pagedResult
+                };
+            }
+            catch (Exception ex)
             {
-                Error = false,
-                Message = "Permissions retrieved successfully.",
-                Data = pagedResult // Return the PageList object
-            };
+                //_logService.LogError(ex, "An unhandled error occurred in GetAllPermissionsAsync for user {CurrentUserId}.", userId);
+                return new ResponseService<PageList<GetPermissionDto>>
+                {
+                    Error = true,
+                    Message = "An unexpected error occurred while retrieving permissions.",
+                    Data = null
+                };
+            }
         }
 
         // Get a single permission by ID
