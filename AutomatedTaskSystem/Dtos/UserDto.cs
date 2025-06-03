@@ -58,10 +58,10 @@ namespace AutomatedTaskSystem.DTO
             public int GroupId { get; set; }
             public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
             public int? TeamleaderId { get; set; }
-            public string HrCode { get; set; } = "";
-            public string Email { get; set; } = "";
-            public string Phone { get; set; } = "";
-            public string Title { get; set; } = "";
+            public string? HrCode { get; set; } = "";
+            public string? Email { get; set; } = "";
+            public string? Phone { get; set; } = "";
+            public string? Title { get; set; } = "";
             public bool Archived { get; set; } = false;
             public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.Internal;
             public int Permission_MAX { get; set; }

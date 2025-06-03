@@ -255,10 +255,56 @@ namespace AutomatedTaskSystem.Services.Leave
 
                         await ownerClient.SendAsync("UpdatePendings", new
                         {
-                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == LeaveRequestStatusEnum.Pending).CountAsync(),
+                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync() +
+                                await _dataContext.Permissions.Where(x => x.Status == Models.PermissionStatusEnum.Pending).CountAsync(),
                             isNewRequest = true,
                             newLeaveRequestId = leaveRequest.Id
                         });
+
+                        if (user.TeamleaderId.HasValue)
+                        {
+                            // Fetch the Team Leader's user object
+                            var teamLeader = await _dataContext.Users
+                                                             //.Include(u => u.ManagedUsers) // Include managed users if needed for other logic
+                                                             .FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
+
+                            if (teamLeader != null)
+                            {
+                                // Calculate pending leave requests for this specific team leader, where they haven't opined yet
+                                var pendingLeaveRequestsForTL = await _dataContext.LeaveRequests
+                                                                                 .Include(x => x.Opinions) // Include Opinions for efficient query generation
+                                                                                 .Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending &&
+                                                                                             x.User.TeamleaderId == teamLeader.Id && // Use teamLeader.Id here
+                                                                                             !x.Opinions.Any(o => o.UserId == teamLeader.Id)) // Use teamLeader.Id here
+                                                                                 .CountAsync();
+
+                                var pendingPermissionRequestsForTL = await _dataContext.Permissions
+                                                                                      .Include(x => x.Opinions) // Include Opinions for efficient query generation
+                                                                                      .Where(x => x.Status == Models.PermissionStatusEnum.Pending &&
+                                                                                                  x.User.TeamleaderId == teamLeader.Id && // Use teamLeader.Id here
+                                                                                                  !x.Opinions.Any(o => o.UserId == teamLeader.Id)) // Use teamLeader.Id here
+                                                                                      .CountAsync();
+
+                                var totalPendingsForTL = pendingLeaveRequestsForTL + pendingPermissionRequestsForTL;
+
+                                // Send the UpdatePendings message to the Team Leader
+                                await _hubContext.Clients.User(teamLeader.Id.ToString()).SendAsync("UpdatePendings", new
+                                {
+                                    pendings = totalPendingsForTL,
+                                    isNewRequest = true, // Indicates a new request has been submitted
+                                    newLeaveRequestId = leaveRequest.Id // You might want to send the ID of the new request
+                                });
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id}.");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId.");
+                        }
+
                     }
                     else
                     {
@@ -465,8 +511,28 @@ namespace AutomatedTaskSystem.Services.Leave
 
                 await _hubContext.Clients.User(user.Id.ToString()).SendAsync("UpdatePendings", new
                 {
-                    pendings = await _dataContext.LeaveRequests.Where(x => x.Status == LeaveRequestStatusEnum.Pending).CountAsync()
+                    pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync() +
+                                await _dataContext.Permissions.Where(x => x.Status == Models.PermissionStatusEnum.Pending).CountAsync()
                 });
+
+                await _hubContext.Clients.User(leaveRequest.User.TeamleaderId.ToString()).SendAsync("OnConnectedMessage", new
+                {
+                    pendings = await _dataContext.LeaveRequests
+                                                        .Include(x => x.Opinions) // Include Opinions for efficient query generation
+                                                        .Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending &&
+                                                                    x.User.TeamleaderId == user.Id && // For team leader's team
+                                                                    !x.Opinions.Any(o => o.UserId == user.Id)) // Crucial: No opinion from this user
+                                                        .CountAsync() +
+                                      await _dataContext.Permissions
+                                                        // Assuming Permissions also has an Opinions collection and you want to apply similar logic
+                                                        // If Permissions do not have Opinions, this part remains as just status and teamleader filter.
+                                                        .Where(x => x.Status == Models.PermissionStatusEnum.Pending &&
+                                                                    x.User.TeamleaderId == user.Id
+                                                              && !x.Opinions.Any(o => o.UserId == user.Id)
+                                                              )
+                                                        .CountAsync()
+                });
+
 
                 _logService.LogInformation("Opinion successfully given for LeaveRequest {LeaveRequestId} by user {UserId}. IsApproved: {IsApproved}", request.LeaveRequestId, user.Id, request.IsApproved);
                 // Return success with a generic success message

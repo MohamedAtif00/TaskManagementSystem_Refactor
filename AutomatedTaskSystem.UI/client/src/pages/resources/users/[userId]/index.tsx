@@ -20,6 +20,7 @@ import EditUser from "../../../../components/pageComponent/users/editUser";
 import LEAVE, { IGetLeaveRequest, LeaveRequestStatus, LeaveRequestType } from "../../../../lib/API/Leave";
 import DataTable from "../../../../components/table/tablePagination"; // Import DataTable
 import { format } from "date-fns";
+import { Pencil } from "lucide-react";
 // import MoreVertIcon from "@mui/icons-material/MoreVert";
 
 const buttonStyle: CSSProperties = {
@@ -364,29 +365,6 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
                                     {user.name}
                                 </Typography>
 
-                                {/* <button
-                                    onClick={handleMenuClick}
-                                    className="text-xl font-bold px-2 py-1 hover:bg-gray-100 rounded"
-                                >
-                                    ...
-                                </button>
-
-                                <Menu
-                                    anchorEl={anchorEl}
-                                    open={open}
-                                    onClose={handleClose}
-                                    anchorOrigin={{
-                                    vertical: "bottom",
-                                    horizontal: "right",
-                                    }}
-                                    transformOrigin={{
-                                    vertical: "top",
-                                    horizontal: "right",
-                                    }}
-                                >
-                                    <MenuItem onClick={handleEdit}>Edit</MenuItem>
-                                    <MenuItem onClick={handleDelete}>Delete</MenuItem>
-                                </Menu> */}
                                 </Grid>
 
                         {user.code && (
@@ -494,14 +472,13 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
                     <div className="">
 
                         <button
-                            onClick={handleMenuClick}
-                            className="text-xl font-bold px-2 py-1 hover:bg-gray-100 rounded"
-                        >
-                            ...
+                            onClick={handleEdit}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                        >Edit
                         </button>
                     </div>
 
-                    <Menu
+                    {/* <Menu
                         anchorEl={anchorEl}
                         open={open}
                         onClose={handleClose}
@@ -515,8 +492,7 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
                         }}
                     >
                         <MenuItem onClick={handleEdit}>Edit</MenuItem>
-                        {/* <MenuItem onClick={handleDelete}>Delete</MenuItem> */}
-                    </Menu>
+                    </Menu> */}
                     </Paper>
                     <div className="relative mt-20">
 

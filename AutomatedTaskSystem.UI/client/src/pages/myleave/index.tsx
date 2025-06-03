@@ -32,7 +32,7 @@ interface IUser {
   name: string;
   code?: string;
   group?: { name: string };
-  email?: string;
+  email?: string | null;
   hrCode?: string;
   phone?: string;
   role?: number;
@@ -331,6 +331,9 @@ const LeaveManagement = () => {
   const [permissionDataTableSearchText, setPermissionDataTableSearchText] = useState<string>("");
   const [permissionDataTableDtFilters, setPermissionDataTableDtFilters] = useState<Record<string, any>>({});
 
+  // Key to force DataTable remount and reset its internal state
+  const [dataTableKey, setDataTableKey] = useState(0);
+
 
   const leaveTableFilterConfig: FilterConfigItem[] = useMemo(() => [
     { key: 'status', label: 'Status', type: 'select', options: [ { value: "all", label: "All" }, ...Object.values(LeaveRequestStatus).map(s => ({ value: s, label: s })) ] },
@@ -355,6 +358,7 @@ const LeaveManagement = () => {
       setPermissionDataTableDtFilters({});
       setPermissionDataTableSearchText("");
     }
+    setDataTableKey(prevKey => prevKey + 1); // Increment key to force DataTable remount
   };
   
 
@@ -644,12 +648,12 @@ const LeaveManagement = () => {
         </div>
 
         <div className="bg-white shadow rounded-lg overflow-hidden">
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-4 pb-0 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">{activeTab === "leaves" ? "Leave Applications" : "Permission Requests"}</h2>
               {/* The "Filter" button and external filter UI are removed as DataTable will handle filtering */}
             </div>
-             <div className="flex justify-end mt-2 mb-2">
+             <div className="flex justify-end ">
                 <button onClick={resetFiltersAndPage} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Clear All Filters & Search</button>
             </div>
           </div>
@@ -657,6 +661,7 @@ const LeaveManagement = () => {
           <div className="overflow-x-auto">
             {activeTab === "leaves" ? (
               <DataTable
+                key={`leave-table-${dataTableKey}`}
                 data={transformedLeaveData}
                 totalCount={totalLeavesCount}
                 onPageChange={handleLeaveTableChange}
@@ -668,6 +673,7 @@ const LeaveManagement = () => {
               />
             ) : (
               <DataTable
+                key={`permission-table-${dataTableKey}`}
                 data={transformedPermissionData}
                 totalCount={totalPermissionsCount}
                 onPageChange={handlePermissionTableChange}

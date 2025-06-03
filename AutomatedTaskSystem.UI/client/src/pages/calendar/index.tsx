@@ -41,10 +41,14 @@ interface IGetAllPermissionsRequest {
     page?: number;
     pageSize?: number;
     searchTerm?: string;
+    role: number;
     date?: string;
     type?: PermissionType | "all";
     status?: PermissionRequestStatus | "all";
+    [key: string]: string | number | boolean | undefined; // Add this line
 }
+
+// Now, IGetAllPermissionsRequest is compatible with Record<string, string | number | boolean | undefined>
 
 
 const Calendar = () => {
@@ -263,6 +267,7 @@ const Calendar = () => {
             const params: IGetAllPermissionsRequest = {
                 page: page,
                 pageSize: itemsPerPage,
+                role: auth.role,
                 searchTerm: searchText === "" ? undefined : searchText,
                 date: filters.date as string | undefined,
                 type: filters.type === "all" ? undefined : filters.type as PermissionType,

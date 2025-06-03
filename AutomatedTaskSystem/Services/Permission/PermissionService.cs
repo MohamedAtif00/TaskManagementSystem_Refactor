@@ -99,6 +99,10 @@ namespace AutomatedTaskSystem.Services.Permission
                     return response;
                 }
 
+                // Determine initial status: Approved if Owner, else Pending
+                var initialStatus = (user.Role == UserRoleEnum.Owner) ? PermissionStatusEnum.Approved : PermissionStatusEnum.Pending;
+
+
                 var permission = new Models.Permission
                 {
                     UserId = user.Id,
@@ -108,7 +112,7 @@ namespace AutomatedTaskSystem.Services.Permission
                     ToTime = toTime,
                     PermissionDate = permissionDate,
                     CreatedAt = DateTime.Now,
-                    Status = PermissionStatusEnum.Pending
+                    Status = initialStatus // Set initial status based on user role
                 };
 
                 // TeamLeader logic (remains the same)
@@ -126,16 +130,97 @@ namespace AutomatedTaskSystem.Services.Permission
                 _dataContext.Permissions.Add(permission);
                 await _dataContext.SaveChangesAsync();
 
-                // Notify via SignalR
-                await NotifyNewPermissionRequest(permission.Id);
+                // --- Start: NEW SignalR Notification Logic (similar to CreateLeaveRequest) ---
+
+                // If the user is an Owner, auto-approve and notify them
+                if (user.Role == UserRoleEnum.Owner)
+                {
+                    // Update user's permission balance (assuming 1 permission per request)
+                    user.Permission += 1;
+                    _dataContext.Users.Update(user);
+                    await _dataContext.SaveChangesAsync();
+
+                    // Notify the owner via SignalR that their request is approved
+                    await _hubContext.Clients.User(user.Id.ToString()).SendAsync("PermissionRequestOpinion", new
+                    {
+                        isApproved = true,
+                        message = "Your permission request has been automatically approved."
+                    });
+
+                    // You might also want to send an email for auto-approved permissions, similar to leave requests
+                    // var message = new EmailMessage { /* ... */ };
+                    // await _emailService.SendEmailAsync(message);
+                }
+                else // Normal flow for non-Owner roles: Notify Owner/Admin and Team Leader about new pending request
+                {
+                    var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
+
+                    if (owner != null)
+                    {
+                        var ownerClient = _hubContext.Clients.User(owner.Id.ToString());
+
+                        // Update Owner's pending count for Permissions (assuming they need to see all pending permissions)
+                        await ownerClient.SendAsync("UpdatePendings", new
+                        {
+                            pendings = await _dataContext.Permissions.Where(x => x.Status == PermissionStatusEnum.Pending).CountAsync(),
+                            isNewRequest = true,
+                            newPermissionRequestId = permission.Id // Use new ID
+                        });
+                    }
+                    else
+                    {
+                        Console.WriteLine("Warning: No user with Role.Owner found to send SignalR update for permission.");
+                    }
+
+                    // Notify the Team Leader if the submitting user has one
+                    if (user.TeamleaderId.HasValue)
+                    {
+                        var teamLeader = await _dataContext.Users
+                                                         //.Include(u => u.ManagedUsers) // Include managed users if needed for other logic
+                                                         .FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
+
+                        if (teamLeader != null)
+                        {
+                            // Calculate pending permission requests for this specific team leader, where they haven't opined yet
+                            // IMPORTANT: Ensure your Permission model has an 'Opinions' navigation property
+                            // if you intend to filter by opinions. If not, remove the !x.Opinions.Any(...) part.
+                            var pendingPermissionRequestsForTL = await _dataContext.Permissions
+                                                                                  .Include(x => x.Opinions) // Include Opinions for efficient query generation
+                                                                                  .Where(x => x.Status == Models.PermissionStatusEnum.Pending &&
+                                                                                              x.User.TeamleaderId == teamLeader.Id && // Filter by TL's team
+                                                                                              !x.Opinions.Any(o => o.UserId == teamLeader.Id)) // Filter for TL's own opinions
+                                                                                  .CountAsync();
+
+                            var totalPendingsForTL = pendingPermissionRequestsForTL; // Add leave requests if needed
+
+                            // Send the UpdatePendings message to the Team Leader
+                            await _hubContext.Clients.User(teamLeader.Id.ToString()).SendAsync("UpdatePendings", new
+                            {
+                                pendings = totalPendingsForTL,
+                                isNewRequest = true,
+                                newPermissionRequestId = permission.Id // Send the new permission ID
+                            });
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id} during permission request notification.");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId for permission request notification.");
+                    }
+                }
+                // --- End: NEW SignalR Notification Logic ---
 
                 response.Data = true;
-                response.Message = "Permission request created successfully.";
+                response.Message = "Permission request created successfully." + (user.Role == UserRoleEnum.Owner ? " It has been automatically approved." : "");
             }
             catch (Exception ex)
             {
                 response.Error = true;
-                response.Message = $"An error occurred: {ex.Message}";
+                response.Message = $"An error occurred while creating the permission request: {ex.Message}";
+                //_logService.LogError(ex, "An unhandled error occurred in CreatePermissionRequest for user {UserId}.", request.UserId); // Uncomment if you have a logging service
             }
 
             return response;
@@ -176,15 +261,15 @@ namespace AutomatedTaskSystem.Services.Permission
 
         // Get all permissions with optional filter by user
         public async Task<ResponseService<PageList<GetPermissionDto>>> GetAllPermissionsAsync(
-          int? userId = null,
-          int? role = null,
-          int page = 1, // Pagination parameter
-          int pageSize = 10, // Pagination parameter
-          string? searchTerm = null, // Search term
-          string? date = null, // Filter for specific permission date
-          string? status = null, // Filter for status
-          string? type = null // Filter for type
-      )
+            int? userId = null,
+            int? role = null, // This parameter might become redundant if role is solely determined from token
+            int page = 1, // Pagination parameter
+            int pageSize = 10, // Pagination parameter
+            string? searchTerm = null, // Search term
+            string? date = null, // Filter for specific permission date
+            string? status = null, // Filter for status
+            string? type = null // Filter for type
+)
         {
             try
             {
@@ -220,7 +305,7 @@ namespace AutomatedTaskSystem.Services.Permission
                     };
                 }
 
-                // Retrieve the current user from the database
+                // Retrieve the current user from the database to get their role
                 var currentUser = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == currentUserId);
 
                 if (currentUser == null)
@@ -234,32 +319,33 @@ namespace AutomatedTaskSystem.Services.Permission
                     };
                 }
 
-                // 2. Apply Role-Based Filtering
-                // If the current user is a TeamLeader and a userId is provided, filter by team members
-                if (currentUser.Role == UserRoleEnum.TeamLeader && userId.HasValue)
-                {
-                    // Filter permissions of their direct team members (those whose TeamleaderId matches the current user's ID)
-                    query = query.Where(p => p.User.TeamleaderId == currentUserId);
-                }
-                // If a specific userId is requested (and current user is not a TeamLeader or no userId was passed for team filtering)
-                else if (userId.HasValue)
-                {
-                    // Filter by the specific userId provided in the request
-                    query = query.Where(p => p.UserId == userId.Value);
-                }
-                // If no userId is specified and current user is not a TeamLeader (or team filtering already applied),
-                // default to showing permissions for the current user
-                //else
-                //{
-                //    query = query.Where(p => p.UserId == currentUserId);
-                //}
+                // --- Start of Role-Based Filtering Logic (similar to GetAllVacationsAsync) ---
 
+                // If the current user is a TeamLeader
+                if (currentUser.Role == UserRoleEnum.TeamLeader)
+                {
+                    // Team Leaders should only see permissions of their direct team members.
+                    // If a specific userId is provided in the request, check if that userId
+                    // is one of the current TeamLeader's team members.
+                    if (userId.HasValue)
+                    {
+                        // Filter by the requested userId, but only if that user is a team member of the current TL.
+                        query = query.Where(p => p.UserId == userId.Value && p.User.TeamleaderId == currentUserId);
+                    }
+                    else
+                    {
+                        // If no specific userId is requested, show all permissions for current TeamLeader's team members.
+                        query = query.Where(p => p.User.TeamleaderId == currentUserId);
+                    }
+                }
+
+                // --- End of Role-Based Filtering Logic ---
 
                 // 3. Apply Search Term Filtering
                 if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     query = query.Where(p => p.User.Name.Contains(searchTerm) ||
-                                              p.Reason.Contains(searchTerm));
+                                             p.Reason.Contains(searchTerm));
                 }
 
                 // 4. Apply Specific Date Filtering
@@ -316,7 +402,7 @@ namespace AutomatedTaskSystem.Services.Permission
             }
             catch (Exception ex)
             {
-                //_logService.LogError(ex, "An unhandled error occurred in GetAllPermissionsAsync for user {CurrentUserId}.", userId);
+                //_logService.LogError(ex, "An unhandled error occurred in GetAllPermissionsAsync for user {CurrentUserId}.", currentUserId); // Use currentUserId for logging
                 return new ResponseService<PageList<GetPermissionDto>>
                 {
                     Error = true,
@@ -848,9 +934,13 @@ namespace AutomatedTaskSystem.Services.Permission
                 };
 
                 var result = await _emailService.SendEmailAsync(message);
-                if (!result.Success)
+                if (result.Success)
                 {
-                    // Optional: Log the email failure
+                    await _hubContext.Clients.User(permission.UserId.ToString()).SendAsync("PermissionRequestOpinion", new
+                    {
+                        isApproved = true,
+                        message = "Your leave request has been approved."
+                    });
                 }
             }
 

@@ -7,174 +7,196 @@ import { logout } from "../../slices/authSlice";
 import NavList from "./navlist";
 import ChartIcon from "../../assets/Icons/Chart";
 import { ReactElement, useContext, useEffect } from "react";
-import {  useSignalR } from "../connection/connection";
 import { SignalRContext } from "../connection/connectionProvider";
 
+// Define UserRole explicitly if it's not already defined elsewhere
+type UserRole = 0 | 1 | 2 | 3 | 4;
 
 const Sidebar = () => {
-	const dispatch = useAppDispatch();
-	const user = useAppSelector((s) => s.authSlice);
-	const path = useRouter().pathname;
-	const auth = useAppSelector((s) => s.authSlice);
-	const router = useRouter()
-	
-	const { connection, connectionState, pendingNumber } = useContext(SignalRContext);
+    const dispatch = useAppDispatch();
+    const user = useAppSelector((s) => s.authSlice);
+    const path = useRouter().pathname;
+    const auth = useAppSelector((s) => s.authSlice); // auth.role will be of type UserRole if authSlice correctly types it
+    const router = useRouter()
 
-	const logoutHandler = () => {
-		authService.logout().then(() => {
-			dispatch(logout());
-		});
-	};
+    const { connection, connectionState, pendingNumber } = useContext(SignalRContext);
 
+    const logoutHandler = () => {
+        authService.logout().then(() => {
+            dispatch(logout());
+        });
+    };
 
-useEffect(() => {
-  console.log("🔄 Sidebar - pendingNumber:", pendingNumber);
-  console.log("🔄 Sidebar - connectionState:", connectionState);
-}, [pendingNumber, connectionState]);
+    useEffect(() => {
+        console.log("🔄 Sidebar - pendingNumber:", pendingNumber);
+        console.log("🔄 Sidebar - connectionState:", connectionState);
+    }, [pendingNumber, connectionState]);
 
-	return (
-		<div id={styles.sidebar}>
-			<h3>ATS</h3>
-			<div className={styles.profile}>
-				
-				<div onClick={()=> router.push(`/resources/users/${auth.id}`)}>{user.name}</div>
-				<div className={styles.profileInfo}>
-					<div>{user.group}</div>
-				</div>
-			</div>
-			<div className={styles.navlinks}>
-				<Navlink
-					activeCondition={path === "/"}
-					to="/"
-					icon="Home"
-					text="Home"
-				/>
-				{auth.role == 0 || auth.role == 4? (
-					<>
-						<Navlink
-							activeCondition={path.includes("/resources")}
-							to="/resources"
-							icon="Resources"
-							text="Resources"
-						/>
-						<Navlink
-							activeCondition={path.includes("/user-tasks")}
-							to="/user-tasks"
-							icon="Resources"
-							text="User Tasks"
-						/>
-						<Navlink
-							activeCondition={path.includes("/schemas")}
-							to="/schemas"
-							icon="Schema"
-							text="Schemas"
-						/>
-						<Navlink
-							activeCondition={path.includes("/projects")}
-							to="/projects"
-							icon="Project"
-							text="Projects"
-						/>
-						<NavList label="Reports" icon={ChartIcon}>
-							<Navlink
-								activeCondition={path.includes(
-									"/project-overview"
-								)}
-								to="/project-overview"
-								icon="Project"
-								text="Projects Overview"
-							/>
-							<Navlink
-								activeCondition={path.includes("/summaries")}
-								to="/summaries"
-								icon="Project"
-								text="Summaries"
-							/>
-						</NavList>
-						<Navlink
-							activeCondition={path.includes("/sprint")}
-							to="/sprints"
-							icon="Sprint"
-							text="Sprints"
-						/>
-					</>
-				) : (
-					""
-				)}
-				<Navlink
-					activeCondition={path.includes("/tasks")}
-					to="/tasks"
-					icon="Task"
-					text="Tasks"
-				/>
-				<NavList
-					icon={ChartIcon}
-					label={
-						<span className="flex items-center gap-2">
-						Leaves
-						{pendingNumber !== 0 && (
-							<span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-						)}
-						</span>
-					}
->
+    // Build the NavList items conditionally
+    const leavesNavItems: ReactElement[] = [];
 
-					{([
-						auth.role != 3 ? (
-							<Navlink
-								key="calendar"
-								activeCondition={path.includes("/calendar")}
-								to="/calendar"
-								icon="Schema"
-								text={
-								<span className="flex items-center gap-1">
-									Calendar
-									{pendingNumber !== 0 && (
-									<span className="ml-1 bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
-										{pendingNumber}
-									</span>
-									)}
-								</span>
-								}
+    if (auth.role !== 3) {
+        leavesNavItems.push(
+            <Navlink
+                key="calendar"
+                activeCondition={path.includes("/calendar")}
+                to="/calendar"
+                icon="Schema"
+                text={
+                    <span className="flex items-center gap-1">
+                        Calendar
+                        {pendingNumber !== 0 && (
+                            <span className="ml-1 bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                                {pendingNumber}
+                            </span>
+                        )}
+                    </span>
+                }
+            />
+        );
+    }
 
-							/>
-							) : null,
+    if (auth.role === 4) {
+        leavesNavItems.push(
+            <Navlink
+                key="members-leaves"
+                activeCondition={path.includes("/members-leaves")}
+                to="/members-leaves"
+                icon="Resources"
+                text="Members Leaves"
+            />
+        );
+    }
+
+    if (auth.role !== 3) { // My Leaves will only be inside this list if auth.role is NOT 3
+        leavesNavItems.push(
+            <Navlink
+                key="my-leaves-in-list"
+                activeCondition={path.includes("/myleave")}
+                to="/myleave"
+                icon="Schema"
+                text="My Leaves"
+            />
+        );
+    }
 
 
-						auth.role === 4 ? (
-							<Navlink
-								key="members-leaves"
-								activeCondition={path.includes("/members-leaves")}
-								to="/members-leaves"
-								icon="Resources"
-								text="Members Leaves"
-							/>
-						) : null,
+    return (
+        <div id={styles.sidebar}>
+            <h3>ATS</h3>
+            <div className={styles.profile}>
+                <div className="cursor-pointer" onClick={() => router.push(`/resources/users/${auth.id}`)}>{user.name}</div>
+                <div className={styles.profileInfo}>
+                    <div>{user.group}</div>
+                </div>
+            </div>
+            <div className={styles.navlinks}>
+                <Navlink
+                    activeCondition={path === "/"}
+                    to="/"
+                    icon="Home"
+                    text="Home"
+                />
+                {(auth.role === 0 || auth.role === 4) ? (
+                    <>
+                        <Navlink
+                            activeCondition={path.includes("/resources")}
+                            to="/resources"
+                            icon="Resources"
+                            text="Resources"
+                        />
+                        <Navlink
+                            activeCondition={path.includes("/user-tasks")}
+                            to="/user-tasks"
+                            icon="Resources"
+                            text="User Tasks"
+                        />
+                        <Navlink
+                            activeCondition={path.includes("/schemas")}
+                            to="/schemas"
+                            icon="Schema"
+                            text="Schemas"
+                        />
+                        <Navlink
+                            activeCondition={path.includes("/projects")}
+                            to="/projects"
+                            icon="Project"
+                            text="Projects"
+                        />
+                        <NavList label="Reports" icon={ChartIcon}>
+                            <Navlink
+                                activeCondition={path.includes(
+                                    "/project-overview"
+                                )}
+                                to="/project-overview"
+                                icon="Project"
+                                text="Projects Overview"
+                            />
+                            <Navlink
+                                activeCondition={path.includes("/summaries")}
+                                to="/summaries"
+                                icon="Project"
+                                text="Summaries"
+                            />
+                        </NavList>
+                        <Navlink
+                            activeCondition={path.includes("/sprint")}
+                            to="/sprints"
+                            icon="Sprint"
+                            text="Sprints"
+                        />
+                    </>
+                ) : null}
+                <Navlink
+                    activeCondition={path.includes("/tasks")}
+                    to="/tasks"
+                    icon="Task"
+                    text="Tasks"
+                />
 
-						<Navlink
-							key="my-leaves"
-							activeCondition={path.includes("/myleave")}
-							to="/myleave"
-							icon="Schema"
-							text="My Leaves"
-						/>,
-					].filter(Boolean) as ReactElement[])}
-				</NavList>
+                {/* Conditional rendering for My Leaves based on role */}
+                {auth.role === 3 ? (
+                    // If role is 3, render My Leaves separately
+                    <Navlink
+                        key="my-leaves-standalone"
+                        activeCondition={path.includes("/myleave")}
+                        to="/myleave"
+                        icon="Schema"
+                        text="My Leaves"
+                    />
+                ) : (
+                    // For other roles, render the NavList for Leaves, passing the prepared items
+                    <NavList
+                        icon={ChartIcon}
+                        label={
+                            <span className="flex items-center gap-2">
+                                Leaves
+                                {pendingNumber !== 0 && (
+                                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                )}
+                            </span>
+                        }
+                    >
+                        {leavesNavItems} 
+                    </NavList>
+                )}
 
 
-				{(auth.role < 3 || auth.role == 4)&& <Navlink
-				activeCondition={path.includes("/advancedReport")}
-				to="/advancedReport"
-				icon="Task"
-				text="Advanced Report"
-				/>}
+                {(auth.role < 3 || auth.role === 4) && (
+                    <Navlink
+                        activeCondition={path.includes("/advancedReport")}
+                        to="/advancedReport"
+                        icon="Task"
+                        text="Advanced Report"
+                    />
+                )}
 
-			</div>
-			<div className={styles.logoutButton} onClick={logoutHandler}>
-				<div>Logout</div>
-			</div>
-		</div>
-	);
+            </div>
+            <div className={styles.logoutButton} onClick={logoutHandler}>
+                <div>Logout</div>
+            </div>
+        </div>
+    );
 };
 
 export default Sidebar;

@@ -34,9 +34,29 @@ namespace AutomatedTaskSystem.Hub
                     {
                         await Clients.User(userId).SendAsync("OnConnectedMessage", new
                         {
-                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync()+
+                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync() +
                                 await _dataContext.Permissions.Where(x => x.Status == Models.PermissionStatusEnum.Pending).CountAsync()
-                        }); 
+                        });
+                    }
+                    else if (user.Role == Models.Enums.UserRole.UserRoleEnum.TeamLeader)
+                    {
+                        await Clients.User(userId).SendAsync("OnConnectedMessage", new
+                        {
+                            pendings = await _dataContext.LeaveRequests
+                                                         .Include(x => x.Opinions) // Include Opinions for efficient query generation
+                                                         .Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending &&
+                                                                     x.User.TeamleaderId == user.Id && // For team leader's team
+                                                                     !x.Opinions.Any(o => o.UserId == user.Id)) // Crucial: No opinion from this user
+                                                         .CountAsync() +
+                                       await _dataContext.Permissions
+                                                         // Assuming Permissions also has an Opinions collection and you want to apply similar logic
+                                                         // If Permissions do not have Opinions, this part remains as just status and teamleader filter.
+                                                         .Where(x => x.Status == Models.PermissionStatusEnum.Pending &&
+                                                                     x.User.TeamleaderId == user.Id
+                                                               && !x.Opinions.Any(o => o.UserId == user.Id)
+                                                               )
+                                                         .CountAsync()
+                        });
                     }
                 }
             }
