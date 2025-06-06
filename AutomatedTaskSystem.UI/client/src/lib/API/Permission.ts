@@ -57,7 +57,7 @@ interface ICreatePermission {
     date: string;
     from: string;
     to: string;
-    reason: string;
+    reason?: string;
     PermissionDate: string;
 }
 
@@ -80,7 +80,7 @@ interface IGetPermissionDetails {
     Pending = "pending", // Assign string values for clarity and easier debugging
     Approved = "approved",
     Rejected = "rejected",
-    Cancelled = "Cancelled"
+    Cancelled = "cancelled"
 }
 
  enum PermissionType {
@@ -116,10 +116,11 @@ interface IGetAllPermissionsRequest {
     page?: number;
     pageSize?: number;
     searchTerm?: string;
-    date?: string;
+    fromDate?: string;
+    toDate?: string;
     type?: PermissionType | "all";
     status?: PermissionRequestStatus | "all";
-    // ... any other relevant permission filters
+    disablePagination:boolean;
 }
 
 const PERMISSION = {
@@ -155,6 +156,39 @@ const PERMISSION = {
             return false;
         }
     },
+    GET_ALL_FOR_EXPORT: async (params: Omit<IGetAllPermissionsRequest, 'page' | 'pageSize'>) => {
+        try {
+            const headrs = authService.authHeader();
+            // Explicitly set disablePagination to true for export and ensure page/pageSize are undefined
+            const finalParams: IGetAllPermissionsRequest = { ...params, disablePagination: true, page: undefined, pageSize: undefined };
+
+            // Filter out undefined, null, or empty string values for cleaner query parameters
+            const filteredParams = Object.entries(finalParams || {}).reduce((acc, [key, value]) => {
+                if (value !== undefined && value !== null && String(value).trim() !== '') {
+                    acc[key] = String(value);
+                }
+                return acc;
+            }, {} as Record<string, string>);
+
+            const query = Object.keys(filteredParams).length > 0
+                ? `?${new URLSearchParams(filteredParams).toString()}`
+                : "";
+
+            // Use the correct C# controller endpoint for Permissions
+            const res = await fetch(`${url}/Permission${query}`,{
+                headers:{
+                    "Content-Type": "application/json",
+                    ...headrs
+                }
+            });
+            const response: ResponseService<IGetAllPermissionsApiResponse> = await res.json(); // Still expect PageList structure
+            return response;
+        } catch (error) {
+            console.error("Error fetching all permissions for export:", error);
+            throw error;
+        }
+    },
+    
     CREATE: async (permission: ICreatePermission): Promise<ResponseService<boolean>> => {
         try {
             const auth = authService.authHeader();

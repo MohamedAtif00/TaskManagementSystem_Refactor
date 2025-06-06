@@ -111,8 +111,6 @@ namespace AutomatedTaskSystem.Controllers
             }
 
             var success = await _permissionService.CreatePermissionRequest(request);
-            if (success.Error)
-                return BadRequest(new { error = true, message = "Could not create permission" });
 
             return Ok(success);
         }
@@ -170,8 +168,8 @@ namespace AutomatedTaskSystem.Controllers
                 request.IsApproved,
                 request.Comment);
 
-            if (!success)
-                return BadRequest(new { error = true, message = "Could not process approval" });
+            //if (!success)
+            //    return BadRequest(new { error = true, message = "Could not process approval" });
 
             return Ok(new { error = false, message = "Permission status updated" });
         }

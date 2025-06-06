@@ -82,6 +82,7 @@ const parseTime = (date: string, time: string): Date => {
     const handleSubmitOpinion = async (status: PermissionRequestStatus.Approved | PermissionRequestStatus.Rejected) => {
         setIsSubmitting(true);
         try {
+          debugger
             let op:IOpinion = {
                 permissionId: request?.id??0,
                 comment:comment,
@@ -90,12 +91,13 @@ const parseTime = (date: string, time: string): Date => {
                 user:{id:auth.id,name:auth.name,role:auth.role}
             }
             await PERMISSION.CREATE_OPINION(op)
-
+            debugger
             // Optional: refetch the leave request to update approvals
             const { leaveDetails } = await fetchPermissionRequest(Number(calendarId));
+
             if(leaveDetails)
             setRequest(leaveDetails?.data??null);
-
+             setApprovals(leaveDetails.data.opinions??null);
             // Clear form
             setComment('');
         } catch (error) {

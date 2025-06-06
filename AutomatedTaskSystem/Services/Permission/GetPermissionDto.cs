@@ -14,8 +14,7 @@ namespace AutomatedTaskSystem.Services.Permission
         [Required]
         public PermissionType Type { get; set; }
 
-        [Required]
-        public string Reason { get; set; } = "";
+        public string? Reason { get; set; } = "";
 
         [Required]
         public string From { get; set; } = "";

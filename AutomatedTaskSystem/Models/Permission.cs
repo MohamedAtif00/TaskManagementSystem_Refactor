@@ -6,7 +6,7 @@
         {
             public int Id { get; set; }
             public PermissionType Type { get; set; } 
-            public string Reason { get; set; } = "";
+            public string? Reason { get; set; } = "";
             public int? TeamleaderId { get; set; }
             public int? SectionheadId { get; set; }
             public TimeOnly FromTime { get; set; }

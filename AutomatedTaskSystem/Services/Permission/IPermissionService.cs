@@ -1,4 +1,5 @@
 ﻿using AutomatedTaskSystem.Helper;
+using AutomatedTaskSystem.Services.Leave;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -6,7 +7,9 @@ namespace AutomatedTaskSystem.Services.Permission
 {
     public interface IPermissionService
     {
-        Task<bool> ApproveOrRejectPermissionAsync(int id, bool isApproved, string comment);
+        Task<LeaveRequestService.OperationResult> ApproveOrRejectPermissionAsync(int id, bool isApproved, string? comment);
+
+        //Task<bool> ApproveOrRejectPermissionAsync(int id, bool isApproved, string comment);
         Task<ResponseService<bool>> CancelPermissionAsync(int permissionId);
 
         //// Create a new permission request

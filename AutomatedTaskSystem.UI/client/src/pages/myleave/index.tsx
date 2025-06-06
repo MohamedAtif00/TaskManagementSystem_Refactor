@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { format } from "date-fns";
+import { format, isPast, parseISO } from "date-fns";
 
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { useAppSelector } from "../../app/hooks";
@@ -78,7 +78,7 @@ const LeaveModal = ({
 
   const validateForm = (): boolean => {
     setError('');
-    if (!formData.type || !formData.startDate || !formData.endDate || !formData.reason) {
+    if (!formData.type || !formData.startDate || !formData.endDate ) {
       setError('يرجى ملء جميع الحقول المطلوبة');
       return false;
     }
@@ -223,6 +223,7 @@ const PermissionModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean, onCl
   const auth = useAppSelector((e) => e.authSlice);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    debugger
     e.preventDefault();
     if (!auth?.id) return;
     setError('');
@@ -230,6 +231,7 @@ const PermissionModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean, onCl
     try {
       const payload: ICreatePermission = { userId: auth.id, ...formData };
       const response = await Permission.CREATE(payload);
+      
       if (response && !response.error && response.data) {
         toast.success(response.message || 'تم إنشاء طلب الإذن بنجاح');
         onSuccess();
@@ -287,7 +289,7 @@ const PermissionModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean, onCl
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">سبب الإذن / المأمورية</label>
-            <textarea className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" rows={3} placeholder="اكتب السبب" value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required></textarea>
+            <textarea className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" rows={3} placeholder="اكتب السبب" value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })} ></textarea>
           </div>
           <div className="flex justify-around space-x-3">
             <button type="submit" className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-blue-700 disabled:opacity-50" disabled={isSubmitting}>{isSubmitting ? 'جاري الإرسال...' : 'ارسال'}</button>
@@ -300,6 +302,7 @@ const PermissionModal = ({ isOpen, onClose, onSuccess }: { isOpen: boolean, onCl
 };
 
 const LeaveManagement = () => {
+  
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
   const auth = useAppSelector((e) => e.authSlice);
@@ -490,6 +493,8 @@ const LeaveManagement = () => {
     }
   }, [activeTab]);
 
+  
+
 
 
 
@@ -549,7 +554,7 @@ const LeaveManagement = () => {
         <div className="relative group">
           <button
             onClick={() => { setCancelTarget({ id: value, type: 'leave' }); setIsCancelModalOpen(true); }}
-            className={`text-red-600 hover:text-red-800 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`text-red-600 hover:text-red-800 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             disabled={isDisabled}
           >
             Cancel
@@ -564,11 +569,20 @@ const LeaveManagement = () => {
     },
   };
 
+
+    const isDateInPast = useCallback((dateString: string): boolean => {
+      if (!dateString) return false;
+      const date = parseISO(dateString); // Requires 'parseISO' from 'date-fns'
+      return isPast(date); // Requires 'isPast' from 'date-fns'
+  }, []);
+
   const permissionColumnRenderers = {
     "Date": (value: string) => formatDateForTable(value),
     "Status": (value: PermissionRequestStatus) => <StatusBadge status={value} />,
     "Actions": (value: number, row: any) => {
-      const isDisabled = row.Status === PermissionRequestStatus.Cancelled || row.Status === PermissionRequestStatus.Rejected;
+      debugger
+      row = {...row,Status: row.Status.toLowerCase()}
+      const isDisabled = row.Status == PermissionRequestStatus.Cancelled || row.Status == PermissionRequestStatus.Rejected ||(row.Status == PermissionRequestStatus.Approved &&   isDateInPast(row.Date));
       return (
         <div className="relative group">
           <button

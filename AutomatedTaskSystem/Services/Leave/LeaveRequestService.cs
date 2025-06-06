@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Hub;
+using AutomatedTaskSystem.Migrations;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.Email;
@@ -28,13 +29,15 @@ namespace AutomatedTaskSystem.Services.Leave
         private readonly IHubContext<UserHub> _hubContext;
         private readonly INotificationService _notificationService;
         private readonly ILogService _logService; // <--- ADD THIS
+        private readonly LeaveRequestHelper _leaveRequestHelper;
         public LeaveRequestService(DataContext dataContext,
                                    ITokenService tokenService,
                                    IEmailService emailService,
                                    IWebHostEnvironment webHostEnvironment,
                                    IHubContext<UserHub> hubContext,
                                    INotificationService notificationService,
-                                   ILogService logger)
+                                   ILogService logger,
+                                   LeaveRequestHelper leaveRequestHelper)
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
@@ -43,6 +46,7 @@ namespace AutomatedTaskSystem.Services.Leave
             _hubContext = hubContext;
             _notificationService = notificationService;
             _logService = logger;
+            _leaveRequestHelper = leaveRequestHelper;
         }
         // Enhanced service method
         public async Task<ResponseService<bool>> CreateLeaveRequest(CreateLeaveRequestDto request)
@@ -76,19 +80,14 @@ namespace AutomatedTaskSystem.Services.Leave
                 return response;
             }
 
-            int requestedDays = CalculateWorkingDays(startDate, endDate);
+            // Use helper for calculation
+            int requestedDays = _leaveRequestHelper.CalculateWorkingDays(startDate, endDate);
 
-            // --- Start of Revised Leave Type Specific Logic (Unchanged) ---
+            // --- Start of Revised Leave Type Specific Logic ---
 
             if (request.type == LeaveRequestType.Annual)
             {
-                var pendingAnnualLeaveDays = await _dataContext.LeaveRequests
-                    .Where(lr => lr.UserId == user.Id &&
-                                 lr.Type == LeaveRequestType.Annual &&
-                                 lr.Status == LeaveRequestStatusEnum.Pending)
-                    .Select(lr => EF.Functions.DateDiffDay(lr.StartDate, lr.EndDate) + 1)
-                    .SumAsync();
-
+                var pendingAnnualLeaveDays = await _leaveRequestHelper.GetPendingLeaveDaysAsync(user.Id, LeaveRequestType.Annual);
                 int remainingAnnualLeave = user.Annual_leave_MAX - user.Annual_leave;
 
                 if ((pendingAnnualLeaveDays + requestedDays) > remainingAnnualLeave)
@@ -101,13 +100,7 @@ namespace AutomatedTaskSystem.Services.Leave
             }
             else if (request.type == LeaveRequestType.Emergency)
             {
-                var pendingEmergencyLeaveDays = await _dataContext.LeaveRequests
-                    .Where(lr => lr.UserId == user.Id &&
-                                 lr.Type == LeaveRequestType.Emergency &&
-                                 lr.Status == LeaveRequestStatusEnum.Pending)
-                    .Select(lr => EF.Functions.DateDiffDay(lr.StartDate, lr.EndDate) + 1)
-                    .SumAsync();
-
+                var pendingEmergencyLeaveDays = await _leaveRequestHelper.GetPendingLeaveDaysAsync(user.Id, LeaveRequestType.Emergency);
                 int remainingEmergencyLeave = user.Emergency_leave_MAX - user.Emergency_leave;
 
                 if ((pendingEmergencyLeaveDays + requestedDays) > remainingEmergencyLeave)
@@ -128,7 +121,8 @@ namespace AutomatedTaskSystem.Services.Leave
                     return response;
                 }
 
-                if (request.MedicalCertificate != null && !IsValidMedicalCertificate(request.MedicalCertificate))
+                // Use helper for medical certificate validation
+                if (request.MedicalCertificate != null && !_leaveRequestHelper.IsValidMedicalCertificate(request.MedicalCertificate))
                 {
                     response.Error = true;
                     response.Message = "Invalid medical certificate file.";
@@ -138,7 +132,6 @@ namespace AutomatedTaskSystem.Services.Leave
             }
             // --- End of Revised Leave Type Specific Logic ---
 
-            // Determine initial status: Approved if Owner, else Pending
             var initialStatus = (user.Role == UserRoleEnum.Owner) ? LeaveRequestStatusEnum.Approved : LeaveRequestStatusEnum.Pending;
 
             var leaveRequest = new LeaveRequest
@@ -147,17 +140,14 @@ namespace AutomatedTaskSystem.Services.Leave
                 StartDate = startDate,
                 EndDate = endDate,
                 Reason = request.Reason,
-                Status = initialStatus, // Set initial status based on user role
+                Status = initialStatus,
                 Type = request.type,
                 NoteForManager = request.NoteForManager,
                 DateCreated = DateTime.Now
             };
 
-            // TeamLeader logic (unchanged)
             if (user.Role == UserRoleEnum.TeamLeader)
             {
-                leaveRequest.TeamleaderId = user.Id;
-
                 var section = await _dataContext.Sections
                     .Where(s => s.SectionGroups.Any(g => g.GroupId == user.GroupId))
                     .FirstOrDefaultAsync();
@@ -169,25 +159,24 @@ namespace AutomatedTaskSystem.Services.Leave
             try
             {
                 _dataContext.LeaveRequests.Add(leaveRequest);
-                await _dataContext.SaveChangesAsync(); // Save to get the ID for medical certificate if needed
+                await _dataContext.SaveChangesAsync();
 
-                // Handle medical certificate upload if applicable
                 if (request.type == LeaveRequestType.Sick && request.MedicalCertificate != null)
                 {
-                    var medicalCertPath = await SaveMedicalCertificate(request.MedicalCertificate, leaveRequest.Id);
+                    // Use helper to save medical certificate
+                    var medicalCertPath = await _leaveRequestHelper.SaveMedicalCertificate(request.MedicalCertificate, leaveRequest.Id, _webHostEnvironment);
                     leaveRequest.MedicalCertificatePath = medicalCertPath;
                     leaveRequest.MedicalCertificateFileName = request.MedicalCertificate.FileName;
 
-                    _dataContext.LeaveRequests.Update(leaveRequest); // Update with file path
+                    _dataContext.LeaveRequests.Update(leaveRequest);
                     await _dataContext.SaveChangesAsync();
                 }
 
-                // --- NEW: Auto-approval and email for Owner ---
+                // --- Auto-approval and email for Owner ---
                 if (user.Role == UserRoleEnum.Owner)
                 {
-                    int approvedDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
+                    int approvedDays = _leaveRequestHelper.CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
 
-                    // Update user's leave balance
                     switch (leaveRequest.Type)
                     {
                         case LeaveRequestType.Annual:
@@ -200,32 +189,30 @@ namespace AutomatedTaskSystem.Services.Leave
                             user.Sick_leave += approvedDays;
                             break;
                     }
-                    _dataContext.Users.Update(user); // Update the user's leave balance
-                    await _dataContext.SaveChangesAsync(); // Save changes to user balance and leave request status
+                    _dataContext.Users.Update(user);
+                    await _dataContext.SaveChangesAsync();
 
-                    // Send approval email directly to the owner (sender)
                     var message = new EmailMessage
                     {
-                        Subject = "أجازة - طلب إجازة معتمد", // Subject indicating approval
+                        Subject = "أجازة - طلب إجازة معتمد",
                         Body = EmailTemplate.CreateTemplate(user.Name,
-                                                            user.Email, // Send to the owner's email
-                                                            leaveRequest.StartDate.ToString("yyyy-MM-dd"),
-                                                            leaveRequest.EndDate.ToString("yyyy-MM-dd"),
-                                                            CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
-                                                            leaveRequest.Type,
-                                                            leaveRequest.User.HR_code),
+                                                        user.Email,
+                                                        leaveRequest.StartDate.ToString("yyyy-MM-dd"),
+                                                        leaveRequest.EndDate.ToString("yyyy-MM-dd"),
+                                                        _leaveRequestHelper.CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
+                                                        leaveRequest.Type,
+                                                        leaveRequest.User.HR_code),
                         IsHtml = true,
-                        CcEmails = new List<string> { user.Email } // CC yourself if desired, or just send to them
+                        CcEmails = new List<string> { user.Email }
                     };
 
-                    // Add medical certificate attachment if it exists
                     if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
                     {
                         var fullFilePath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
                         if (File.Exists(fullFilePath))
                         {
                             var attachment = new System.Net.Mail.Attachment(fullFilePath);
-                            attachment.Name = leaveRequest.MedicalCertificateFileName; // Use saved file name
+                            attachment.Name = leaveRequest.MedicalCertificateFileName;
                             message.Attachments.Add(attachment);
                         }
                     }
@@ -235,83 +222,47 @@ namespace AutomatedTaskSystem.Services.Leave
                     if (!emailResult.Success)
                     {
                         Console.WriteLine($"Error sending auto-approval email for Owner's LeaveRequest {leaveRequest.Id}: {emailResult.Message}");
-                        // You might want to handle this error more gracefully, e.g., revert status or notify admin
                     }
 
-                    // Notify the owner via SignalR that their request is approved
                     await _hubContext.Clients.User(user.Id.ToString()).SendAsync("LeaveRequestOpinion", new
                     {
                         isApproved = true,
                         message = "Your leave request has been automatically approved."
                     });
                 }
-                else // Normal flow for non-Owner roles: Notify Owner/Admin about new pending request
+                else if (user.Role == UserRoleEnum.ProjectManger)
                 {
-                    var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
+                    await _leaveRequestHelper.SendOwnerPendingUpdate( leaveRequest.Id);
+                }
+                else if (user.Role == UserRoleEnum.TeamLeader)
+                {
+                    await _leaveRequestHelper.SendOwnerPendingUpdate( leaveRequest.Id);
+                    await _leaveRequestHelper.SendProjectManagersPendingUpdate(leaveRequest.Id);
+                }
+                else // Normal flow for non-Owner/PM/TL roles: Notify Owner/Admin and Team Leader about new pending request
+                {
+                    await _leaveRequestHelper.SendOwnerPendingUpdate( leaveRequest.Id);
+                    await _leaveRequestHelper.SendProjectManagersPendingUpdate(leaveRequest.Id);
 
-                    if (owner != null)
+                    if (user.TeamleaderId.HasValue)
                     {
-                        var ownerClient = _hubContext.Clients.User(owner.Id.ToString());
+                        // Fetch the Team Leader's user object
+                        var teamLeader = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
 
-                        await ownerClient.SendAsync("UpdatePendings", new
+                        if (teamLeader != null)
                         {
-                            pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync() +
-                                await _dataContext.Permissions.Where(x => x.Status == Models.PermissionStatusEnum.Pending).CountAsync(),
-                            isNewRequest = true,
-                            newLeaveRequestId = leaveRequest.Id
-                        });
-
-                        if (user.TeamleaderId.HasValue)
-                        {
-                            // Fetch the Team Leader's user object
-                            var teamLeader = await _dataContext.Users
-                                                             //.Include(u => u.ManagedUsers) // Include managed users if needed for other logic
-                                                             .FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
-
-                            if (teamLeader != null)
-                            {
-                                // Calculate pending leave requests for this specific team leader, where they haven't opined yet
-                                var pendingLeaveRequestsForTL = await _dataContext.LeaveRequests
-                                                                                 .Include(x => x.Opinions) // Include Opinions for efficient query generation
-                                                                                 .Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending &&
-                                                                                             x.User.TeamleaderId == teamLeader.Id && // Use teamLeader.Id here
-                                                                                             !x.Opinions.Any(o => o.UserId == teamLeader.Id)) // Use teamLeader.Id here
-                                                                                 .CountAsync();
-
-                                var pendingPermissionRequestsForTL = await _dataContext.Permissions
-                                                                                      .Include(x => x.Opinions) // Include Opinions for efficient query generation
-                                                                                      .Where(x => x.Status == Models.PermissionStatusEnum.Pending &&
-                                                                                                  x.User.TeamleaderId == teamLeader.Id && // Use teamLeader.Id here
-                                                                                                  !x.Opinions.Any(o => o.UserId == teamLeader.Id)) // Use teamLeader.Id here
-                                                                                      .CountAsync();
-
-                                var totalPendingsForTL = pendingLeaveRequestsForTL + pendingPermissionRequestsForTL;
-
-                                // Send the UpdatePendings message to the Team Leader
-                                await _hubContext.Clients.User(teamLeader.Id.ToString()).SendAsync("UpdatePendings", new
-                                {
-                                    pendings = totalPendingsForTL,
-                                    isNewRequest = true, // Indicates a new request has been submitted
-                                    newLeaveRequestId = leaveRequest.Id // You might want to send the ID of the new request
-                                });
-                            }
-                            else
-                            {
-                                Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id}.");
-                            }
+                            await _leaveRequestHelper.SendPendingUpdatesToClient( teamLeader.Id, leaveRequest.Id);
                         }
                         else
                         {
-                            Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId.");
+                            Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id}.");
                         }
-
                     }
                     else
                     {
-                        Console.WriteLine("Warning: No user with Role.Owner found to send SignalR update.");
+                        Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId.");
                     }
                 }
-                // --- END NEW: Auto-approval for Owner ---
 
                 response.Data = true;
                 response.Message = "Leave request created successfully." + (user.Role == UserRoleEnum.Owner ? " It has been automatically approved." : "");
@@ -509,32 +460,10 @@ namespace AutomatedTaskSystem.Services.Leave
 
                 await _dataContext.SaveChangesAsync();
 
-                await _hubContext.Clients.User(user.Id.ToString()).SendAsync("UpdatePendings", new
-                {
-                    pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync() +
-                                await _dataContext.Permissions.Where(x => x.Status == Models.PermissionStatusEnum.Pending).CountAsync()
-                });
+                await _leaveRequestHelper.SendPendingUpdatesAfterOpinion(user, leaveRequest);
 
-                await _hubContext.Clients.User(leaveRequest.User.TeamleaderId.ToString()).SendAsync("OnConnectedMessage", new
-                {
-                    pendings = await _dataContext.LeaveRequests
-                                                        .Include(x => x.Opinions) // Include Opinions for efficient query generation
-                                                        .Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending &&
-                                                                    x.User.TeamleaderId == user.Id && // For team leader's team
-                                                                    !x.Opinions.Any(o => o.UserId == user.Id)) // Crucial: No opinion from this user
-                                                        .CountAsync() +
-                                      await _dataContext.Permissions
-                                                        // Assuming Permissions also has an Opinions collection and you want to apply similar logic
-                                                        // If Permissions do not have Opinions, this part remains as just status and teamleader filter.
-                                                        .Where(x => x.Status == Models.PermissionStatusEnum.Pending &&
-                                                                    x.User.TeamleaderId == user.Id
-                                                              && !x.Opinions.Any(o => o.UserId == user.Id)
-                                                              )
-                                                        .CountAsync()
-                });
-
-
-                _logService.LogInformation("Opinion successfully given for LeaveRequest {LeaveRequestId} by user {UserId}. IsApproved: {IsApproved}", request.LeaveRequestId, user.Id, request.IsApproved);
+              
+                    _logService.LogInformation("Opinion successfully given for LeaveRequest {LeaveRequestId} by user {UserId}. IsApproved: {IsApproved}", request.LeaveRequestId, user.Id, request.IsApproved);
                 // Return success with a generic success message
                 return OperationResult.Succeeded("Opinion successfully recorded.");
             }
@@ -545,6 +474,10 @@ namespace AutomatedTaskSystem.Services.Leave
                 return OperationResult.Failed("An unexpected error occurred while processing your opinion. Please try again.");
             }
         }
+       
+
+
+
         public async Task<List<GetOpinion>> GetAllOpinionsForLeaveRequest(int leaveRequestId) { 
             return await _dataContext.Opinions.Where(x => x.LeaveRequestId == leaveRequestId)
                 .Select(x => new GetOpinion

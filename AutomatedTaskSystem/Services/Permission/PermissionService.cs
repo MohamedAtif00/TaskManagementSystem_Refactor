@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using static AutomatedTaskSystem.DTO.Responses;
+using static AutomatedTaskSystem.Services.Leave.LeaveRequestService;
 
 namespace AutomatedTaskSystem.Services.Permission
 {
@@ -25,12 +26,14 @@ namespace AutomatedTaskSystem.Services.Permission
         private readonly ITokenService _tokenService;
         private readonly IEmailService _emailService;
         private readonly IHubContext<UserHub> _hubContext;
-        public PermissionService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IHubContext<UserHub> hubContext)
+        private readonly PermissionRequestHelper _permissionRequestHelper;
+        public PermissionService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IHubContext<UserHub> hubContext, PermissionRequestHelper permissionRequestHelper)
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
             _emailService = emailService;
             _hubContext = hubContext;
+            _permissionRequestHelper = permissionRequestHelper;
         }
 
         // Create a new permission request
@@ -48,7 +51,6 @@ namespace AutomatedTaskSystem.Services.Permission
                     return response;
                 }
 
-                // --- Time range parsing and validation (still relevant for individual permission request) ---
                 if (!TimeOnly.TryParse(request.From, out var fromTime) ||
                     !TimeOnly.TryParse(request.To, out var toTime))
                 {
@@ -64,20 +66,13 @@ namespace AutomatedTaskSystem.Services.Permission
                     return response;
                 }
 
-                // --- NEW LOGIC: Calculate remaining *number* of permissions ---
-
-                // Get count of pending permission requests for the user
                 var pendingPermissionCount = await _dataContext.Permissions
                     .Where(p => p.UserId == user.Id && p.Status == PermissionStatusEnum.Pending)
-                    .CountAsync(); // Using CountAsync() instead of SumAsync()
+                    .CountAsync();
 
-                // Calculate remaining permission slots
-                // user.Permission_MAX is total allowed, user.Permission is already used/approved.
-                // pendingPermissionCount are currently requested and not yet approved.
                 var remainingPermissionSlots = Math.Max(0, user.Permission_MAX - (user.Permission + pendingPermissionCount));
 
-                // Validation: Check if there's at least 1 permission slot available for the new request
-                if (remainingPermissionSlots <= 0) // If no slots or negative, it's insufficient
+                if (remainingPermissionSlots <= 0)
                 {
                     return new ResponseService<bool>
                     {
@@ -89,9 +84,6 @@ namespace AutomatedTaskSystem.Services.Permission
                     };
                 }
 
-                // --- Create permission request (remains largely the same) ---
-
-                // Parse permission date - still good to be robust here
                 if (!DateTime.TryParse(request.PermissionDate, out var permissionDate))
                 {
                     response.Error = true;
@@ -99,9 +91,7 @@ namespace AutomatedTaskSystem.Services.Permission
                     return response;
                 }
 
-                // Determine initial status: Approved if Owner, else Pending
                 var initialStatus = (user.Role == UserRoleEnum.Owner) ? PermissionStatusEnum.Approved : PermissionStatusEnum.Pending;
-
 
                 var permission = new Models.Permission
                 {
@@ -130,7 +120,7 @@ namespace AutomatedTaskSystem.Services.Permission
                 _dataContext.Permissions.Add(permission);
                 await _dataContext.SaveChangesAsync();
 
-                // --- Start: NEW SignalR Notification Logic (similar to CreateLeaveRequest) ---
+                // --- Start: Refactored SignalR Notification Logic (similar to CreateLeaveRequest) ---
 
                 // If the user is an Owner, auto-approve and notify them
                 if (user.Role == UserRoleEnum.Owner)
@@ -146,72 +136,44 @@ namespace AutomatedTaskSystem.Services.Permission
                         isApproved = true,
                         message = "Your permission request has been automatically approved."
                     });
-
-                    // You might also want to send an email for auto-approved permissions, similar to leave requests
-                    // var message = new EmailMessage { /* ... */ };
-                    // await _emailService.SendEmailAsync(message);
                 }
-                else // Normal flow for non-Owner roles: Notify Owner/Admin and Team Leader about new pending request
+                else if (user.Role == UserRoleEnum.ProjectManger)
                 {
-                    var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
+                    // Notify Owner and Project Managers about the new pending permission request
+                    await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
+                }
+                else if (user.Role == UserRoleEnum.TeamLeader)
+                {
+                    // Notify Owner, Project Managers, and the Team Leader themselves (if they are also a TL)
+                    await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
+                    await _permissionRequestHelper.SendProjectManagersPendingUpdate(permission.Id);
+                }
+                else // Normal flow for non-Owner/PM/TL roles: Notify Owner/Admin and Team Leader about new pending request
+                {
+                    await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
+                    await _permissionRequestHelper.SendProjectManagersPendingUpdate(permission.Id);
 
-                    if (owner != null)
-                    {
-                        var ownerClient = _hubContext.Clients.User(owner.Id.ToString());
-
-                        // Update Owner's pending count for Permissions (assuming they need to see all pending permissions)
-                        await ownerClient.SendAsync("UpdatePendings", new
-                        {
-                            pendings = await _dataContext.Permissions.Where(x => x.Status == PermissionStatusEnum.Pending).CountAsync(),
-                            isNewRequest = true,
-                            newPermissionRequestId = permission.Id // Use new ID
-                        });
-                    }
-                    else
-                    {
-                        Console.WriteLine("Warning: No user with Role.Owner found to send SignalR update for permission.");
-                    }
-
-                    // Notify the Team Leader if the submitting user has one
                     if (user.TeamleaderId.HasValue)
                     {
-                        var teamLeader = await _dataContext.Users
-                                                         //.Include(u => u.ManagedUsers) // Include managed users if needed for other logic
-                                                         .FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
+                        // Fetch the Team Leader's user object and send update
+                        var teamLeader = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
 
                         if (teamLeader != null)
                         {
-                            // Calculate pending permission requests for this specific team leader, where they haven't opined yet
-                            // IMPORTANT: Ensure your Permission model has an 'Opinions' navigation property
-                            // if you intend to filter by opinions. If not, remove the !x.Opinions.Any(...) part.
-                            var pendingPermissionRequestsForTL = await _dataContext.Permissions
-                                                                                  .Include(x => x.Opinions) // Include Opinions for efficient query generation
-                                                                                  .Where(x => x.Status == Models.PermissionStatusEnum.Pending &&
-                                                                                              x.User.TeamleaderId == teamLeader.Id && // Filter by TL's team
-                                                                                              !x.Opinions.Any(o => o.UserId == teamLeader.Id)) // Filter for TL's own opinions
-                                                                                  .CountAsync();
-
-                            var totalPendingsForTL = pendingPermissionRequestsForTL; // Add leave requests if needed
-
-                            // Send the UpdatePendings message to the Team Leader
-                            await _hubContext.Clients.User(teamLeader.Id.ToString()).SendAsync("UpdatePendings", new
-                            {
-                                pendings = totalPendingsForTL,
-                                isNewRequest = true,
-                                newPermissionRequestId = permission.Id // Send the new permission ID
-                            });
+                            await _permissionRequestHelper.SendPendingUpdatesToClient(teamLeader.Id, permission.Id);
                         }
                         else
                         {
-                            Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id} during permission request notification.");
+                            Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id}.");
                         }
                     }
                     else
                     {
-                        Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId for permission request notification.");
+                        Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId.");
                     }
                 }
-                // --- End: NEW SignalR Notification Logic ---
+
+                // --- End: Refactored SignalR Notification Logic ---
 
                 response.Data = true;
                 response.Message = "Permission request created successfully." + (user.Role == UserRoleEnum.Owner ? " It has been automatically approved." : "");
@@ -746,7 +708,7 @@ namespace AutomatedTaskSystem.Services.Permission
 
                 var now = DateTime.Now.Date;
 
-                if (permission.PermissionDate.Date < now)
+                if (permission.PermissionDate.Date < now )
                 {
                     // Past date
                     if (permission.Status == PermissionStatusEnum.Approved || permission.Status == PermissionStatusEnum.Rejected)
@@ -860,92 +822,151 @@ namespace AutomatedTaskSystem.Services.Permission
         }
 
         // Approve or reject a permission
-        public async Task<bool> ApproveOrRejectPermissionAsync(int id, bool isApproved, string? comment)
+        public async Task<OperationResult> ApproveOrRejectPermissionAsync(int id, bool isApproved, string? comment)
         {
-            // Get current user
-            var userId = _tokenService.GetUserIdFromToken();
-            var user = await _dataContext.Users
-                .FirstOrDefaultAsync(x => x.Id == Convert.ToInt32(userId.Data));
-
-            if (user == null) throw new Exception("User not found");
-
-            // Get permission request including opinions
-            var permission = await _dataContext.Permissions
-                .Include(p => p.User)
-                .Include(p => p.Opinions)
-                .FirstOrDefaultAsync(p => p.Id == id);
-
-            if (permission == null) throw new Exception("Permission not found");
-
-            // Authorization check
-            if (user.Role != UserRoleEnum.TeamLeader &&
-                user.Role != UserRoleEnum.SectionHead &&
-                user.Role != UserRoleEnum.ProjectManger &&
-                user.Role != UserRoleEnum.Owner)
+            try
             {
-                throw new UnauthorizedAccessException("You are not authorized to approve or reject permissions");
-            }
-
-            // Prevent duplicate opinions
-            if (permission.Opinions.Any(o => o.UserId == user.Id))
-            {
-                throw new Exception("You have already given your opinion on this permission request");
-            }
-
-            // Create opinion
-            var opinion = new Opinion
-            {
-                UserId = user.Id,
-                PermissionId = permission.Id, // Ensure you have this foreign key in Opinion
-                IsApproved = isApproved,
-                Comment = comment,
-                CreatedAt = DateTime.UtcNow,
-                User = user
-            };
-
-            _dataContext.Opinions.Add(opinion);
-
-            // Handle Owner logic (final decision)
-            if (user.Role == UserRoleEnum.Owner)
-            {
-                permission.Status = isApproved
-                    ? PermissionStatusEnum.Approved
-                    : PermissionStatusEnum.Rejected;
-
-                // Adjust permission count if approved
-                if (isApproved)
+                // Get current user from token
+                var userIdResult = _tokenService.GetUserIdFromToken();
+                if (userIdResult.Data == null)
                 {
-                    permission.User.Permission += 1;
+                    //_logService.LogError(null, "Token service returned null userId.Data in ApproveOrRejectPermissionAsync for permission ID {PermissionId}.", id);
+                    //await _notificationService.ErrorNotification(userIdResult.ToString(), "Could not retrieve user ID from token.");
+                    return OperationResult.Failed("Could not retrieve user ID from token.");
                 }
 
-                _dataContext.Permissions.Update(permission);
+                var user = await _dataContext.Users
+                    .FirstOrDefaultAsync(x => x.Id == Convert.ToInt32(userIdResult.Data));
 
-                var message = new EmailMessage
+                if (user == null)
                 {
-                    Subject = "طلب أذن",
-                    Body =EmailTemplate.CreatePermissionTemplate(permission.User.Name,
-                                                                 permission.User.Email,
-                                                                 permission.PermissionDate.ToString("yyyy-MM-dd"),
-                                                                 permission.FromTime.ToString("hh:mm tt"),
-                                                                 permission.ToTime.ToString("hh:mm tt"),
-                                                                 permission.Type),
-                    IsHtml = true,
-                    CcEmails = new List<string> { permission.User.Email }
+                    //_logService.LogError(null, "User with ID {UserId} not found when approving/rejecting permission ID {PermissionId}.", userIdResult.Data, id);
+                    //await _notificationService.ErrorNotification(userIdResult.ToString(), "This user does not exist.");
+                    return OperationResult.Failed("User does not exist.");
+                }
+
+                // Get permission request including opinions and the requesting user
+                var permission = await _dataContext.Permissions
+                    .Include(p => p.User) // Ensure the requesting user is included
+                    .Include(p => p.Opinions)
+                    .FirstOrDefaultAsync(p => p.Id == id);
+
+                if (permission == null)
+                {
+                    //_logService.LogError(null, "Permission request with ID {PermissionId} not found for user {UserId}.", id, user.Id);
+                    //await _notificationService.ErrorNotification(userIdResult.ToString(), "Permission request not found.");
+                    return OperationResult.Failed("Permission request not found.");
+                }
+
+                // Prevent action on already finalized requests
+                if (permission.Status != PermissionStatusEnum.Pending)
+                {
+                    //_logService.LogWarning("User {UserId} attempted to give opinion on non-pending permission request {PermissionId} (Status: {Status}).", user.Id, id, permission.Status);
+                    //await _notificationService.ErrorNotification(userIdResult.ToString(), $"Cannot give opinion on a permission request that is already {permission.Status}.");
+                    return OperationResult.Failed($"Cannot give opinion on a permission request that is already {permission.Status}.");
+                }
+
+                // Prevent duplicate opinions
+                if (permission.Opinions.Any(o => o.UserId == user.Id))
+                {
+                    //_logService.LogWarning("User {UserId} already gave opinion on permission request {PermissionId}.", user.Id, id);
+                    //await _notificationService.ErrorNotification(userIdResult.ToString(), "You have already given your opinion on this permission request.");
+                    return OperationResult.Failed("You have already given your opinion on this permission request.");
+                }
+
+                // Create opinion
+                var opinion = new Opinion
+                {
+                    UserId = user.Id,
+                    PermissionId = permission.Id,
+                    IsApproved = isApproved,
+                    Comment = comment,
+                    CreatedAt = DateTime.UtcNow,
                 };
 
-                var result = await _emailService.SendEmailAsync(message);
-                if (result.Success)
-                {
-                    await _hubContext.Clients.User(permission.UserId.ToString()).SendAsync("PermissionRequestOpinion", new
-                    {
-                        isApproved = true,
-                        message = "Your leave request has been approved."
-                    });
-                }
-            }
+                bool statusChanged = false; // Flag to track if permission status was updated
 
-            await _dataContext.SaveChangesAsync();
-            return true;
+                // Authorization and Role-based Logic
+                switch (user.Role)
+                {
+                    case UserRoleEnum.Owner:
+                        permission.Status = isApproved ? PermissionStatusEnum.Approved : PermissionStatusEnum.Rejected;
+                        permission.UpdatedAt = DateTime.UtcNow;
+                        statusChanged = true; // Status was definitively changed by the owner
+
+                        // Adjust permission count if approved
+                        if (isApproved)
+                        {
+                            permission.User.Permission += 1;
+                            _dataContext.Users.Update(permission.User); // Mark user for update
+                            var message = new EmailMessage
+                            {
+                                Subject = "طلب أذن",
+                                Body = EmailTemplate.CreatePermissionTemplate(
+                                                            permission.User.Name,
+                                                            permission.User.Email,
+                                                            permission.PermissionDate.ToString("yyyy-MM-dd"),
+                                                            permission.FromTime.ToString("hh:mm tt"),
+                                                            permission.ToTime.ToString("hh:mm tt"),
+                                                            permission.Type),
+                                IsHtml = true,
+                                CcEmails = new List<string> { permission.User.Email }
+                            };
+
+                            var emailResult = await _emailService.SendEmailAsync(message);
+                            if (!emailResult.Success)
+                            {
+                                //_logService.LogError(emailResult.Exception,
+                                //                    "Error sending permission decision email for Permission ID {PermissionId} to user {RequesterUserId}: {ErrorMessage}",
+                                //                    permission.Id, permission.UserId, emailResult.Message);
+                                //await _notificationService.ErrorNotification(userIdResult.ToString(), "Permission request could not be fully processed due to email delivery failure. Please try again or contact support.");
+                                return OperationResult.Failed($"Permission request processed but email delivery failed: {emailResult.Message}");
+                            }
+                        }
+
+                        _dataContext.Permissions.Update(permission); // Mark permission for update
+                        _dataContext.Opinions.Add(opinion); // Add owner's opinion
+
+                        // Email structure remains unchanged as requested
+
+                        // Notify the requesting user via SignalR
+                        await _hubContext.Clients.User(permission.UserId.ToString()).SendAsync("PermissionRequestOpinion", new
+                        {
+                            isApproved = isApproved,
+                            message = isApproved ? "Your permission request has been approved." : "Your permission request has been rejected."
+                        });
+                        break;
+
+                    case UserRoleEnum.TeamLeader:
+                    case UserRoleEnum.ProjectManger:
+                    case UserRoleEnum.SectionHead: // Added SectionHead here for consistency
+                        _dataContext.Opinions.Add(opinion); // Simply add the opinion
+                                                            // statusChanged remains false as their opinion is not the final decision
+                        break;
+
+                    default:
+                        // This case should ideally not be reached if the initial authorization check is comprehensive.
+                        // However, as a safeguard, it prevents unauthorized roles from performing any action.
+                        //_logService.LogWarning("Unauthorized user {UserId} with role {UserRole} attempted to approve/reject permission ID {PermissionId}. This should have been caught earlier.", user.Id, user.Role, id);
+                        //await _notificationService.ErrorNotification(userIdResult.ToString(), "You are not authorized to approve or reject permissions.");
+                        return OperationResult.Failed("You are not authorized to approve or reject permissions.");
+                }
+
+                await _dataContext.SaveChangesAsync(); // Save all changes after role-based logic
+
+                // --- Centralized Pending Notification Logic ---
+                await _permissionRequestHelper.SendPendingUpdatesAfterOpinion(user, permission);
+                // --- End: Centralized Pending Notification Logic ---
+
+                //_logService.LogInformation("Opinion successfully given for Permission ID {PermissionId} by user {UserId}. IsApproved: {IsApproved}", id, user.Id, isApproved);
+                return OperationResult.Succeeded("Permission opinion successfully recorded.");
+            }
+            catch (Exception ex)
+            {
+                //_logService.LogError(ex, "An unhandled error occurred in ApproveOrRejectPermissionAsync for Permission ID {PermissionId} by user {UserId}.", id, user?.Id);
+                //await _notificationService.ErrorNotification(userIdResult.ToString(), "An unexpected error occurred while processing your permission opinion. Please try again.");
+                return OperationResult.Failed("An unexpected error occurred while processing your permission opinion. Please try again.");
+            }
         }
 
 

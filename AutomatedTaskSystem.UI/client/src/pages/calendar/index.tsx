@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import LEAVE, { IGetAllLeavesRequestNoPagination, IGetLeaveRequestForCalander, LeaveRequestStatus, LeaveRequestType } from "../../lib/API/Leave";
 import PERMISSION, { IPermission, PermissionRequestStatus, PermissionType } from "../../lib/API/Permission";
-import ExportButton from "../../components/button/ExportButton";
+import ExportButton from "../../components/button/ExportButton"; // This is likely for client-side export
 import Link from "next/link";
 import { useAppSelector } from "../../app/hooks";
 import DataTable from "../../components/table/tablePagination";
@@ -48,8 +48,16 @@ interface IGetAllPermissionsRequest {
     [key: string]: string | number | boolean | undefined; // Add this line
 }
 
-// Now, IGetAllPermissionsRequest is compatible with Record<string, string | number | boolean | undefined>
-
+// Interface for fetching all permissions without pagination, similar to IGetAllLeavesRequestNoPagination
+interface IGetAllPermissionsRequestNoPagination {
+    userId?: number; // Assuming permissions might also be filtered by user, though not explicitly in current filters
+    role: number;
+    searchTerm?: string;
+    date?: string;
+    type?: PermissionType | "all";
+    status?: PermissionRequestStatus | "all";
+    disablePagination: true; // Explicitly indicates no pagination
+}
 
 const Calendar = () => {
     const [activeTab, setActiveTab] = useState<"vacancy" | "permission">("vacancy");
@@ -67,7 +75,7 @@ const Calendar = () => {
     // Pagination & Filter state for Vacancies (to be passed to API)
     const [vacancyCurrentPage, setVacancyCurrentPage] = useState<number>(1);
     const [vacancyItemsPerPage, setVacancyItemsPerPage] = useState<number>(10);
-    const [vacancyFilters, setVacancyFilters] = useState<Record<string, string | number | undefined>>({ // Changed to string | number | undefined for type safety
+    const [vacancyFilters, setVacancyFilters] = useState<Record<string, string | number | undefined>>({
         fromDate: undefined,
         toDate: undefined,
         status: "all",
@@ -78,7 +86,7 @@ const Calendar = () => {
     // Pagination & Filter state for Permissions (to be passed to API)
     const [permissionCurrentPage, setPermissionCurrentPage] = useState<number>(1);
     const [permissionItemsPerPage, setPermissionItemsPerPage] = useState<number>(10);
-    const [permissionFilters, setPermissionFilters] = useState<Record<string, string | number | undefined>>({ // Changed to string | number | undefined
+    const [permissionFilters, setPermissionFilters] = useState<Record<string, string | number | undefined>>({
         date: undefined,
         type: "all",
         status: "all"
@@ -109,7 +117,7 @@ const Calendar = () => {
 
     const transformedPermissionData = useMemo(() => permissions.map(permission => ({
         "User name": permission.user?.name ?? "N/A",
-        "Request date": formatDateForDisplay(permission.dateCreated),   
+        "Request date": formatDateForDisplay(permission.dateCreated),
         "Permission Type": permission.type,
         "Final Status": permission.status,
         "Permission date": formatDateForDisplay(permission.permissionDate),
@@ -184,7 +192,7 @@ const Calendar = () => {
         }
     ], []);
 
-    const commonStatusRenderer = useCallback((value: string) => { // Value is string
+    const commonStatusRenderer = useCallback((value: string) => {
         const getStatusColor = (status: string) => {
             switch (status?.toLowerCase()) {
                 case 'approved':
@@ -195,7 +203,7 @@ const Calendar = () => {
                 case 'pending':
                     return 'text-blue-500';
                 case 'cancelled':
-                  return 'text-red-600 bg-red-100 p-2 rounded '
+                    return 'text-red-600 bg-red-100 p-2 rounded ';
                 default:
                     return '';
             }
@@ -203,7 +211,7 @@ const Calendar = () => {
         return <span className={`font-medium ${getStatusColor(value)}`}>{value}</span>;
     }, []);
 
-    const commonActionsRenderer = useCallback((id: number, path: string) => ( // id is number
+    const commonActionsRenderer = useCallback((id: number, path: string) => (
         <Link href={`/calendar/${path}/${id}`} className="text-gray-600 hover:text-gray-900 transition-colors " >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
@@ -222,7 +230,6 @@ const Calendar = () => {
         "Actions": (value: number) => commonActionsRenderer(value, 'permission')
     }), [commonStatusRenderer, commonActionsRenderer]);
 
-
     const fetchVacancies = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
         setLoading(prev => ({ ...prev, vacancies: true }));
         try {
@@ -231,18 +238,14 @@ const Calendar = () => {
                 role: auth.role,
                 page: page,
                 pageSize: itemsPerPage,
-                searchTerm: searchText === "" ? undefined : searchText, // Send undefined if empty
-                fromDate: filters.fromDate as string | undefined, // Cast to string | undefined
+                searchTerm: searchText === "" ? undefined : searchText,
+                fromDate: filters.fromDate as string | undefined,
                 toDate: filters.toDate as string | undefined,
-                status: filters.status === "all" ? undefined : filters.status as LeaveRequestStatus, // Send undefined if "all"
-                type: filters.type === "all" ? undefined : filters.type as LeaveRequestType, // Send undefined if "all"
+                status: filters.status === "all" ? undefined : filters.status as LeaveRequestStatus,
+                type: filters.type === "all" ? undefined : filters.type as LeaveRequestType,
             };
 
-            // No need for manual `delete params[key]` loop here if types are handled correctly
-            // and you pass `undefined` for absent/default filters.
-            // The service function should handle filtering out undefined parameters.
-
-          const response = await LEAVE.GET_ALL_DB(params as Record<string, string | number | boolean | undefined>);
+            const response = await LEAVE.GET_ALL_DB(params as Record<string, string | number | boolean | undefined>);
 
             if (response && response.data) {
                 setVacancies(response.data.items || []);
@@ -291,7 +294,7 @@ const Calendar = () => {
         } finally {
             setLoading(prev => ({ ...prev, permissions: false }));
         }
-    }, []);
+    }, [auth.role]);
 
     // Use useEffect to trigger data fetches when pagination/filter states change
     useEffect(() => {
@@ -325,7 +328,6 @@ const Calendar = () => {
     }, []);
 
     const handleVacancyDataTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
-        
         setVacancyCurrentPage(page);
         setVacancyItemsPerPage(itemsPerPage);
         setVacancyFilters(filters);
@@ -339,44 +341,68 @@ const Calendar = () => {
         setPermissionSearchText(searchText);
     }, []);
 
-     // --- Data Fetching Functions for ServerExportButton ---
+    // --- Data Fetching Functions for ServerExportButton ---
     const getVacanciesForExport = useCallback(async () => {
-      const params: IGetAllLeavesRequestNoPagination = { // <--- The type you're aiming for
-          userId: auth.id,
-          role: auth.role,
-          searchTerm: vacancySearchText === "" ? undefined : vacancySearchText,
-          fromDate: vacancyFilters.fromDate as string | undefined,
-          toDate: vacancyFilters.toDate as string | undefined,
-          status: vacancyFilters.status === "all" ? undefined : vacancyFilters.status as LeaveRequestStatus,
-          type: vacancyFilters.type === "all" ? undefined : vacancyFilters.type as LeaveRequestType,
-          // *** ADD THIS LINE ***
-          disablePagination: true // <--- THIS WAS MISSING
-      };
-      // Assuming LEAVE.GET_ALL_FOR_EXPORT returns { data: { items: any[] } }
-      const response = await LEAVE.GET_ALL_FOR_EXPORT(params);
-      if (response && response.data && Array.isArray(response.data.items)) {
-          // Transform data for export if needed (e.g., flatten nested objects, format dates)
-          return response.data.items.map(item => ({
-              "Id": item.id,
-              "User Name": item.user?.name ?? "N/A",
-              "Request Date": formatDateForDisplay(item.dateCreated),
-              "Start Date": formatDateForDisplay(item.startDate),
-              "End Date": formatDateForDisplay(item.endDate),
-              "Duration": item.duration,
-              "Type": item.type,
-              "Status": item.status,
-              "Reason": item.reason,
-              // Add any other fields you want in the CSV
-          }));
-      }
-      return [];
-  }, [auth.id, auth.role, vacancySearchText, vacancyFilters, formatDateForDisplay]);
+        const params: IGetAllLeavesRequestNoPagination = {
+            userId: auth.id,
+            role: auth.role,
+            searchTerm: vacancySearchText === "" ? undefined : vacancySearchText,
+            fromDate: vacancyFilters.fromDate as string | undefined,
+            toDate: vacancyFilters.toDate as string | undefined,
+            status: vacancyFilters.status === "all" ? undefined : vacancyFilters.status as LeaveRequestStatus,
+            type: vacancyFilters.type === "all" ? undefined : vacancyFilters.type as LeaveRequestType,
+            disablePagination: true
+        };
+        const response = await LEAVE.GET_ALL_FOR_EXPORT(params);
+        if (response && response.data && Array.isArray(response.data.items)) {
+            return response.data.items.map(item => ({
+                "Id": item.id,
+                "User Name": item.user?.name ?? "N/A",
+                "Request Date": formatDateForDisplay(item.dateCreated),
+                "Start Date": formatDateForDisplay(item.startDate),
+                "End Date": formatDateForDisplay(item.endDate),
+                "Duration": item.duration,
+                "Type": item.type,
+                "Status": item.status,
+                "Reason": item.reason,
+            }));
+        }
+        return [];
+    }, [auth.id, auth.role, vacancySearchText, vacancyFilters, formatDateForDisplay]);
 
+    // Assuming IPermission is correctly imported or defined:
+// import { IPermission } from "../../lib/API/Permission";
 
+    const getPermissionsForExport = useCallback(async () => {
+        const params: IGetAllPermissionsRequestNoPagination = {
+            role: auth.role,
+            searchTerm: permissionSearchText === "" ? undefined : permissionSearchText,
+            date: permissionFilters.date as string | undefined,
+            type: permissionFilters.type === "all" ? undefined : permissionFilters.type as PermissionType,
+            status: permissionFilters.status === "all" ? undefined : permissionFilters.status as PermissionRequestStatus,
+            disablePagination: true
+        };
+        const response = await PERMISSION.GET_ALL_FOR_EXPORT(params); // Assuming a similar export endpoint for permissions
+        if (response && response.data && Array.isArray(response.data.items)) {
+            return response.data.items.map((item: IPermission) => ({ // <-- Add type annotation here
+                "Id": item.id,
+                "User Name": item.user?.name ?? "N/A",
+                "Request Date": formatDateForDisplay(item.dateCreated),
+                "Permission Date": formatDateForDisplay(item.permissionDate),
+                "Start Time": item.fromTime,
+                "End Time": item.toTime,
+                "Duration": item.duration,
+                "Type": item.type,
+                "Status": item.status,
+                "Reason": item.reason,
+            }));
+        }
+        return [];
+    }, [auth.role, permissionSearchText, permissionFilters, formatDateForDisplay]);
 
     return (
         <div className="w-full p-5">
-            <div className="flex items-center mb-6 bg-white h-20 p-3" style={{borderRadius:8}}>
+            <div className="flex items-center mb-6 bg-white h-20 p-3" style={{ borderRadius: 8 }}>
                 <div className="text-xl font-semibold flex items-center bg-white">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -387,7 +413,7 @@ const Calendar = () => {
 
             <div className="border-t border-gray-200 my-4"></div>
 
-            <div className="mb-4 bg-white h-20 p-3" style={{borderRadius:8}}>
+            <div className="mb-4 bg-white h-20 p-3" style={{ borderRadius: 8 }}>
                 <div className="flex border-b border-gray-200">
                     <button
                         className={`px-4 py-2 font-medium focus:outline-none ${
@@ -412,47 +438,56 @@ const Calendar = () => {
                 </div>
             </div>
 
-            {/* Export Button (Consider if you need client-side or server-side export based on the filtered data) */}
-            {/* <div className="flex justify-end mb-4">
-            </div> */}
-           <div className="flex justify-end gap-3 mb-4">
-                <ExportButton data={activeTab === "vacancy" ? vacancies : permissions} />
-               
+            <div className="flex justify-end gap-3 mb-4">
+                {/* Client-side export for the currently displayed data */}
+                <ExportButton data={activeTab === "vacancy" ? transformedVacancyData : transformedPermissionData} />
+
+                {/* Server-side export button for Vacancies */}
+                {activeTab === "vacancy" && (
                     <ServerExportButton
                         fetchDataFunction={getVacanciesForExport}
                         filename="vacancies_report.csv"
                         label="Export All Vacancies"
                     />
-              
+                )}
+
+                {/* Server-side export button for Permissions */}
+                {activeTab === "permission" && (
+                    <ServerExportButton
+                        fetchDataFunction={getPermissionsForExport}
+                        filename="permissions_report.csv"
+                        label="Export All Permissions"
+                    />
+                )}
             </div>
 
-              {/* DataTable for Vacancy */}
-              {activeTab === "vacancy" && (
-                  <DataTable
-                      data={transformedVacancyData}
-                      totalCount={totalVacanciesCount}
-                      onPageChange={handleVacancyDataTableChange}
-                      itemsPerPage={vacancyItemsPerPage}
-                      filterConfig={vacancyFilterConfig}
-                      loading={loading.vacancies}
-                      columnRenderers={vacancyColumnRenderers}
-                      serverSide={true}
-                  />
-              )}
+            {/* DataTable for Vacancy */}
+            {activeTab === "vacancy" && (
+                <DataTable
+                    data={transformedVacancyData}
+                    totalCount={totalVacanciesCount}
+                    onPageChange={handleVacancyDataTableChange}
+                    itemsPerPage={vacancyItemsPerPage}
+                    filterConfig={vacancyFilterConfig}
+                    loading={loading.vacancies}
+                    columnRenderers={vacancyColumnRenderers}
+                    serverSide={true}
+                />
+            )}
 
-              {/* DataTable for Permissions */}
-              {activeTab === "permission" && (
-                  <DataTable
-                      data={transformedPermissionData}
-                      totalCount={totalPermissionsCount}
-                      onPageChange={handlePermissionDataTableChange}
-                      itemsPerPage={permissionItemsPerPage}
-                      filterConfig={permissionFilterConfig}
-                      loading={loading.permissions}
-                      columnRenderers={permissionColumnRenderers}
-                      serverSide={true}
-                  />
-              )}
+            {/* DataTable for Permissions */}
+            {activeTab === "permission" && (
+                <DataTable
+                    data={transformedPermissionData}
+                    totalCount={totalPermissionsCount}
+                    onPageChange={handlePermissionDataTableChange}
+                    itemsPerPage={permissionItemsPerPage}
+                    filterConfig={permissionFilterConfig}
+                    loading={loading.permissions}
+                    columnRenderers={permissionColumnRenderers}
+                    serverSide={true}
+                />
+            )}
         </div>
     );
 };

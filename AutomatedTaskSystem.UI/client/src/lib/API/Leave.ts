@@ -238,7 +238,7 @@ const LEAVE = {
         params?: Record<string, string | number | boolean | undefined | Date>
     ): Promise<ResponseService<PageList<IGetLeaveRequest[]>>> => {
         try {
-          debugger
+          
             const finalParams: IGetAllLeavesRequest = { 
                 ...params, 
                 userId: userId

@@ -37,6 +37,12 @@ namespace AutomatedTaskSystem.Hub
                             pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync() +
                                 await _dataContext.Permissions.Where(x => x.Status == Models.PermissionStatusEnum.Pending).CountAsync()
                         });
+                    } else if (user.Role == Models.Enums.UserRole.UserRoleEnum.ProjectManger) {
+                        await Clients.User(userId).SendAsync("OnConnectedMessage", new
+                        {
+                            pendings = await _dataContext.LeaveRequests.Include(x => x.Opinions).Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending && !x.Opinions.Any(o => o.UserId == user.Id)).CountAsync() +
+                               await _dataContext.Permissions.Include(x => x.Opinions).Where(x => x.Status == Models.PermissionStatusEnum.Pending && !x.Opinions.Any(o => o.UserId == user.Id)).CountAsync()
+                        });
                     }
                     else if (user.Role == Models.Enums.UserRole.UserRoleEnum.TeamLeader)
                     {

@@ -23,6 +23,7 @@ using AutomatedTaskSystem.Seeding;
 using AutomatedTaskSystem.Services.Email;
 using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.Log;
+using AutomatedTaskSystem.Helper;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -58,5 +59,7 @@ public static class DependancyInjections
         builder.Services.AddTransient<IEmailService, EmailService>();
         builder.Services.AddScoped<INotificationService, NotificationService>();
         builder.Services.AddScoped<ILogService, LogService>();
+        builder.Services.AddScoped<LeaveRequestHelper>();
+        builder.Services.AddScoped<PermissionRequestHelper>();
     }
 }
