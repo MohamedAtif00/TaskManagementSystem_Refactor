@@ -101,6 +101,7 @@ interface IGetLeaveRequestForCalander extends ILeave {
     id: number,
     duration: number,
     status: LeaveRequestStatus,
+    myStatus?:LeaveRequestStatus,
     dateCreated: string,
     user: { id: number, name: string }
 }
@@ -130,6 +131,7 @@ const LEAVE = {
         params?: Record<string, string | number | boolean | undefined> // Added undefined for optional params
     ): Promise<ResponseService<PageList<IGetLeaveRequestForCalander[]>>> => { // Changed return type to IGetAllLeavesApiResponse
         try {
+            const headers = authService.authHeader();
             // Filter out undefined, null, or empty string values from params
             const filteredParams = Object.entries(params || {}).reduce((acc, [key, value]) => {
                 if (value !== undefined && value !== null && String(value).trim() !== '') {
@@ -142,7 +144,12 @@ const LEAVE = {
                 ? `?${new URLSearchParams(filteredParams).toString()}`
                 : "";
 
-            const res = await fetch(`${url}/Leave${query}`);
+            const res = await fetch(`${url}/Leave${query}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...headers
+                }
+            });
             // The response from the backend should now be an object with 'items' and 'totalCount'
             const response: ResponseService<PageList<IGetLeaveRequestForCalander[]>> = await res.json();
 
@@ -160,6 +167,7 @@ const LEAVE = {
      // This method is for getting all filtered data (used by export button)
     GET_ALL_FOR_EXPORT: async (params: Omit<IGetAllLeavesRequest, 'page' | 'pageSize'>) => {
         try {
+            const headers = authService.authHeader();
             // Explicitly set disablePagination to true for export
             const finalParams: IGetAllLeavesRequest = { ...params, disablePagination: true, page: undefined, pageSize: undefined };
 
@@ -174,7 +182,12 @@ const LEAVE = {
                 ? `?${new URLSearchParams(filteredParams).toString()}`
                 : "";
 
-            const res = await fetch(`${url}/Leave?${query}`); // Use the same C# controller endpoint
+            const res = await fetch(`${url}/Leave?${query}`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...headers
+                }
+            }); // Use the same C# controller endpoint
             const response: ResponseService<IGetAllLeavesApiResponse> = await res.json(); // Still expect PageList structure
             return response;
         } catch (error) {
@@ -304,24 +317,21 @@ const LEAVE = {
             return false;
         }
     },
-    CREATE_OPINION: async (opinion: IOpinion): Promise<IGetOpinion | false> => { // Changed return type
-        try {
-            const auth = authService.authHeader();
-            const res = await fetch(`${url}/Leave/CreateOpinion`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...auth
-                },
-                body: JSON.stringify(opinion),
-            });
+    CREATE_OPINION: async (opinion: IOpinion): Promise<ResponseService< IGetOpinion>> => { // Changed return type
 
-            const data: IGetOpinion = await res.json();
-            return data;
-        } catch (error) {
-            console.error(error);
-            return false;
-        }
+        const auth = authService.authHeader();
+        const res = await fetch(`${url}/Leave/CreateOpinion`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...auth
+            },
+            body: JSON.stringify(opinion),
+        });
+
+        const data: ResponseService< IGetOpinion>= await res.json();
+        return data;
+
     },
     GET_USER_INFO: async (userId: number): Promise<ResponseServiceWithData<IUser> | false> => {
         try {

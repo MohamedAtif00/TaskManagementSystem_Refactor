@@ -37,20 +37,20 @@ namespace AutomatedTaskSystem.Controllers
             [FromQuery] string? fromDate = null, // Add filter for fromDate
             [FromQuery] string? toDate = null, // Add filter for toDate
             [FromQuery] string? status = null, // Add filter for status
+            [FromQuery] string? myStatus = null, // Add filter for status
             [FromQuery] string? type = null, // Add filter for type
             [FromQuery] bool disablePagination = false // Add filter for type
         )
         {
             // Pass all the received query parameters to the service method
             var result = await _leaveRequestService.GetAllVacationsAsync(
-                userId,
-                role,
                 page,
                 pageSize,
                 searchTerm,
                 fromDate,
                 toDate,
                 status,
+                myStatus,
                 type,
                 disablePagination
             );

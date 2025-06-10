@@ -44,6 +44,7 @@ interface IPermission {
     reason: string;
     duration: number;
     status: PermissionRequestStatus;
+    myStatus?: PermissionRequestStatus;
     user: {
         id: number;
         name: string;

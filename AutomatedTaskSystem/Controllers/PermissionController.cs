@@ -26,6 +26,7 @@ namespace AutomatedTaskSystem.Controllers
                 [FromQuery] string? searchTerm = null, // Add search term parameter
                 [FromQuery] string? date = null, // Add filter for specific date
                 [FromQuery] string? status = null, // Add filter for status
+                [FromQuery] string? myStatus = null, // Add filter for status
                 [FromQuery] string? type = null // Add filter for type
             )
         {
@@ -38,6 +39,7 @@ namespace AutomatedTaskSystem.Controllers
                 searchTerm,
                 date,
                 status,
+                myStatus,
                 type
             );
 

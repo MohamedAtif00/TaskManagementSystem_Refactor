@@ -1,4 +1,5 @@
 ﻿using System.Net.Mail;
+using System.Net.NetworkInformation;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
@@ -16,6 +17,8 @@ using AutomatedTaskSystem.Services.YearService;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.Extensions.FileSystemGlobbing.Internal;
+using Microsoft.Extensions.Options;
 using static AutomatedTaskSystem.DTO.Responses;
 
 namespace AutomatedTaskSystem.Services.Leave
@@ -30,6 +33,7 @@ namespace AutomatedTaskSystem.Services.Leave
         private readonly INotificationService _notificationService;
         private readonly ILogService _logService; // <--- ADD THIS
         private readonly LeaveRequestHelper _leaveRequestHelper;
+        private readonly EmailRecipientSettings _emailRecipients;
         public LeaveRequestService(DataContext dataContext,
                                    ITokenService tokenService,
                                    IEmailService emailService,
@@ -37,7 +41,8 @@ namespace AutomatedTaskSystem.Services.Leave
                                    IHubContext<UserHub> hubContext,
                                    INotificationService notificationService,
                                    ILogService logger,
-                                   LeaveRequestHelper leaveRequestHelper)
+                                   LeaveRequestHelper leaveRequestHelper,
+                                    IOptions<EmailRecipientSettings> emailRecipientsOptions)
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
@@ -47,6 +52,7 @@ namespace AutomatedTaskSystem.Services.Leave
             _notificationService = notificationService;
             _logService = logger;
             _leaveRequestHelper = leaveRequestHelper;
+            _emailRecipients = emailRecipientsOptions.Value;
         }
         // Enhanced service method
         public async Task<ResponseService<bool>> CreateLeaveRequest(CreateLeaveRequestDto request)
@@ -194,7 +200,7 @@ namespace AutomatedTaskSystem.Services.Leave
 
                     var message = new EmailMessage
                     {
-                        Subject = "أجازة - طلب إجازة معتمد",
+                        Subject = "طلب أجازة ",
                         Body = EmailTemplate.CreateTemplate(user.Name,
                                                         user.Email,
                                                         leaveRequest.StartDate.ToString("yyyy-MM-dd"),
@@ -203,7 +209,7 @@ namespace AutomatedTaskSystem.Services.Leave
                                                         leaveRequest.Type,
                                                         leaveRequest.User.HR_code),
                         IsHtml = true,
-                        CcEmails = new List<string> { user.Email }
+                        CcEmails = new List<string> {_emailRecipients.CEO ,user.Email }
                     };
 
                     if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
@@ -251,7 +257,7 @@ namespace AutomatedTaskSystem.Services.Leave
 
                         if (teamLeader != null)
                         {
-                            await _leaveRequestHelper.SendPendingUpdatesToClient( teamLeader.Id, leaveRequest.Id);
+                            await _leaveRequestHelper.SendTeamLeaderPendingUpdates( teamLeader.Id, leaveRequest.Id);
                         }
                         else
                         {
@@ -278,17 +284,17 @@ namespace AutomatedTaskSystem.Services.Leave
         }
         public class OperationResult
         {
-            public bool Success { get; set; }
+            public bool error { get; set; }
             public string Message { get; set; }
 
             public static OperationResult Succeeded(string message = "Operation completed successfully.")
             {
-                return new OperationResult { Success = true, Message = message };
+                return new OperationResult { error = true, Message = message };
             }
 
             public static OperationResult Failed(string message = "Operation failed.")
             {
-                return new OperationResult { Success = false, Message = message };
+                return new OperationResult { error = false, Message = message };
             }
         }
         // Update the return type of the method
@@ -371,7 +377,7 @@ namespace AutomatedTaskSystem.Services.Leave
                                                                     leaveRequest.Type,
                                                                     leaveRequest.User.HR_code),
                                 IsHtml = true,
-                                CcEmails = new List<string> { leaveRequest.User.Email } // Note: Your EmailService doesn't send CCs if commented out
+                                CcEmails = new List<string> { _emailRecipients.SectionHead??null, leaveRequest.User.Email} // Note: Your EmailService doesn't send CCs if commented out
                             };
 
                             if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
@@ -407,6 +413,25 @@ namespace AutomatedTaskSystem.Services.Leave
                                         break;
                                     case LeaveRequestType.Sick:
                                         senderUser.Sick_leave += approvedDays;
+                                        // --- ADDED LOGIC HERE ---
+                                        if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
+                                        {
+                                            var fullFilePath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
+                                            try
+                                            {
+                                                if (File.Exists(fullFilePath))
+                                                {
+                                                    File.Delete(fullFilePath);
+                                                    _logService.LogInformation("Deleted medical certificate file: {FilePath} for LeaveRequest {LeaveRequestId}.", fullFilePath, leaveRequest.Id);
+                                                }
+                                            }
+                                            catch (IOException ioEx)
+                                            {
+                                                _logService.LogError(ioEx, "Error deleting medical certificate file: {FilePath} for LeaveRequest {LeaveRequestId}.", fullFilePath, leaveRequest.Id);
+                                            }
+                                        }
+                                        // --- END ADDED LOGIC ---
+                                        senderUser.Sick_leave += approvedDays; // This line seems to be a duplicate. If it's intended to increase sick leave, you'd only need one. I'm leaving it as is in your original code.
                                         break;
                                 }
 
@@ -511,117 +536,206 @@ namespace AutomatedTaskSystem.Services.Leave
         }
 
         public async Task<ResponseService<PageList<GetLeaveRequestDto>>> GetAllVacationsAsync(
-                  int? userId = null,
-                  int? role = null,
-                  int page = 1,
-                  int pageSize = 10,
-                  string? searchTerm = null,
-                  string? fromDate = null,
-                  string? toDate = null,
-                  string? status = null,
-                  string? type = null,
-                  bool disablePagination = false // New parameter: Set to true to get all data
-              )
+            int page = 1,
+            int pageSize = 10,
+            string? searchTerm = null,
+            string? fromDate = null,
+            string? toDate = null,
+            string? status = null,
+            string? myStatus = null,
+            string? type = null,
+            bool disablePagination = false
+        )
         {
-            var query = _dataContext.LeaveRequests
-                .Include(v => v.User)
-                .AsQueryable();
+        // 1. Get the ResponseService<string> from the token service
+        var tokenResponse = _tokenService.GetUserIdFromToken();
 
-            // 1. Apply Role-Based Filtering
-            if (role == (int)UserRoleEnum.TeamLeader && userId.HasValue)
-            {
-                query = query.Where(v => v.User.TeamleaderId == userId.Value);
-            }
-
-
-            // 2. Apply Search Term Filtering
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                query = query.Where(v => v.User.Name.Contains(searchTerm) ||
-                                         v.Reason.Contains(searchTerm));
-            }
-
-            // 3. Apply Date Range Filtering
-            if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate, out DateTime parsedFromDate))
-            {
-                query = query.Where(v => v.StartDate.Date >= parsedFromDate.Date);
-            }
-
-            if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate, out DateTime parsedToDate))
-            {
-                query = query.Where(v => v.EndDate.Date <= parsedToDate.Date);
-            }
-
-            // 4. Apply Status Filtering
-            if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse(typeof(LeaveRequestStatusEnum), status, true, out var parsedStatus))
-            {
-                query = query.Where(v => v.Status == (LeaveRequestStatusEnum)parsedStatus);
-            }
-
-            // 5. Apply Type Filtering
-            if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse(typeof(LeaveRequestType), type, true, out var parsedType))
-            {
-                query = query.Where(v => v.Type == (LeaveRequestType)parsedType);
-            }
-
-            // --- ORDERING IS CRUCIAL FOR PAGINATION/CONSISTENCY ---
-            // Always order the query before applying Skip/Take or ToListAsync
-            query = query.OrderByDescending(v => v.DateCreated);
-
-            // Project to DTO before pagination/materialization for efficiency
-            var projectedQuery = query.Select(x => new GetLeaveRequestDto
-            {
-                Id = x.Id,
-                StartDate = x.StartDate.ToString("yyyy-MM-dd"),
-                EndDate = x.EndDate.ToString("yyyy-MM-dd"),
-                Reason = x.Reason,
-                Status = x.Status.ToString(),
-                Duration = CalculateWorkingDays(x.StartDate, x.EndDate),
-                Type = x.Type.ToString(),
-                user = new IDName
-                {
-                    Id = x.User.Id,
-                    Name = x.User.Name
-                },
-                DateCreated = x.DateCreated.ToString()
-            });
-
-            PageList<GetLeaveRequestDto> pagedResult;
-
-            if (disablePagination)
-            {
-                // If pagination is disabled, get all matching items
-                var allItems = await projectedQuery.ToListAsync();
-                // Create a PageList with all items, setting page/pageSize/totalCount appropriately
-                pagedResult = new PageList<GetLeaveRequestDto>(allItems, 1, allItems.Count > 0 ? allItems.Count : 1, allItems.Count);
-            }
-            else
-            {
-                // Apply pagination as usual
-                pagedResult = await PageList<GetLeaveRequestDto>.CreateAsync(
-                    projectedQuery,
-                    page,
-                    pageSize
-                );
-            }
-
+        // 2. Check if the token response itself indicates an error or has no data
+        if (tokenResponse == null || tokenResponse.Error || string.IsNullOrWhiteSpace(tokenResponse.Data))
+        {
             return new ResponseService<PageList<GetLeaveRequestDto>>
             {
-                Error = false,
-                Message = "Vacations retrieved successfully.",
-                Data = pagedResult
+                Error = true,
+                Message = tokenResponse?.Message ?? "Failed to retrieve user ID from token.",
+                Data = null
             };
         }
 
+        // 3. Safely try to parse the string data from the tokenResponse.Data
+        if (!int.TryParse(tokenResponse.Data, out var currentUserId)) // Renamed to currentUserId for clarity
+        {
+            return new ResponseService<PageList<GetLeaveRequestDto>>
+            {
+                Error = true,
+                Message = "Invalid user ID format in token.",
+                Data = null
+            };
+        }
+
+        var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == currentUserId);
+        if (user == null)
+        {
+            return new ResponseService<PageList<GetLeaveRequestDto>>
+            {
+                Error = true,
+                Message = "User associated with the token not found.",
+                Data = null
+            };
+        }
+
+        var query = _dataContext.LeaveRequests
+            .Include(v => v.User)
+            .Include(v => v.Opinions) // <<< IMPORTANT: Include Opinions here for MyStatus calculation and filtering
+            .AsQueryable();
+
+        // 1. Apply Role-Based Filtering
+        // Note: 'userId' parameter was previously named 'userId', now using 'currentUserId' consistently.
+        // If you have a 'userId' parameter intended to filter by a *specific* user (not the logged-in one)
+        // you'll need to decide how that interacts with currentUserId and roles.
+        if (user.Role == UserRoleEnum.TeamLeader)
+        {
+            query = query.Where(v => v.User.TeamleaderId == currentUserId);
+        }
+        else if (user.Role == UserRoleEnum.Member) // Assuming regular users only see their own requests
+        {
+            query = query.Where(v => v.UserId == currentUserId);
+        }
+        // Add logic for ProjectManager, Admin, etc., if they have broader access
+
+        // 2. Apply Search Term Filtering
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(v => v.User.Name.Contains(searchTerm) ||
+                                     v.Reason.Contains(searchTerm));
+        }
+
+        // 3. Apply Date Range Filtering
+        if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate, out DateTime parsedFromDate))
+        {
+            query = query.Where(v => v.StartDate.Date >= parsedFromDate.Date);
+        }
+
+        if (!string.IsNullOrWhiteSpace(toDate) && DateTime.TryParse(toDate, out DateTime parsedToDate))
+        {
+            query = query.Where(v => v.EndDate.Date <= parsedToDate.Date);
+        }
+
+        // 4. Apply Status Filtering (for the overall request status)
+        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse(typeof(LeaveRequestStatusEnum), status, true, out var parsedStatus))
+        {
+            query = query.Where(v => v.Status == (LeaveRequestStatusEnum)parsedStatus);
+        }
+
+        // 5. Apply Type Filtering
+        if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse(typeof(LeaveRequestType), type, true, out var parsedType))
+        {
+            query = query.Where(v => v.Type == (LeaveRequestType)parsedType);
+        }
+
+        // 6. Apply MyStatus Filtering (based on current user's opinion status)
+        if (!string.IsNullOrWhiteSpace(myStatus))
+        {
+            var normalizedMyStatusFilter = myStatus.ToLowerInvariant(); // For case-insensitive comparison
+
+            switch (normalizedMyStatusFilter)
+            {
+                case "approved": // This can mean "Opinion Approved" OR "Request Approved (user didn't opine)"
+                    query = query.Where(x =>
+                        (x.Opinions.Any(o => o.UserId == currentUserId && o.IsApproved)) || // User opined and it's approved
+                        (!x.Opinions.Any(o => o.UserId == currentUserId) && x.Status == LeaveRequestStatusEnum.Approved) // User didn't opine and request is approved
+                    );
+                    break;
+                case "rejected": // This can mean "Opinion Rejected" OR "Request Rejected (user didn't opine)"
+                    query = query.Where(x =>
+                        (x.Opinions.Any(o => o.UserId == currentUserId && !o.IsApproved)) || // User opined and it's not approved
+                        (!x.Opinions.Any(o => o.UserId == currentUserId) && x.Status == LeaveRequestStatusEnum.Rejected) // User didn't opine and request is rejected
+                    );
+                    break;
+                case "pending": // This means user hasn't opined AND the request is pending
+                    query = query.Where(x => !x.Opinions.Any(o => o.UserId == currentUserId) && x.Status == LeaveRequestStatusEnum.Pending);
+                    break;
+                case "cancelled": // User hasn't opined and request is cancelled
+                    query = query.Where(x => !x.Opinions.Any(o => o.UserId == currentUserId) && x.Status == LeaveRequestStatusEnum.Cancelled);
+                    break;
+                default:
+                    // Handle unsupported myStatus values or ignore
+                    break;
+            }
+        }
+
+        // --- ORDERING IS CRUCIAL FOR PAGINATION/CONSISTENCY ---
+        query = query.OrderByDescending(v => v.DateCreated);
+
+        IQueryable<GetLeaveRequestDto> projectedQuery;
+
+        // The projection logic for MyStatus
+        // This logic needs to be applied consistently, regardless of role.
+        // The role-based filtering happens *before* the projection.
+        projectedQuery = query.Select(x => new GetLeaveRequestDto
+        {
+            Id = x.Id,
+            // Ensure DTO properties are 'string' for date-only output
+            StartDate = x.StartDate.ToString("yyyy-MM-dd"),
+            EndDate = x.EndDate.ToString("yyyy-MM-dd"),
+            Reason = x.Reason,
+            Status = x.Status.ToString(),
+            // NEW MyStatus Logic:
+            MyStatus = x.Opinions.Any(o => o.UserId == currentUserId) // Check if the current user (userId) has an opinion
+                       ? ( // If YES (user has an opinion):
+                             x.Opinions.FirstOrDefault(o => o.UserId == currentUserId).IsApproved // Get their opinion and check its approval status
+                             ? LeaveRequestStatusEnum.Approved.ToString() // If their opinion is Approved
+                             : LeaveRequestStatusEnum.Rejected.ToString() // If their opinion is NOT Approved (Rejected)
+                         )
+                       : ( // If NO (user has NOT added an opinion):
+                             x.Status == LeaveRequestStatusEnum.Pending // AND the request's overall status is Pending
+                             ? LeaveRequestStatusEnum.Pending.ToString() // Then MyStatus is "Pending" (for them to act)
+                             : x.Status.ToString() // Else (request is NOT Pending, e.g., Approved/Rejected/Cancelled by others), MyStatus is the request's actual Status
+                         ),
+            Duration = CalculateWorkingDays(x.StartDate, x.EndDate),
+            Type = x.Type.ToString(),
+            user = new IDName
+            {
+                Id = x.User.Id,
+                Name = x.User.Name
+            },
+            // Format DateCreated if it's DateTime? in your model and you want only the date string
+            DateCreated = x.DateCreated.HasValue ? x.DateCreated.Value.ToString("yyyy-MM-dd") : null
+        });
 
 
-        //public async Task<ResponseService<List<GetLeaveRequestDto>>> GetBelongToTm()
-        //{
+        PageList<GetLeaveRequestDto> pagedResult;
 
-        //} 
+        if (disablePagination)
+        {
+            var allItems = await projectedQuery.ToListAsync();
+            pagedResult = new PageList<GetLeaveRequestDto>(allItems, 1, allItems.Count > 0 ? allItems.Count : 1, allItems.Count);
+        }
+        else
+        {
+            pagedResult = await PageList<GetLeaveRequestDto>.CreateAsync(
+                projectedQuery,
+                page,
+                pageSize
+            );
+        }
 
-        // ✅ Read Single
-        public async Task<ActionResult<ResponseService<GetLeaveRequestDto>>> GetVacationByIdAsync(int id)
+        return new ResponseService<PageList<GetLeaveRequestDto>>
+        {
+            Error = false,
+            Message = "Vacations retrieved successfully.",
+            Data = pagedResult
+        };
+    }
+
+
+
+    //public async Task<ResponseService<List<GetLeaveRequestDto>>> GetBelongToTm()
+    //{
+
+    //} 
+
+    // ✅ Read Single
+    public async Task<ActionResult<ResponseService<GetLeaveRequestDto>>> GetVacationByIdAsync(int id)
         {
             var result = await _dataContext.LeaveRequests
                 .Include(v => v.User)
@@ -820,8 +934,8 @@ namespace AutomatedTaskSystem.Services.Leave
                 var projectedQuery = query.Select(x => new GetLeaveRequestDto
                 {
                     Id = x.Id,
-                    StartDate = x.StartDate.ToString("M/d/yyyy h:mm:ss tt"),
-                    EndDate = x.EndDate.ToString("M/d/yyyy h:mm:ss tt"),
+                    StartDate = x.StartDate.ToString("yyyy-MM-dd"),
+                    EndDate = x.EndDate.ToString("yyyy-MM-dd"),
                     Duration = CalculateWorkingDays(x.StartDate, x.EndDate), // Assuming CalculateWorkingDays is accessible
                     Reason = x.Reason,
                     Status = x.Status.ToString(),
@@ -918,8 +1032,8 @@ namespace AutomatedTaskSystem.Services.Leave
                 var now = DateTime.Now;
 
                 if ((leaveRequest.Status == LeaveRequestStatusEnum.Pending) ||
-                      (leaveRequest.Status == LeaveRequestStatusEnum.Approved && leaveRequest.StartDate > now))
-                    {
+                    (leaveRequest.Status == LeaveRequestStatusEnum.Approved && leaveRequest.StartDate > now))
+                {
                     var senderUser = leaveRequest.User;
                     bool wasApproved = leaveRequest.Status == LeaveRequestStatusEnum.Approved;
 
@@ -958,13 +1072,37 @@ namespace AutomatedTaskSystem.Services.Leave
                                         leaveRequest.Type,
                                         senderUser.HR_code),
                             IsHtml = true,
-                            CcEmails = new List<string> { senderUser.Email }
+                            CcEmails = new List<string>() // Initialize an empty list first
                         };
 
+                        // --- MODIFIED LOGIC HERE ---
+
+                        // If the sender (the one who requested the leave) is an Owner, add CEO FIRST
+                        if (senderUser.Role == UserRoleEnum.Owner)
+                        {
+                            if (!string.IsNullOrEmpty(_emailRecipients.CEO))
+                            {
+                                message.CcEmails.Add(_emailRecipients.CEO);
+                            }
+                        }
+
+                        // Always add the sender's email
+                        message.CcEmails.Add(senderUser.Email);
+
+                        // Add SectionHead email if it exists and is not null (this will come after CEO if owner, or after sender)
+                        if (!string.IsNullOrEmpty(_emailRecipients.SectionHead))
+                        {
+                            message.CcEmails.Add(_emailRecipients.SectionHead);
+                        }
+
+                        // --- END MODIFIED LOGIC ---
+
                         var result = await _emailService.SendEmailAsync(message);
+                       
 
                         if (!result.Success)
                         {
+                            _logService.LogError(result.Exception, $"Error sending leave cancellation email for request {id}. Message: {result.Message}");
                             return new ResponseService<bool>
                             {
                                 Error = true,
@@ -974,8 +1112,22 @@ namespace AutomatedTaskSystem.Services.Leave
                         }
                     }
 
+
                     await _dataContext.SaveChangesAsync();
 
+
+                    if (senderUser.Role != UserRoleEnum.Owner)
+                    {
+                        await _leaveRequestHelper.SendOwnerPendingUpdate();
+                        if(senderUser.Role != UserRoleEnum.ProjectManger)
+                        await _leaveRequestHelper.SendProjectManagersPendingUpdate();
+
+                        if (senderUser.TeamleaderId != null)
+                        {
+                            await _leaveRequestHelper.SendTeamLeaderPendingUpdates(senderUser.TeamleaderId.Value);
+
+                        }
+                    }
                     return new ResponseService<bool>
                     {
                         Error = false,
@@ -993,6 +1145,7 @@ namespace AutomatedTaskSystem.Services.Leave
             }
             catch (Exception ex)
             {
+                _logService.LogError(ex, $"An unhandled error occurred while cancelling leave request with ID {id}.");
                 return new ResponseService<bool> { Error = true, Message = "An error occurred.", Data = false };
             }
         }

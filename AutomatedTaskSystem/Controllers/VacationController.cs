@@ -28,12 +28,12 @@ namespace AutomatedTaskSystem.Controllers
         }
 
         // 🔹 READ ALL
-        [HttpGet]
-        public async Task<IActionResult> GetAllVacations([FromQuery] int? userId = null)
-        {
-            var result = await _vacationService.GetAllVacationsAsync(userId);
-            return Ok(result);
-        }
+        //[HttpGet]
+        //public async Task<IActionResult> GetAllVacations([FromQuery] int? userId = null)
+        //{
+        //    var result = await _vacationService.GetAllVacationsAsync(userId);
+        //    return Ok(result);
+        //}
 
         // 🔹 READ BY ID
         [HttpGet("{id}")]

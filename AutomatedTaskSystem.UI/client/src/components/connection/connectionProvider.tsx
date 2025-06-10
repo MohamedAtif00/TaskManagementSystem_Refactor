@@ -124,6 +124,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 
         const onUpdatePendings = (data: any) => {
             console.log("UpdatePendings received:", data);
+            debugger
             if (data.pendings !== undefined) {
                 setPendingNumber(data.pendings);
             }

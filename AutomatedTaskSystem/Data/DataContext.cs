@@ -27,6 +27,43 @@ public class DataContext : DbContext
             .WithMany(n => n.Previous)
             .UsingEntity(j => j.ToTable("NodeSequences"));
 
+        // *** Start of Foreign Key Cycle Fixes ***
+
+        // 1. SectionGroup to Section (as identified in the error message)
+        modelBuilder.Entity<SectionGroup>()
+            .HasOne(sg => sg.Section)
+            .WithMany(s => s.SectionGroups)
+            .HasForeignKey(sg => sg.SectionId)
+            .OnDelete(DeleteBehavior.NoAction); // Explicitly NoAction
+
+        // 2. SectionGroup to Group (as per your Group model having sectionGroups)
+        modelBuilder.Entity<SectionGroup>()
+            .HasOne(sg => sg.Group)
+            .WithMany(g => g.sectionGroups)
+            .HasForeignKey(sg => sg.GroupId)
+            .OnDelete(DeleteBehavior.NoAction); // Explicitly NoAction
+
+        // 3. Section to User (Head) - Assuming HeadId is nullable, SetNull is fine.
+        // If HeadId is non-nullable, it *must* be NoAction.
+        modelBuilder.Entity<Section>()
+            .HasOne(s => s.Head)
+            .WithMany() // Assuming User doesn't have a direct collection for sections it heads
+            .HasForeignKey(s => s.HeadId)
+            .IsRequired(false) // Assuming HeadId is nullable (int?)
+            .OnDelete(DeleteBehavior.NoAction); // SetNull is also an option if nullable, but NoAction is safer for cycles.
+
+        // 4. *** CRITICAL NEW ADDITION: User to Group relationship ***
+        // This is the most likely missing piece, as Group.Users suggests User has a GroupId.
+        // Assuming 'User.GroupId' is a non-nullable 'int'. If it's nullable ('int?'), use .IsRequired(false) and .OnDelete(DeleteBehavior.SetNull).
+        modelBuilder.Entity<User>()
+            .HasOne(u => u.Group)         // User has one Group
+            .WithMany(g => g.Users)       // Group has many Users (from your Group model)
+            .HasForeignKey(u => u.GroupId) // The foreign key property in User model
+                                           // .IsRequired(true) // Implicitly true if GroupId is 'int' and not nullable. No need to specify if it's 'int'.
+            .OnDelete(DeleteBehavior.NoAction); // *** Set to NoAction to break cycles for a required relationship ***
+
+        // *** End of Foreign Key Cycle Fixes ***
+
         modelBuilder
             .Entity<Step>()
             .HasMany(n => n.Rollbacks)
@@ -44,13 +81,13 @@ public class DataContext : DbContext
             .Entity<Models.Task>()
             .HasOne(t => t.Group)
             .WithMany()
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.SetNull); // Already SetNull, which is usually fine
 
         modelBuilder
             .Entity<Team>()
             .HasMany(t => t.Users)
             .WithOne(u => u.Team)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.SetNull); // Already SetNull, which is usually fine
 
         modelBuilder.Entity<User>().HasIndex(u => u.Code).IsUnique(true);
 
@@ -58,13 +95,13 @@ public class DataContext : DbContext
             .Entity<User>()
             .HasMany(u => u.RefreshTokens)
             .WithOne(t => t.User)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.SetNull); // SetNull here is fine
 
         modelBuilder
             .Entity<RefreshToken>()
             .HasOne(t => t.User)
             .WithMany(u => u.RefreshTokens)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Cascade); // This is likely okay as RefreshTokens are typically owned by User
 
         modelBuilder.Entity<User>().Property(u => u.Role).HasDefaultValue(UserRoleEnum.Member);
 
@@ -78,36 +115,11 @@ public class DataContext : DbContext
         modelBuilder
             .Entity<Year>()
             .HasData(
-                new Year
-                {
-                    Active = true,
-                    Id = 1,
-                    Number = "2020"
-                },
-                new Year
-                {
-                    Active = true,
-                    Id = 2,
-                    Number = "2021"
-                },
-                new Year
-                {
-                    Active = true,
-                    Id = 3,
-                    Number = "2022"
-                },
-                new Year
-                {
-                    Active = true,
-                    Id = 4,
-                    Number = "2023"
-                },
-                new Year
-                {
-                    Active = true,
-                    Id = 5,
-                    Number = "2024"
-                }
+                new Year { Active = true, Id = 1, Number = "2020" },
+                new Year { Active = true, Id = 2, Number = "2021" },
+                new Year { Active = true, Id = 3, Number = "2022" },
+                new Year { Active = true, Id = 4, Number = "2023" },
+                new Year { Active = true, Id = 5, Number = "2024" }
             );
 
         modelBuilder.Entity<Project>().Property(p => p.YearId).HasDefaultValue(1);
@@ -133,7 +145,7 @@ public class DataContext : DbContext
             .HasMany(x => x.Tasks)
             .WithOne(x => x.Sprint)
             .OnDelete(DeleteBehavior.NoAction);
-        //////////
+        ////////
         modelBuilder
             .Entity<LeaveRequest>()
             .Property(x => x.Type)
@@ -146,15 +158,15 @@ public class DataContext : DbContext
             .Property(x => x.DateCreated);
 
         var timeOnlyConverter = new ValueConverter<TimeOnly, TimeSpan>(
-           t => t.ToTimeSpan(),
-           ts => TimeOnly.FromTimeSpan(ts));
+            t => t.ToTimeSpan(),
+            ts => TimeOnly.FromTimeSpan(ts));
 
         modelBuilder
             .Entity<Permission>()
             .Property(x => x.Type)
             .HasConversion<string>();
         modelBuilder
-                        .Entity<Permission>()
+            .Entity<Permission>()
             .Property(x => x.Status)
             .HasConversion<string>();
 
@@ -176,7 +188,7 @@ public class DataContext : DbContext
             .HasOne(x => x.ChangedByUser)
             .WithMany(x => x.ChangedByUser)
             .OnDelete(DeleteBehavior.NoAction);
-            
+
         modelBuilder.Entity<Opinion>()
             .HasOne(x => x.LeaveRequest)
             .WithMany(x => x.Opinions)

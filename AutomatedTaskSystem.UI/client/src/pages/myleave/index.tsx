@@ -336,6 +336,7 @@ const LeaveManagement = () => {
 
   // Key to force DataTable remount and reset its internal state
   const [dataTableKey, setDataTableKey] = useState(0);
+  const [refreshKey, setRefreshKey] = useState(0); // <-- Add this state
 
 
   const leaveTableFilterConfig: FilterConfigItem[] = useMemo(() => [
@@ -484,19 +485,9 @@ const LeaveManagement = () => {
     permissionDataTablePage, permissionDataTableItemsPerPage, permissionDataTableSearchText, permissionDataTableDtFilters
   ]);
 
-
   const refreshData = useCallback(() => {
-    if (activeTab === "leaves") {
-      setLeaveDataTablePage(1); // Reset to page 1, useEffect will fetch with current filters/search
-    } else {
-      setPermissionDataTablePage(1); // Reset to page 1, useEffect will fetch with current filters/search
-    }
-  }, [activeTab]);
-
-  
-
-
-
+    setRefreshKey(prevKey => prevKey + 1);
+  }, []);
 
   const handleCancelAction = async (target: CancelTarget) => {
     setIsLoading(true);
@@ -549,7 +540,10 @@ const LeaveManagement = () => {
     "End Date": (value: string) => formatDateForTable(value),
     "Status": (value: LeaveRequestStatus) => <StatusBadge status={value} />,
     "Actions": (value: number, row: any) => {
-      const isDisabled = row.Status === LeaveRequestStatus.Cancelled || row.Status === LeaveRequestStatus.Rejected;
+      debugger
+    const isDisabled = row.Status === LeaveRequestStatus.Cancelled ||
+                       row.Status == LeaveRequestStatus.Rejected ||
+                       (row.Status === LeaveRequestStatus.Approved && isDateInPast(row['Start Date']));
       return (
         <div className="relative group">
           <button
@@ -668,7 +662,7 @@ const LeaveManagement = () => {
               {/* The "Filter" button and external filter UI are removed as DataTable will handle filtering */}
             </div>
              <div className="flex justify-end ">
-                <button onClick={resetFiltersAndPage} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Clear All Filters & Search</button>
+                <button onClick={resetFiltersAndPage} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">Clear All Filters</button>
             </div>
           </div>
 
@@ -684,6 +678,7 @@ const LeaveManagement = () => {
                 filterConfig={leaveTableFilterConfig} // Pass filterConfig for leaves
                 columnRenderers={leaveColumnRenderers}
                 serverSide={true} // Enable server-side operations
+                showSearchInput = {false}
               />
             ) : (
               <DataTable
@@ -696,6 +691,7 @@ const LeaveManagement = () => {
                 filterConfig={permissionTableFilterConfig} // Pass filterConfig for permissions
                 columnRenderers={permissionColumnRenderers}
                 serverSide={true} // Enable server-side operations
+                showSearchInput = {false}
               />
             )}
           </div>

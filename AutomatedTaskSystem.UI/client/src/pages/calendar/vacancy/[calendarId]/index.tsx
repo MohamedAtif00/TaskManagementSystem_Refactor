@@ -7,6 +7,8 @@ import { useAppSelector } from '../../../../app/hooks';
 import LEAVE, { IGetLeaveRequestForDetails, IGetOpinion, IOpinion, LeaveRequestStatus } from '../../../../lib/API/Leave';
 import AttachmentViewer, { Attachment } from '../../../../components/pageComponent/leave/attachmentViewer';
 import { url } from '../../../../lib/API';
+import { toast } from 'react-toastify';
+import TableLoader from '../../../../components/loader/table-loader';
 // import { User } from 'lucide-react';
 
 
@@ -25,47 +27,67 @@ const LeaveRequestDetails = () => {
   const [approvals, setApprovals] = useState<IGetOpinion[] | null>(null);
   const [attachments,setAttachments] = useState<Attachment[]>([])
 
+  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
 
 
   useEffect(() => {
-    //console.log(calendarId);
-    
-    let isMounted = true;
-        if (calendarId) {
-            fetchLeaveRequest(Number(calendarId)).then(({ leaveDetails }) => {
-              if (isMounted&&leaveDetails != false && leaveDetails?.data) {
-                setRequest(leaveDetails.data);
-                setApprovals(leaveDetails.data.opinions)
-                //console.log(leaveDetails,"after assign");
-                //console.log(leaveDetails.data.opinions,"opnions");
-                //console.log(auth.id);
-                
-                if((leaveDetails as IGetLeaveRequestForDetails).opinions?.some(x => x.user.id == auth.id))
-                {
-                    //console.log("commentable");
-                    
-                    setCommentable(false)
-                    
-                }
-              }
-            });
-        }
-        return () => {
-            isMounted = false;
-        };
-    }, [calendarId]);
+      let isMounted = true;
+      const numericCalendarId = Number(calendarId);
 
-        const fetchLeaveRequest = async (id: number) => {
-        try {
-            const leaveDetails = await LEAVE.GET_LEAVE_BY_USER(Number(calendarId));
-            //console.log(leaveDetails);
-            
-            return { leaveDetails };
-        } catch (error) {
-            console.error('Error fetching leave request:', error);
-            return { leaveDetails: null, opinions: [] };
-        }
-    };
+      // Only proceed if calendarId is a valid number
+      if (calendarId && !isNaN(numericCalendarId) && numericCalendarId > 0) {
+          setIsLoadingDetails(true);
+          
+          const doFetch = async () => {
+              try {
+                  // Assuming LEAVE.GET_LEAVE_BY_USER returns an object like:
+                  // { data: IGetLeaveRequestForDetails | null, error: boolean, message: string }
+                  const response = await LEAVE.GET_LEAVE_BY_USER(numericCalendarId);
+                  
+                  if (isMounted) {
+                      if (response && !response.error && response.data) {
+                          setRequest(response.data);
+                          setApprovals(response.data.opinions ?? null);
+                          // Determine if the current user can comment
+                          const canComment = !response.data.opinions?.some(op => op.user?.id === auth.id);
+                          setCommentable(canComment);
+                      } else {
+                          setRequest(null);
+                          setApprovals(null);
+                          setCommentable(true); // Default if no data or error
+                          toast.error(response?.message || "Failed to fetch leave details.");
+                          console.warn(response?.message || "Failed to fetch leave details or no data received.");
+                      }
+                  }
+              } catch (error) {
+                  if (isMounted) {
+                      setRequest(null);
+                      setApprovals(null);
+                      setCommentable(true);
+                      toast.error("An error occurred while fetching leave details.");
+                      console.error('Error fetching leave request:', error);
+                  }
+              } finally {
+                  if (isMounted) {
+                      setIsLoadingDetails(false);
+                  }
+              }
+          };
+
+          doFetch();
+
+      } else if (calendarId) { // calendarId exists but is not a valid number
+          toast.error("Invalid Calendar ID.");
+          setIsLoadingDetails(false);
+          setRequest(null);
+          setApprovals(null);
+          setCommentable(true);
+      }
+
+      return () => {
+          isMounted = false;
+      };
+  }, [calendarId, auth.id]); // Added auth.id to dependencies for `commentable` logic
 
 
     const handleSubmitOpinion = async (status: LeaveRequestStatus.Approved | LeaveRequestStatus.Rejected) => {
@@ -78,20 +100,37 @@ const LeaveRequestDetails = () => {
                 isApproved:status == "Approved"?true:false,
                 user:{id:auth.id,name:auth.name,role:auth.role}
             }
-            await LEAVE.CREATE_OPINION(op)
-
-            // Optional: refetch the leave request to update approvals
-            const { leaveDetails } = await fetchLeaveRequest(Number(calendarId));
-            if (leaveDetails && leaveDetails.data) {
-                setRequest(leaveDetails.data);
-                setApprovals(leaveDetails?.data.opinions);
-            } else {
-                // Otherwise, set the state to null (e.g., if API returned no data, or an error)
-                setRequest(null);
+            var response = await LEAVE.CREATE_OPINION(op)
+            debugger
+            if(response.error)
+            {
+              toast.success(response.message)
+            }else{
+              toast.error(response.message) 
             }
+            
+            // Refetch after submitting opinion to get the latest data
+            const numericCalendarId = Number(calendarId);
+            if (!isNaN(numericCalendarId) && numericCalendarId > 0) {
+                const refetchResponse = await LEAVE.GET_LEAVE_BY_USER(numericCalendarId);
+                if (isSubmitting && refetchResponse && !refetchResponse.error && refetchResponse.data) { // Check isSubmitting to ensure component is still mounted conceptually
+                    setRequest(refetchResponse.data);
+                    setApprovals(refetchResponse.data.opinions ?? null);
+                    const canComment = !refetchResponse.data.opinions?.some(op => op.user?.id === auth.id);
+                    setCommentable(canComment);
+                } else if (isSubmitting) { // Still mounted but refetch failed
+                    toast.error(refetchResponse?.message || "Failed to refresh leave details after submitting opinion.");
+                }
+            } else if (isSubmitting) { // Still mounted but calendarId became invalid
+                setRequest(null);
+                setApprovals(null);
+                setCommentable(true);
+            }
+
             // Clear form
             setComment('');
         } catch (error) {
+            toast.error("An error occurred while submitting your opinion.");
             console.error('Error submitting opinion:', error);
         } finally {
             setIsSubmitting(false);
@@ -137,7 +176,8 @@ const LeaveRequestDetails = () => {
     }
   };
 
-   
+   const overallLoading = isLoadingDetails || isSubmitting;
+
 
   const handleClick = async () => {
     
@@ -186,7 +226,13 @@ const LeaveRequestDetails = () => {
 
   return (
     <div className="bg-gray-50 min-h-screen p-6 w-full">
-      <div className="max-w-5xl mx-auto">
+
+       {overallLoading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50 rounded-lg"> {/* z-50 for high stacking */}
+                    <TableLoader />
+                </div>
+            )}
+      <div className={`max-w-5xl mx-auto ${overallLoading ? 'blur-sm pointer-events-none' : ''}`}>
         {/* Header */}
         <div className="flex items-center mb-8">
           {/* <User className="w-6 h-6 mr-2" /> */}
@@ -355,7 +401,9 @@ const LeaveRequestDetails = () => {
               </div>
             </div>
           ))}
-          {((auth.role < 3 || auth.role == 4 ) && !request?.opinions.some(x => x.user.id == auth.id))&& (
+          {((auth.role < 3 || auth.role == 4 ) && 
+            !request?.opinions.some(x => x.user.id == auth.id) &&
+            request?.status === LeaveRequestStatus.Pending ) && (
             <div className="mt-6 pt-6">
                 <h2 className="text-lg font-semibold mb-2">Your Opinion</h2>
                 <textarea

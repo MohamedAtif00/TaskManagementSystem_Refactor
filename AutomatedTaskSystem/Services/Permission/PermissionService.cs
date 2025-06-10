@@ -14,6 +14,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using static AutomatedTaskSystem.DTO.Responses;
 using static AutomatedTaskSystem.Services.Leave.LeaveRequestService;
 
@@ -27,13 +28,15 @@ namespace AutomatedTaskSystem.Services.Permission
         private readonly IEmailService _emailService;
         private readonly IHubContext<UserHub> _hubContext;
         private readonly PermissionRequestHelper _permissionRequestHelper;
-        public PermissionService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IHubContext<UserHub> hubContext, PermissionRequestHelper permissionRequestHelper)
+        private readonly EmailRecipientSettings _emailRecipients;
+        public PermissionService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IHubContext<UserHub> hubContext, PermissionRequestHelper permissionRequestHelper, IOptions<EmailRecipientSettings> emailRecipientsOptions)
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
             _emailService = emailService;
             _hubContext = hubContext;
             _permissionRequestHelper = permissionRequestHelper;
+            _emailRecipients = emailRecipientsOptions.Value;
         }
 
         // Create a new permission request
@@ -136,6 +139,32 @@ namespace AutomatedTaskSystem.Services.Permission
                         isApproved = true,
                         message = "Your permission request has been automatically approved."
                     });
+
+                    // Send email to CEO and Section Head
+                    var emailMessage = new EmailMessage
+                    {
+                        Subject = $"Permission Request - {user.Name} ({user.HR_code})",
+                        Body = EmailTemplate.CreatePermissionTemplate(
+                                                            permission.User.Name,
+                                                            permission.User.Email,
+                                                            permission.PermissionDate.ToString("yyyy-MM-dd"),
+                                                            permission.FromTime.ToString("hh:mm tt"),
+                                                            permission.ToTime.ToString("hh:mm tt"),
+                                                            permission.Type,
+                                                            permission.User.HR_code),
+                        IsHtml = true,
+                        CcEmails = new List<string> { _emailRecipients.CEO } // Send to configured emails
+                    };
+
+                    var emailResult = await _emailService.SendEmailAsync(emailMessage);
+                    if (!emailResult.Success)
+                    {
+                        //_logService.LogError(emailResult.Exception,
+                        //    "Error sending auto-approval permission email for Owner's request {PermissionId} to CEO/Section Head: {ErrorMessage}",
+                        //    permission.Id, emailResult.Message);
+                        // You might choose to return an error here or just log it, as the request is already approved in DB.
+                    }
+
                 }
                 else if (user.Role == UserRoleEnum.ProjectManger)
                 {
@@ -160,7 +189,7 @@ namespace AutomatedTaskSystem.Services.Permission
 
                         if (teamLeader != null)
                         {
-                            await _permissionRequestHelper.SendPendingUpdatesToClient(teamLeader.Id, permission.Id);
+                            await _permissionRequestHelper.SendTeamLeaderPendingUpdates(teamLeader.Id, newPermissionId:permission.Id);
                         }
                         else
                         {
@@ -230,6 +259,7 @@ namespace AutomatedTaskSystem.Services.Permission
             string? searchTerm = null, // Search term
             string? date = null, // Filter for specific permission date
             string? status = null, // Filter for status
+            string? myStatus = null,
             string? type = null // Filter for type
 )
         {
@@ -328,6 +358,37 @@ namespace AutomatedTaskSystem.Services.Permission
                     query = query.Where(p => p.Type == (PermissionType)parsedType);
                 }
 
+
+                if (!string.IsNullOrWhiteSpace(myStatus) && Enum.TryParse(typeof(PermissionStatusEnum), myStatus, true, out var parsedMyStatus))
+                {
+                    var normalizedMyStatusFilter = myStatus.ToLowerInvariant(); 
+
+                    switch (normalizedMyStatusFilter)
+                    {
+                        case "approved": 
+                            query = query.Where(x =>
+                                (x.Opinions.Any(o => o.UserId == currentUserId && o.IsApproved)) || 
+                                (!x.Opinions.Any(o => o.UserId == currentUserId) && x.Status == PermissionStatusEnum.Approved) 
+                            );
+                            break;
+                        case "rejected": 
+                            query = query.Where(x =>
+                                (x.Opinions.Any(o => o.UserId == currentUserId && !o.IsApproved)) || 
+                                (!x.Opinions.Any(o => o.UserId == currentUserId) && x.Status == PermissionStatusEnum.Rejected) 
+                            );
+                            break;
+                        case "pending":
+                            query = query.Where(x => !x.Opinions.Any(o => o.UserId == currentUserId) && x.Status == PermissionStatusEnum.Pending);
+                            break;
+                        case "cancelled": 
+                            query = query.Where(x => !x.Opinions.Any(o => o.UserId == currentUserId) && x.Status == PermissionStatusEnum.Cancelled);
+                            break;
+                        default:
+                            // Handle unsupported myStatus values or ignore
+                            break;
+                    }
+                }
+
                 // --- ORDERING IS CRUCIAL FOR PAGINATION ---
                 query = query.OrderByDescending(p => p.CreatedAt);
 
@@ -343,6 +404,17 @@ namespace AutomatedTaskSystem.Services.Permission
                         PermissionDate = p.PermissionDate.ToString("yyyy-MM-dd"),
                         Duration = CalculateDurationInMinutes(p.FromTime, p.ToTime), // Assuming CalculateDurationInMinutes is defined
                         Status = p.Status.ToString(),
+                        MyStatus = p.Opinions.Any(o => o.UserId == currentUserId) // Check if the current user (userId) has an opinion
+                       ? ( // If YES (user has an opinion):
+                             p.Opinions.FirstOrDefault(o => o.UserId == currentUserId).IsApproved // Get their opinion and check its approval status
+                             ? PermissionStatusEnum.Approved.ToString() // If their opinion is Approved
+                             : PermissionStatusEnum.Rejected.ToString() // If their opinion is NOT Approved (Rejected)
+                         )
+                       : ( // If NO (user has NOT added an opinion):
+                             p.Status == PermissionStatusEnum.Pending // AND the request's overall status is Pending
+                             ? PermissionStatusEnum.Pending.ToString() // Then MyStatus is "Pending" (for them to act)
+                             : p.Status.ToString() // Else (request is NOT Pending, e.g., Approved/Rejected/Cancelled by others), MyStatus is the request's actual Status
+                         ),
                         User = new IDName
                         {
                             Id = p.User.Id,
@@ -693,7 +765,7 @@ namespace AutomatedTaskSystem.Services.Permission
             try
             {
                 var permission = await _dataContext.Permissions
-                    .Include(x => x.User)
+                    .Include(x => x.User) // Ensure User is included to access senderUser.Role
                     .FirstOrDefaultAsync(x => x.Id == permissionId);
 
                 if (permission == null)
@@ -708,7 +780,7 @@ namespace AutomatedTaskSystem.Services.Permission
 
                 var now = DateTime.Now.Date;
 
-                if (permission.PermissionDate.Date < now )
+                if (permission.PermissionDate.Date < now)
                 {
                     // Past date
                     if (permission.Status == PermissionStatusEnum.Approved || permission.Status == PermissionStatusEnum.Rejected)
@@ -723,7 +795,7 @@ namespace AutomatedTaskSystem.Services.Permission
 
                     if (permission.Status == PermissionStatusEnum.Pending)
                     {
-                        // Allow cancel but no email
+                        // Allow cancel but no email notification for past pending permissions
                         permission.Status = PermissionStatusEnum.Cancelled;
                         permission.UpdatedAt = DateTime.UtcNow;
 
@@ -737,11 +809,11 @@ namespace AutomatedTaskSystem.Services.Permission
                         };
                     }
                 }
-                else
+                else // Future or today's date
                 {
-                    // Future or today
                     if (permission.Status == PermissionStatusEnum.Pending || permission.Status == PermissionStatusEnum.Approved)
                     {
+                        // Only send email if the permission was previously Approved
                         if (permission.Status == PermissionStatusEnum.Approved)
                         {
                             var senderUser = permission.User;
@@ -750,20 +822,47 @@ namespace AutomatedTaskSystem.Services.Permission
                             {
                                 Subject = "إلغاء طلب الإذن",
                                 Body = EmailTemplate.CreatePermissionCancellationTemplate(
-                                    senderUser.Name,
-                                    senderUser.Email,
-                                    permission.PermissionDate.ToString("yyyy-MM-dd"),
-                                    permission.FromTime.ToString(@"hh\:mm"),
-                                    permission.ToTime.ToString(@"hh\:mm"),
-                                    permission.Type),
+                                        senderUser.Name,
+                                        senderUser.Email,
+                                        permission.PermissionDate.ToString("yyyy-MM-dd"),
+                                        permission.FromTime.ToString(@"hh\:mm"),
+                                        permission.ToTime.ToString(@"hh\:mm"),
+                                        permission.Type,
+                                        senderUser.HR_code),
                                 IsHtml = true,
-                                CcEmails = new List<string> { senderUser.Email }
+                                CcEmails = new List<string>() // Initialize an empty list
                             };
+
+                            // --- MODIFIED LOGIC START ---
+
+                            // 1. If the sender is an Owner, add CEO FIRST
+                            if (senderUser.Role == UserRoleEnum.Owner)
+                            {
+                                if (!string.IsNullOrEmpty(_emailRecipients.CEO))
+                                {
+                                    message.CcEmails.Add(_emailRecipients.CEO);
+                                }
+                            }
+
+                            // 2. Always add the sender's email
+                            message.CcEmails.Add(senderUser.Email);
+
+                            // 3. Add SectionHead email if it exists (this will come after CEO if owner, or after sender)
+                            if (!string.IsNullOrEmpty(_emailRecipients.SectionHead))
+                            {
+                                message.CcEmails.Add(_emailRecipients.SectionHead);
+                            }
+
+                            // --- MODIFIED LOGIC END ---
 
                             var emailResult = await _emailService.SendEmailAsync(message);
 
                             if (!emailResult.Success)
                             {
+                                //_logService.LogError(emailResult.Exception,
+                                //    "Error sending permission cancellation email for request {PermissionId} to user {UserId}: {ErrorMessage}",
+                                //    permission.Id, senderUser.Id, emailResult.Message);
+
                                 return new ResponseService<bool>
                                 {
                                     Error = true,
@@ -772,12 +871,25 @@ namespace AutomatedTaskSystem.Services.Permission
                                 };
                             }
                         }
+
+                        // Set status to Cancelled and update timestamp
                         permission.Status = PermissionStatusEnum.Cancelled;
                         permission.UpdatedAt = DateTime.UtcNow;
 
-                        // Send email only if it was approved
-
                         await _dataContext.SaveChangesAsync();
+
+                        if (permission.User.Role != UserRoleEnum.Owner)
+                        {
+                            await _permissionRequestHelper.SendOwnerPendingUpdate();
+                            if (permission.User.Role != UserRoleEnum.ProjectManger)
+                                await _permissionRequestHelper.SendProjectManagersPendingUpdate();
+
+                            if (permission.User.TeamleaderId != null)
+                            {
+                                await _permissionRequestHelper.SendTeamLeaderPendingUpdates(permission.User.TeamleaderId.Value);
+
+                            }
+                        }
 
                         return new ResponseService<bool>
                         {
@@ -795,8 +907,9 @@ namespace AutomatedTaskSystem.Services.Permission
                     Data = false
                 };
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                //_logService.LogError(ex, "An unhandled error occurred while cancelling the permission with ID {PermissionId}.", permissionId);
                 return new ResponseService<bool>
                 {
                     Error = true,
@@ -908,9 +1021,10 @@ namespace AutomatedTaskSystem.Services.Permission
                                                             permission.PermissionDate.ToString("yyyy-MM-dd"),
                                                             permission.FromTime.ToString("hh:mm tt"),
                                                             permission.ToTime.ToString("hh:mm tt"),
-                                                            permission.Type),
+                                                            permission.Type,
+                                                            permission.User.HR_code),
                                 IsHtml = true,
-                                CcEmails = new List<string> { permission.User.Email }
+                                CcEmails = new List<string> { _emailRecipients.SectionHead??null, permission.User.Email }
                             };
 
                             var emailResult = await _emailService.SendEmailAsync(message);

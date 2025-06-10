@@ -26,6 +26,7 @@ interface IGetAllLeavesRequest {
     fromDate?: string;
     toDate?: string;
     status?: LeaveRequestStatus | "all";
+    myStatus?:LeaveRequestStatus | "all"
     type?: LeaveRequestType | "all";
 }
 
@@ -56,8 +57,11 @@ interface IGetAllPermissionsRequestNoPagination {
     date?: string;
     type?: PermissionType | "all";
     status?: PermissionRequestStatus | "all";
+    myStatus?: PermissionRequestStatus | "all";
     disablePagination: true; // Explicitly indicates no pagination
 }
+
+
 
 const Calendar = () => {
     const [activeTab, setActiveTab] = useState<"vacancy" | "permission">("vacancy");
@@ -106,91 +110,145 @@ const Calendar = () => {
         }
     }, []);
 
-    const transformedVacancyData = useMemo(() => vacancies.map(vacancy => ({
-        "User name": vacancy.user?.name ?? "N/A",
-        "Request date": formatDateForDisplay(vacancy.dateCreated),
-        "Vacancy type": vacancy.type,
-        "Final Status": vacancy.status,
-        "Vacancy date": formatDateForDisplay(vacancy.startDate),
-        "Actions": vacancy.id
-    })), [vacancies, formatDateForDisplay]);
+    const transformedVacancyData = useMemo(() => {
+        const isPrivilegedUser = auth.role === 0 || auth.role === 2; // Project Manager or Team Leader
+        return vacancies.map(vacancy => {
+            const baseData: Record<string, any> = {
+                "User name": vacancy.user?.name ?? "N/A",
+                "Request date": formatDateForDisplay(vacancy.dateCreated),
+                "Vacancy type": vacancy.type,
+                "Final Status": vacancy.status,
+                "Vacancy date": formatDateForDisplay(vacancy.startDate),
+                // "Actions": vacancy.id
+            };
+            if (isPrivilegedUser) {
+                baseData["My Status"] = vacancy.myStatus ?? vacancy.status; // Fallback to status if myStatus is not present
+            }
+            baseData["Actions"] = vacancy.id;
+            return baseData;
+        });
+    }, [vacancies, formatDateForDisplay, auth.role]);
 
-    const transformedPermissionData = useMemo(() => permissions.map(permission => ({
-        "User name": permission.user?.name ?? "N/A",
-        "Request date": formatDateForDisplay(permission.dateCreated),
-        "Permission Type": permission.type,
-        "Final Status": permission.status,
-        "Permission date": formatDateForDisplay(permission.permissionDate),
-        "Actions": permission.id
-    })), [permissions, formatDateForDisplay]);
+    const transformedPermissionData = useMemo(() => {
+        const isPrivilegedUser = auth.role === 0 || auth.role === 2; // Project Manager or Team Leader
+        return permissions.map(permission => {
+            const baseData: Record<string, any> = {
+                "User name": permission.user?.name ?? "N/A",
+                "Request date": formatDateForDisplay(permission.dateCreated),
+                "Permission Type": permission.type,
+                "Final Status": permission.status,
+                "Permission date": formatDateForDisplay(permission.permissionDate),
+                // "Actions": permission.id
+            };
+            if (isPrivilegedUser) {
+                baseData["My Status"] = permission.myStatus ?? permission.status; // Fallback to status if myStatus is not present
+            }
+            baseData["Actions"] = permission.id;
+            return baseData;
+        });
+    }, [permissions, formatDateForDisplay, auth.role]);
 
-    const vacancyFilterConfig = useMemo(() => [
-        {
-            key: "fromDate",
-            label: "Vacancy From",
-            type: "date" as const
-        },
-        {
-            key: "toDate",
-            label: "Vacancy To",
-            type: "date" as const
-        },
-        {
-            key: "status",
-            label: "Status",
-            type: "select" as const,
-            options: [
-                { value: "all", label: "All" },
-                { value: LeaveRequestStatus.Pending, label: "Pending" },
-                { value: LeaveRequestStatus.Approved, label: "Approved" },
-                { value: LeaveRequestStatus.Rejected, label: "Rejected" },
-                { value: LeaveRequestStatus.Cancelled, label: "Cancelled" }
-            ]
-        },
-        {
-            key: "type",
-            label: "Type",
-            type: "select" as const,
-            options: [
-                { value: "all", label: "All" },
-                { value: LeaveRequestType.Annual, label: "Annual" },
-                { value: LeaveRequestType.Sick, label: "Sick" },
-                { value: LeaveRequestType.Emergency, label: "Emergency" }
-            ]
+    const vacancyFilterConfig = useMemo(() => {
+        const config = [
+            {
+                key: "fromDate",
+                label: "Vacancy From",
+                type: "date" as const
+            },
+            {
+                key: "toDate",
+                label: "Vacancy To",
+                type: "date" as const
+            },
+            {
+                key: "status",
+                label: "Final Status", // Renamed for clarity if "My Status" filter is present
+                type: "select" as const,
+                options: [
+                    { value: "all", label: "All" },
+                    { value: LeaveRequestStatus.Pending, label: "Pending" },
+                    { value: LeaveRequestStatus.Approved, label: "Approved" },
+                    { value: LeaveRequestStatus.Rejected, label: "Rejected" },
+                    { value: LeaveRequestStatus.Cancelled, label: "Cancelled" }
+                ]
+            },
+            {
+                key: "type",
+                label: "Type",
+                type: "select" as const,
+                options: [
+                    { value: "all", label: "All" },
+                    { value: LeaveRequestType.Annual, label: "Annual" },
+                    { value: LeaveRequestType.Sick, label: "Sick" },
+                    { value: LeaveRequestType.Emergency, label: "Emergency" }
+                ]
+            }
+        ];
+        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+            config.push({
+                key: "myStatus",
+                label: "My Status",
+                type: "select" as const,
+                options: [
+                    { value: "all", label: "All" },
+                    { value: LeaveRequestStatus.Pending, label: "Pending" },
+                    { value: LeaveRequestStatus.Approved, label: "Approved" },
+                    { value: LeaveRequestStatus.Rejected, label: "Rejected" },
+                    { value: LeaveRequestStatus.Cancelled, label: "Cancelled" }
+                ]
+            });
         }
-    ], []);
+        return config;
+    }, [auth.role]);
 
-    const permissionFilterConfig = useMemo(() => [
-        {
-            key: "date",
-            label: "Permission Date",
-            type: "date" as const
-        },
-        {
-            key: "type",
-            label: "Type",
-            type: "select" as const,
-            options: [
-                { value: "all", label: "All" },
-                { value: PermissionType.EarlyDeparture, label: "Early Departure" },
-                { value: PermissionType.LateArrival, label: "Late Arrival" },
-                { value: PermissionType.WorkAssignment, label: "Work Assignment" },
-                { value: PermissionType.Departure, label: "Departure" }
-            ]
-        },
-        {
-            key: "status",
-            label: "Status",
-            type: "select" as const,
-            options: [
-                { value: "all", label: "All" },
-                { value: PermissionRequestStatus.Pending, label: "Pending" },
-                { value: PermissionRequestStatus.Approved, label: "Approved" },
-                { value: PermissionRequestStatus.Rejected, label: "Rejected" },
-
-            ]
+    const permissionFilterConfig = useMemo(() => {
+        const config = [
+            {
+                key: "date",
+                label: "Permission Date",
+                type: "date" as const
+            },
+            {
+                key: "type",
+                label: "Type",
+                type: "select" as const,
+                options: [
+                    { value: "all", label: "All" },
+                    { value: PermissionType.EarlyDeparture, label: "Early Departure" },
+                    { value: PermissionType.LateArrival, label: "Late Arrival" },
+                    { value: PermissionType.WorkAssignment, label: "Work Assignment" },
+                    { value: PermissionType.Departure, label: "Departure" }
+                ]
+            },
+            {
+                key: "status",
+                label: "Final Status", // Renamed for clarity
+                type: "select" as const,
+                options: [
+                    { value: "all", label: "All" },
+                    { value: PermissionRequestStatus.Pending, label: "Pending" },
+                    { value: PermissionRequestStatus.Approved, label: "Approved" },
+                    { value: PermissionRequestStatus.Rejected, label: "Rejected" },
+                    { value: PermissionRequestStatus.Cancelled, label: "Cancelled" }
+                ]
+            }
+        ];
+        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+            config.push({
+                key: "myStatus",
+                label: "My Status",
+                type: "select" as const,
+                options: [
+                    { value: "all", label: "All" },
+                    { value: PermissionRequestStatus.Pending, label: "Pending" },
+                    { value: PermissionRequestStatus.Approved, label: "Approved" },
+                    { value: PermissionRequestStatus.Rejected, label: "Rejected" },
+                    { value: PermissionRequestStatus.Cancelled, label: "Cancelled" }
+                ]
+            });
         }
-    ], []);
+        return config;
+    }, [auth.role]);
 
     const commonStatusRenderer = useCallback((value: string) => {
         const getStatusColor = (status: string) => {
@@ -220,22 +278,34 @@ const Calendar = () => {
         </Link>
     ), []);
 
-    const vacancyColumnRenderers = useMemo(() => ({
-        "Final Status": commonStatusRenderer,
-        "Actions": (value: number) => commonActionsRenderer(value, 'vacancy')
-    }), [commonStatusRenderer, commonActionsRenderer]);
+    const vacancyColumnRenderers = useMemo(() => {
+        const renderers: Record<string, (value: any, row?: Record<string, any>) => React.ReactNode> = {
+            "Final Status": commonStatusRenderer,
+            "Actions": (value: number) => commonActionsRenderer(value, 'vacancy')
+        };
+        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+            renderers["My Status"] = commonStatusRenderer;
+        }
+        return renderers;
+    }, [commonStatusRenderer, commonActionsRenderer, auth.role]);
 
-    const permissionColumnRenderers = useMemo(() => ({
-        "Final Status": commonStatusRenderer,
-        "Actions": (value: number) => commonActionsRenderer(value, 'permission')
-    }), [commonStatusRenderer, commonActionsRenderer]);
+    const permissionColumnRenderers = useMemo(() => {
+        const renderers: Record<string, (value: any, row?: Record<string, any>) => React.ReactNode> = {
+            "Final Status": commonStatusRenderer,
+            "Actions": (value: number) => commonActionsRenderer(value, 'permission')
+        };
+        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+            renderers["My Status"] = commonStatusRenderer;
+        }
+        return renderers;
+    }, [commonStatusRenderer, commonActionsRenderer, auth.role]);
 
     const fetchVacancies = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
         setLoading(prev => ({ ...prev, vacancies: true }));
         try {
             const params: IGetAllLeavesRequest = {
-                userId: auth.id,
-                role: auth.role,
+                // userId: auth.id,
+                // role: auth.role,
                 page: page,
                 pageSize: itemsPerPage,
                 searchTerm: searchText === "" ? undefined : searchText,
@@ -243,6 +313,7 @@ const Calendar = () => {
                 toDate: filters.toDate as string | undefined,
                 status: filters.status === "all" ? undefined : filters.status as LeaveRequestStatus,
                 type: filters.type === "all" ? undefined : filters.type as LeaveRequestType,
+                myStatus: (auth.role === 0 || auth.role === 2) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as LeaveRequestStatus : undefined,
             };
 
             const response = await LEAVE.GET_ALL_DB(params as Record<string, string | number | boolean | undefined>);
@@ -275,6 +346,7 @@ const Calendar = () => {
                 date: filters.date as string | undefined,
                 type: filters.type === "all" ? undefined : filters.type as PermissionType,
                 status: filters.status === "all" ? undefined : filters.status as PermissionRequestStatus,
+                myStatus: (auth.role === 0 || auth.role === 2) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as PermissionRequestStatus : undefined,
             };
 
             const response = await PERMISSION.GET_ALL(params as Record<string, string | number | boolean | undefined>);
@@ -317,12 +389,20 @@ const Calendar = () => {
         if (tab === "vacancy") {
             setVacancyCurrentPage(1);
             setVacancyItemsPerPage(10); // Reset items per page too
-            setVacancyFilters({ fromDate: undefined, toDate: undefined, status: "all", type: "all" });
+            const baseVacancyFilters: Record<string, any> = { fromDate: undefined, toDate: undefined, status: "all", type: "all" };
+            if (auth.role === 0 || auth.role === 2) {
+                baseVacancyFilters.myStatus = "all";
+            }
+            setVacancyFilters(baseVacancyFilters);
             setVacancySearchText("");
         } else {
             setPermissionCurrentPage(1);
             setPermissionItemsPerPage(10); // Reset items per page too
-            setPermissionFilters({ date: undefined, type: "all", status: "all" });
+            const basePermissionFilters: Record<string, any> = { date: undefined, type: "all", status: "all" };
+            if (auth.role === 0 || auth.role === 2) {
+                basePermissionFilters.myStatus = "all";
+            }
+            setPermissionFilters(basePermissionFilters);
             setPermissionSearchText("");
         }
     }, []);
@@ -351,21 +431,28 @@ const Calendar = () => {
             toDate: vacancyFilters.toDate as string | undefined,
             status: vacancyFilters.status === "all" ? undefined : vacancyFilters.status as LeaveRequestStatus,
             type: vacancyFilters.type === "all" ? undefined : vacancyFilters.type as LeaveRequestType,
-            disablePagination: true
+            disablePagination: true,
+            myStatus: (auth.role === 0 || auth.role === 2) && vacancyFilters.myStatus && vacancyFilters.myStatus !== "all" ? vacancyFilters.myStatus as LeaveRequestStatus : undefined,
         };
         const response = await LEAVE.GET_ALL_FOR_EXPORT(params);
+        
         if (response && response.data && Array.isArray(response.data.items)) {
-            return response.data.items.map(item => ({
-                "Id": item.id,
-                "User Name": item.user?.name ?? "N/A",
-                "Request Date": formatDateForDisplay(item.dateCreated),
-                "Start Date": formatDateForDisplay(item.startDate),
-                "End Date": formatDateForDisplay(item.endDate),
-                "Duration": item.duration,
-                "Type": item.type,
-                "Status": item.status,
-                "Reason": item.reason,
-            }));
+            const isPrivilegedUser = auth.role === 0 || auth.role === 2;
+            return response.data.items.map(item => {
+                const exportItem: Record<string, any> = {
+                    "Id": item.id,
+                    "User Name": item.user?.name ?? "N/A",
+                    "Request Date": formatDateForDisplay(item.dateCreated),
+                    "Start Date": formatDateForDisplay(item.startDate),
+                    "End Date": formatDateForDisplay(item.endDate),
+                    "Duration": item.duration,
+                    "Type": item.type,
+                    "Status": item.status,
+                    "Reason": item.reason,
+                };
+                if (isPrivilegedUser) exportItem["My Status"] = item.myStatus ?? item.status; // Use myStatus, fallback to status
+                return exportItem;
+            });
         }
         return [];
     }, [auth.id, auth.role, vacancySearchText, vacancyFilters, formatDateForDisplay]);
@@ -380,22 +467,28 @@ const Calendar = () => {
             date: permissionFilters.date as string | undefined,
             type: permissionFilters.type === "all" ? undefined : permissionFilters.type as PermissionType,
             status: permissionFilters.status === "all" ? undefined : permissionFilters.status as PermissionRequestStatus,
-            disablePagination: true
+            disablePagination: true,
+            myStatus: (auth.role === 0 || auth.role === 2) && permissionFilters.myStatus && permissionFilters.myStatus !== "all" ? permissionFilters.myStatus as PermissionRequestStatus : undefined,
         };
         const response = await PERMISSION.GET_ALL_FOR_EXPORT(params); // Assuming a similar export endpoint for permissions
         if (response && response.data && Array.isArray(response.data.items)) {
-            return response.data.items.map((item: IPermission) => ({ // <-- Add type annotation here
-                "Id": item.id,
-                "User Name": item.user?.name ?? "N/A",
-                "Request Date": formatDateForDisplay(item.dateCreated),
-                "Permission Date": formatDateForDisplay(item.permissionDate),
-                "Start Time": item.fromTime,
-                "End Time": item.toTime,
-                "Duration": item.duration,
-                "Type": item.type,
-                "Status": item.status,
-                "Reason": item.reason,
-            }));
+            const isPrivilegedUser = auth.role === 0 || auth.role === 2;
+            return response.data.items.map((item: IPermission) => {
+                const exportItem: Record<string, any> = {
+                    "Id": item.id,
+                    "User Name": item.user?.name ?? "N/A",
+                    "Request Date": formatDateForDisplay(item.dateCreated),
+                    "Permission Date": formatDateForDisplay(item.permissionDate),
+                    "Start Time": item.fromTime,
+                    "End Time": item.toTime,
+                    "Duration": item.duration,
+                    "Type": item.type,
+                    "Status": item.status,
+                    "Reason": item.reason,
+                };
+                if (isPrivilegedUser) exportItem["My Status"] = item.myStatus ?? item.status; // Use myStatus, fallback to status
+                return exportItem;
+            });
         }
         return [];
     }, [auth.role, permissionSearchText, permissionFilters, formatDateForDisplay]);
@@ -440,7 +533,7 @@ const Calendar = () => {
 
             <div className="flex justify-end gap-3 mb-4">
                 {/* Client-side export for the currently displayed data */}
-                <ExportButton data={activeTab === "vacancy" ? transformedVacancyData : transformedPermissionData} />
+                {/* <ExportButton data={activeTab === "vacancy" ? transformedVacancyData : transformedPermissionData} /> */}
 
                 {/* Server-side export button for Vacancies */}
                 {activeTab === "vacancy" && (

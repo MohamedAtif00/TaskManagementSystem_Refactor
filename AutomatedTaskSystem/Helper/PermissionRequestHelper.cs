@@ -136,6 +136,39 @@ namespace AutomatedTaskSystem.Helper
         }
 
         /// <summary>
+        /// Sends SignalR update to the teamleader with pending requests.
+        /// </summary>
+        public async System.Threading.Tasks.Task SendTeamLeaderPendingUpdates(
+            int teamLeaderUserId,
+            int? newLeaveRequestId = null,
+            int? newPermissionId = null)
+        {
+            var pendingLeaveRequestsForTm = await _dataContext.LeaveRequests
+                .Include(x => x.Opinions)
+                .Where(x => x.Status == LeaveRequestStatusEnum.Pending &&
+                            x.User.TeamleaderId == teamLeaderUserId &&
+                            !x.Opinions.Any(o => o.UserId == teamLeaderUserId))
+                .CountAsync();
+
+            var pendingPermissionRequestsForTm = await _dataContext.Permissions
+                .Include(x => x.Opinions)
+                .Where(x => x.Status == PermissionStatusEnum.Pending &&
+                            x.User.TeamleaderId == teamLeaderUserId &&
+                            !x.Opinions.Any(o => o.UserId == teamLeaderUserId))
+                .CountAsync();
+
+            var totalPendingsForTm = pendingLeaveRequestsForTm + pendingPermissionRequestsForTm;
+
+            await _hubContext.Clients.User(teamLeaderUserId.ToString()).SendAsync("UpdatePendings", new
+            {
+                pendings = totalPendingsForTm,
+                isNewRequest = newLeaveRequestId.HasValue || newPermissionId.HasValue,
+                newLeaveRequestId = newLeaveRequestId,
+                newPermissionId = newPermissionId
+            });
+        }
+
+        /// <summary>
         /// Sends SignalR updates to relevant parties (Owner, Project Managers, Team Leaders)
         /// to refresh their pending request counts after an opinion is given on a leave request.
         /// </summary>

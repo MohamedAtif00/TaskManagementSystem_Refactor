@@ -44,12 +44,10 @@ namespace AutomatedTaskSystem.Services.Email
                 </head>
                 <body>
                     <div class='container'>
+                        <h1>Digital<h1>
                         <h2>طلب أجازة</h2>
                         <div class='section'>
                             <span class='label'>الموظف:</span> {fullName}
-                        </div>
-                        <div class='section'>
-                            <span class='label'>البريد الإلكتروني:</span> {email}
                         </div>
                         <div class='section'>
                             <span class='label'>تاريخ البدء:</span> {startDate:yyyy-MM-dd}
@@ -78,7 +76,8 @@ namespace AutomatedTaskSystem.Services.Email
                        string permissionDate,
                        string from,
                        string to,
-                        PermissionType type)
+                        PermissionType type,
+                        string hrCode)
                        => $@"
                         <html lang='ar' dir='rtl'>
                         <head>
@@ -112,12 +111,10 @@ namespace AutomatedTaskSystem.Services.Email
                         </head>
                         <body>
                             <div class='container'>
+                                <h1>Digital<h1>
                                 <h2>  طلب الإذن</h2>
                                 <div class='section'>
                                     <span class='label'>الموظف:</span> {fullName}
-                                </div>
-                                <div class='section'>
-                                    <span class='label'>البريد الإلكتروني:</span> {email}
                                 </div>
                                 <div class='section'>
                                     <span class='label'>تاريخ الإذن:</span> {permissionDate}
@@ -130,6 +127,9 @@ namespace AutomatedTaskSystem.Services.Email
                                 </div>
                                 <div class='section'>
                                    <span class='label'>نوع الإذن:</span> {TranslatePermissionType(type)}
+                                </div>
+                                 <div class='section'>
+                                   <div class='section'><span class='label'>كود الموظف:</span> {hrCode}</div>
                                 </div>
                             </div>
                         </body>
@@ -165,9 +165,9 @@ namespace AutomatedTaskSystem.Services.Email
                 </head>
                 <body>
                     <div class='container'>
-                        <h2>تم إلغاء طلب الأجازة</h2>
+                        <h1>Digital<h1>
+                        <h2> إلغاء طلب الأجازة</h2>
                         <div class='section'><span class='label'>الموظف:</span> {fullName}</div>
-                        <div class='section'><span class='label'>البريد الإلكتروني:</span> {email}</div>
                         <div class='section'><span class='label'>تاريخ البدء:</span> {startDate}</div>
                         <div class='section'><span class='label'>تاريخ الانتهاء:</span> {endDate}</div>
                         <div class='section'><span class='label'>مدة الأجازة:</span> {duration} يوم</div>
@@ -179,7 +179,7 @@ namespace AutomatedTaskSystem.Services.Email
 
 
         public static string CreatePermissionCancellationTemplate(
-                     string fullName, string email, string permissionDate, string from, string to, PermissionType type) => $@"
+                     string fullName, string email, string permissionDate, string from, string to, PermissionType type,string hrCode) => $@"
                 <html lang='ar' dir='rtl'>
                 <head>
                     <style>
@@ -208,13 +208,14 @@ namespace AutomatedTaskSystem.Services.Email
                 </head>
                 <body>
                     <div class='container'>
-                        <h2>تم إلغاء طلب الإذن</h2>
+                        <h1>Digital<h1>
+                        <h2> إلغاء طلب الإذن</h2>
                         <div class='section'><span class='label'>الموظف:</span> {fullName}</div>
-                        <div class='section'><span class='label'>البريد الإلكتروني:</span> {email}</div>
                         <div class='section'><span class='label'>تاريخ الإذن:</span> {permissionDate}</div>
                         <div class='section'><span class='label'>من الساعة:</span> {from}</div>
                         <div class='section'><span class='label'>إلى الساعة:</span> {to}</div>
                         <div class='section'><span class='label'>نوع الإذن:</span> {TranslatePermissionType(type)}</div>
+                        <div class='section'><span class='label'>كود الموظف:</span> {hrCode}</div>
                     </div>
                 </body>
                 </html>";

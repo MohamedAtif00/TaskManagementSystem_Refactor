@@ -405,8 +405,8 @@ public class ProjectService : IProjectService
     }
 
     public async Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetUnassignedUsers(
-        int Id
-    )
+    int Id
+)
     {
         var project = await _context.Projects
             .Where(p => !p.Archived && p.Id == Id)
@@ -420,7 +420,7 @@ public class ProjectService : IProjectService
         var users = await _context.Users
             .Where(u => !u.Archived && !u.Projects.Any(p => p.Id == project.Id))
             .Include(u => u.Projects)
-            .Include(u => u.Group)
+            .Include(u => u.Group) // Ensure Group is loaded
             .ToListAsync();
 
         return new ResponseService<List<Responses.UserDTO>>
@@ -432,8 +432,15 @@ public class ProjectService : IProjectService
                         {
                             Id = u.Id,
                             Name = u.Name,
-                            Group = { Id = u.GroupId ?? 0, Name = u.Group.Name },
                             Role = u.Role,
+                            // --- FIX APPLIED HERE ---
+                            Group = u.Group != null // Check if u.Group is not null before accessing its properties
+                                ? new Responses.IDName // Assuming you have a GroupDTO in Responses namespace
+                                {
+                                    Id = u.GroupId ?? 0, // u.GroupId could be null, use null-coalescing
+                                    Name = u.Group.Name // Now it's safe to access u.Group.Name
+                                }
+                                : null // Or a default GroupDTO if Group can be null
                         }
                 )
                 .ToList(),
@@ -531,6 +538,7 @@ public class ProjectService : IProjectService
                 t.LearningObjective != null &&
                 t.LearningObjective.Lesson != null &&
                 t.LearningObjective.Lesson.Unit != null &&
+                (t.Status == Models.Enums.TaskStatus.TaskStatusEnum.Backlog || t.Status == Models.Enums.TaskStatus.TaskStatusEnum.ToDo)&&
                 userProjectIds.Contains(t.LearningObjective.Lesson.Unit.ProjectId)
             )
             .GroupBy(t => t.LearningObjective.Lesson.Unit.ProjectId)

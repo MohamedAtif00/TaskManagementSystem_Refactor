@@ -36,6 +36,7 @@ namespace AutomatedTaskSystem.Services.Permission
         public string PermissionDate { get; set; } = "";
         public string Duration { get; set; } // Duration in minutes
         public string Status { get; set; } = "";
+        public string MyStatus { get; set; } = "";
         public IDName User { get; set; } = new IDName();
         public string DateCreated { get; set; } = "";
     }

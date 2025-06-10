@@ -37,7 +37,7 @@ namespace AutomatedTaskSystem.Services.Email
                 {
                     From = new MailAddress(
                         _emailSettings.StaticSender.Email,
-                        _emailSettings.StaticSender.Name),
+                        _emailSettings.StaticSender.Name),  
                     Subject = message.Subject,
                     Body = message.Body,
                     IsBodyHtml = message.IsHtml,
@@ -52,6 +52,7 @@ namespace AutomatedTaskSystem.Services.Email
                 // Add static CCs
                 foreach (var cc in message.CcEmails)
                 {
+                    if(cc != null)
                     mailMessage.CC.Add(cc);
                 }
 

@@ -7,6 +7,26 @@ import {
     FiSearch,
 } from "react-icons/fi";
 import { format } from "date-fns";
+import TableLoader from "../loader/table-loader";
+
+
+// Helper for deep comparison (move this to a utility file if used elsewhere)
+const deepEqual = (obj1: any, obj2: any): boolean => {
+    if (obj1 === obj2) return true;
+    if (typeof obj1 !== 'object' || obj1 === null || typeof obj2 !== 'object' || obj2 === null) return false;
+
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) return false;
+
+    for (const key of keys1) {
+        if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) {
+            return false;
+        }
+    }
+    return true;
+};
 
 interface FilterOption {
     value: string | number;
@@ -24,15 +44,15 @@ interface FilterConfig {
 
 interface DataTableProps {
     data: Record<string, any>[];
-    totalCount: number; // This will now come from the API response
-    // onPageChange will now also send filter state
+    totalCount: number;
     onPageChange: (page: number, itemsPerPage: number, filters: Record<string, any>, searchText: string) => void;
     filterConfig?: FilterConfig[];
-    itemsPerPage?: number; // Default value is handled internally
+    itemsPerPage?: number;
     loading?: boolean;
     columnRenderers?: Record<string, (value: any, row?: Record<string, any>) => ReactNode>;
-    // Optional prop to indicate if pagination and filtering are handled externally (server-side)
     serverSide?: boolean;
+    showSearchInput?: boolean;
+    shouldFocusSearch?: boolean;
 }
 
 interface PaginationButtonProps {
@@ -40,7 +60,7 @@ interface PaginationButtonProps {
     disabled: boolean;
     children: ReactNode;
     ariaLabel: string;
-    isActive?: boolean; // New prop for active page styling
+    isActive?: boolean;
 }
 
 const DataTable: React.FC<DataTableProps> = ({
@@ -48,58 +68,81 @@ const DataTable: React.FC<DataTableProps> = ({
     totalCount = 0,
     onPageChange,
     filterConfig = [],
-    itemsPerPage: propItemsPerPage = 10, // Renamed to avoid confusion with internal state
+    itemsPerPage: propItemsPerPage = 10,
     loading = false,
     columnRenderers = {},
     serverSide = false,
+    showSearchInput = true,
+    shouldFocusSearch = false,
 }) => {
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [currentItemsPerPage, setCurrentItemsPerPage] = useState<number>(propItemsPerPage);
     const [filters, setFilters] = useState<Record<string, any>>({});
     const [searchText, setSearchText] = useState<string>("");
-    const initialRenderRef = useRef(true); // Ref to track initial render for useEffect
 
-    // Effect to trigger API call when page, filters, or search text changes
+    const searchInputRef = useRef<HTMLInputElement>(null);
+
+    const lastSentPageRef = useRef<number>(1);
+    const lastSentItemsPerPageRef = useRef<number>(propItemsPerPage);
+    const lastSentFiltersRef = useRef<Record<string, any>>({});
+    const lastSentSearchTextRef = useRef<string>("");
+    const isInitialMount = useRef(true);
+
+
     useEffect(() => {
-        // Skip API call on initial render if serverSide is true,
-        // assuming parent component triggers initial data fetch
-        if (serverSide && initialRenderRef.current) {
-            initialRenderRef.current = false;
+        if (shouldFocusSearch && searchInputRef.current) {
+            searchInputRef.current.focus();
+        }
+    }, [shouldFocusSearch]);
+
+    useEffect(() => {
+        if (isInitialMount.current && serverSide) {
+            isInitialMount.current = false;
             return;
         }
 
-        if (serverSide) {
-            // Debounce searchText and filters to prevent excessive API calls
-            const handler = setTimeout(() => {
-                onPageChange(currentPage, currentItemsPerPage, filters, searchText);
-            }, 300); // Standard debounce for 300ms
+        const hasPageChanged = currentPage !== lastSentPageRef.current;
+        const hasItemsPerPageChanged = currentItemsPerPage !== lastSentItemsPerPageRef.current;
+        const hasSearchTextChanged = searchText !== lastSentSearchTextRef.current;
+        const hasFiltersChanged = !deepEqual(filters, lastSentFiltersRef.current);
 
-            return () => {
-                clearTimeout(handler);
-            };
-        } else {
-            // For client-side, the onPageChange callback can be called directly
-            // when data or filters change, to inform the parent about current state
+        if (!hasPageChanged && !hasItemsPerPageChanged && !hasSearchTextChanged && !hasFiltersChanged) {
+            return;
+        }
+
+        const handler = setTimeout(() => {
+            if (serverSide) {
+                lastSentPageRef.current = currentPage;
+                lastSentItemsPerPageRef.current = currentItemsPerPage;
+                lastSentFiltersRef.current = filters;
+                lastSentSearchTextRef.current = searchText;
+
+                onPageChange(currentPage, currentItemsPerPage, filters, searchText);
+            }
+        }, 300);
+
+        if (!serverSide) {
             onPageChange(currentPage, currentItemsPerPage, filters, searchText);
         }
+
+        return () => {
+            clearTimeout(handler);
+        };
+
     }, [currentPage, currentItemsPerPage, filters, searchText, serverSide, onPageChange]);
 
-    // Update internal itemsPerPage if propItemsPerPage changes from parent
     useEffect(() => {
         if (propItemsPerPage !== currentItemsPerPage) {
             setCurrentItemsPerPage(propItemsPerPage);
-            setCurrentPage(1); // Reset page if items per page changes
+            setCurrentPage(1);
         }
-    }, [propItemsPerPage]);
+    }, [propItemsPerPage, currentItemsPerPage]);
 
-
-     // Client-side filtering and pagination (only if not serverSide)
     const filteredData = useMemo(() => {
-        if (serverSide) return data; // If server-side, data is already filtered/paginated by the parent
+        if (serverSide) return data;
 
         let currentFilteredData = data;
 
-        // Apply text search
         if (searchText.trim()) {
             currentFilteredData = currentFilteredData.filter(row =>
                 Object.values(row).some(value =>
@@ -108,19 +151,17 @@ const DataTable: React.FC<DataTableProps> = ({
             );
         }
 
-        // Apply additional filters (for client-side)
         Object.keys(filters).forEach(filterKey => {
             const filterValue = filters[filterKey];
-            // Only apply filter if value is not empty/all for select and not undefined/null
             if (filterValue !== "" && filterValue !== undefined && filterValue !== null && filterValue !== "all") {
                 currentFilteredData = currentFilteredData.filter(row => {
                     const rowValue = row[filterKey];
                     if (rowValue === undefined || rowValue === null) return false;
 
-                    // Special handling for date filtering for client-side
-                    if (filterConfig.find(f => f.key === filterKey)?.type === "date") {
+                    const filterConfigItem = filterConfig.find(f => f.key === filterKey);
+
+                    if (filterConfigItem?.type === "date") {
                         try {
-                            // Compare dates based on YYYY-MM-DD
                             return format(new Date(rowValue), 'yyyy-MM-dd') === format(new Date(filterValue), 'yyyy-MM-dd');
                         } catch (e) {
                             console.warn(`Invalid date value for filter key ${filterKey}:`, rowValue, filterValue);
@@ -128,15 +169,14 @@ const DataTable: React.FC<DataTableProps> = ({
                         }
                     }
 
-                    // Default string comparison for other types
                     return String(rowValue).toLowerCase().includes(String(filterValue).toLowerCase());
                 });
             }
         });
 
         return currentFilteredData;
-    }, [data, searchText, filters, serverSide, filterConfig]); // Added filterConfig to dependencies
-        // totalPages calculation depends on whether it's server-side or client-side
+    }, [data, searchText, filters, serverSide, filterConfig]);
+
     const totalPages = useMemo(() => {
         if (serverSide) {
             return Math.ceil(totalCount / currentItemsPerPage);
@@ -147,46 +187,41 @@ const DataTable: React.FC<DataTableProps> = ({
 
     const handlePageChange = useCallback(
         (page: number) => {
-            if (page < 1 || page > totalPages) return; // Prevent invalid page numbers
+            if (page < 1 || page > totalPages) return;
             setCurrentPage(page);
-            // onPageChange for server-side is handled by the useEffect debounce
-            // For client-side, it's implicitly handled by the useMemo dependencies
         },
-        [totalPages] // Dependency on totalPages is important here
+        [totalPages]
     );
 
     const handleFilterChange = useCallback(
         (key: string, value: any) => {
-            setCurrentPage(1); // Always reset to first page on filter change
-            const updatedFilters = { ...filters, [key]: value };
-            setFilters(updatedFilters);
-            // onPageChange for server-side is handled by the useEffect debounce
+            setCurrentPage(1);
+            setFilters(prevFilters => {
+                const newFilters = { ...prevFilters, [key]: value };
+                if (deepEqual(prevFilters, newFilters)) {
+                    return prevFilters;
+                }
+                return newFilters;
+            });
         },
-        [filters]
+        []
     );
 
     const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        setCurrentPage(1); // Always reset to first page on search change
+        setCurrentPage(1);
         setSearchText(e.target.value);
-        // onPageChange for server-side is handled by the useEffect debounce
     }, []);
 
-   
-
     const paginatedData = useMemo(() => {
-        if (serverSide) return data; // If server-side, data is already paginated by the parent
+        if (serverSide) return data;
         const startIndex = (currentPage - 1) * currentItemsPerPage;
         const endIndex = startIndex + currentItemsPerPage;
         return filteredData.slice(startIndex, endIndex);
     }, [data, filteredData, currentPage, currentItemsPerPage, serverSide]);
 
-
-
-
-    // Generate page numbers for pagination control
     const getPageNumbers = useMemo(() => {
         const pageNumbers = [];
-        const maxPagesToShow = 5; // e.g., 1 2 [3] 4 5
+        const maxPagesToShow = 5;
         let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
         let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
 
@@ -199,7 +234,6 @@ const DataTable: React.FC<DataTableProps> = ({
         }
         return pageNumbers;
     }, [currentPage, totalPages]);
-
 
     const renderFilterInput = useCallback(
         (filter: FilterConfig): ReactNode => {
@@ -252,7 +286,7 @@ const DataTable: React.FC<DataTableProps> = ({
         disabled,
         children,
         ariaLabel,
-        isActive = false, // Default to false
+        isActive = false,
     }) => (
         <button
             onClick={onClick}
@@ -261,7 +295,7 @@ const DataTable: React.FC<DataTableProps> = ({
                 ${disabled
                     ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                     : isActive
-                        ? "bg-blue-600 text-white shadow-md" // Active page style
+                        ? "bg-blue-600 text-white shadow-md"
                         : "bg-blue-500 hover:bg-blue-600 text-white"
                 }`}
             aria-label={ariaLabel}
@@ -287,14 +321,13 @@ const DataTable: React.FC<DataTableProps> = ({
                 <FiChevronLeft />
             </PaginationButton>
 
-            {/* Render dynamic page numbers */}
             {getPageNumbers.map((pageNumber) => (
                 <PaginationButton
                     key={pageNumber}
                     onClick={() => handlePageChange(pageNumber)}
-                    disabled={false} // Page numbers themselves are not disabled unless totalPages is 0
+                    disabled={false}
                     ariaLabel={`Page ${pageNumber}`}
-                    isActive={pageNumber === currentPage} // Highlight active page
+                    isActive={pageNumber === currentPage}
                 >
                     {pageNumber}
                 </PaginationButton>
@@ -315,25 +348,21 @@ const DataTable: React.FC<DataTableProps> = ({
                 <FiChevronsRight />
             </PaginationButton>
         </div>
-    ), [currentPage, totalPages, handlePageChange, getPageNumbers]); // Added getPageNumbers to dependencies
+    ), [currentPage, totalPages, handlePageChange, getPageNumbers]);
 
     const renderCellContent = useCallback((header: string, value: any, row: Record<string, any>) => {
         if (columnRenderers[header]) {
             return columnRenderers[header](value, row);
         }
 
-        // Handle Date objects explicitly if they are passed as such
         if (value instanceof Date) {
-            return format(value, "PP"); // Example: Oct 20, 2024
+            return format(value, "dd MMM yyyy");
         }
-        
-        // Handle ISO date strings (like "2025-06-05T20:04:19.123Z" or "2025-06-05")
-        // Check if it looks like a date string and attempt to format it
+
         if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/.test(value)) {
             try {
-                return format(new Date(value), "dd MMM yyyy"); // e.g., 05 Jun 2025
+                return format(new Date(value), "dd MMM yyyy");
             } catch (e) {
-                // Fallback if parsing fails
                 return value;
             }
         }
@@ -341,31 +370,33 @@ const DataTable: React.FC<DataTableProps> = ({
         return String(value);
     }, [columnRenderers]);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        );
-    }
-
-    // Determine which data set to use for display (paginatedData or just data if serverSide)
+    // --- Start of the change for loading overlay ---
     const displayData = serverSide ? data : paginatedData;
     const currentTotalCount = serverSide ? totalCount : filteredData.length;
 
     return (
-        <div className="w-full bg-white rounded-lg shadow-lg p-6">
-            <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="relative col-span-full md:col-span-1 flex items-end">
-                    <input
-                        type="text"
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Search..."
-                        value={searchText}
-                        onChange={handleSearchChange} // Use new handleSearchChange
-                    />
-                    <FiSearch className="absolute left-3 bottom-3 text-gray-400" /> {/* Adjusted icon position */}
+        <div className="w-full bg-white rounded-lg shadow-lg p-6 relative"> {/* Add relative positioning here */}
+            {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 rounded-lg">
+                    <TableLoader /> {/* Render your TableLoader component */}
                 </div>
+            )}
+    {/* --- End of the change for loading overlay --- */}
+
+            <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                {showSearchInput && (
+                    <div className="relative col-span-full md:col-span-1 flex items-end">
+                        <input
+                            type="text"
+                            ref={searchInputRef}
+                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Search..."
+                            value={searchText}
+                            onChange={handleSearchChange}
+                        />
+                        <FiSearch className="absolute left-3 bottom-3 text-gray-400" />
+                    </div>
+                )}
                 {filterConfig.map((filter) => (
                     <div key={filter.key} className="flex flex-col">
                         <label htmlFor={`filter-${filter.key}`} className="mb-1 text-sm font-medium text-gray-700">
@@ -385,9 +416,8 @@ const DataTable: React.FC<DataTableProps> = ({
                     <table className="w-full table-auto">
                         <thead>
                             <tr className="bg-gray-50">
-                                {/* Filter out internal keys like 'originalLeave' / 'originalPermission' from table headers */}
                                 {Object.keys(displayData[0])
-                                    .filter(header => !header.startsWith('original')) // Filter out internal keys
+                                    .filter(header => !header.startsWith('original'))
                                     .map((header) => (
                                         <th
                                             key={header}
@@ -401,9 +431,8 @@ const DataTable: React.FC<DataTableProps> = ({
                         <tbody className="bg-white divide-y divide-gray-200">
                             {displayData.map((row, rowIndex) => (
                                 <tr key={rowIndex} className="hover:bg-gray-50 transition-colors">
-                                    {/* Iterate over filtered headers for cells */}
                                     {Object.keys(row)
-                                        .filter(header => !header.startsWith('original')) // Filter out internal keys
+                                        .filter(header => !header.startsWith('original'))
                                         .map((header, cellIndex) => (
                                             <td
                                                 key={cellIndex}
@@ -419,9 +448,8 @@ const DataTable: React.FC<DataTableProps> = ({
                 </div>
             )}
 
-            {/* Only render pagination if there are actual pages to show */}
             {totalPages > 1 && renderPagination}
-            
+
             <div className="mt-4 text-sm text-gray-500 text-center">
                 Showing {displayData.length > 0 ? (currentPage - 1) * currentItemsPerPage + 1 : 0} to {Math.min(currentPage * currentItemsPerPage, currentTotalCount)} of {currentTotalCount} results
                 {(searchText || Object.values(filters).some(f => f && f !== "all")) && ` (filtered)`}

@@ -13,6 +13,7 @@ using System;
 using AutomatedTaskSystem.Seeding;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Converters;
+using AutomatedTaskSystem.Services.Email;
 
 try
 {
@@ -32,6 +33,8 @@ try
     });
     // Add email settings configuration
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+    builder.Services.Configure<EmailRecipientSettings>(
+    builder.Configuration.GetSection("EmailRecipients"));
 
     DependancyInjections.Inject(builder);
 

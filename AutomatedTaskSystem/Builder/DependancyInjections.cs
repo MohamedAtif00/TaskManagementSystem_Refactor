@@ -24,6 +24,7 @@ using AutomatedTaskSystem.Services.Email;
 using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.Log;
 using AutomatedTaskSystem.Helper;
+using AutomatedTaskSystem.Services.Lesson;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -52,6 +53,7 @@ public static class DependancyInjections
         builder.Services.AddScoped<ISprintService, SprintService>();
         builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
         builder.Services.AddScoped<IPermissionService, PermissionService>();
+        builder.Services.AddScoped<ILessonService,LessonService>();
 
 
         // seeder and email sender

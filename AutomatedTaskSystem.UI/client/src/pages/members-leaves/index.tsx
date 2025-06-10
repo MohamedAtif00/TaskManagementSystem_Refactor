@@ -120,7 +120,7 @@ const MembersLeavesPage = () => {
         </div>  
       )}
 
-      <div className="flex gap-4 mb-4">
+      {/* <div className="flex gap-4 mb-4">
         <div className="flex-1">
           <input
             type="text"
@@ -161,7 +161,7 @@ const MembersLeavesPage = () => {
           </select>
         </div>
         <ExportButton data={memberLeaves}/>
-      </div>
+      </div> */}
 
       <div className="overflow-x-auto">
         <table className="min-w-full bg-white border">
