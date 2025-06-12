@@ -221,6 +221,7 @@ public class DataContext : DbContext
     public DbSet<SectionGroup> SectionGroups => Set<SectionGroup>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<WorkFromHomeRequest> WorkFromHomeRequests => Set<WorkFromHomeRequest>();
     public DbSet<UserChanges> UserChanges => Set<UserChanges>();
     public DbSet<Opinion> Opinions => Set<Opinion>();
 }

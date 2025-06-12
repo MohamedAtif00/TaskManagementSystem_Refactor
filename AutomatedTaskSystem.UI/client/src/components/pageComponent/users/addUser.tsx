@@ -31,7 +31,7 @@ interface SimpleInfo{id:number,name:string}
 interface IUserFormState {
     name: string;
     hrCode: string;
-    onBoard: boolean;
+    // onBoard: boolean;
     archived: boolean;
     group: SimpleInfo | null;
     role: UserRole | null;
@@ -65,7 +65,7 @@ const AddUser = () => {
     const [formState, setFormState] = useState<IUserFormState>({
         name: "",
         hrCode: "",
-        onBoard: true,
+        // onBoard: true,
         archived: false,
         group: null as { id: number; name: string } | null,
         role: null as UserRole | null,
@@ -108,7 +108,6 @@ const AddUser = () => {
     }, [active]);
 
     useEffect(() => {
-        console.log(formState);
         
         if (!formState.group?.id) return;
         API.RESOURCES.GROUPS.Get_Tm_leaders(formState.group?.id).then((res) => {
@@ -119,10 +118,8 @@ const AddUser = () => {
     }, [formState.group]);
     
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        debugger
         e.preventDefault();
          e.stopPropagation(); // Add this to prevent event bubbling
-        console.log("dsds");
         setError("");
         
         const { 
@@ -144,7 +141,6 @@ const AddUser = () => {
                 error: "Please fill out all required fields",
             }));
         }
-        console.log(e);
         
         API.RESOURCES.USERS.CREATE({
             name,
@@ -171,7 +167,7 @@ const AddUser = () => {
                     teamleader: null,
                     accountType: null,
                     email: null,
-                    onBoard: true,
+                    // onBoard: true,
                     archived: false,
                     vacation: {
                         annual: 0,
@@ -202,7 +198,6 @@ const AddUser = () => {
                 [field]: value,
                 teamleader: newTeamleader
             }));
-            console.log(value);
             
         } else {
             setFormState(prev => ({ ...prev, [field]: value }));

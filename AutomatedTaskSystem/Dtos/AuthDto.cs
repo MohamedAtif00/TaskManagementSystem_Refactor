@@ -22,7 +22,7 @@ namespace AutomatedTaskSystem.DTO
 			public string Name { get; set; } = "";
 			public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
 			public int Id { get; set; } = 0;
-			public string Group { get; set; } = "";
+			public string? Group { get; set; } = "";
 		}
 	}
 }

@@ -29,7 +29,7 @@ interface Props {
     pause: boolean;
     isReview: boolean;
     priority: TaskPriority;
-    type:string
+    type:string 
 }
 
 const TaskAction: React.FC<Props> = ({
@@ -43,6 +43,7 @@ const TaskAction: React.FC<Props> = ({
     isReview,
     type
 }) => {
+    
     const [priorityFocus, setPriorityFocus] = useState(false);
     const auth = useAppSelector((s) => s.authSlice);
     const pathHandler = useTaskPathHandler({type:type});
@@ -52,7 +53,7 @@ const TaskAction: React.FC<Props> = ({
             taskId,
             value === 1 || value === 2 || value === 3 ? value : 0
         ).then((res) => {
-            console.log(res);
+            // console.log(res);
             if (res && !res.error) {
                 handleUpdate(res.data);
             }
@@ -281,6 +282,7 @@ const TaskAction: React.FC<Props> = ({
             <JumpForm
                 taskId={taskId}
                 updateTask={handleUpdate}
+                type="tasks"
             />
         </div>
     ) : (

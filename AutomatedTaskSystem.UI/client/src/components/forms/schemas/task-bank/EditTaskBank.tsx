@@ -19,7 +19,7 @@ const EditTaskBank = (props: {
     const [duration, setDuration] = useState(props.taskBank.duration);
     const [groups, setGroups] = useState<BasicInfo[]>([]);
 
-	console.log(props.taskBank)
+	// console.log(props.taskBank)
 
     useEffect(() => {
         API.RESOURCES.GROUPS.GET_ALL_MINI().then((res) => {

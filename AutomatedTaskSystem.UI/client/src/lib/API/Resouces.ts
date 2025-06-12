@@ -188,8 +188,8 @@ const RESOURCES = {
 				email: string;
 				// onBoard: boolean;
 				archived: boolean;
-				groupId: number;
-				role: number;
+				groupId: number | undefined;
+				role: number | null;
 				accountType: AccountType;
 				teamLeaderId: number | null;
 				title:string | null,

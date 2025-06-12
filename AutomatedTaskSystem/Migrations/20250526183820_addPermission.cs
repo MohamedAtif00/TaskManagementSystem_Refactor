@@ -14,12 +14,12 @@ namespace AutomatedTaskSystem.Migrations
             //   type: "int",
             //   nullable: false,
             //   defaultValue: 0);
-            migrationBuilder.AddColumn<int>(
-                name: "Permission",
-                table: "Users",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
+            //migrationBuilder.AddColumn<int>(
+            //    name: "Permission",
+            //    table: "Users",
+            //    type: "int",
+            //    nullable: false,
+            //    defaultValue: 0);
 
         }
 

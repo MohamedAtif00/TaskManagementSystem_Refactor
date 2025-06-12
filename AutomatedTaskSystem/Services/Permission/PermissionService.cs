@@ -844,14 +844,15 @@ namespace AutomatedTaskSystem.Services.Permission
                                 }
                             }
 
-                            // 2. Always add the sender's email
-                            message.CcEmails.Add(senderUser.Email);
-
                             // 3. Add SectionHead email if it exists (this will come after CEO if owner, or after sender)
                             if (!string.IsNullOrEmpty(_emailRecipients.SectionHead))
                             {
                                 message.CcEmails.Add(_emailRecipients.SectionHead);
                             }
+
+                            // 2. Always add the sender's email
+                            message.CcEmails.Add(senderUser.Email);
+
 
                             // --- MODIFIED LOGIC END ---
 
@@ -870,6 +871,7 @@ namespace AutomatedTaskSystem.Services.Permission
                                     Data = false
                                 };
                             }
+                            permission.User.Permission -= 1;
                         }
 
                         // Set status to Cancelled and update timestamp
@@ -943,8 +945,6 @@ namespace AutomatedTaskSystem.Services.Permission
                 var userIdResult = _tokenService.GetUserIdFromToken();
                 if (userIdResult.Data == null)
                 {
-                    //_logService.LogError(null, "Token service returned null userId.Data in ApproveOrRejectPermissionAsync for permission ID {PermissionId}.", id);
-                    //await _notificationService.ErrorNotification(userIdResult.ToString(), "Could not retrieve user ID from token.");
                     return OperationResult.Failed("Could not retrieve user ID from token.");
                 }
 
@@ -953,8 +953,6 @@ namespace AutomatedTaskSystem.Services.Permission
 
                 if (user == null)
                 {
-                    //_logService.LogError(null, "User with ID {UserId} not found when approving/rejecting permission ID {PermissionId}.", userIdResult.Data, id);
-                    //await _notificationService.ErrorNotification(userIdResult.ToString(), "This user does not exist.");
                     return OperationResult.Failed("User does not exist.");
                 }
 
@@ -966,24 +964,18 @@ namespace AutomatedTaskSystem.Services.Permission
 
                 if (permission == null)
                 {
-                    //_logService.LogError(null, "Permission request with ID {PermissionId} not found for user {UserId}.", id, user.Id);
-                    //await _notificationService.ErrorNotification(userIdResult.ToString(), "Permission request not found.");
                     return OperationResult.Failed("Permission request not found.");
                 }
 
                 // Prevent action on already finalized requests
                 if (permission.Status != PermissionStatusEnum.Pending)
                 {
-                    //_logService.LogWarning("User {UserId} attempted to give opinion on non-pending permission request {PermissionId} (Status: {Status}).", user.Id, id, permission.Status);
-                    //await _notificationService.ErrorNotification(userIdResult.ToString(), $"Cannot give opinion on a permission request that is already {permission.Status}.");
                     return OperationResult.Failed($"Cannot give opinion on a permission request that is already {permission.Status}.");
                 }
 
                 // Prevent duplicate opinions
                 if (permission.Opinions.Any(o => o.UserId == user.Id))
                 {
-                    //_logService.LogWarning("User {UserId} already gave opinion on permission request {PermissionId}.", user.Id, id);
-                    //await _notificationService.ErrorNotification(userIdResult.ToString(), "You have already given your opinion on this permission request.");
                     return OperationResult.Failed("You have already given your opinion on this permission request.");
                 }
 
@@ -1030,25 +1022,19 @@ namespace AutomatedTaskSystem.Services.Permission
                             var emailResult = await _emailService.SendEmailAsync(message);
                             if (!emailResult.Success)
                             {
-                                //_logService.LogError(emailResult.Exception,
-                                //                    "Error sending permission decision email for Permission ID {PermissionId} to user {RequesterUserId}: {ErrorMessage}",
-                                //                    permission.Id, permission.UserId, emailResult.Message);
-                                //await _notificationService.ErrorNotification(userIdResult.ToString(), "Permission request could not be fully processed due to email delivery failure. Please try again or contact support.");
                                 return OperationResult.Failed($"Permission request processed but email delivery failed: {emailResult.Message}");
                             }
+                            _dataContext.Permissions.Update(permission); // Mark permission for update
+                            _dataContext.Opinions.Add(opinion); // Add owner's opinion
+
+                            // Notify the requesting user via SignalR
+                            await _hubContext.Clients.User(permission.UserId.ToString()).SendAsync("PermissionRequestOpinion", new
+                            {
+                                isApproved = isApproved,
+                                message = isApproved ? "Your permission request has been approved." : "Your permission request has been rejected."
+                            });
                         }
 
-                        _dataContext.Permissions.Update(permission); // Mark permission for update
-                        _dataContext.Opinions.Add(opinion); // Add owner's opinion
-
-                        // Email structure remains unchanged as requested
-
-                        // Notify the requesting user via SignalR
-                        await _hubContext.Clients.User(permission.UserId.ToString()).SendAsync("PermissionRequestOpinion", new
-                        {
-                            isApproved = isApproved,
-                            message = isApproved ? "Your permission request has been approved." : "Your permission request has been rejected."
-                        });
                         break;
 
                     case UserRoleEnum.TeamLeader:
@@ -1059,14 +1045,10 @@ namespace AutomatedTaskSystem.Services.Permission
                         break;
 
                     default:
-                        // This case should ideally not be reached if the initial authorization check is comprehensive.
-                        // However, as a safeguard, it prevents unauthorized roles from performing any action.
-                        //_logService.LogWarning("Unauthorized user {UserId} with role {UserRole} attempted to approve/reject permission ID {PermissionId}. This should have been caught earlier.", user.Id, user.Role, id);
-                        //await _notificationService.ErrorNotification(userIdResult.ToString(), "You are not authorized to approve or reject permissions.");
                         return OperationResult.Failed("You are not authorized to approve or reject permissions.");
                 }
 
-                await _dataContext.SaveChangesAsync(); // Save all changes after role-based logic
+                await _dataContext.SaveChangesAsync(); 
 
                 // --- Centralized Pending Notification Logic ---
                 await _permissionRequestHelper.SendPendingUpdatesAfterOpinion(user, permission);
@@ -1077,8 +1059,6 @@ namespace AutomatedTaskSystem.Services.Permission
             }
             catch (Exception ex)
             {
-                //_logService.LogError(ex, "An unhandled error occurred in ApproveOrRejectPermissionAsync for Permission ID {PermissionId} by user {UserId}.", id, user?.Id);
-                //await _notificationService.ErrorNotification(userIdResult.ToString(), "An unexpected error occurred while processing your permission opinion. Please try again.");
                 return OperationResult.Failed("An unexpected error occurred while processing your permission opinion. Please try again.");
             }
         }

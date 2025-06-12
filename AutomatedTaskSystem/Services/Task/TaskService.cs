@@ -1111,13 +1111,13 @@ public class TaskService : ITaskService
             .Where(t => !t.Archived && t.Id == id)
             .Include(t => t.User)
             .Include(t => t.LearningObjective)
-                .ThenInclude(lo => lo.Schema)
+            .ThenInclude(t => t.Schema)
             .Include(t => t.LearningObjective)
-                .ThenInclude(lo => lo.Comments)
-                    .ThenInclude(c => c.User)
+            .ThenInclude(t => t.Comments)
+            .ThenInclude(c => c.User)
             .Include(t => t.LearningObjective)
-                .ThenInclude(lo => lo.Comments)
-                    .ThenInclude(c => c.Child)
+            .ThenInclude(t => t.Comments)
+            .ThenInclude(t => t.Child)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
@@ -1133,9 +1133,7 @@ public class TaskService : ITaskService
             .Include(a => a.TaskSecondary)
             .ToListAsync();
 
-        var durations = await _context.TaskWorkTimes
-            .Where(d => d.TaskId == task.Id)
-            .ToListAsync();
+        var durations = await _context.TaskWorkTimes.Where(d => d.TaskId == task.Id).ToListAsync();
 
         var started = await _context.TaskActivities
             .Where(a => a.TaskId == task.Id && a.Type == TaskActivityTypeEnum.Status_Doing)
@@ -1143,10 +1141,14 @@ public class TaskService : ITaskService
             .LastOrDefaultAsync();
 
         var done = await _context.TaskActivities
-            .Where(a =>
-                a.TaskId == task.Id &&
-                (a.Type == TaskActivityTypeEnum.Status_Done ||
-                 a.Type == TaskActivityTypeEnum.Status_Rollback))
+            .Where(
+                a =>
+                    a.TaskId == task.Id
+                    && (
+                        a.Type == TaskActivityTypeEnum.Status_Done
+                        || a.Type == TaskActivityTypeEnum.Status_Rollback
+                    )
+            )
             .OrderBy(a => a.TimeStamp)
             .LastOrDefaultAsync();
 
@@ -1156,70 +1158,91 @@ public class TaskService : ITaskService
         {
             if (user.Role == UserRoleEnum.ProjectManger)
             {
-                if (task.Status == TaskStatusEnum.Backlog || task.UserId == user.Id || task.UserId == null)
+                if (
+                    task.Status == TaskStatusEnum.Backlog
+                    || task.UserId == user.Id
+                    || task.UserId == null
+                )
                     access = TaskAccess.WorkOnAndManage;
                 else
                     access = TaskAccess.Manage;
             }
             else if (user.Role == UserRoleEnum.SectionHead)
             {
-                var sectionGroup = await _context.SectionGroups
-                    .Where(sg => sg.Section.HeadId == user.Id && sg.GroupId == task.GroupId)
-                    .FirstOrDefaultAsync();
-
-                if (sectionGroup != null)
+                if (
+                    user.GroupId == task.GroupId
+                    && (
+                        task.UserId == user.Id
+                        || task.Status == TaskStatusEnum.Backlog
+                        || task.UserId == null
+                    )
+                )
+                    access = TaskAccess.WorkOnAndManage;
+                else if (task.UserId != user.Id && task.GroupId == user.GroupId)
+                    access = TaskAccess.Manage;
+                else
                 {
-                    if (task.UserId == user.Id || task.Status == TaskStatusEnum.Backlog || task.UserId == null)
-                        access = TaskAccess.WorkOnAndManage;
-                    else
-                        access = TaskAccess.Manage;
+                    var section = await _context.Sections
+                        .Where(s => s.HeadId == user.Id)
+                        .Include(s => s.SectionGroups)
+                        .ThenInclude(s => s.Group)
+                        .FirstOrDefaultAsync();
+
+                    if (section is not null && section.SectionGroups.Any(g => g.GroupId == task.GroupId))
+                    {
+                        if (
+                            task.UserId == user.Id
+                            || task.Status == TaskStatusEnum.Backlog
+                            || task.UserId == null
+                        )
+                            access = TaskAccess.WorkOnAndManage;
+                        else
+                            access = TaskAccess.Manage;
+                    }
                 }
             }
             else if (user.Role == UserRoleEnum.TeamLeader)
             {
-                var sectionGroup = await _context.SectionGroups
-                    .Where(sg => sg.Section.HeadId == user.Id && sg.GroupId == task.GroupId)
-                    .FirstOrDefaultAsync();
-
-                if (sectionGroup != null)
+                if (task.GroupId == user.GroupId)
                 {
-                    if (task.UserId == user.Id || task.Status == TaskStatusEnum.Backlog || task.UserId == null)
+                    if (
+                        task.UserId == user.Id
+                        || task.Status == TaskStatusEnum.Backlog
+                        || task.UserId == null
+                    )
                         access = TaskAccess.WorkOnAndManage;
                     else
                         access = TaskAccess.Manage;
                 }
             }
             else if (user.Role == UserRoleEnum.Member)
-            {
-                var sectionGroup = await _context.SectionGroups
-                    .Where(sg => sg.GroupId == user.GroupId && sg.GroupId == task.GroupId)
-                    .FirstOrDefaultAsync();
-
-                if (sectionGroup != null && (task.UserId == user.Id || task.Status == TaskStatusEnum.Backlog))
-                {
-                    access = TaskAccess.WorkOn;
-                }
-            }
+                if (task.GroupId == user.GroupId)
+                    if (task.UserId == user.Id || task.Status == TaskStatusEnum.Backlog)
+                        access = TaskAccess.WorkOn;
         }
 
-        double duration = durations.Sum(d => d.Duration);
+        double duration = 0;
+
+        foreach (var d in durations)
+            duration += d.Duration;
 
         var issuesRecieved = task.IsReview
             ? 0
             : (await _context.Rollbacks.Where(rb => rb.ToTaskId == task.Id).ToListAsync()).Count;
-
         var issuesCreated = task.IsReview
             ? (await _context.Rollbacks.Where(rb => rb.TaskId == task.Id).ToListAsync()).Count
             : 0;
-
         var notes = task.IsReview
             ? 0
             : (
                 await _context.RollbackIssues
-                    .Where(rb => rb.StepId == task.StepId &&
-                                 task.LearningObjectiveId == rb.Rollback.Task.LearningObjectiveId)
+                    .Where(
+                        rb =>
+                            rb.StepId == task.StepId
+                            && task.LearningObjectiveId == rb.Rollback.Task.LearningObjectiveId
+                    )
                     .Include(rb => rb.Rollback)
-                        .ThenInclude(r => r.Task)
+                    .ThenInclude(r => r.Task)
                     .ToListAsync()
             ).Count;
 

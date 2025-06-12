@@ -1047,15 +1047,15 @@ namespace AutomatedTaskSystem.Services.Leave
                         switch (leaveRequest.Type)
                         {
                             case LeaveRequestType.Annual:
-                                senderUser.Annual_leave += leaveDays;
+                                senderUser.Annual_leave -= leaveDays;
                                 break;
 
                             case LeaveRequestType.Emergency:
-                                senderUser.Emergency_leave += leaveDays;
+                                senderUser.Emergency_leave -= leaveDays;
                                 break;
 
                             case LeaveRequestType.Sick:
-                                senderUser.Sick_leave += leaveDays;
+                                senderUser.Sick_leave -= leaveDays;
                                 break;
                         }
 

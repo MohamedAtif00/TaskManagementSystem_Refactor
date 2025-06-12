@@ -32,7 +32,7 @@ public class UserTaskService : IUserTaskService
         if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
         {
             var users = await _context.Users
-                .Where(u => !u.Archived && u.Role != UserRoleEnum.ProjectManger)
+                .Where(u => !u.Archived && u.Role != UserRoleEnum.ProjectManger && u.Role != UserRoleEnum.Owner)
                 .Include(u => u.Group)
                 .Include(u => u.Tasks)
                 .ThenInclude(t => t.LearningObjective)

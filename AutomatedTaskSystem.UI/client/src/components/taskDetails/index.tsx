@@ -82,7 +82,6 @@ interface Props {
 
 const TaskDetails = ({ refreshTasks ,type}: Props) => {
 	
-	console.log("type is ",type);
 	
 	const [task, setTask] = useState<ITask>();
 	const router = useRouter();
@@ -91,9 +90,13 @@ const TaskDetails = ({ refreshTasks ,type}: Props) => {
 	useEffect(() => {
 		const id = router.query.taskId;
 		if (id)
+		{
 			API.TASKS.GET_ONE(id).then((res) => {
+				debugger
 				if (res && !res.error) setTask(res.data);
 			});
+
+		}
 		else setTask(undefined);
 	}, [setTask, router.query.taskId]);
 

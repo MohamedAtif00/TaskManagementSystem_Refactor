@@ -36,7 +36,7 @@
     }) => {
         const router = useRouter();
         const projectId = type == "tasks"? router.query.projectId : router.query.sprintId;
-        console.log( `/${type}/${projectId}/board`);
+        // console.log( `/${type}/${projectId}/board`);
         
         
         return (

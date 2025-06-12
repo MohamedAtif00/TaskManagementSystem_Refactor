@@ -49,7 +49,7 @@ const SPRINTS = {
     }):Promise<ResponseService<GetAllSprintsResponse>> => {
         try {
             
-            console.log(`${name} ${description} ${startDate} ${endDate}`);
+            // console.log(`${name} ${description} ${startDate} ${endDate}`);
             
             const authHeader = authService.authHeader();
             const res = await fetch(`${url}/Sprint/create-sprint`, {

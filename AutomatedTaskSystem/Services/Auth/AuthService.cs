@@ -44,7 +44,7 @@ public class AuthService : IAuthService
             Data = new Responses.AuthInfoDTO
             {
                 Id = user.Id,
-                Group = user.Group.Name,
+                Group = user.Group?.Name??"",
                 Role = user.Role,
                 Name = user.Name
             },
@@ -59,7 +59,7 @@ public class AuthService : IAuthService
     )
     {
         var user = await _context.Users
-            .Where(u => u.Code.ToLower() == Code.ToLower() && !u.Archived)
+            .Where(u => u.Code == Code && !u.Archived)
             .FirstOrDefaultAsync();
 
         if (user is null)

@@ -220,6 +220,95 @@ namespace AutomatedTaskSystem.Services.Email
                 </body>
                 </html>";
 
+        // New WorkFromHome Template for approval/creation
+        public static string CreateWorkFromHomeApprovedTemplate(string fullName, string email, string date, string? noteForManager, string hrCode) => $@"
+                <html lang='ar' dir='rtl'>
+                <head>
+                    <style>
+                        body {{
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            background-color: #f9f9f9;
+                            color: #333;
+                            padding: 20px;
+                        }}
+                        .container {{
+                            background-color: #ffffff;
+                            padding: 20px;
+                            border: 1px solid #ddd;
+                            border-radius: 8px;
+                            max-width: 600px;
+                            margin: auto;
+                        }}
+                        h2 {{
+                            color: #2E86C1;
+                        }}
+                        .section {{
+                            margin-bottom: 15px;
+                        }}
+                        .label {{
+                            font-weight: bold;
+                            display: inline-block;
+                            min-width: 100px;
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class='container'>
+                        <h1>Digital<h1>
+                        <h2>طلب عمل من المنزل</h2>
+                        <div class='section'>
+                            <span class='label'>الموظف:</span> {fullName}
+                        </div>
+                        <div class='section'>
+                            <span class='label'>تاريخ العمل من المنزل:</span> {date:yyyy-MM-dd}
+                        </div>
+                        <div class='section'>
+                            <span class='label'>كود الموظف:</span>
+                            <div style='margin-top:5px'>{hrCode}</div>
+                        </div>
+                    </div>
+                </body>
+                </html>";
+
+        // New WorkFromHome Template for cancellation
+        public static string CreateWorkFromHomeCancellationTemplate(string fullName, string email, string date, string hrCode) => $@"
+                <html lang='ar' dir='rtl'>
+                <head>
+                    <style>
+                        body {{
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            background-color: #f9f9f9;
+                            color: #333;
+                            padding: 20px;
+                        }}
+                        .container {{
+                            background-color: #fff;
+                            padding: 20px;
+                            border: 1px solid #ddd;
+                            border-radius: 8px;
+                            max-width: 600px;
+                            margin: auto;
+                        }}
+                        h2 {{ color: #C0392B; }}
+                        .section {{ margin-bottom: 15px; }}
+                        .label {{
+                            font-weight: bold;
+                            display: inline-block;
+                            min-width: 100px;
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class='container'>
+                        <h1>Digital<h1>
+                        <h2> إلغاء طلب عمل من المنزل</h2>
+                        <div class='section'><span class='label'>الموظف:</span> {fullName}</div>
+                        <div class='section'><span class='label'>تاريخ العمل من المنزل:</span> {date}</div>
+                        <div class='section'><span class='label'>كود الموظف:</span> {hrCode}</div>
+                    </div>
+                </body>
+                </html>";
+
 
 
         public static string TranslatePermissionType(PermissionType type)

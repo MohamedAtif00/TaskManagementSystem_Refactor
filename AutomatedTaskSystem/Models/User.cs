@@ -30,7 +30,7 @@ public class User
     public List<Task> Tasks { get; set; } = new List<Task> { };
     public Team? Team { get; set; } = null;
     public int? TeamId { get; set; }
-    public Group Group { get; set; } = new Group { };
+    public Group? Group { get; set; }
 
     public int? GroupId { get; set; }
     [Range(0, 3)]

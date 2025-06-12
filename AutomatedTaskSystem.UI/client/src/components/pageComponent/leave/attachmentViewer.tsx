@@ -364,6 +364,7 @@ const FileUpload = ({
     </div>
   );
 };
+
 const AttachmentViewer = ({
   attachments,
   onDownload,
@@ -392,7 +393,7 @@ const AttachmentViewer = ({
     if (onDownload) {
       onDownload(file);
     } else {
-      console.log("Downloading:", file.name);
+    //   console.log("Downloading:", file.name);
     }
   };
 

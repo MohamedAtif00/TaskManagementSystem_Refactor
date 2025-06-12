@@ -449,8 +449,8 @@ public class ProjectService : IProjectService
         };
     }
     public async Task<
-        ActionResult<ResponseService<List<Responses.ProjectDTO>>>
-    > GetUserSpecificProjects()
+    ActionResult<ResponseService<List<Responses.ProjectDTO>>>
+> GetUserSpecificProjects()
     {
         var authRes = _tokenService.GetUserIdFromToken();
         if (authRes.Error)
@@ -488,7 +488,8 @@ public class ProjectService : IProjectService
                 .Include(p => p.Year)
                 .ToListAsync();
 
-            // Get task counts for each project in one query
+            // --- MODIFICATION 1: For ProjectManager/Owner roles ---
+            // Count only tasks where t.UserId matches the current user's ID
             var projectIds = allProjects.Select(p => p.Id).ToList();
             var taskCounts = await _context.Tasks
                 .Where(t =>
@@ -496,7 +497,8 @@ public class ProjectService : IProjectService
                     t.LearningObjective != null &&
                     t.LearningObjective.Lesson != null &&
                     t.LearningObjective.Lesson.Unit != null &&
-                    projectIds.Contains(t.LearningObjective.Lesson.Unit.ProjectId)
+                    projectIds.Contains(t.LearningObjective.Lesson.Unit.ProjectId) &&
+                    t.UserId == user.Id // <--- CRUCIAL: Filter by current user's ID
                 )
                 .GroupBy(t => t.LearningObjective.Lesson.Unit.ProjectId)
                 .Select(g => new { ProjectId = g.Key, Count = g.Count() })
@@ -531,15 +533,21 @@ public class ProjectService : IProjectService
 
         var userProjectIds = userProjects.Select(p => p.Id).ToList();
 
-        // Count tasks for user-specific projects
+        // --- MODIFICATION 2: For other roles ---
+        // Count tasks belonging to the current user within their assigned projects
         var userTaskCounts = await _context.Tasks
             .Where(t =>
                 !t.Archived &&
                 t.LearningObjective != null &&
                 t.LearningObjective.Lesson != null &&
                 t.LearningObjective.Lesson.Unit != null &&
-                (t.Status == Models.Enums.TaskStatus.TaskStatusEnum.Backlog || t.Status == Models.Enums.TaskStatus.TaskStatusEnum.ToDo)&&
-                userProjectIds.Contains(t.LearningObjective.Lesson.Unit.ProjectId)
+                userProjectIds.Contains(t.LearningObjective.Lesson.Unit.ProjectId) &&
+                t.UserId == user.Id && // <--- CRUCIAL: Filter by current user's ID
+                                       // Removed the explicit status filtering here as per the request,
+                                       // but you can add it back if needed for this specific count.
+                (t.Status == Models.Enums.TaskStatus.TaskStatusEnum.Backlog ||
+                 t.Status == Models.Enums.TaskStatus.TaskStatusEnum.ToDo ||
+                 t.Status == Models.Enums.TaskStatus.TaskStatusEnum.Doing)
             )
             .GroupBy(t => t.LearningObjective.Lesson.Unit.ProjectId)
             .Select(g => new { ProjectId = g.Key, Count = g.Count() })

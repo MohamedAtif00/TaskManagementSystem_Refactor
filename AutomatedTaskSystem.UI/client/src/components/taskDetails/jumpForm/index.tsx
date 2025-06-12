@@ -13,17 +13,18 @@ import useTaskPathHandler from "../useTaskPathHandler.ts";
 interface Props {
     taskId: number;
     updateTask: (value: ITask) => void;
+    type:"tasks"|"sprints"
 }
 
-const JumpForm: React.FC<Props> = ({ taskId, updateTask }) => {
+const JumpForm: React.FC<Props> = ({ taskId, updateTask,type }) => {
     const [points, setPoints] = useState<NodeAhead[]>();
     const router = useRouter();
     const [selectedNodes, setSelectedNode] = useState<NodeAhead[]>([]);
     const [selectedSteps, setSelectedSteps] = useState<
         { nodeId: number; stepId: number }[]
-    >([]);
+    >([]);  
     const [ref, { height }] = useMeasure();
-    const pathHandler = useTaskPathHandler();
+    const pathHandler = useTaskPathHandler({type:type});
 
     useEffect(() => {
         if (router.query.form === "jump")

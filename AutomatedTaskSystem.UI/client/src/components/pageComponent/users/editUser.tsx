@@ -173,7 +173,7 @@ const EditUser = () => {
                 email,
                 // onBoard,
                 archived,
-                groupId: group.id,
+                groupId: group?.id,
                 role,
                 accountType: accountType?.id ?? 0,
                 teamLeaderId: shouldShowTeamLeader(role) ? teamleader?.id ?? null : null,
