@@ -60,6 +60,7 @@ const EditUser = () => {
     const [title,setTite] = useState<string >("")
     const [phone,setPhone] = useState<string >("") 
     const [permissionObj, setPermission] = useState<{current:number,max:number} | null>(null);
+    const [workFromHome, setWorkFromHome] = useState<{current:number,max:number} | null>(null);
     // const [isArchived,setArchive] = useState<boolean>(false)
     const [vacation, setVacation] = useState<IVacation>({
         annual: 0,
@@ -92,7 +93,8 @@ const EditUser = () => {
             API.RESOURCES.USERS.GET_ONE(query.userId.toString()).then((res) => {
                 if (res && !res.error) {
                     const { name, hrCode, email, archived, group, role, 
-                            accountType, teamleader,teamleaderId, vacation, permission,permission_MAX ,title,phone,isArchived} = res.data;
+                            accountType, teamleader,teamleaderId, vacation, 
+                            permission,permission_MAX ,workFromHome,workFromHome_MAX,title,phone,isArchived} = res.data;
 
                             
                     setName(name);
@@ -102,6 +104,7 @@ const EditUser = () => {
                     setArchived(archived);
                     setGroup(group?? null);
                     setPermission({current:permission,max:permission_MAX} );
+                    setWorkFromHome({current:workFromHome,max:workFromHome_MAX} );
                     setTite(title)
                     setPhone(phone)
                     setAccountType(accountType == "Internal"?{id:0,name:"Internal"}:{id:1,name:"External"})
@@ -181,7 +184,9 @@ const EditUser = () => {
                 phone,
                 vacation,
                 permission:permissionObj?.current??0,
-                permission_MAX:permissionObj?.max??0
+                permission_MAX:permissionObj?.max??0,
+                workFromHome:workFromHome?.current??0,
+                workFromHome_MAX:workFromHome?.max??0
             });
 
             if (res?.data) {
@@ -319,7 +324,7 @@ const EditUser = () => {
                                 </div>
 
                                 <div className="mb-6">
-                                    <h4 className="text-sm font-medium mb-2">Current Values</h4>
+                                    <h4 className="text-sm font-medium mb-2">Used Values</h4>
                                     <div className="grid grid-cols-3 gap-4">
                                         <InputTextField
                                             label="Annual"
@@ -343,7 +348,7 @@ const EditUser = () => {
                                     <h4 className="text-sm font-medium mb-2">Permissions</h4>
                                     <div className="grid grid-cols-2 gap-4">
                                         <InputTextField
-                                            label="Current Permissions"
+                                            label="Used Permissions"
                                             value={permissionObj?.current.toString()??'0'}
                                             handleChange={(val) => setPermission(prev => ({
                                                 current: Number(val),
@@ -354,6 +359,27 @@ const EditUser = () => {
                                             label="Max Permissions Allowed"
                                             value={permissionObj?.max.toString()??'0'}
                                             handleChange={(val) => setPermission(prev => ({
+                                                current: prev?.current??0,  // Always include current to maintain the type
+                                                max: Number(val)
+                                            }))}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="mb-6">
+                                    <h4 className="text-sm font-medium mb-2">Work From Home</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <InputTextField
+                                            label="Used WFH "
+                                            value={workFromHome?.current.toString()??'0'}
+                                            handleChange={(val) => setWorkFromHome(prev => ({
+                                                current: Number(val),
+                                                max: prev?.max??0  // Always include max to maintain the type
+                                            }))}
+                                        />
+                                        <InputTextField
+                                            label="Max WFH Allowed"
+                                            value={workFromHome?.max.toString()??'0'}
+                                            handleChange={(val) => setWorkFromHome(prev => ({
                                                 current: prev?.current??0,  // Always include current to maintain the type
                                                 max: Number(val)
                                             }))}

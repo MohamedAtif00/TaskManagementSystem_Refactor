@@ -263,8 +263,7 @@ namespace AutomatedTaskSystem.Services.Email
                             <span class='label'>تاريخ العمل من المنزل:</span> {date:yyyy-MM-dd}
                         </div>
                         <div class='section'>
-                            <span class='label'>كود الموظف:</span>
-                            <div style='margin-top:5px'>{hrCode}</div>
+                          <div class='section'><span class='label'>كود الموظف:</span> {hrCode}</div>
                         </div>
                     </div>
                 </body>

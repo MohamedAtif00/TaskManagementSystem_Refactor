@@ -276,7 +276,7 @@ const WORK_FROM_HOME = {
   // --- Get Single Work From Home Request by ID ---
   GET_SINGLE: async (
     workFromHomeRequestId: number
-  ): Promise<ResponseService<IGetWorkFromHomeRequestForDetails> | false> => {
+  ): Promise<ResponseService<IGetWorkFromHomeRequestForDetails>> => {
     try {
       const headers = authService.authHeader();
       const res = await fetch(`${url}/WorkFromHome/${workFromHomeRequestId}`, {
@@ -460,6 +460,8 @@ export type {
   ICreateWorkFromHomeOpinion,
   IGetOpinionWorkFromHome,
   IGetAllWorkFromHomeRequestNoPagination,
+  IDName,
+  IDNameWithRole
 };
 
 export { WorkFromHomeStatus };

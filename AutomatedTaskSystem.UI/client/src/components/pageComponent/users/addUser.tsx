@@ -41,6 +41,8 @@ interface IUserFormState {
     vacation: IVacation;
     permission: number;
     permission_MAX:number,
+    workFromHome:number,
+    workFromHome_MAX:number,
     error: string;
     done: { code: string; user: IUser } | null;
 }
@@ -81,6 +83,8 @@ const AddUser = () => {
         },
         permission:0,
         permission_MAX:0,
+        workFromHome:0,
+        workFromHome_MAX:0,
         error: "",
         done: null as { code: string; user: IUser } | null,
     });
@@ -132,10 +136,12 @@ const AddUser = () => {
             vacation, 
             teamleader,
             permission,
-            permission_MAX
+            permission_MAX,
+            workFromHome,
+            workFromHome_MAX
         } = formState;
 
-        if (!name || !group || !role) {
+        if (!name || !group || !role || !hrCode || !accountType  || !permission_MAX || workFromHome_MAX) {
             return setFormState((prev) => ({
                 ...prev,
                 error: "Please fill out all required fields",
@@ -152,7 +158,9 @@ const AddUser = () => {
             accountType: accountType?.id ?? 0,
             vacation,
             permission,
-            permission_MAX
+            permission_MAX,
+            workFromHome,
+            workFromHome_MAX
         }).then(res=>{
 
 
@@ -177,7 +185,9 @@ const AddUser = () => {
                         emergency_MAX: 0
                     },
                     permission,
-                    permission_MAX
+                    permission_MAX,
+                    workFromHome,
+                    workFromHome_MAX
                     ,
                     error: "",
                 });
@@ -225,6 +235,13 @@ const AddUser = () => {
                 ...prev.vacation,
                 [vacationType]: value,
             },
+        }));
+    };
+
+      const handleWorkFromHomeChange = (field: 'workFromHome_Used' | 'workFromHome_MAX', value: number) => {
+        setFormState((prev) => ({
+            ...prev,
+            [field]: value
         }));
     };
 
@@ -361,7 +378,7 @@ const AddUser = () => {
 
                                     {/* Current Values Section */}
                                     <div className="mb-6">
-                                        <h4 className="text-sm font-medium mb-2">Current Values</h4>
+                                        <h4 className="text-sm font-medium mb-2">Used Values</h4>
                                         <div className="grid grid-cols-3 gap-4">
                                             <InputTextField
                                                 label="Annual"
@@ -396,7 +413,7 @@ const AddUser = () => {
                                         <h4 className="text-sm font-medium mb-2">Permissions</h4>
                                         <div className="grid grid-cols-2 gap-4">
                                             <InputTextField
-                                                label="Current Permissions"
+                                                label="Used Permissions"
                                                 value={formState.permission.toString()??'0'}
                                                  handleChange={(val) => handlePermissionChange(Number(val))}
                                             />
@@ -407,6 +424,23 @@ const AddUser = () => {
                                             />
                                         </div>
                                     </div>
+
+                                     <div className="mb-6">
+                                            <h4 className="text-sm font-medium mb-2">Work From Home</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <InputTextField
+                                                    label="Used WFH Days"
+                                                    value={formState.workFromHome.toString()}
+                                                    handleChange={(val) => handleWorkFromHomeChange("workFromHome_Used", Number(val))}
+                                                />
+                                                <InputTextField
+                                                    label="Max WFH Days Allowed"
+                                                    value={formState.workFromHome_MAX.toString()}
+                                                    handleChange={(val) => handleWorkFromHomeChange("workFromHome_MAX", Number(val))}
+                                                />
+                                            </div>
+                                        </div>
+
                                 </div>
                             )}
                             <div className="mt-auto pt-4"> {/* FormConclusion at the bottom */}

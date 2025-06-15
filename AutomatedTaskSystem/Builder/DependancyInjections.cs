@@ -25,6 +25,7 @@ using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.Log;
 using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Services.Lesson;
+using AutomatedTaskSystem.Services.WorkFromHome;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -53,6 +54,7 @@ public static class DependancyInjections
         builder.Services.AddScoped<ISprintService, SprintService>();
         builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
         builder.Services.AddScoped<IPermissionService, PermissionService>();
+        builder.Services.AddScoped<IWorkFromHomeService, WorkFromHomeService>();
         builder.Services.AddScoped<ILessonService,LessonService>();
 
 
@@ -63,5 +65,6 @@ public static class DependancyInjections
         builder.Services.AddScoped<ILogService, LogService>();
         builder.Services.AddScoped<LeaveRequestHelper>();
         builder.Services.AddScoped<PermissionRequestHelper>();
+        builder.Services.AddScoped<WorkFromHomeHelper>();
     }
 }

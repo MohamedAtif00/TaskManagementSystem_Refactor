@@ -18,10 +18,10 @@ import ExportButton from "../../../../components/button/ExportButton";
 import React from "react";
 import EditUser from "../../../../components/pageComponent/users/editUser";
 import LEAVE, { IGetLeaveRequest, LeaveRequestStatus, LeaveRequestType } from "../../../../lib/API/Leave";
-import DataTable from "../../../../components/table/tablePagination"; // Import DataTable
+import DataTable from "../../../../components/table/tablePagination";
 import { format } from "date-fns";
 import { Pencil } from "lucide-react";
-// import MoreVertIcon from "@mui/icons-material/MoreVert";
+import { IGetWorkFromHomeRequest, WorkFromHomeStatus } from "../../../../lib/API/workFromHome";
 
 const buttonStyle: CSSProperties = {
     paddingLeft: "55px",
@@ -34,13 +34,48 @@ const buttonStyle: CSSProperties = {
 
 // Interface for Filter Configuration items used by DataTable
 interface FilterConfigItem {
-  key: string;
-  label: string;
-  type: "text" | "select" | "date" | "number";
-  options?: { value: string | number; label: string }[];
+    key: string;
+    label: string;
+    type: "text" | "select" | "date" | "number";
+    options?: { value: string | number; label: string }[];
 }
 
-// Define interface for user changes data
+// --- IMPORTANT: Update the IVacation interface to include WorkFromHome properties ---
+// Assuming IVacation is imported from a shared types file or defined globally
+interface IVacation {
+    annual: number;
+    sick: number;
+    emergency: number;
+    annual_MAX: number;
+    emergency_MAX: number;
+    // You might also need to track permissions here if not already on the user object
+    // permission: number;
+    // permission_MAX: number;
+}
+
+// --- IMPORTANT: Update the IUser interface to include WorkFromHome properties ---
+// Assuming this IUser reflects your backend User model for profile display
+interface IUser {
+    id: number; // userId from router.query will be number
+    name: string;
+    code?: string; // Corresponds to hrCode usually
+    group?: { id: number; name: string };
+    email?: string | null;
+    hrCode?: string;
+    phone?: string;
+    role?: number;
+    title?: string;
+    isArchived?: boolean; // Renamed from archived
+    accountType?: number; // 0 for Internal, 1 for External
+    vacation?: IVacation; // Existing vacation properties
+    permission?: number; // Current permissions used
+    permission_MAX?: number; // Max permissions allowed
+    // NEW: Work From Home properties
+    workFromHome_Used?: number; // Days already used/approved for WFH
+    workFromHome_MAX?: number;  // Max allowed WFH days
+}
+
+// Interface for user changes data
 interface IUserChange {
     id: number;
     userId: number;
@@ -57,7 +92,11 @@ const UserProfile = () => {
 
     const [user, setUser] = useState<IUser | null>(null);
     const [userVacationInfo, setUserVacationInfo] = useState<IVacation | null>(null);
-    const [view, setView] = useState<"vacancies" | "updates" | "permission">("vacancies");
+    // NEW: Add Work From Home info state
+    const [userWorkFromHomeInfo, setUserWorkFromHomeInfo] = useState<{ used: number; max: number } | null>(null);
+
+    // NEW: Add "workFromHome" to the view options
+    const [view, setView] = useState<"vacancies" | "updates" | "permission" | "workFromHome">("vacancies");
 
     // State for Vacancies DataTable
     const [vacancyData, setVacancyData] = useState<IGetLeaveRequest[]>([]);
@@ -77,9 +116,18 @@ const UserProfile = () => {
     const [permissionSearch, setPermissionSearch] = useState("");
     const [permissionLoading, setPermissionLoading] = useState(true);
 
+    // NEW: State for Work From Home DataTable
+    const [workFromHomeData, setWorkFromHomeData] = useState<IGetWorkFromHomeRequest[]>([]);
+    const [totalWorkFromHome, setTotalWorkFromHome] = useState(0);
+    const [workFromHomePage, setWorkFromHomePage] = useState(1);
+    const [workFromHomePageSize, setWorkFromHomePageSize] = useState(10);
+    const [workFromHomeDtFilters, setWorkFromHomeDtFilters] = useState<Record<string, any>>({});
+    const [workFromHomeSearch, setWorkFromHomeSearch] = useState("");
+    const [workFromHomeLoading, setWorkFromHomeLoading] = useState(true);
+
     // State for User Changes (Updates) DataTable
     const [userChangesData, setUserChangesData] = useState<IUserChange[]>([]);
-    const [allUserChangesData, setAllUserChangesData] = useState<IUserChange[]>([]); // For client-side filtering
+    const [allUserChangesData, setAllUserChangesData] = useState<IUserChange[]>([]);
     const [userChangesLoading, setUserChangesLoading] = useState(true);
 
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -87,20 +135,26 @@ const UserProfile = () => {
 
     const formatDate = useCallback((dateString: string | null | undefined) => {
         if (!dateString) return "N/A";
-        return format(new Date(dateString), "dd MMM yyyy, hh:mm a");
+        return format(new Date(dateString), "dd MMM, yyyy, hh:mm a");
     }, []);
 
     const formatDateOnly = useCallback((dateString: string | null | undefined) => {
         if (!dateString) return "N/A";
-        return format(new Date(dateString), "dd MMM yyyy");
+        return format(new Date(dateString), "dd MMM, yyyy");
     }, []);
 
+    // Fetch User Profile Info
     useEffect(() => {
         if (userId) {
             API.RESOURCES.USERS.GET_ONE(Number(userId)).then((res) => {
-                if (res && !res.error) {
+                if (res && !res.error && res.data) {
                     setUser(res.data);
                     setUserVacationInfo(res.data.vacation ?? null);
+                    // NEW: Set Work From Home info
+                    setUserWorkFromHomeInfo({
+                        used: res.data.workFromHome?? 0,
+                        max: res.data.workFromHome_MAX ?? 0,
+                    });
                 }
             });
         }
@@ -139,7 +193,7 @@ const UserProfile = () => {
                 searchTerm: permissionSearch || undefined,
                 ...permissionDtFilters,
             };
-            PERMISSION.GET_ALL_BY_USER(Number(userId), params).then((res) => {
+            API.PERMISSION.GET_ALL_BY_USER(Number(userId), params).then((res) => {
                 if (res && !res.error && res.data) {
                     setPermissionData(res.data.items ?? []);
                     setTotalPermissions(res.data.totalCount ?? 0);
@@ -152,7 +206,31 @@ const UserProfile = () => {
         }
     }, [userId, view, permissionPage, permissionPageSize, permissionDtFilters, permissionSearch]);
 
-    // Fetch User Changes History (Updates) - Assumes client-side pagination/filtering for this one
+    // NEW: Fetch Work From Home requests
+    useEffect(() => {
+        if (userId && view === "workFromHome") {
+            setWorkFromHomeLoading(true);
+            const params = {
+                page: workFromHomePage,
+                pageSize: workFromHomePageSize,
+                searchTerm: workFromHomeSearch || undefined,
+                ...workFromHomeDtFilters,
+            };
+            API.WORK_FROM_HOME.GET_ALL_BY_USER(Number(userId), params).then((res) => {
+                if (res && !res.error && res.data) {
+                    setWorkFromHomeData(res.data.items ?? []);
+                    setTotalWorkFromHome(res.data.totalCount ?? 0);
+                } else {
+                    setWorkFromHomeData([]);
+                    setTotalWorkFromHome(0);
+                }
+                setWorkFromHomeLoading(false);
+            });
+        }
+    }, [userId, view, workFromHomePage, workFromHomePageSize, workFromHomeDtFilters, workFromHomeSearch]);
+
+
+    // Fetch User Changes History (Updates)
     useEffect(() => {
         if (userId && view === "updates") {
             setUserChangesLoading(true);
@@ -161,8 +239,8 @@ const UserProfile = () => {
                     const sortedUserChanges = (res.data ?? []).sort((a, b) => {
                         return new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime();
                     });
-                    setAllUserChangesData(sortedUserChanges); // Store all for client-side filtering
-                    setUserChangesData(sortedUserChanges); // Initially display all
+                    setAllUserChangesData(sortedUserChanges);
+                    setUserChangesData(sortedUserChanges);
                 }
                 setUserChangesLoading(false);
             });
@@ -184,12 +262,17 @@ const UserProfile = () => {
         setPermissionSearch(searchText);
     }, []);
 
+    // NEW: Handle Work From Home DataTable changes
+    const handleWorkFromHomeTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, any>, searchText: string) => {
+        setWorkFromHomePage(page);
+        setWorkFromHomePageSize(itemsPerPage);
+        setWorkFromHomeDtFilters(filters);
+        setWorkFromHomeSearch(searchText);
+    }, []);
+
     const handleUserChangesTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, any>, searchText: string) => {
-        // For client-side, DataTable handles pagination. We just update our state if needed for other purposes.
-        // Filtering and search are also handled by DataTable internally when serverSide=false.
-        // This callback is mostly for server-side, but good to have the structure.
-        // For client-side, the `data` prop to DataTable will be `allUserChangesData`
-        // and `totalCount` will be `allUserChangesData.length`.
+        // This is for client-side DataTable, so data changes are handled by DataTable itself.
+        // No need to update state here for re-fetch, but you could apply client-side filters if needed.
     }, []);
 
 
@@ -214,6 +297,16 @@ const UserProfile = () => {
         "Duration": p.duration,
     })), [permissionData, formatDateOnly]);
 
+    // NEW: Transformed data for Work From Home DataTable
+    const transformedWorkFromHomeData = useMemo(() => workFromHomeData.map(wfh => ({
+        "ID": wfh.id,
+        "Request Date": formatDateOnly(wfh.dateCreated),
+        "Work From Home Date": formatDateOnly(wfh.date),
+        "Status": wfh.status,
+        "Note for Manager": wfh.noteForManager || "N/A", // Include this if applicable
+    })), [workFromHomeData, formatDateOnly]);
+
+
     const transformedUserChangesData = useMemo(() => allUserChangesData.map(change => ({
         "ID": change.id,
         "Changed At": formatDate(change.changedAt),
@@ -223,41 +316,63 @@ const UserProfile = () => {
     })), [allUserChangesData, formatDate]);
 
 
-  const getStatusColor = (status: PermissionRequestStatus): string => {
-  switch (status) {
-    case PermissionRequestStatus.Pending: return '#FFA500';
-    case PermissionRequestStatus.Approved: return '#4CAF50';
-    case PermissionRequestStatus.Rejected: return '#F44336';
-    default: return '#9E9E9E';
-  }
-};
-
-const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'success' | 'error' | 'default' => {
-  switch (status) {
-    case PermissionRequestStatus.Pending: return 'warning';
-    case PermissionRequestStatus.Approved: return 'success';
-    case PermissionRequestStatus.Rejected: return 'error';
-    default: return 'default';
-  }
-};
+    const getStatusColor = (status: LeaveRequestStatus | PermissionRequestStatus | WorkFromHomeStatus): string => {
+        switch (status) {
+            case LeaveRequestStatus.Pending:
+            case PermissionRequestStatus.Pending:
+            case WorkFromHomeStatus.Pending:
+                return '#FFA500'; // Orange
+            case LeaveRequestStatus.Approved:
+            case PermissionRequestStatus.Approved:
+            case WorkFromHomeStatus.Approved:
+                return '#4CAF50'; // Green
+            case LeaveRequestStatus.Rejected:
+            case PermissionRequestStatus.Rejected:
+            case WorkFromHomeStatus.Rejected:
+                return '#F44336'; // Red
+            case LeaveRequestStatus.Cancelled:
+            case PermissionRequestStatus.Cancelled:
+            case WorkFromHomeStatus.Cancelled:
+                return '#9E9E9E'; // Grey
+            default: return '#9E9E9E';
+        }
+    };
 
     const commonStatusRenderer = useCallback((value: string) => {
         let colorClass = '';
         let bgColorClass = '';
-        switch (value?.toLowerCase()) {
-            case 'approved':
-            case 'accepted':
+        // Map string value back to enum for consistent coloring
+        const statusEnum: LeaveRequestStatus | PermissionRequestStatus | WorkFromHomeStatus =
+            value === 'Approved' ? LeaveRequestStatus.Approved as any : // Cast to any to satisfy all enum types
+            value === 'Rejected' ? LeaveRequestStatus.Rejected as any :
+            value === 'Pending' ? LeaveRequestStatus.Pending as any :
+            value === 'Cancelled' ? LeaveRequestStatus.Cancelled as any :
+            LeaveRequestStatus.Pending as any; // Default or handle 'all' etc.
+
+        switch (statusEnum) {
+            case LeaveRequestStatus.Approved:
+            case PermissionRequestStatus.Approved:
+            case WorkFromHomeStatus.Approved: // NEW
                 colorClass = 'text-green-700';
                 bgColorClass = 'bg-green-100';
                 break;
-            case 'rejected':
-            case 'cancelled':
+            case LeaveRequestStatus.Rejected:
+            case PermissionRequestStatus.Rejected:
+            case WorkFromHomeStatus.Rejected: // NEW
                 colorClass = 'text-red-700';
                 bgColorClass = 'bg-red-100';
                 break;
-            case 'pending':
+            case LeaveRequestStatus.Pending:
+            case PermissionRequestStatus.Pending:
+            case WorkFromHomeStatus.Pending: // NEW
                 colorClass = 'text-yellow-700';
                 bgColorClass = 'bg-yellow-100';
+                break;
+            case LeaveRequestStatus.Cancelled:
+            case PermissionRequestStatus.Cancelled:
+            case WorkFromHomeStatus.Cancelled: // NEW
+                colorClass = 'text-gray-700';
+                bgColorClass = 'bg-gray-100';
                 break;
             default:
                 colorClass = 'text-gray-700';
@@ -268,34 +383,37 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
 
     const vacancyColumnRenderers = useMemo(() => ({ "Status": commonStatusRenderer }), [commonStatusRenderer]);
     const permissionColumnRenderers = useMemo(() => ({ "Status": commonStatusRenderer }), [commonStatusRenderer]);
+    // NEW: Work From Home Column Renderers
+    const workFromHomeColumnRenderers = useMemo(() => ({ "Status": commonStatusRenderer }), [commonStatusRenderer]);
+
     const userChangesColumnRenderers = useMemo(() => ({
-        "Action": (value: string) => commonStatusRenderer(value),
+        "Action": (value: string) => commonStatusRenderer(value), // Reusing for 'Action' status
         "Changes": (value: string) => value.split(';').map((item, idx) => <div key={idx}>{item.trim()}</div>)
     }), [commonStatusRenderer]);
 
-      const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-            setAnchorEl(event.currentTarget);
-        };
+    const handleMenuClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+        setAnchorEl(event.currentTarget);
+    };
 
-        const handleClose = () => {
-            setAnchorEl(null);
-        };
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
 
-      const handleEdit = () => {
-            router.push({
-                pathname: `/resources/users/${user.id}`,
-                query: {
+    const handleEdit = () => {
+        router.push({
+            pathname: `/resources/users/${user?.id}`,
+            query: {
                 form: "edit-user",
-                userId: user.id,
-                },
-            });
-            handleClose();
-            };
+                userId: user?.id,
+            },
+        });
+        handleClose();
+    };
 
-        const handleDelete = () => {
-            console.log("Delete user", user);
-            handleClose();
-        };
+    const handleDelete = () => {
+        console.log("Delete user", user);
+        handleClose();
+    };
 
     const vacancyFilterConfig: FilterConfigItem[] = useMemo(() => [
         { key: 'status', label: 'Status', type: 'select', options: Object.values(LeaveRequestStatus).map(s => ({ value: s, label: s })) },
@@ -310,19 +428,28 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
         { key: 'permissionDate', label: 'Permission Date', type: 'date' },
     ], []);
 
-    const userChangesFilterConfig: FilterConfigItem[] = useMemo(() => [
-        { key: 'action', label: 'Action', type: 'select', options: [
-            {value: "Created", label: "Created"}, 
-            {value: "Updated", label: "Updated"},
-            {value: "Deleted", label: "Deleted"}
-        ]},
-        { key: 'changedByUserName', label: 'Changed By', type: 'text' },
-        { key: 'changedAt', label: 'Changed After', type: 'date' }, // Note: DataTable date filter is exact match. For range, you'd need two date filters or custom logic.
+    // NEW: Work From Home Filter Config
+    const workFromHomeFilterConfig: FilterConfigItem[] = useMemo(() => [
+        { key: 'status', label: 'Status', type: 'select', options: Object.values(WorkFromHomeStatus).map(s => ({ value: s, label: s })) },
+        { key: 'date', label: 'Work From Home Date', type: 'date' }, // Assuming single date filter
     ], []);
 
-    const handleTabChange = (newView: "vacancies" | "updates" | "permission") => {
+    const userChangesFilterConfig: FilterConfigItem[] = useMemo(() => [
+        {
+            key: 'action', label: 'Action', type: 'select', options: [
+                { value: "Created", label: "Created" },
+                { value: "Updated", label: "Updated" },
+                { value: "Deleted", label: "Deleted" }
+            ]
+        },
+        { key: 'changedByUserName', label: 'Changed By', type: 'text' },
+        { key: 'changedAt', label: 'Changed After', type: 'date' },
+    ], []);
+
+    // NEW: Add "workFromHome" to handleTabChange
+    const handleTabChange = (newView: "vacancies" | "updates" | "permission" | "workFromHome") => {
         setView(newView);
-        // Reset pagination and filters for the new tab to ensure fresh data load
+        // Reset pagination and filters for the new tab
         if (newView === "vacancies") {
             setVacancyPage(1);
             setVacancyDtFilters({});
@@ -331,9 +458,12 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
             setPermissionPage(1);
             setPermissionDtFilters({});
             setPermissionSearch("");
+        } else if (newView === "workFromHome") { // NEW: Reset WFH states
+            setWorkFromHomePage(1);
+            setWorkFromHomeDtFilters({});
+            setWorkFromHomeSearch("");
         } else if (newView === "updates") {
-            // For client-side, DataTable's internal state will reset on data/config change.
-            // No explicit reset needed here for page/filters if DataTable handles it.
+            // No explicit reset needed here for page/filters for client-side updates table
         }
     };
 
@@ -341,184 +471,170 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
 
     return (
         <div className="w-full flex align-middle justify-center">
-            <div className="w-10/12 ">  
-                <Box sx={{paddingTop:2,paddingX:4, borderRadius: 1, marginBottom: 2 }}>
-                <Paper sx={{ p: 3 }} elevation={2} className="flex ">
-                    
-                    <UserProfileIcone/>
-                    <Typography variant="h5" fontWeight="bold" gutterBottom>
-                        User Profile
-                    </Typography>
+            <div className="w-10/12 ">
+                <Box sx={{ paddingTop: 2, paddingX: 4, borderRadius: 1, marginBottom: 2 }}>
+                    <Paper sx={{ p: 3 }} elevation={2} className="flex ">
+                        <UserProfileIcone />
+                        <Typography variant="h5" fontWeight="bold" gutterBottom>
+                            User Profile
+                        </Typography>
                     </Paper>
                 </Box>
 
-                {/* Add background color to only the header */}
                 <Box sx={{ p: 4, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    
+
                     {/* User Profile Paper */}
                     <Paper elevation={3} sx={{ p: 3 }} className="flex flex-col md:flex-row justify-between gap-4 bg-white shadow-md rounded-xl">
-                    
-                    {/* User Info Section */}
-                    <Box className="space-y-2   rounded-lg border border-gray-200 w-full md:w-2/3">
-                          <Grid sx={{ display: "flex" }} className="justify-between w-full">
+
+                        {/* User Info Section */}
+                        <Box className="space-y-2 rounded-lg border border-gray-200 w-full md:w-2/3">
+                            <Grid sx={{ display: "flex" }} className="justify-between w-full">
                                 <Typography variant="body1" className="flex items-center gap-2 font-bold text-lg">
                                     {user.name}
                                 </Typography>
+                            </Grid>
 
+                            {user.hrCode && ( // Changed from user.code to user.hrCode
+                                <Typography className="flex items-center gap-2 text-[#22648C] text-[14px]">
+                                    {user.hrCode}
+                                </Typography>
+                            )}
+
+                            <Grid container className="gap-x-20 gap-y-4">
+                                {/* Column 1 */}
+                                <Grid item xs={5}>
+                                    <div className="flex flex-col gap-4">
+                                        <Typography className="flex items-center text-gray-700">
+                                            <span className="font-bold w-fit">Department:</span>
+                                            <span className="text-[#5570FF]">{user.group?.name}</span>
+                                        </Typography>
+
+                                        <Typography className="flex items-center gap-2 text-gray-700">
+                                            <span className="font-bold w-fit ">Type:</span>
+                                            <span className="text-[#5570FF]">
+                                                {user.accountType === 0 ? "Internal" : "External"} {/* Corrected mapping */}
+                                            </span>
+                                        </Typography>
+
+                                        <Typography className="flex items-center gap-2 text-gray-700">
+                                            <span className="font-bold w-fit">Status:</span>
+                                            <span className="text-[#5570FF]">
+                                                {user.isArchived ? "Archived" : "Active"}
+                                            </span>
+                                        </Typography>
+
+                                        <Typography className="flex items-center gap-2 text-gray-700">
+                                            <span className="font-bold w-fit">HR Code:</span>
+                                            <span className="text-[#5570FF]">
+                                                {user.hrCode}
+                                            </span>
+                                        </Typography>
+                                    </div>
                                 </Grid>
 
-                        {user.code && (
-                            <Typography className="flex items-center gap-2  text-[#22648C] text-[14px]">
-                              {user.code}
-                            </Typography>
-                        )}
+                                {/* Column 2 */}
+                                <Grid item xs={5}>
+                                    <div className="flex flex-col gap-4">
+                                        <Typography className="flex items-center gap-2 text-gray-700">
+                                            <span className="font-bold w-fit">Role:</span>
+                                            <span className="text-[#5570FF]">
+                                                {user.role === 0 ? "Project Manager" :
+                                                    user.role === 1 ? "Section Head" :
+                                                        user.role === 2 ? "Team Leader" :
+                                                            user.role === 3 ? "Member" : "Owner"} {/* Added Owner */}
+                                            </span>
+                                        </Typography>
 
-                        <Grid container className="gap-x-20 gap-y-4">
-                            {/* Column 1 */}
-                            <Grid item xs={5}>
-                                <div className="flex flex-col gap-4">
-                                <Typography className="flex items-center  text-gray-700">
-                                    <span className="font-bold w-fit">Department:</span> 
-                                    <span className="text-[#5570FF]">{user.group?.name}</span>
-                                </Typography>
-                                
-                                <Typography className="flex items-center gap-2 text-gray-700">
-                                    <span className="font-bold w-fit ">Type:</span> 
-                                    <span className="text-[#5570FF]">
-                                    {user.accountType === 0 ? "External" : "Internal"}
-                                    </span>
-                                </Typography>
-                                
-                                <Typography className="flex items-center gap-2 text-gray-700">
-                                    <span className="font-bold w-fit">Status:</span> 
-                                    <span className="text-[#5570FF]">
-                                    {user.isArchived ? "Archived" : "Active"}
-                                    </span>
-                                </Typography>
-                                
-                                <Typography className="flex items-center gap-2 text-gray-700">
-                                    <span className="font-bold w-fit">HR Code:</span> 
-                                    <span className="text-[#5570FF]">
-                                    {user.hrCode}
-                                    </span>
-                                </Typography>
+                                        <Typography className="flex items-center gap-2 text-gray-700">
+                                            <span className="font-bold w-fit">Email:</span>
+                                            <span className="text-[#5570FF]">{user.email}</span>
+                                        </Typography>
+
+                                        <Typography className="flex items-center gap-2 text-gray-700">
+                                            <span className="font-bold w-fit">Phone:</span>
+                                            <span className="text-[#5570FF]">{user.phone}</span>
+                                        </Typography>
+
+                                        <Typography className="flex items-center gap-2 text-gray-700">
+                                            <span className="font-bold w-fit">Title:</span>
+                                            <span className="text-[#5570FF]">{user.title}</span>
+                                        </Typography>
+                                    </div>
+                                </Grid>
+                            </Grid>
+                        </Box>
+
+                        {/* Leave/Permission/Work From Home Info Section */}
+                        <div className="flex justify-between items-end pt-4 w-full md:w-1/3">
+                            {[
+                                { label: "Annual", value: userVacationInfo?.annual, total: userVacationInfo?.annual_MAX },
+                                { label: "Sick", value: userVacationInfo?.sick, total: undefined }, // Sick usually doesn't have a max
+                                { label: "Emergency", value: userVacationInfo?.emergency, total: userVacationInfo?.emergency_MAX },
+                                { label: "Permissions", value: user.permission, total: user.permission_MAX }, // Directly from user object
+                                { label: "Work From Home", value: userWorkFromHomeInfo?.used, total: userWorkFromHomeInfo?.max }, // NEW: WFH balance
+                            ].map((item, index) => (
+                                <div
+                                    key={item.label}
+                                    className={`flex flex-col items-center px-2 w-full ${
+                                        index < 4 ? 'border-r border-gray-300' : '' // Adjust border for 5 items
+                                    }`}
+                                    style={{
+                                        borderRight: index < 4 ? '1px solid #D1D5DB' : 'none',
+                                    }}
+                                >
+                                    <Typography variant="body1" className="font-bold text-gray-800">
+                                        {item.label}
+                                    </Typography>
+                                    <Typography variant="body1" component="p" className="text-gray-600 font-light">
+                                        <span className="text-blue-500 font-bold text-lg">{item.value ?? 0}</span>
+                                        {item.total !== undefined ? ` / ${item.total ?? 0}` : ''}
+                                    </Typography>
                                 </div>
-                            </Grid>
-
-                            {/* Column 2 */}
-                            <Grid item xs={5}>
-                                <div className="flex flex-col gap-4">
-                                <Typography className="flex items-center gap-2 text-gray-700">
-                                    <span className="font-bold w-fit">Role:</span> 
-                                    <span className="text-[#5570FF]">
-                                    {user.role === 0 ? "Project Manager" : 
-                                    user.role === 1 ? "Section Head" :
-                                    user.role === 2 ? "Team Leader" : "Member"}
-                                    </span>
-                                </Typography>
-                                
-                                <Typography className="flex items-center gap-2 text-gray-700">
-                                    <span className="font-bold w-fit">Email:</span> 
-                                    <span className="text-[#5570FF]">{user.email}</span>
-                                </Typography>
-                                
-                                <Typography className="flex items-center gap-2 text-gray-700">
-                                    <span className="font-bold w-fit">Phone:</span> 
-                                    <span className="text-[#5570FF]">{user.phone}</span>
-                                </Typography>
-                                
-                                <Typography className="flex items-center gap-2 text-gray-700">
-                                    <span className="font-bold w-fit">Title:</span> 
-                                    <span className="text-[#5570FF]">{user.title}</span>
-                                </Typography>
-                                </div>
-                            </Grid>
-                            </Grid>
-                    </Box>
-
-                    {/* Leave Info Section */}
-                    <div className="flex justify-between  items-end   pt-4  w-full md:w-1/3 "
-                    // style={{borderTop:"1px solid #D1D5DB"}}
-                    >
-
-                        {[
-                        { label: "Annual", value: userVacationInfo?.annual, total: userVacationInfo?.annual_MAX },
-                        { label: "Sick", value: userVacationInfo?.sick , total: userVacationInfo?.sick }, // Assuming sick leave doesn't have a MAX in the same way
-                        { label: "Emergency", value: userVacationInfo?.emergency, total: userVacationInfo?.emergency_MAX },
-                        ].map((leave, index) => (
-                        <div
-                            key={leave.label}
-                            className={`flex flex-col items-center px-2 w-full ${
-                            index !== 2 ? 'border-r border-gray-300' : ''
-                            }`}
-                            style={{
-                                borderRight: index !== 2 ? '1px solid #D1D5DB' : 'none', // gray-300 in Tailwind is #D1D5DB
-                            }}
-                        >
-                            <Typography variant="body1" className="font-bold text-gray-800">
-                                {leave.label}
-                            </Typography>
-
-                            {leave.label !== "Sick" ? <Typography variant="body1" component="p" className="text-gray-600 font-light">
-                                <span className="text-blue-500 font-bold text-lg">{leave.value ?? 0}</span> / {leave.total ?? 0}
-                            </Typography>:<>
-                            <Typography variant="body1" component="p" className="text-gray-600 font-light">
-                                <span className="text-blue-500 font-bold text-lg">{leave.value ?? 0}</span>
-                            </Typography>
-                            </>}
+                            ))}
                         </div>
-                        ))}
-                    </div>
-                    <div className="">
 
-                        <button
-                            onClick={handleEdit}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-                        >Edit
-                        </button>
-                    </div>
-
-                    {/* <Menu
-                        anchorEl={anchorEl}
-                        open={open}
-                        onClose={handleClose}
-                        anchorOrigin={{
-                        vertical: "bottom",
-                        horizontal: "right",
-                        }}
-                        transformOrigin={{
-                        vertical: "top",
-                        horizontal: "right",
-                        }}
-                    >
-                        <MenuItem onClick={handleEdit}>Edit</MenuItem>
-                    </Menu> */}
+                        {/* Edit Button */}
+                        <div className="flex justify-center items-center">
+                            <button
+                                onClick={handleEdit}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                            >Edit
+                            </button>
+                        </div>
                     </Paper>
-                    <div className="relative mt-20">
 
-                        <div className="flex gap-2 items-end h-9 absolute " style={{top:-37}}>
+                    {/* Tabs for Vacancies, Permissions, Updates, and Work From Home */}
+                    <div className="relative mt-20">
+                        <div className="flex gap-2 items-end h-9 absolute " style={{ top: -37 }}>
                             <Tab
                                 label="Vacancies"
                                 active={view === "vacancies"}
-                                style={{borderTopLeftRadius:16,borderTopRightRadius:16}}
-                                onClick={()=> handleTabChange("vacancies")}
+                                style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
+                                onClick={() => handleTabChange("vacancies")}
                             />
                             <Tab
                                 label="Permission"
                                 active={view === "permission"}
-                                style={{borderTopLeftRadius:16,borderTopRightRadius:16}}
-                                onClick={()=> handleTabChange("permission")}
+                                style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
+                                onClick={() => handleTabChange("permission")}
+                            />
+                            <Tab
+                                label="Work From Home" // NEW: Work From Home Tab
+                                active={view === "workFromHome"}
+                                style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
+                                onClick={() => handleTabChange("workFromHome")}
                             />
                             <Tab
                                 label="Updates"
                                 active={view === "updates"}
-                                style={{borderTopLeftRadius:16,borderTopRightRadius:16}}
-                                onClick={()=> handleTabChange("updates")}
+                                style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}
+                                onClick={() => handleTabChange("updates")}
                             />
                         </div>
 
+                        {/* DataTable for Vacancies */}
                         {view === "vacancies" ? (
-                            <Paper sx={{ p: 3, mt:0 }} elevation={2}>
+                            <Paper sx={{ p: 3, mt: 0 }} elevation={2}>
                                 <DataTable
                                     data={transformedVacancyData}
                                     totalCount={totalVacancies}
@@ -528,23 +644,23 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
                                     filterConfig={vacancyFilterConfig}
                                     columnRenderers={vacancyColumnRenderers}
                                     serverSide={true}
+                                     showSearchInput={false}
                                 />
                             </Paper>
-                        ) : (view === "permission" ? (
-                            <>
-                                <Paper sx={{ p: 3, mt:0 }} elevation={2}>
+                        ) : view === "permission" ? (
+                            <Paper sx={{ p: 3, mt: 0 }} elevation={2}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
                                     <Typography variant="h6" fontWeight="bold">
-                                    Permissions
+                                        Permissions
                                     </Typography>
                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant="body1" sx={{ mr: 1 }}>
-                                        Remaining:
-                                    </Typography>
-                                    <Typography variant="body1" fontWeight="bold" color="primary">
-                                        {user.permission ?? 0} / {user.permission_MAX ?? 0}
-                                    </Typography>
-                                        <Box sx={{ml: 2}}>
+                                        <Typography variant="body1" sx={{ mr: 1 }}>
+                                            Remaining:
+                                        </Typography>
+                                        <Typography variant="body1" fontWeight="bold" color="primary">
+                                            {user.permission ?? 0} / {user.permission_MAX ?? 0}
+                                        </Typography>
+                                        <Box sx={{ ml: 2 }}>
                                             <ExportButton data={transformedPermissionData} filename={`user_${userId}_permissions.csv`}></ExportButton>
                                         </Box>
                                     </Box>
@@ -558,30 +674,60 @@ const getStatusChipColor = (status: PermissionRequestStatus): 'warning' | 'succe
                                     filterConfig={permissionFilterConfig}
                                     columnRenderers={permissionColumnRenderers}
                                     serverSide={true}
+                                    showSearchInput={false}
                                 />
-                                </Paper>
-                            </>
-                        ) : ( 
-                            <>
-                                <Paper sx={{ p: 3, mt:0 }} elevation={2}>
-                                     <DataTable
-                                        data={transformedUserChangesData} // Use allUserChangesData for client-side
-                                        totalCount={allUserChangesData.length} // Total count is length of all data for client-side
-                                        onPageChange={handleUserChangesTableChange} // May not be strictly needed for client-side if DataTable handles it
-                                        itemsPerPage={10} // Default items per page
-                                        loading={userChangesLoading}
-                                        filterConfig={userChangesFilterConfig}
-                                        columnRenderers={userChangesColumnRenderers}
-                                        serverSide={false} // Client-side pagination and filtering
-                                    />
-                                </Paper>
-                            </>
-                        ))}
+                            </Paper>
+                        ) : view === "workFromHome" ? ( // NEW: DataTable for Work From Home
+                            <Paper sx={{ p: 3, mt: 0 }} elevation={2}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                                    <Typography variant="h6" fontWeight="bold">
+                                        Work From Home Requests
+                                    </Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <Typography variant="body1" sx={{ mr: 1 }}>
+                                            Remaining:
+                                        </Typography>
+                                        <Typography variant="body1" fontWeight="bold" color="primary">
+                                            {userWorkFromHomeInfo?.used ?? 0} / {userWorkFromHomeInfo?.max ?? 0}
+                                        </Typography>
+                                        <Box sx={{ ml: 2 }}>
+                                            {/* You might want a specific export button for WFH data if needed */}
+                                            {/* <ExportButton data={transformedWorkFromHomeData} filename={`user_${userId}_work_from_home.csv`}></ExportButton> */}
+                                        </Box>
+                                    </Box>
+                                </Box>
+                                <DataTable
+                                    data={transformedWorkFromHomeData}
+                                    totalCount={totalWorkFromHome}
+                                    onPageChange={handleWorkFromHomeTableChange}
+                                    itemsPerPage={workFromHomePageSize}
+                                    loading={workFromHomeLoading}
+                                    filterConfig={workFromHomeFilterConfig}
+                                    columnRenderers={workFromHomeColumnRenderers}
+                                    serverSide={true}
+                                     showSearchInput={false}
+                                />
+                            </Paper>
+                        ) : (
+                            // DataTable for User Changes (Updates)
+                            <Paper sx={{ p: 3, mt: 0 }} elevation={2}>
+                                <DataTable
+                                    data={transformedUserChangesData}
+                                    totalCount={allUserChangesData.length}
+                                    onPageChange={handleUserChangesTableChange}
+                                    itemsPerPage={10}
+                                    loading={userChangesLoading}
+                                    filterConfig={userChangesFilterConfig}
+                                    columnRenderers={userChangesColumnRenderers}
+                                    serverSide={false} // Client-side pagination and filtering for updates
+                                     showSearchInput={false}
+                                />
+                            </Paper>
+                        )}
                     </div>
                 </Box>
             </div>
             <EditUser />
-            
         </div>
     );
 };

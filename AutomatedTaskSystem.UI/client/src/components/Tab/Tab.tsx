@@ -13,7 +13,7 @@ const Tab = ({
 }) => (
     <div
         onClick={onClick}
-        className={ `border border-solid border-b-0 border-slate-400 rounded-t px-4 transition-all w-28 flex items-center justify-center ease-in ${
+        className={ `border border-solid border-b-0 border-slate-400 rounded-t px-4 transition-all flex items-center justify-center ease-in ${
             active ? "py-1 bg-white font-bold" : "cursor-pointer py-0"
         }`}
         style={{...style, marginBottom:-1}}
@@ -21,6 +21,5 @@ const Tab = ({
         {label}
     </div>
 );
-
 
 export default Tab;

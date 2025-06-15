@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.StaticFiles;
 
 namespace AutomatedTaskSystem.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class WorkFromHomeController : ControllerBase
     {

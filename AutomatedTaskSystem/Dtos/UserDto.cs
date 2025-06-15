@@ -23,6 +23,8 @@ namespace AutomatedTaskSystem.DTO
             public int Emergency_leave { get; set; } = 0;
             public int Permission_MAX { get; set; }
             public int Permission { get; set; } = 0;
+            public int WorkFromHome { get; set; }
+            public int WorkFromHome_MAX { get; set; } 
             public string HrCode { get; set; } = "";
             public string? Email { get; set; }
             public string? Phone { get; set; }
@@ -66,6 +68,8 @@ namespace AutomatedTaskSystem.DTO
             public AccountTypeEnum AccountType { get; set; } = AccountTypeEnum.Internal;
             public int Permission_MAX { get; set; }
             public int Permission { get; set; }
+            public int WorkFromHome { get; set; }
+            public int WorkFromHome_MAX { get; set; }
             public VacationDto Vacation { get; set; } = new VacationDto { };
         }
     }

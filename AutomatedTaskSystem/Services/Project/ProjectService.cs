@@ -2,6 +2,7 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.LearningObjectiveService;
 using AutomatedTaskSystem.Services.ProjectAssignmentService;
@@ -448,9 +449,7 @@ public class ProjectService : IProjectService
             Message = $"List of unassigned users for project of id:{project.Id}"
         };
     }
-    public async Task<
-    ActionResult<ResponseService<List<Responses.ProjectDTO>>>
-> GetUserSpecificProjects()
+    public async Task<ActionResult<ResponseService<List<Responses.ProjectDTO>>>> GetUserSpecificProjects()
     {
         var authRes = _tokenService.GetUserIdFromToken();
         if (authRes.Error)
@@ -476,6 +475,37 @@ public class ProjectService : IProjectService
                 new BaseResponseService { Error = true, Message = $"User of id:{uid} is not found" }
             );
 
+        // Common logic to determine the relevant groups for SectionHead
+        var userGroup = await _context.Groups
+            .Where(g => g.Id == user.GroupId)
+            .FirstOrDefaultAsync();
+
+        if (userGroup is null)
+            throw new Exception("User has a not found group");
+
+        var groups = new List<Group> { userGroup };
+
+        if (user.Role == UserRoleEnum.SectionHead)
+        {
+            var section = await _context.Sections
+                .Where(s => s.HeadId == user.Id && !s.Archived)
+                .FirstOrDefaultAsync();
+
+            if (section is not null)
+            {
+                var sectionGroupIds = await _context.SectionGroups
+                    .Where(sg => sg.SectionId == section.Id)
+                    .Select(sg => sg.GroupId)
+                    .ToListAsync();
+
+                var sectionGroups = await _context.Groups
+                    .Where(g => sectionGroupIds.Contains(g.Id))
+                    .ToListAsync();
+
+                groups.AddRange(sectionGroups);
+            }
+        }
+
         if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
         {
             var allProjects = await _context.Projects
@@ -488,9 +518,9 @@ public class ProjectService : IProjectService
                 .Include(p => p.Year)
                 .ToListAsync();
 
-            // --- MODIFICATION 1: For ProjectManager/Owner roles ---
-            // Count only tasks where t.UserId matches the current user's ID
             var projectIds = allProjects.Select(p => p.Id).ToList();
+
+            // Task counting logic for ProjectManager/Owner roles
             var taskCounts = await _context.Tasks
                 .Where(t =>
                     !t.Archived &&
@@ -498,7 +528,7 @@ public class ProjectService : IProjectService
                     t.LearningObjective.Lesson != null &&
                     t.LearningObjective.Lesson.Unit != null &&
                     projectIds.Contains(t.LearningObjective.Lesson.Unit.ProjectId) &&
-                    t.UserId == user.Id // <--- CRUCIAL: Filter by current user's ID
+                    t.Status != TaskStatusEnum.Done // Filter out 'Done' tasks
                 )
                 .GroupBy(t => t.LearningObjective.Lesson.Unit.ProjectId)
                 .Select(g => new { ProjectId = g.Key, Count = g.Count() })
@@ -533,22 +563,33 @@ public class ProjectService : IProjectService
 
         var userProjectIds = userProjects.Select(p => p.Id).ToList();
 
-        // --- MODIFICATION 2: For other roles ---
-        // Count tasks belonging to the current user within their assigned projects
-        var userTaskCounts = await _context.Tasks
+        // Task counting logic for other roles (Team Leader, Section Head, Member)
+        IQueryable<Models.Task> baseTaskQuery = _context.Tasks
             .Where(t =>
                 !t.Archived &&
                 t.LearningObjective != null &&
                 t.LearningObjective.Lesson != null &&
                 t.LearningObjective.Lesson.Unit != null &&
                 userProjectIds.Contains(t.LearningObjective.Lesson.Unit.ProjectId) &&
-                t.UserId == user.Id && // <--- CRUCIAL: Filter by current user's ID
-                                       // Removed the explicit status filtering here as per the request,
-                                       // but you can add it back if needed for this specific count.
-                (t.Status == Models.Enums.TaskStatus.TaskStatusEnum.Backlog ||
-                 t.Status == Models.Enums.TaskStatus.TaskStatusEnum.ToDo ||
-                 t.Status == Models.Enums.TaskStatus.TaskStatusEnum.Doing)
-            )
+                t.Status != TaskStatusEnum.Done // Filter out 'Done' tasks
+            );
+
+        if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
+        {
+            baseTaskQuery = baseTaskQuery.Where(t =>
+                groups.Select(g => g.Id).Contains(t.GroupId)
+            );
+        }
+        else // UserRoleEnum.Member
+        {
+            baseTaskQuery = baseTaskQuery.Where(t =>
+                t.GroupId == user.GroupId &&
+                (t.UserId == user.Id || t.Status == TaskStatusEnum.Backlog) &&
+                (!t.TL || t.UserId == user.Id)
+            );
+        }
+
+        var userTaskCounts = await baseTaskQuery
             .GroupBy(t => t.LearningObjective.Lesson.Unit.ProjectId)
             .Select(g => new { ProjectId = g.Key, Count = g.Count() })
             .ToListAsync();

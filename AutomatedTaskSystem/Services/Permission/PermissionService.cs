@@ -884,7 +884,7 @@ namespace AutomatedTaskSystem.Services.Permission
                         {
                             await _permissionRequestHelper.SendOwnerPendingUpdate();
                             if (permission.User.Role != UserRoleEnum.ProjectManger)
-                                await _permissionRequestHelper.SendProjectManagersPendingUpdate();
+                                await _permissionRequestHelper.SendProjectManagersPendingUpdate(permissionId);
 
                             if (permission.User.TeamleaderId != null)
                             {
@@ -1024,16 +1024,16 @@ namespace AutomatedTaskSystem.Services.Permission
                             {
                                 return OperationResult.Failed($"Permission request processed but email delivery failed: {emailResult.Message}");
                             }
-                            _dataContext.Permissions.Update(permission); // Mark permission for update
-                            _dataContext.Opinions.Add(opinion); // Add owner's opinion
-
-                            // Notify the requesting user via SignalR
-                            await _hubContext.Clients.User(permission.UserId.ToString()).SendAsync("PermissionRequestOpinion", new
-                            {
-                                isApproved = isApproved,
-                                message = isApproved ? "Your permission request has been approved." : "Your permission request has been rejected."
-                            });
                         }
+                        _dataContext.Permissions.Update(permission); // Mark permission for update
+                        _dataContext.Opinions.Add(opinion); // Add owner's opinion
+
+                        // Notify the requesting user via SignalR
+                        await _hubContext.Clients.User(permission.UserId.ToString()).SendAsync("PermissionRequestOpinion", new
+                        {
+                            isApproved = isApproved,
+                            message = isApproved ? "Your permission request has been approved." : "Your permission request has been rejected."
+                        });
 
                         break;
 
@@ -1052,6 +1052,13 @@ namespace AutomatedTaskSystem.Services.Permission
 
                 // --- Centralized Pending Notification Logic ---
                 await _permissionRequestHelper.SendPendingUpdatesAfterOpinion(user, permission);
+
+                if (user.Role == UserRoleEnum.Owner)
+                {
+                    await _permissionRequestHelper.SendProjectManagersPendingUpdateWithoutNew(permission.Id);
+                    await _permissionRequestHelper.SendTeamLeaderPendingUpdatesWithoutNew(permission.User.TeamleaderId.Value);
+                }
+
                 // --- End: Centralized Pending Notification Logic ---
 
                 //_logService.LogInformation("Opinion successfully given for Permission ID {PermissionId} by user {UserId}. IsApproved: {IsApproved}", id, user.Id, isApproved);

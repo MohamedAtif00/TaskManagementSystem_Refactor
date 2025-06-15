@@ -24,6 +24,18 @@ import authService from "../Auth";
 
 declare type UserRole = number; // Assuming UserRole is a number type
 
+declare interface ResponseService<T> {
+    data?: T;
+    error?: boolean;
+    message?: string;
+}
+
+
+declare interface ResponseServiceWithData<T> extends ResponseService<T> {
+    data: T;
+}
+
+
 declare interface PageList<T>
 {
     items:T;
@@ -206,105 +218,102 @@ const PERMISSION = {
             return data;
         } catch (error) {
             console.error(error);
-            return { data: false, error: "Error creating permission" };
+            return { data: false,error:true, message: "Error creating permission" };
         }
     },
-    GET_SINGLE: async (permissionId: number): Promise<ResponseService<IPermission> | false> => {
-        try {
-            const res = await fetch(`${url}/Permission/${permissionId}`);
-            const data: ResponseService<IPermission> = await res.json();
-            return data;
-        } catch (error) {
-            console.error(error);
-            return false;
-        }
+    GET_SINGLE: async (permissionId: number): Promise<ResponseService<IPermission>> => {
+   
+        const res = await fetch(`${url}/Permission/${permissionId}`);
+        const data: ResponseService<IPermission> = await res.json();
+        return data;
+
     },
     GET_ALL_BY_USER: async (
         userId: number,
         // Accept params as a Record for flexibility, similar to your Leave service
         params: Record<string, string | number | boolean | undefined | Date> = {}
-    ): Promise<ResponseService<PageList<IPermission[]>> | false> => { // Changed return type to PageList<IPermission[]>
-        try {
-            // Filter out undefined, null, or empty string values and format dates
-            const filteredParams = Object.entries(params || {}).reduce((acc, [key, value]) => {
-                if (value !== undefined && value !== null && String(value).trim() !== '') {
-                    let formattedValue = String(value);
+    ): Promise<ResponseService<PageList<IPermission[]>>> => { // Changed return type to PageList<IPermission[]>
+        // try {
+        // Filter out undefined, null, or empty string values and format dates
+        const filteredParams = Object.entries(params || {}).reduce((acc, [key, value]) => {
+            if (value !== undefined && value !== null && String(value).trim() !== '') {
+                let formattedValue = String(value);
 
-                    // Special handling for Date objects, assuming ISO format for backend
-                    if (value instanceof Date) {
-                        formattedValue = format(value, "yyyy-MM-dd");
-                    }
-
-                    // Map frontend keys to backend query parameter names if necessary
-                    switch (key) {
-                        case "pageNumber": // Direct mapping for pageNumber
-                            acc[key] = formattedValue;
-                            break;
-                        case "pageSize": // Direct mapping for pageSize
-                            acc[key] = formattedValue;
-                            break;
-                        case "searchTerm": // Direct mapping for searchTerm
-                            acc[key] = formattedValue;
-                            break;
-                        case "date": // Mapping 'date' (from IGetAllPermissionsRequest)
-                            acc[key] = formattedValue;
-                            break;
-                        case "type": // Mapping 'type'
-                            acc[key] = formattedValue;
-                            break;
-                        case "status": // Mapping 'status'
-                            acc[key] = formattedValue;
-                            break;
-                        default:
-                            // Fallback for any other keys that match directly
-                            acc[key] = formattedValue;
-                            break;
-                    }
+                // Special handling for Date objects, assuming ISO format for backend
+                if (value instanceof Date) {
+                    formattedValue = format(value, "yyyy-MM-dd");
                 }
-                return acc;
-            }, {} as Record<string, string>);
 
-            const queryString = new URLSearchParams(filteredParams).toString();
-            const fullUrl = `${url}/Permission/GetPermissionsByUserId/${userId}${queryString ? `?${queryString}` : ""}`;
-
-            const res = await fetch(fullUrl);
-
-            if (!res.ok) {
-                // Handle HTTP errors
-                const errorResponse: ResponseService<any> = await res.json();
-                console.error(`HTTP error! Status: ${res.status}, Message: ${errorResponse.message || res.statusText}`);
-                return {
-                    error: true,
-                    message: errorResponse.message || res.statusText,
-                    data: undefined,
-                    statusCode: res.status
-                };
+                // Map frontend keys to backend query parameter names if necessary
+                switch (key) {
+                    case "pageNumber": // Direct mapping for pageNumber
+                        acc[key] = formattedValue;
+                        break;
+                    case "pageSize": // Direct mapping for pageSize
+                        acc[key] = formattedValue;
+                        break;
+                    case "searchTerm": // Direct mapping for searchTerm
+                        acc[key] = formattedValue;
+                        break;
+                    case "date": // Mapping 'date' (from IGetAllPermissionsRequest)
+                        acc[key] = formattedValue;
+                        break;
+                    case "type": // Mapping 'type'
+                        acc[key] = formattedValue;
+                        break;
+                    case "status": // Mapping 'status'
+                        acc[key] = formattedValue;
+                        break;
+                    default:
+                        // Fallback for any other keys that match directly
+                        acc[key] = formattedValue;
+                        break;
+                }
             }
+            return acc;
+        }, {} as Record<string, string>);
 
-            // Expecting PageList structure from backend for consistency with leaves
-            const data: ResponseService<PageList<IPermission[]>> = await res.json();
-            return data;
-        } catch (error) {
-            console.error("Error fetching permissions by user ID:", error);
+        const queryString = new URLSearchParams(filteredParams).toString();
+        const fullUrl = `${url}/Permission/GetPermissionsByUserId/${userId}${queryString ? `?${queryString}` : ""}`;
+
+        const res = await fetch(fullUrl);
+
+        if (!res.ok) {
+            // Handle HTTP errors
+            const errorResponse: ResponseService<any> = await res.json();
+            console.error(`HTTP error! Status: ${res.status}, Message: ${errorResponse.message || res.statusText}`);
             return {
                 error: true,
-                message: `Failed to fetch permissions: ${error instanceof Error ? error.message : String(error)}`,
-                data: undefined
+                message: errorResponse.message || res.statusText,
+                data: undefined,
+                // statusCode: res.status
             };
         }
+
+        // Expecting PageList structure from backend for consistency with leaves
+        const data: ResponseService<PageList<IPermission[]>> = await res.json();
+        return data;
+        // } catch (error) {
+        //     console.error("Error fetching permissions by user ID:", error);
+        //     return {
+        //         error: true,
+        //         message: `Failed to fetch permissions: ${error instanceof Error ? error.message : String(error)}`,
+        //         data: undefined
+        //     };
+        // }
     },
-    GET_DETAILS: async (permissionId: number): Promise<ResponseService<IGetPermissionDetails> | false> => {
-        try {
+    GET_DETAILS: async (permissionId: number): Promise<ResponseService<IGetPermissionDetails>> => {
+        // try {
             const res = await fetch(`${url}/Permission/GetSinglePermission/${permissionId}`);
             const data: ResponseService<IGetPermissionDetails> = await res.json();
             return data;
-        } catch (error) {
-            console.error(error);
-            return false;
-        }
+        // } catch (error) {
+        //     console.error(error);
+        //     return false;
+        // }
     },
-    CREATE_OPINION: async (opinion: IOpinion): Promise<ResponseService<IGetOpinion> | false> => {
-        try {
+    CREATE_OPINION: async (opinion: IOpinion): Promise<ResponseService<IGetOpinion>> => {
+        // try {
             const auth = authService.authHeader();
             const res = await fetch(`${url}/Permission/approve`, {
                 method: "POST",
@@ -317,10 +326,10 @@ const PERMISSION = {
 
             const data: ResponseService<IGetOpinion> = await res.json();
             return data;
-        } catch (error) {
-            console.error(error);
-            return false;
-        }
+        // } catch (error) {
+        //     console.error(error);
+        //     return false;
+        // }
     },
     UPDATE: async (permissionId: number, request: Partial<ICreatePermission>): Promise<boolean> => {
         try {

@@ -128,6 +128,8 @@ interface IUser {
     emergency_leave: number;
     permission_MAX: number;
     permission: number;
+    workFromHome:number;
+    workFromHome_MAX:number;
     hrCode: string;
     email?: string | null;
     teamleader?: IUser | null;

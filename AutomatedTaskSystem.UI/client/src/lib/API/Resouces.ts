@@ -127,7 +127,9 @@ const RESOURCES = {
 			accountType,
 			vacation,
 			permission,
-			permission_MAX
+			permission_MAX,
+			workFromHome,
+			workFromHome_MAX
 		}: {
 			name: string;
 			groupId: number;
@@ -138,7 +140,9 @@ const RESOURCES = {
 			accountType:number,
 			vacation:IVacation
 			permission:number,
-			permission_MAX:number
+			permission_MAX:number,
+			workFromHome:number,
+			workFromHome_MAX:number
 		}) => {
 			try {
 				const res = await fetch(`${url}/users`, {
@@ -180,7 +184,9 @@ const RESOURCES = {
 				phone,
 				vacation,
 				permission,
-				permission_MAX
+				permission_MAX,
+				workFromHome,
+				workFromHome_MAX
 			}: {
 				id: string | number;
 				name: string;
@@ -196,7 +202,9 @@ const RESOURCES = {
 				phone:string | null,
 				vacation: IVacation;
 				permission: number;
-				permission_MAX:number
+				permission_MAX:number,
+				workFromHome:number,
+				workFromHome_MAX:number
 			}) => {
 				try {
 					const authHeader = authService.authHeader();
@@ -221,7 +229,9 @@ const RESOURCES = {
 							phone,
 							vacation,
 							permission,
-							permission_MAX
+							permission_MAX,
+							workFromHome,
+							workFromHome_MAX
 						}),
 					});
 					

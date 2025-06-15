@@ -76,7 +76,10 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
 
             // You might want to add checks for existing WFH requests on the same date for the user
             var existingWfh = await _dataContext.WorkFromHomeRequests
-                                                .AnyAsync(w => w.UserId == user.Id && w.Date.Date == date.Date);
+                                                .AnyAsync(w => w.UserId == user.Id &&
+                                                w.Date.Date == date.Date && 
+                                                w.Status != WorkFromHomeStatusEnum.Cancelled && 
+                                                w.Status != WorkFromHomeStatusEnum.Rejected);
             if (existingWfh)
             {
                 response.Error = true;
@@ -90,6 +93,19 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
             {
                 response.Error = true;
                 response.Message = "Cannot request work from home for a past date.";
+                response.Data = false;
+                return response;
+            }
+            var pendingWorkingFromHomeDays = await _workFromHomeHelper.GetPendingWorkFromHomeDaysAsync(user.Id);
+            int requestedDays = 1; 
+
+            int remainingWorkFromHomeBalance = user.WorkFromHome_MAX - user.WorkFromHome;
+
+            // 4. Validate if the new request plus pending requests exceeds the maximum
+            if ((pendingWorkingFromHomeDays + requestedDays) > remainingWorkFromHomeBalance)
+            {
+                response.Error = true;
+                response.Message = $"Requested Work From Home days ({requestedDays}) plus pending days ({pendingWorkingFromHomeDays}) exceeds your available Work From Home balance. Remaining: {remainingWorkFromHomeBalance - pendingWorkingFromHomeDays} days.";
                 response.Data = false;
                 return response;
             }
@@ -116,20 +132,11 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                 if (section != null)
                     workFromHomeRequest.SectionheadId = section.HeadId;
             }
-            //else if (user.TeamleaderId.HasValue) // For Members
-            //{
-            //    workFromHomeRequest.TeamleaderId = user.TeamleaderId.Value;
-            //    var teamLeader = await _dataContext.Users.FirstOrDefaultAsync(tl => tl.Id == user.TeamleaderId.Value);
-            //    if (teamLeader != null && teamLeader.SectionheadId.HasValue) // Check if team leader has a section head
-            //    {
-            //        workFromHomeRequest.SectionheadId = teamLeader.SectionheadId.Value;
-            //    }
-            //}
-
 
             try
             {
                 _dataContext.WorkFromHomeRequests.Add(workFromHomeRequest);
+                
                 await _dataContext.SaveChangesAsync();
 
                 // Auto-approval and email for Owner (similar to leave request)
@@ -169,9 +176,9 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                     await _workFromHomeHelper.SendOwnerPendingUpdate(workFromHomeRequest.Id);
                     await _workFromHomeHelper.SendProjectManagersPendingUpdate(workFromHomeRequest.Id);
 
-                    if (workFromHomeRequest.TeamleaderId.HasValue)
+                    if (workFromHomeRequest.User.TeamleaderId.HasValue)
                     {
-                        await _workFromHomeHelper.SendTeamLeaderPendingUpdates(workFromHomeRequest.TeamleaderId.Value, workFromHomeRequest.Id);
+                        await _workFromHomeHelper.SendTeamLeaderPendingUpdates(workFromHomeRequest.User.TeamleaderId.Value, workFromHomeRequest.Id);
                     }
                     if (workFromHomeRequest.SectionheadId.HasValue)
                     {
@@ -258,7 +265,7 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
 
                             var message = new EmailMessage
                             {
-                                Subject = "طلب عمل من المنزل - موافقة",
+                                Subject = "طلب عمل من المنزل ",
                                 Body = EmailTemplate.CreateWorkFromHomeApprovedTemplate(
                                     workFromHomeRequest.User.Name,
                                     workFromHomeRequest.User.Email,
@@ -267,7 +274,7 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                                     workFromHomeRequest.User.HR_code
                                 ),
                                 IsHtml = true,
-                                CcEmails = new List<string> { _emailRecipients.CEO, workFromHomeRequest.User.Email }
+                                CcEmails = new List<string> { _emailRecipients.SectionHead, workFromHomeRequest.User.Email }
                             };
 
                             var emailResult = await _emailService.SendEmailAsync(message);
@@ -284,6 +291,8 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                                 isApproved = true,
                                 message = "Your work from home request has been approved."
                             });
+
+                            workFromHomeRequest.User.WorkFromHome += 1;
                         }
                         else // Owner rejects
                         {
@@ -314,6 +323,13 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
 
                 // Send updates based on the current state of opinions (similar to leave request helper)
                 await _workFromHomeHelper.SendPendingUpdatesAfterOpinion(user, workFromHomeRequest);
+
+                
+                if (user.Role == UserRoleEnum.Owner)
+                {
+                    _workFromHomeHelper.SendProjectManagersPendingUpdateWithoutNew(workFromHomeRequest.Id);
+                    _workFromHomeHelper.SendTeamLeaderPendingUpdatesWithoutNew(workFromHomeRequest.User.TeamleaderId.Value);
+                }
 
                 _logService.LogInformation("Opinion successfully given for WorkFromHomeRequest {WorkFromHomeId} by user {UserId}. IsApproved: {IsApproved}", request.WorkFromHomeId, user.Id, request.IsApproved);
                 return OperationResult.Succeeded("Opinion successfully recorded.");
@@ -586,6 +602,7 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                     },
                     OnBoard = request.User.OnBoard
                 },
+                DateCreated = request.DateCreated?.ToString("M/d/yyyy h:mm:ss tt"),
                 Opinions = request.Opinions.Select(o => new GetOpinion
                 {
                     Id = o.Id,
@@ -664,9 +681,7 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                         Name = x.User.Name
                     },
                     DateCreated = x.DateCreated.HasValue ? x.DateCreated.Value.ToString("M/d/yyyy h:mm:ss tt") : null,
-                    // MyStatus will be handled at the client side if not directly filtered by user's opinion
-                    // For this method, we are fetching for a specific user, so their 'MyStatus' isn't about their opinion, but the request's status relative to them.
-                    MyStatus = x.Status.ToString() // For a specific user, their 'MyStatus' is usually just the request's actual status
+                    MyStatus = x.Status.ToString() 
                 });
 
                 PageList<GetWorkFromHomeDto> paginatedWorkFromHomeRequests;
@@ -774,6 +789,8 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                                 Data = false
                             };
                         }
+
+                        senderUser.WorkFromHome -=1; // Decrement the user's work from home count
                     }
 
                     await _dataContext.SaveChangesAsync();
@@ -783,7 +800,7 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                     {
                         await _workFromHomeHelper.SendOwnerPendingUpdate();
                         if (senderUser.Role != UserRoleEnum.ProjectManger)
-                            await _workFromHomeHelper.SendProjectManagersPendingUpdate();
+                            await _workFromHomeHelper.SendProjectManagersPendingUpdate(workFromHomeRequest.Id);
 
                         if (senderUser.TeamleaderId != null)
                         {

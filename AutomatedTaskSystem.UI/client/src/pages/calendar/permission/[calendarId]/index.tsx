@@ -6,6 +6,8 @@ import { useRouter } from 'next/router';
 import { format } from 'date-fns';
 import { useAppSelector } from '../../../../app/hooks';
 import PERMISSION, { IGetOpinion, IGetPermissionDetails, IOpinion, PermissionRequestStatus } from '../../../../lib/API/Permission';
+import { toast } from 'react-toastify';
+import TableLoader from '../../../../components/loader/table-loader';
 // import { User } from 'lucide-react';
 
 
@@ -20,94 +22,117 @@ const PermissionDetails = () => {
   const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
   const [commentable,setCommentable] = useState(true)
-
   const [approvals, setApprovals] = useState<IGetOpinion[] | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
 
 
 const parseTime = (date: string, time: string): Date => {
   return new Date(`${date}T${time}`);
 };
 
-  useEffect(() => {
-    //console.log(calendarId);
-    
+useEffect(() => {
     let isMounted = true;
+    const numericCalendarId = Number(calendarId);
 
-    
-        if (calendarId) {
-          fetchPermissionRequest(Number(calendarId)).then(({ leaveDetails }) => {
-              if (isMounted) {
-                  if (leaveDetails && leaveDetails.data) {
+    if (calendarId && !isNaN(numericCalendarId) && numericCalendarId > 0) {
+        setIsLoadingDetails(true);
 
-                      setRequest(leaveDetails.data); // Set the single object
-                      setApprovals(leaveDetails.data.opinions??null); // Access opinions directly from leaveDetails.data
+        const doFetch = async () => {
+            try {
+                const response = await PERMISSION.GET_DETAILS(numericCalendarId);
 
-                      // Access opinions from leaveDetails.data, as it's the IGetPermissionDetails object
-                      if (leaveDetails.data.opinions?.some(x => x.user?.id === auth.id)) {
-                          // console.log("commentable");
-                          setCommentable(false);
-                      } else {
-                          setCommentable(true); // Default to commentable if not found
-                      }
-                  } else {
-                      // Handle the case where leaveDetails is false or leaveDetails.data is null/undefined
-                      console.warn("Failed to fetch permission details or no data received.");
-                      setRequest(null);
-                      setApprovals(null); // Reset approvals
-                      setCommentable(true); // Reset commentable state if no data
-                  }
-              }
-          });
-      }
+                if (isMounted) {
+                    if (response && !response.error && response.data) {
+                      debugger
+                        setRequest(response.data);
+                        setApprovals(response.data.opinions ?? null);
+                        const canComment = response.data.status.toLowerCase() == PermissionRequestStatus.Pending.toString();
+                        setCommentable(canComment);
+                    } else {
+                        setRequest(null);
+                        setApprovals(null);
+                        setCommentable(true); // Default if no data or error
+                        toast.error(response?.message || "Failed to fetch permission details.");
+                        console.warn(response?.message || "Failed to fetch permission details or no data received.");
+                    }
+                }
+            } catch (error) {
+                if (isMounted) {
+                    setRequest(null);
+                    setApprovals(null);
+                    setCommentable(true);
+                    toast.error("An error occurred while fetching permission details.");
+                    console.error('Error fetching permission request:', error);
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoadingDetails(false);
+                }
+            }
+        };
 
-      // ... rest of your useEffect cleanup ...
-      return () => {
-          isMounted = false;
-      };
-    }, [calendarId]);
+        doFetch();
 
-        const fetchPermissionRequest = async (id: number) => {
-        try {
-            const leaveDetails = await PERMISSION.GET_DETAILS(Number(calendarId));
-            //console.log(leaveDetails);
-            
-            return { leaveDetails };
-        } catch (error) {
-            console.error('Error fetching leave request:', error);
-            return { leaveDetails: null, opinions: [] };
-        }
+    } else if (calendarId) { // calendarId exists but is not a valid number
+        toast.error("Invalid Permission ID.");
+        setIsLoadingDetails(false);
+        setRequest(null);
+        setApprovals(null);
+        setCommentable(true);
+    } else {
+        // calendarId is undefined, usually on initial render before router query is populated
+        setIsLoadingDetails(false); // Or true if you want to show loader until ID is available
+    }
+
+    return () => {
+        isMounted = false;
     };
+}, [calendarId, auth.id]);
 
 
-    const handleSubmitOpinion = async (status: PermissionRequestStatus.Approved | PermissionRequestStatus.Rejected) => {
+    const handleSubmitOpinion = async (newOpinionStatus: PermissionRequestStatus.Approved | PermissionRequestStatus.Rejected) => {
+        if (!request?.id) {
+            toast.error("Permission request ID is missing.");
+            return;
+        }
         setIsSubmitting(true);
         try {
-          debugger
-            let op:IOpinion = {
+            const opinionData:IOpinion = {
                 permissionId: request?.id??0,
                 comment:comment,
-                status:status,
-                isApproved:status == PermissionRequestStatus.Approved?true:false,
+                status: newOpinionStatus,
+                isApproved: newOpinionStatus === PermissionRequestStatus.Approved,
                 user:{id:auth.id,name:auth.name,role:auth.role}
             }
-            await PERMISSION.CREATE_OPINION(op)
-            debugger
-            // Optional: refetch the leave request to update approvals
-            const { leaveDetails } = await fetchPermissionRequest(Number(calendarId));
+            const response = await PERMISSION.CREATE_OPINION(opinionData);
 
-            if(leaveDetails)
-            setRequest(leaveDetails?.data??null);
-             setApprovals(leaveDetails.data.opinions??null);
-            // Clear form
-            setComment('');
+            if (response.error) {
+                toast.error(response.message || "Failed to submit opinion.");
+            } else {
+                toast.success(response.message || "Opinion submitted successfully!");
+                // Refetch after successful submission
+                const numericCalendarId = Number(calendarId);
+                if (!isNaN(numericCalendarId) && numericCalendarId > 0) {
+                    const refetchResponse = await PERMISSION.GET_DETAILS(numericCalendarId);
+                    if (refetchResponse && !refetchResponse.error && refetchResponse.data) {
+                        setRequest(refetchResponse.data);
+                        setApprovals(refetchResponse.data.opinions ?? null);
+                        const canComment = !refetchResponse.data.opinions?.some(op => op.user?.id === auth.id);
+                        setCommentable(canComment);
+                    } else {
+                        toast.error(refetchResponse?.message || "Failed to refresh permission details after submitting opinion.");
+                    }
+                }
+                setComment(''); // Clear comment only on success
+            }
         } catch (error) {
+            toast.error("An error occurred while submitting your opinion.");
             console.error('Error submitting opinion:', error);
         } finally {
             setIsSubmitting(false);
         }
     };
             
-
 
   // Function to get status color based on status
   const getStatusColor = (status: PermissionRequestStatus): string => {
@@ -125,9 +150,16 @@ const parseTime = (date: string, time: string): Date => {
     }
   };
 
+  const overallLoading = isLoadingDetails || isSubmitting;
+
   return (
     <div className="bg-gray-50 min-h-screen p-6 w-full">
-      <div className="max-w-5xl mx-auto">
+      {overallLoading && (
+          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50 rounded-lg">
+              <TableLoader />
+          </div>
+      )}
+      <div className={`max-w-5xl mx-auto ${overallLoading ? 'blur-sm pointer-events-none' : ''}`}>
         {/* Header */}
         <div className="flex items-center mb-8">
           {/* <User className="w-6 h-6 mr-2" /> */}
@@ -270,11 +302,15 @@ const parseTime = (date: string, time: string): Date => {
                 </div>
                 <div>
                   <span className="text-gray-500">Role: </span>
-                  <span className="text-blue-600">{approval.user?.role == 0?"Cordinator":approval.user?.role == 2?"TeamLeader":"Owner"}</span>
+                  <span className="text-blue-600">
+                    {approval.user?.role === 0 ? "Project Manager" :
+                     approval.user?.role === 1 ? "Section Head" :
+                     approval.user?.role === 2 ? "Team Leader" : "Owner"}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-500">Status: </span>
-                  <span className={`${getStatusColor(approval.isApproved?PermissionRequestStatus.Approved:PermissionRequestStatus.Rejected)}`}>{approval.isApproved?"Approved":"Rejected"}</span>
+                  <span className={`${getStatusColor(approval.isApproved ? PermissionRequestStatus.Approved : PermissionRequestStatus.Rejected)}`}>{approval.isApproved?"Approved":"Rejected"}</span>
                 </div>
               </div>
               <div>
@@ -283,7 +319,9 @@ const parseTime = (date: string, time: string): Date => {
               </div>
             </div>
           ))}
-          {((auth.role < 3 || auth.role == 4 ) && !request?.opinions?.some(x => x.user?.id == auth.id))&& (
+          {((auth.role < 3 || auth.role === 4) &&
+            commentable &&
+            request?.status.toLowerCase() === PermissionRequestStatus.Pending) && (
             <div className="mt-6 pt-6">
                 <h2 className="text-lg font-semibold mb-2">Your Opinion</h2>
                 <textarea

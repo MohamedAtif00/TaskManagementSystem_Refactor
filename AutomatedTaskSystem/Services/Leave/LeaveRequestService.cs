@@ -289,12 +289,12 @@ namespace AutomatedTaskSystem.Services.Leave
 
             public static OperationResult Succeeded(string message = "Operation completed successfully.")
             {
-                return new OperationResult { error = true, Message = message };
+                return new OperationResult { error = false, Message = message };
             }
 
             public static OperationResult Failed(string message = "Operation failed.")
             {
-                return new OperationResult { error = false, Message = message };
+                return new OperationResult { error = true, Message = message };
             }
         }
         // Update the return type of the method
@@ -486,6 +486,11 @@ namespace AutomatedTaskSystem.Services.Leave
                 await _dataContext.SaveChangesAsync();
 
                 await _leaveRequestHelper.SendPendingUpdatesAfterOpinion(user, leaveRequest);
+                if (user.Role == UserRoleEnum.Owner)
+                {
+                    await _leaveRequestHelper.SendProjectManagersPendingUpdateWithoutNew(leaveRequest.Id);
+                    await _leaveRequestHelper.SendTeamLeaderPendingUpdatesWithoutNew(leaveRequest.User.TeamleaderId.Value); 
+                }
 
               
                     _logService.LogInformation("Opinion successfully given for LeaveRequest {LeaveRequestId} by user {UserId}. IsApproved: {IsApproved}", request.LeaveRequestId, user.Id, request.IsApproved);

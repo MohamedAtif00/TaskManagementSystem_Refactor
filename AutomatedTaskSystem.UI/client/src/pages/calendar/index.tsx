@@ -7,16 +7,27 @@ import Link from "next/link";
 import { useAppSelector } from "../../app/hooks";
 import DataTable from "../../components/table/tablePagination";
 import ServerExportButton from "../../components/button/serverExportButtonProps";
+import WORK_FROM_HOME, { WorkFromHomeStatus, IGetAllWorkFromHomeRequestNoPagination, IGetWorkFromHomeRequest, IDName } from "../../lib/API/workFromHome";
 
 // Assume these interfaces are imported or defined globally if they are not part of LEAVE/PERMISSION
-interface IGetAllLeavesApiResponse {
-    items: IGetLeaveRequestForCalander[];
-    totalCount: number;
-    currentPage: number;
-    pageSize: number;
-    totalPages: number;
+// Re-declaring for clarity within this file's context, but ideally these would be in a shared types file.
+interface ResponseService<T> {
+    data?: T;
+    error?: boolean;
+    message?: string;
 }
 
+interface PageList<T> {
+    items: T;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    totalCount: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+}
+
+// Interfaces for Leave (already present in your code)
 interface IGetAllLeavesRequest {
     userId?: number;
     role?: number;
@@ -26,10 +37,12 @@ interface IGetAllLeavesRequest {
     fromDate?: string;
     toDate?: string;
     status?: LeaveRequestStatus | "all";
-    myStatus?:LeaveRequestStatus | "all"
+    myStatus?: LeaveRequestStatus | "all"
     type?: LeaveRequestType | "all";
+    [key: string]: string | number | boolean | undefined;
 }
 
+// Interfaces for Permission (already present in your code)
 interface IGetAllPermissionsApiResponse {
     items: IPermission[];
     totalCount: number;
@@ -46,37 +59,67 @@ interface IGetAllPermissionsRequest {
     date?: string;
     type?: PermissionType | "all";
     status?: PermissionRequestStatus | "all";
-    [key: string]: string | number | boolean | undefined; // Add this line
+    [key: string]: string | number | boolean | undefined;
 }
 
-// Interface for fetching all permissions without pagination, similar to IGetAllLeavesRequestNoPagination
 interface IGetAllPermissionsRequestNoPagination {
-    userId?: number; // Assuming permissions might also be filtered by user, though not explicitly in current filters
+    userId?: number;
     role: number;
     searchTerm?: string;
     date?: string;
     type?: PermissionType | "all";
     status?: PermissionRequestStatus | "all";
     myStatus?: PermissionRequestStatus | "all";
-    disablePagination: true; // Explicitly indicates no pagination
+    disablePagination: true;
 }
 
 
+// New Interfaces for Work From Home (corresponding to backend DTOs)
+// These should ideally come from your 'types/workFromHomeTypes.d.ts' as suggested in the previous response
+interface IGetAllWorkFromHomeRequest {
+    userId?: number;
+    role?: number;
+    page?: number;
+    pageSize?: number;
+    searchTerm?: string;
+    fromDate?: string; // For filtering by date range
+    toDate?: string; // For filtering by date range
+    status?: WorkFromHomeStatus | "all";
+    myStatus?: WorkFromHomeStatus | "all"; // Manager's opinion status
+    [key: string]: string | number | boolean | undefined;
+}
+
+// Assuming the IGetWorkFromHomeRequest is similar to IGetLeaveRequestForCalander
+// but for WFH, it would have 'date' instead of 'startDate'/'endDate' and 'duration'
+interface IGetWorkFromHomeRequestForCalanderDisplay {
+    id: number;
+    date: string; // Single date for WFH
+    noteForManager?: string;
+    status: WorkFromHomeStatus;
+    myStatus?: WorkFromHomeStatus; // Manager's opinion status
+    dateCreated: string;
+    user: IDName | null;
+}
+
 
 const Calendar = () => {
-    const [activeTab, setActiveTab] = useState<"vacancy" | "permission">("vacancy");
+    const [activeTab, setActiveTab] = useState<"vacancy" | "permission" | "workFromHome">("vacancy"); // Added 'workFromHome'
 
     const [vacancies, setVacancies] = useState<IGetLeaveRequestForCalander[]>([]);
     const [permissions, setPermissions] = useState<IPermission[]>([]);
+    const [workFromHomeRequests, setWorkFromHomeRequests] = useState<IGetWorkFromHomeRequestForCalanderDisplay[]>([]); // New state for WFH
+
     const [totalVacanciesCount, setTotalVacanciesCount] = useState<number>(0);
     const [totalPermissionsCount, setTotalPermissionsCount] = useState<number>(0);
+    const [totalWorkFromHomeCount, setTotalWorkFromHomeCount] = useState<number>(0); // New state for WFH count
 
     const [loading, setLoading] = useState({
         vacancies: true,
-        permissions: true
+        permissions: true,
+        workFromHome: true, // New loading state for WFH
     });
 
-    // Pagination & Filter state for Vacancies (to be passed to API)
+    // Pagination & Filter state for Vacancies
     const [vacancyCurrentPage, setVacancyCurrentPage] = useState<number>(1);
     const [vacancyItemsPerPage, setVacancyItemsPerPage] = useState<number>(10);
     const [vacancyFilters, setVacancyFilters] = useState<Record<string, string | number | undefined>>({
@@ -87,7 +130,7 @@ const Calendar = () => {
     });
     const [vacancySearchText, setVacancySearchText] = useState<string>("");
 
-    // Pagination & Filter state for Permissions (to be passed to API)
+    // Pagination & Filter state for Permissions
     const [permissionCurrentPage, setPermissionCurrentPage] = useState<number>(1);
     const [permissionItemsPerPage, setPermissionItemsPerPage] = useState<number>(10);
     const [permissionFilters, setPermissionFilters] = useState<Record<string, string | number | undefined>>({
@@ -96,6 +139,17 @@ const Calendar = () => {
         status: "all"
     });
     const [permissionSearchText, setPermissionSearchText] = useState<string>("");
+
+    // Pagination & Filter state for Work From Home (NEW)
+    const [workFromHomeCurrentPage, setWorkFromHomeCurrentPage] = useState<number>(1);
+    const [workFromHomeItemsPerPage, setWorkFromHomeItemsPerPage] = useState<number>(10);
+    const [workFromHomeFilters, setWorkFromHomeFilters] = useState<Record<string, string | number | undefined>>({
+        fromDate: undefined, // WFH can also have a date range filter
+        toDate: undefined,
+        status: "all",
+    });
+    const [workFromHomeSearchText, setWorkFromHomeSearchText] = useState<string>("");
+
 
     const auth = useAppSelector((s) => s.authSlice);
 
@@ -119,10 +173,9 @@ const Calendar = () => {
                 "Vacancy type": vacancy.type,
                 "Final Status": vacancy.status,
                 "Vacancy date": formatDateForDisplay(vacancy.startDate),
-                // "Actions": vacancy.id
             };
             if (isPrivilegedUser) {
-                baseData["My Status"] = vacancy.myStatus ?? vacancy.status; // Fallback to status if myStatus is not present
+                baseData["My Status"] = vacancy.myStatus ?? vacancy.status;
             }
             baseData["Actions"] = vacancy.id;
             return baseData;
@@ -138,15 +191,34 @@ const Calendar = () => {
                 "Permission Type": permission.type,
                 "Final Status": permission.status,
                 "Permission date": formatDateForDisplay(permission.permissionDate),
-                // "Actions": permission.id
             };
             if (isPrivilegedUser) {
-                baseData["My Status"] = permission.myStatus ?? permission.status; // Fallback to status if myStatus is not present
+                baseData["My Status"] = permission.myStatus ?? permission.status;
             }
             baseData["Actions"] = permission.id;
             return baseData;
         });
     }, [permissions, formatDateForDisplay, auth.role]);
+
+    // New: Transformed data for Work From Home requests
+    const transformedWorkFromHomeData = useMemo(() => {
+        const isPrivilegedUser = auth.role === 0 || auth.role === 2; // Project Manager or Team Leader
+        return workFromHomeRequests.map(wfh => {
+            const baseData: Record<string, any> = {
+                "User name": wfh.user?.name ?? "N/A",
+                "Request date": formatDateForDisplay(wfh.dateCreated),
+                "Work From Home Date": formatDateForDisplay(wfh.date), // Single date for WFH
+                "Final Status": wfh.status,
+                // Optional: "Note for Manager": wfh.noteForManager, if you want to display this
+            };
+            if (isPrivilegedUser) {
+                baseData["My Status"] = wfh.myStatus ?? wfh.status;
+            }
+            baseData["Actions"] = wfh.id;
+            return baseData;
+        });
+    }, [workFromHomeRequests, formatDateForDisplay, auth.role]);
+
 
     const vacancyFilterConfig = useMemo(() => {
         const config = [
@@ -162,7 +234,7 @@ const Calendar = () => {
             },
             {
                 key: "status",
-                label: "Final Status", // Renamed for clarity if "My Status" filter is present
+                label: "Final Status",
                 type: "select" as const,
                 options: [
                     { value: "all", label: "All" },
@@ -222,7 +294,7 @@ const Calendar = () => {
             },
             {
                 key: "status",
-                label: "Final Status", // Renamed for clarity
+                label: "Final Status",
                 type: "select" as const,
                 options: [
                     { value: "all", label: "All" },
@@ -244,6 +316,49 @@ const Calendar = () => {
                     { value: PermissionRequestStatus.Approved, label: "Approved" },
                     { value: PermissionRequestStatus.Rejected, label: "Rejected" },
                     { value: PermissionRequestStatus.Cancelled, label: "Cancelled" }
+                ]
+            });
+        }
+        return config;
+    }, [auth.role]);
+
+    // New: Filter config for Work From Home requests
+    const workFromHomeFilterConfig = useMemo(() => {
+        const config = [
+            {
+                key: "fromDate",
+                label: "WFH From",
+                type: "date" as const
+            },
+            {
+                key: "toDate",
+                label: "WFH To",
+                type: "date" as const
+            },
+            {
+                key: "status",
+                label: "Final Status",
+                type: "select" as const,
+                options: [
+                    { value: "all", label: "All" },
+                    { value: WorkFromHomeStatus.Pending, label: "Pending" },
+                    { value: WorkFromHomeStatus.Approved, label: "Approved" },
+                    { value: WorkFromHomeStatus.Rejected, label: "Rejected" },
+                    { value: WorkFromHomeStatus.Cancelled, label: "Cancelled" }
+                ]
+            }
+        ];
+        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+            config.push({
+                key: "myStatus",
+                label: "My Status",
+                type: "select" as const,
+                options: [
+                    { value: "all", label: "All" },
+                    { value: WorkFromHomeStatus.Pending, label: "Pending" },
+                    { value: WorkFromHomeStatus.Approved, label: "Approved" },
+                    { value: WorkFromHomeStatus.Rejected, label: "Rejected" },
+                    { value: WorkFromHomeStatus.Cancelled, label: "Cancelled" }
                 ]
             });
         }
@@ -300,12 +415,23 @@ const Calendar = () => {
         return renderers;
     }, [commonStatusRenderer, commonActionsRenderer, auth.role]);
 
+    // New: Column renderers for Work From Home requests
+    const workFromHomeColumnRenderers = useMemo(() => {
+        const renderers: Record<string, (value: any, row?: Record<string, any>) => React.ReactNode> = {
+            "Final Status": commonStatusRenderer,
+            "Actions": (value: number) => commonActionsRenderer(value, 'workFromHome') // New path for WFH details
+        };
+        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+            renderers["My Status"] = commonStatusRenderer;
+        }
+        return renderers;
+    }, [commonStatusRenderer, commonActionsRenderer, auth.role]);
+
+
     const fetchVacancies = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
         setLoading(prev => ({ ...prev, vacancies: true }));
         try {
             const params: IGetAllLeavesRequest = {
-                // userId: auth.id,
-                // role: auth.role,
                 page: page,
                 pageSize: itemsPerPage,
                 searchTerm: searchText === "" ? undefined : searchText,
@@ -368,6 +494,39 @@ const Calendar = () => {
         }
     }, [auth.role]);
 
+    // New: Fetch function for Work From Home requests
+    const fetchWorkFromHome = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
+        setLoading(prev => ({ ...prev, workFromHome: true }));
+        try {
+            const params: IGetAllWorkFromHomeRequest = {
+                page: page,
+                pageSize: itemsPerPage,
+                searchTerm: searchText === "" ? undefined : searchText,
+                fromDate: filters.fromDate as string | undefined,
+                toDate: filters.toDate as string | undefined,
+                status: filters.status === "all" ? undefined : filters.status as WorkFromHomeStatus,
+                myStatus: (auth.role === 0 || auth.role === 2) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as WorkFromHomeStatus : undefined,
+            };
+
+            const response = await WORK_FROM_HOME.GET_ALL(params as Record<string, string | number | boolean | undefined>);
+
+            if (response && response.data && !response.error) {
+                setWorkFromHomeRequests(response.data.items || []); // Assuming response.data.items matches IGetWorkFromHomeRequestForCalanderDisplay
+                setTotalWorkFromHomeCount(response.data.totalCount || 0);
+            } else {
+                console.error("Invalid response format or error from WORK_FROM_HOME.GET_ALL:", response);
+                setWorkFromHomeRequests([]);
+                setTotalWorkFromHomeCount(0);
+            }
+        } catch (error) {
+            console.error("Error fetching work from home requests:", error);
+            setWorkFromHomeRequests([]);
+            setTotalWorkFromHomeCount(0);
+        } finally {
+            setLoading(prev => ({ ...prev, workFromHome: false }));
+        }
+    }, [auth.role]);
+
     // Use useEffect to trigger data fetches when pagination/filter states change
     useEffect(() => {
         if (activeTab === "vacancy") {
@@ -381,31 +540,46 @@ const Calendar = () => {
         }
     }, [activeTab, permissionCurrentPage, permissionItemsPerPage, permissionFilters, permissionSearchText, fetchPermissions]);
 
+    useEffect(() => {
+        if (activeTab === "workFromHome") { // New useEffect for WFH
+            fetchWorkFromHome(workFromHomeCurrentPage, workFromHomeItemsPerPage, workFromHomeFilters, workFromHomeSearchText);
+        }
+    }, [activeTab, workFromHomeCurrentPage, workFromHomeItemsPerPage, workFromHomeFilters, workFromHomeSearchText, fetchWorkFromHome]);
+
 
     // Handle tab change (reset pagination/filters for the new tab)
-    const handleTabChange = useCallback((tab: "vacancy" | "permission") => {
+    const handleTabChange = useCallback((tab: "vacancy" | "permission" | "workFromHome") => {
         setActiveTab(tab);
         // Reset to page 1 for the newly active tab
         if (tab === "vacancy") {
             setVacancyCurrentPage(1);
-            setVacancyItemsPerPage(10); // Reset items per page too
+            setVacancyItemsPerPage(10);
             const baseVacancyFilters: Record<string, any> = { fromDate: undefined, toDate: undefined, status: "all", type: "all" };
             if (auth.role === 0 || auth.role === 2) {
                 baseVacancyFilters.myStatus = "all";
             }
             setVacancyFilters(baseVacancyFilters);
             setVacancySearchText("");
-        } else {
+        } else if (tab === "permission") {
             setPermissionCurrentPage(1);
-            setPermissionItemsPerPage(10); // Reset items per page too
+            setPermissionItemsPerPage(10);
             const basePermissionFilters: Record<string, any> = { date: undefined, type: "all", status: "all" };
             if (auth.role === 0 || auth.role === 2) {
                 basePermissionFilters.myStatus = "all";
             }
             setPermissionFilters(basePermissionFilters);
             setPermissionSearchText("");
+        } else { // 'workFromHome' tab
+            setWorkFromHomeCurrentPage(1);
+            setWorkFromHomeItemsPerPage(10);
+            const baseWorkFromHomeFilters: Record<string, any> = { fromDate: undefined, toDate: undefined, status: "all" }; // WFH doesn't have a 'type' like leave
+            if (auth.role === 0 || auth.role === 2) {
+                baseWorkFromHomeFilters.myStatus = "all";
+            }
+            setWorkFromHomeFilters(baseWorkFromHomeFilters);
+            setWorkFromHomeSearchText("");
         }
-    }, []);
+    }, [auth.role]);
 
     const handleVacancyDataTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
         setVacancyCurrentPage(page);
@@ -419,6 +593,14 @@ const Calendar = () => {
         setPermissionItemsPerPage(itemsPerPage);
         setPermissionFilters(filters);
         setPermissionSearchText(searchText);
+    }, []);
+
+    // New: Data Table change handler for Work From Home
+    const handleWorkFromHomeDataTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
+        setWorkFromHomeCurrentPage(page);
+        setWorkFromHomeItemsPerPage(itemsPerPage);
+        setWorkFromHomeFilters(filters);
+        setWorkFromHomeSearchText(searchText);
     }, []);
 
     // --- Data Fetching Functions for ServerExportButton ---
@@ -435,7 +617,7 @@ const Calendar = () => {
             myStatus: (auth.role === 0 || auth.role === 2) && vacancyFilters.myStatus && vacancyFilters.myStatus !== "all" ? vacancyFilters.myStatus as LeaveRequestStatus : undefined,
         };
         const response = await LEAVE.GET_ALL_FOR_EXPORT(params);
-        
+
         if (response && response.data && Array.isArray(response.data.items)) {
             const isPrivilegedUser = auth.role === 0 || auth.role === 2;
             return response.data.items.map(item => {
@@ -450,15 +632,12 @@ const Calendar = () => {
                     "Status": item.status,
                     "Reason": item.reason,
                 };
-                if (isPrivilegedUser) exportItem["My Status"] = item.myStatus ?? item.status; // Use myStatus, fallback to status
+                if (isPrivilegedUser) exportItem["My Status"] = item.myStatus ?? item.status;
                 return exportItem;
             });
         }
         return [];
     }, [auth.id, auth.role, vacancySearchText, vacancyFilters, formatDateForDisplay]);
-
-    // Assuming IPermission is correctly imported or defined:
-// import { IPermission } from "../../lib/API/Permission";
 
     const getPermissionsForExport = useCallback(async () => {
         const params: IGetAllPermissionsRequestNoPagination = {
@@ -470,7 +649,7 @@ const Calendar = () => {
             disablePagination: true,
             myStatus: (auth.role === 0 || auth.role === 2) && permissionFilters.myStatus && permissionFilters.myStatus !== "all" ? permissionFilters.myStatus as PermissionRequestStatus : undefined,
         };
-        const response = await PERMISSION.GET_ALL_FOR_EXPORT(params); // Assuming a similar export endpoint for permissions
+        const response = await PERMISSION.GET_ALL_FOR_EXPORT(params);
         if (response && response.data && Array.isArray(response.data.items)) {
             const isPrivilegedUser = auth.role === 0 || auth.role === 2;
             return response.data.items.map((item: IPermission) => {
@@ -486,12 +665,43 @@ const Calendar = () => {
                     "Status": item.status,
                     "Reason": item.reason,
                 };
-                if (isPrivilegedUser) exportItem["My Status"] = item.myStatus ?? item.status; // Use myStatus, fallback to status
+                if (isPrivilegedUser) exportItem["My Status"] = item.myStatus ?? item.status;
                 return exportItem;
             });
         }
         return [];
     }, [auth.role, permissionSearchText, permissionFilters, formatDateForDisplay]);
+
+    // New: Export function for Work From Home requests
+    const getWorkFromHomeForExport = useCallback(async () => {
+        const params: IGetAllWorkFromHomeRequestNoPagination = {
+            role: auth.role,
+            searchTerm: workFromHomeSearchText === "" ? undefined : workFromHomeSearchText,
+            fromDate: workFromHomeFilters.fromDate as string | undefined,
+            toDate: workFromHomeFilters.toDate as string | undefined,
+            status: workFromHomeFilters.status === "all" ? undefined : workFromHomeFilters.status as WorkFromHomeStatus,
+            disablePagination: true,
+            myStatus: (auth.role === 0 || auth.role === 2) && workFromHomeFilters.myStatus && workFromHomeFilters.myStatus !== "all" ? workFromHomeFilters.myStatus as WorkFromHomeStatus : undefined,
+        };
+        const response = await WORK_FROM_HOME.GET_ALL_FOR_EXPORT(params);
+        if (response && response.data && Array.isArray(response.data.items)) {
+            const isPrivilegedUser = auth.role === 0 || auth.role === 2;
+            return response.data.items.map((item: IGetWorkFromHomeRequest) => { // Use IGetWorkFromHomeRequest type
+                const exportItem: Record<string, any> = {
+                    "Id": item.id,
+                    "User Name": item.user?.name ?? "N/A",
+                    "Request Date": formatDateForDisplay(item.dateCreated),
+                    "Work From Home Date": formatDateForDisplay(item.date),
+                    "Status": item.status,
+                    "Note for Manager": item.noteForManager, // Include if you want to export this
+                };
+                if (isPrivilegedUser) exportItem["My Status"] = item.myStatus ?? item.status;
+                return exportItem;
+            });
+        }
+        return [];
+    }, [auth.role, workFromHomeSearchText, workFromHomeFilters, formatDateForDisplay]);
+
 
     return (
         <div className="w-full p-5">
@@ -528,14 +738,20 @@ const Calendar = () => {
                     >
                         Permissions
                     </button>
+                    <button
+                        className={`px-4 py-2 font-medium focus:outline-none ${
+                            activeTab === "workFromHome" // New tab button
+                                ? "border-b-2 border-blue-500 text-blue-500"
+                                : "text-gray-500 hover:text-gray-700"
+                        }`}
+                        onClick={() => handleTabChange("workFromHome")}
+                    >
+                        Work From Home
+                    </button>
                 </div>
             </div>
 
             <div className="flex justify-end gap-3 mb-4">
-                {/* Client-side export for the currently displayed data */}
-                {/* <ExportButton data={activeTab === "vacancy" ? transformedVacancyData : transformedPermissionData} /> */}
-
-                {/* Server-side export button for Vacancies */}
                 {activeTab === "vacancy" && (
                     <ServerExportButton
                         fetchDataFunction={getVacanciesForExport}
@@ -543,13 +759,18 @@ const Calendar = () => {
                         label="Export All Vacancies"
                     />
                 )}
-
-                {/* Server-side export button for Permissions */}
                 {activeTab === "permission" && (
                     <ServerExportButton
                         fetchDataFunction={getPermissionsForExport}
                         filename="permissions_report.csv"
                         label="Export All Permissions"
+                    />
+                )}
+                {activeTab === "workFromHome" && ( // New export button for WFH
+                    <ServerExportButton
+                        fetchDataFunction={getWorkFromHomeForExport}
+                        filename="work_from_home_report.csv"
+                        label="Export All WFH Requests"
                     />
                 )}
             </div>
@@ -578,6 +799,20 @@ const Calendar = () => {
                     filterConfig={permissionFilterConfig}
                     loading={loading.permissions}
                     columnRenderers={permissionColumnRenderers}
+                    serverSide={true}
+                />
+            )}
+
+            {/* DataTable for Work From Home (NEW) */}
+            {activeTab === "workFromHome" && (
+                <DataTable
+                    data={transformedWorkFromHomeData}
+                    totalCount={totalWorkFromHomeCount}
+                    onPageChange={handleWorkFromHomeDataTableChange}
+                    itemsPerPage={workFromHomeItemsPerPage}
+                    filterConfig={workFromHomeFilterConfig}
+                    loading={loading.workFromHome}
+                    columnRenderers={workFromHomeColumnRenderers}
                     serverSide={true}
                 />
             )}

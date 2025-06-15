@@ -35,15 +35,55 @@ namespace AutomatedTaskSystem.Hub
                         await Clients.User(userId).SendAsync("OnConnectedMessage", new
                         {
                             pendings = await _dataContext.LeaveRequests.Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending).CountAsync() +
-                                await _dataContext.Permissions.Where(x => x.Status == Models.PermissionStatusEnum.Pending).CountAsync()
+                                await _dataContext.Permissions.Where(x => x.Status == Models.PermissionStatusEnum.Pending).CountAsync() +
+                                await _dataContext.WorkFromHomeRequests.Where(x => x.Status == Models.WorkFromHomeStatusEnum.Pending).CountAsync()
                         });
-                    } else if (user.Role == Models.Enums.UserRole.UserRoleEnum.ProjectManger) {
+                    }// ... (your existing code before this section)
+
+                    else if (user.Role == Models.Enums.UserRole.UserRoleEnum.ProjectManger)
+                    {
+                        // Find IDs of users whose group belongs to a section headed by the current projectManager
+                        var userIdsManagedByThisProjectManager = await _dataContext.Users
+                            .Where(u => u.Group != null &&
+                                        u.Group.sectionGroups.Any(sg =>
+                                            sg.Section != null &&
+                                            sg.Section.HeadId == user.Id // Filter by the connected user's ID
+                                        ))
+                            .Select(u => u.Id)
+                            .ToListAsync();
+
+                        // Count pending Leave requests for these identified users
+                        var pendingLeaveRequestsForPM = await _dataContext.LeaveRequests
+                            .Include(x => x.Opinions)
+                            .Where(lr => lr.Status == Models.LeaveRequestStatusEnum.Pending &&
+                                         !lr.Opinions.Any(o => o.UserId == user.Id) &&
+                                         userIdsManagedByThisProjectManager.Contains(lr.UserId))
+                            .CountAsync();
+
+                        // Count pending Permission requests for these identified users
+                        var pendingPermissionRequestsForPM = await _dataContext.Permissions
+                            .Include(x => x.Opinions)
+                            .Where(p => p.Status == Models.PermissionStatusEnum.Pending &&
+                                         !p.Opinions.Any(o => o.UserId == user.Id) &&
+                                         userIdsManagedByThisProjectManager.Contains(p.UserId))
+                            .CountAsync();
+
+                        // Count pending Work From Home requests for these identified users
+                        var pendingWorkFromHomeRequestsForPM = await _dataContext.WorkFromHomeRequests
+                            .Include(x => x.Opinions)
+                            .Where(wfh => wfh.Status == Models.WorkFromHomeStatusEnum.Pending &&
+                                         !wfh.Opinions.Any(o => o.UserId == user.Id) &&
+                                         userIdsManagedByThisProjectManager.Contains(wfh.UserId))
+                            .CountAsync();
+
+                        var totalPendings = pendingLeaveRequestsForPM + pendingPermissionRequestsForPM + pendingWorkFromHomeRequestsForPM;
+
                         await Clients.User(userId).SendAsync("OnConnectedMessage", new
                         {
-                            pendings = await _dataContext.LeaveRequests.Include(x => x.Opinions).Where(x => x.Status == Models.LeaveRequestStatusEnum.Pending && !x.Opinions.Any(o => o.UserId == user.Id)).CountAsync() +
-                               await _dataContext.Permissions.Include(x => x.Opinions).Where(x => x.Status == Models.PermissionStatusEnum.Pending && !x.Opinions.Any(o => o.UserId == user.Id)).CountAsync()
+                            pendings = totalPendings
                         });
                     }
+                    // ... (rest of your hub code)
                     else if (user.Role == Models.Enums.UserRole.UserRoleEnum.TeamLeader)
                     {
                         await Clients.User(userId).SendAsync("OnConnectedMessage", new
@@ -61,7 +101,15 @@ namespace AutomatedTaskSystem.Hub
                                                                      x.User.TeamleaderId == user.Id
                                                                && !x.Opinions.Any(o => o.UserId == user.Id)
                                                                )
-                                                         .CountAsync()
+                                                         .CountAsync() +
+                                        await _dataContext.WorkFromHomeRequests
+                                        // Assuming Permissions also has an Opinions collection and you want to apply similar logic
+                                        // If Permissions do not have Opinions, this part remains as just status and teamleader filter.
+                                        .Where(x => x.Status == Models.WorkFromHomeStatusEnum.Pending &&
+                                                    x.User.TeamleaderId == user.Id
+                                            && !x.Opinions.Any(o => o.UserId == user.Id)
+                                            )
+                                        .CountAsync()
                         });
                     }
                 }

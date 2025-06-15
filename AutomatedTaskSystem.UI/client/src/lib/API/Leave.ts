@@ -300,7 +300,7 @@ const LEAVE = {
             };
         }
     },
-    GET_LEAVE_BY_USER: async (userId: number): Promise<ResponseService<IGetLeaveRequestForDetails> | false> => {
+    GET_LEAVE_BY_USER: async (userId: number): Promise<ResponseService<IGetLeaveRequestForDetails>> => {
         try {
             const headers = authService.authHeader();
             const res = await fetch(`${url}/Leave/LeaveRequestByUserId/${userId}`, {

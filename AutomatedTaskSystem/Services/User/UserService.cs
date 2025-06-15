@@ -92,6 +92,8 @@ public class UserService : IUserService
             Phone = req.Phone,
             Permission = req.Permission,
              Permission_MAX = req.Permission_MAX,   
+             WorkFromHome = req.WorkFromHome,
+             WorkFromHome_MAX = req.WorkFromHome_MAX
          };
 
         _context.Users.Add(newUser);
@@ -116,6 +118,12 @@ public class UserService : IUserService
                     OnBoard = newUser.OnBoard,
                     Archived = newUser.Archived,
                     TeamleaderId = newUser.TeamleaderId,
+                    Annual_leave = newUser.Annual_leave,
+                    Annual_leave_MAX = newUser.Annual_leave_MAX,
+                    Permission = newUser.Permission,
+                    Permission_MAX = newUser.Permission_MAX,
+                    WorkFromHome = newUser.WorkFromHome,
+                    WorkFromHome_MAX = newUser.WorkFromHome_MAX,
                     Vacation = new Responses.VacationDto
                     {
                         Annual = newUser.Annual_leave,
@@ -249,8 +257,20 @@ public class UserService : IUserService
 
         if (user.Permission != req.Permission)
         {
-            changes.Add($"Permission_MAX changed from {user.Permission} to {req.Permission}");
+            changes.Add($"Permission changed from {user.Permission} to {req.Permission}");
             user.Permission = req.Permission;
+        }
+
+        if (user.WorkFromHome != req.WorkFromHome)
+        {
+            changes.Add($"Work From Home changed from {user.WorkFromHome} to {req.WorkFromHome}");
+            user.WorkFromHome = req.WorkFromHome;
+        }
+
+        if (user.WorkFromHome_MAX != req.WorkFromHome_MAX)
+        {
+            changes.Add($"WorkFromHome_MAX changed from {user.WorkFromHome_MAX} to {req.WorkFromHome_MAX}");
+            user.WorkFromHome_MAX = req.WorkFromHome_MAX;
         }
 
         if (user.Email != req.Email)
@@ -316,6 +336,13 @@ public class UserService : IUserService
                 Title = user.Title,
                 HrCode = user.HR_code,
                 AccountType = user.AccountType,
+                TeamleaderId = user.TeamleaderId,
+                Annual_leave = user.Annual_leave,
+                Annual_leave_MAX = user.Annual_leave_MAX,
+                Permission = user.Permission,
+                Permission_MAX = user.Permission_MAX,
+                WorkFromHome = user.WorkFromHome,
+                WorkFromHome_MAX = user.WorkFromHome_MAX,
                 Vacation = new Responses.VacationDto
                 {
                     Annual = user.Annual_leave,
@@ -383,6 +410,8 @@ public class UserService : IUserService
                 IsAchived = user.Archived,
                 Permission = user.Permission,
                 Permission_MAX = user.Permission_MAX,
+                WorkFromHome = user.WorkFromHome,
+                WorkFromHome_MAX = user.WorkFromHome_MAX,
                 Vacation = new Responses.VacationDto
                 {
                     Annual = user.Annual_leave,

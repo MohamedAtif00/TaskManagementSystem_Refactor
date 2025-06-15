@@ -6,6 +6,7 @@ import DASHBOARDS from "./dashboard";
 import SPRINTS from "./sprints";
 import LEAVE from "./Leave";
 import PERMISSION from "./Permission";
+import WORK_FROM_HOME from "./workFromHome";
 
 
 // export const url = "/api";
@@ -34,7 +35,8 @@ const API = {
     DASHBOARDS,
     SPRINTS,
     LEAVE,
-    PERMISSION
+    PERMISSION,
+    WORK_FROM_HOME
 };
 
 export default API;

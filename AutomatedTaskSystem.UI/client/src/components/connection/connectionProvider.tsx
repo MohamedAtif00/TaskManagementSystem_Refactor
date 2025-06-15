@@ -32,6 +32,19 @@ const NewPermissionRequestToast = ({ closeToast, permissionId }: { closeToast: (
     );
 };
 
+const NewWorkFromHomeRequestToast = ({ closeToast, workFromHomeId }: { closeToast: () => void, workFromHomeId: number }) => {
+    const href = `/calendar/workFromHome/${workFromHomeId}`;
+    return (
+        <Link 
+            href={href}
+            onClick={closeToast}
+            style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit', display: 'block', padding: '8px' }}
+        >
+            There is a new Work From Home Request! Click to view.
+        </Link>
+    );
+};
+
 export interface SignalRContextType {
     connection: signalR.HubConnection | null;
     connectionState: "connected" | "connecting" | "disconnected";
@@ -115,11 +128,28 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
         if (!connection || connectionState !== "connected") return;
 
         // Combined handlers
-        const onRequestOpinion = (data: any, type: 'leave' | 'permission') => {
-            console.log(`${type} request opinion received:`, data);
-            toast[data.isApproved ? "success" : "warning"](
-                `${type === 'leave' ? 'Leave' : 'Permission'} request ${data.isApproved ? "approved" : "rejected"}`
-            );
+         const onRequestOpinion = (data: any, type: 'leave' | 'permission' | 'workFromHome') => {
+            debugger
+            let requestTypeString = '';
+            switch(type) {
+                case 'leave':
+                    requestTypeString = 'Leave';
+                    break;
+                case 'permission':
+                    requestTypeString = 'Permission';
+                    break;
+                case 'workFromHome':
+                    requestTypeString = 'Work From Home';
+                    break;
+                default:
+                    requestTypeString = 'Request';
+            }
+            console.log(`${requestTypeString} request opinion received:`, data);
+            if (data.isApproved) {
+                toast.success(`${requestTypeString} request has been Approved.`);
+            } else {
+                toast.warning(`${requestTypeString} request has been Rejected.`);
+            }
         };
 
         const onUpdatePendings = (data: any) => {
@@ -130,6 +160,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
             }
 
             if (data.isNewRequest) {
+                debugger
                 if (data.newLeaveRequestId) {
                     toast.info(
                         ({ closeToast }) => <NewLeaveRequestToast leaveRequestId={data.newLeaveRequestId} closeToast={closeToast} />,
@@ -139,6 +170,12 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
                 else if (data.newPermissionId) {
                     toast.info(
                         ({ closeToast }) => <NewPermissionRequestToast permissionId={data.newPermissionId} closeToast={closeToast} />,
+                        { autoClose: false, closeOnClick: false }
+                    );
+                }
+                else if (data.newWorkFromHomeRequestId) {
+                    toast.info(
+                        ({ closeToast }) => <NewWorkFromHomeRequestToast workFromHomeId={data.newWorkFromHomeRequestId}  closeToast={closeToast} />,
                         { autoClose: false, closeOnClick: false }
                     );
                 }
@@ -156,12 +193,14 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
         // Register all handlers
         connection.on("LeaveRequestOpinion", (data) => onRequestOpinion(data, 'leave'));
         connection.on("PermissionRequestOpinion", (data) => onRequestOpinion(data, 'permission'));
+        connection.on("WorkFromHomeOpinion", (data) => onRequestOpinion(data, 'workFromHome')); // Added listener for WFH opinions
         connection.on("UpdatePendings", onUpdatePendings);
         connection.on("ReceiveError", onReceiveError);
 
         return () => {
             connection.off("LeaveRequestOpinion");
             connection.off("PermissionRequestOpinion");
+            connection.off("WorkFromHomeOpinion"); // Unregister WFH opinion listener
             connection.off("UpdatePendings");
             connection.off("ReceiveError");
         };
