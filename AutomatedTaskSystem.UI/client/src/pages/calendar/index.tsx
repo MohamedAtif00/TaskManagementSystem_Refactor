@@ -103,6 +103,9 @@ interface IGetWorkFromHomeRequestForCalanderDisplay {
 
 
 const Calendar = () => {
+
+    //#region  States and variables 
+
     const [activeTab, setActiveTab] = useState<"vacancy" | "permission" | "workFromHome">("vacancy"); // Added 'workFromHome'
 
     const [vacancies, setVacancies] = useState<IGetLeaveRequestForCalander[]>([]);
@@ -152,6 +155,7 @@ const Calendar = () => {
 
 
     const auth = useAppSelector((s) => s.authSlice);
+    //#endregion
 
     const formatDateForDisplay = useCallback((dateStr: string | Date) => {
         if (!dateStr) return "N/A";

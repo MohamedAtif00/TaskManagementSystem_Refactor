@@ -117,7 +117,7 @@ const RESOURCES = {
 		}
 	},
 	USERS: {
-		CREATE: async ({
+		CREATE:  async ({
 			name,
 			groupId,
 			role,
@@ -134,30 +134,44 @@ const RESOURCES = {
 			name: string;
 			groupId: number;
 			role: UserRole;
-			hrCode:string,
-			email:string,
-			teamLeaderId:number | null,
-			accountType:number,
-			vacation:IVacation
-			permission:number,
-			permission_MAX:number,
-			workFromHome:number,
-			workFromHome_MAX:number
+			hrCode: string;
+			email: string;
+			teamLeaderId: number | null;
+			accountType: number;
+			vacation: IVacation;
+			permission: number;
+			permission_MAX: number;
+			workFromHome: number;
+			workFromHome_MAX: number;
 		}) => {
 			try {
+				// Construct the base body data for the request
+				let bodyData: any = {
+					name,
+					groupId,
+					role,
+					hrCode,
+					email,
+					teamLeaderId,
+					accountType,
+				};
+
+				if (accountType !== 1 /* Adjust this numeric value for 'external leaves' */) {
+					bodyData.vacation = vacation
+					bodyData.permission = permission;
+					bodyData.permission_MAX = permission_MAX;
+					bodyData.workFromHome = workFromHome;
+					bodyData.workFromHome_MAX = workFromHome_MAX;
+				}
+
 				const res = await fetch(`${url}/users`, {
 					method: "POST",
 					headers: {
 						"Content-Type": "application/json",
 					},
-					body: JSON.stringify({ name, groupId, role,hrCode,
-					email,
-					teamLeaderId,
-					accountType,
-					vacation,
-					permission,
-					permission_MAX }),
+					body: JSON.stringify(bodyData),
 				});
+
 				const data: {
 					error: boolean;
 					message: string;
@@ -165,7 +179,7 @@ const RESOURCES = {
 				} = await res.json();
 				return data;
 			} catch (error) {
-				console.error(error);
+				console.error("Error creating user:", error); // More specific error logging
 				return false;
 			}
 		},

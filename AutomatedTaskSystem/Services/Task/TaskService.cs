@@ -2991,7 +2991,10 @@ public class TaskService : ITaskService
     {
         // Get all tasks for the user that are active and not already paused
         var tasks = _context.Tasks
-            .Where(t => !t.Archived && t.UserId == userId && !t.Pause)
+            .Where(t => !t.Archived && t.UserId == userId && 
+                    !t.Pause && t.Status != TaskStatusEnum.Done &&
+                    t.Status != TaskStatusEnum.Backlog && 
+                    t.Status == TaskStatusEnum.Doing)
             .ToList();
 
         if (!tasks.Any())

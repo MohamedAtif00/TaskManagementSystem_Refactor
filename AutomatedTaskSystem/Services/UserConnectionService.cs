@@ -12,7 +12,7 @@ namespace AutomatedTaskSystem.Services
 
         public UserConnectionService(IServiceScopeFactory serviceScopeFactory)
         {
-            _cleanupTimer = new Timer(RemoveInactiveUsers, null, TimeSpan.Zero, TimeSpan.FromMinutes(10));
+            _cleanupTimer = new Timer(RemoveInactiveUsers, null, TimeSpan.Zero, TimeSpan.FromMinutes(30));
             _serviceScopeFactory = serviceScopeFactory;
         }
 
@@ -47,7 +47,7 @@ namespace AutomatedTaskSystem.Services
             if (!_userStatuses.TryGetValue(userId, out var status))
                 return true;
 
-            return !status.IsConnected && DateTime.UtcNow - status.LastUpdated > TimeSpan.FromMinutes(10);
+            return !status.IsConnected && DateTime.UtcNow - status.LastUpdated > TimeSpan.FromMinutes(30);
         }
 
         private void RemoveInactiveUsers(object? state)
@@ -55,7 +55,7 @@ namespace AutomatedTaskSystem.Services
             var now = DateTime.UtcNow;
 
             var usersToRemove =  _userStatuses
-                .Where(kvp => !kvp.Value.IsConnected && now - kvp.Value.LastUpdated > TimeSpan.FromMinutes(10))
+                .Where(kvp => !kvp.Value.IsConnected && now - kvp.Value.LastUpdated > TimeSpan.FromMinutes(30))
                 .Select(kvp => kvp.Key)
                 .ToList();
 

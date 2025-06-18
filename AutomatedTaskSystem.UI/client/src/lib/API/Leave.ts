@@ -9,6 +9,11 @@ declare interface ResponseService<T> {
     message?: string;
 }
 
+
+declare interface ResponseServiceWithData<T> extends ResponseService<T> {
+    data: T;
+}
+
 declare interface PageList<T>
 {
     items:T;
@@ -19,11 +24,6 @@ declare interface PageList<T>
     hasNextPage:boolean;
     hasPreviousPage:boolean;
 }
-
-declare interface ResponseServiceWithData<T> extends ResponseService<T> {
-    data: T;
-}
-
 
 declare type UserRole = number; // Assuming UserRole is a number type
 
@@ -301,21 +301,18 @@ const LEAVE = {
         }
     },
     GET_LEAVE_BY_USER: async (userId: number): Promise<ResponseService<IGetLeaveRequestForDetails>> => {
-        try {
-            const headers = authService.authHeader();
-            const res = await fetch(`${url}/Leave/LeaveRequestByUserId/${userId}`, {
-                headers: {
-                    "Content-Type": "application/json",
-                    ...headers
-                }
-            });
 
-            const data: ResponseService<IGetLeaveRequestForDetails> = await res.json();
-            return data;
-        } catch (error) {
-            console.error(error);
-            return false;
-        }
+        const headers = authService.authHeader();
+        const res = await fetch(`${url}/Leave/LeaveRequestByUserId/${userId}`, {
+            headers: {
+                "Content-Type": "application/json",
+                ...headers
+            }
+        });
+
+        const data: ResponseService<IGetLeaveRequestForDetails> = await res.json();
+        return data;
+   
     },
     CREATE_OPINION: async (opinion: IOpinion): Promise<ResponseService< IGetOpinion>> => { // Changed return type
 

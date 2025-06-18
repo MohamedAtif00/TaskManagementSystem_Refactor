@@ -312,7 +312,7 @@ const LeaveModal = ({
                         </div>
                     )}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">السبب <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">السبب </label>
                         <textarea className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" rows={3} value={formData.reason} onChange={(e) => setFormData({ ...formData, reason: e.target.value })} required disabled={isSubmitting}></textarea>
                     </div>
                     <div>
@@ -740,7 +740,7 @@ const LeaveManagement = () => {
         "End Date": (value: string) => formatDateForTable(value),
         "Status": (value: LeaveRequestStatus) => <StatusBadge status={value} />,
         "Actions": (value: number, row: any) => {
-            const isDisabled = row.Status === LeaveRequestStatus.Cancelled ||
+            const isDisabled = row.Status === "Cancelled" ||
                 row.Status === LeaveRequestStatus.Rejected ||
                 (row.Status === LeaveRequestStatus.Approved && isDateInPast(row['Start Date']));
             return (
@@ -766,7 +766,7 @@ const LeaveManagement = () => {
         "Date": (value: string) => formatDateForTable(value),
         "Status": (value: PermissionRequestStatus) => <StatusBadge status={value} />,
         "Actions": (value: number, row: any) => {
-            const isDisabled = row.Status === PermissionRequestStatus.Cancelled ||
+            const isDisabled = row.Status === "Cancelled" ||
                 row.Status === PermissionRequestStatus.Rejected ||
                 (row.Status === PermissionRequestStatus.Approved && isDateInPast(row.Date));
             return (
@@ -794,7 +794,7 @@ const LeaveManagement = () => {
         "Status": (value: WorkFromHomeStatus) => <StatusBadge status={value} />,
         "Actions": (value: number, row: any) => {
             // WFH cancellation logic
-            const isWFHDisabled = row.Status === WorkFromHomeStatus.Cancelled ||
+            const isWFHDisabled = row.Status === "Cancelled"  ||
                                  row.Status === WorkFromHomeStatus.Rejected ||
                                  (row.Status === WorkFromHomeStatus.Approved && isDateInPast(row.Date)); // Check if WFH date is in the past
             return (

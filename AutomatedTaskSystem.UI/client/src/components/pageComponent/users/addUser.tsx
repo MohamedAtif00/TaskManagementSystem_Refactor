@@ -140,8 +140,8 @@ const AddUser = () => {
             workFromHome,
             workFromHome_MAX
         } = formState;
-
-        if (!name || !group || !role || !hrCode || !accountType  || !permission_MAX || workFromHome_MAX) {
+        debugger
+        if (!name || !group || !role || !hrCode || !accountType ) {
             return setFormState((prev) => ({
                 ...prev,
                 error: "Please fill out all required fields",
