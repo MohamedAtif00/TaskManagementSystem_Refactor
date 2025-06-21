@@ -102,7 +102,7 @@ const LeaveRequestDetails = () => {
             }
             var response = await LEAVE.CREATE_OPINION(op)
             debugger
-            if(response.error)
+            if(!response.error)
             {
               toast.success(response.message)
             }else{

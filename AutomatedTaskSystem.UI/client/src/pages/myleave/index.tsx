@@ -286,9 +286,9 @@ const LeaveModal = ({
                             required disabled={isSubmitting}
                         >
                             <option value="">اختر نوع الإجازة</option>
-                            <option value={LeaveRequestType.Annual}>إجازة سنوية</option>
-                            <option value={LeaveRequestType.Sick}>إجازة مرضية</option>
-                            <option value={LeaveRequestType.Emergency}>إجازة طارئة</option>
+                            <option value={LeaveRequestType.Annual}>إجازة اعتيادي</option>
+                            <option value={LeaveRequestType.Sick}>إجازة مرضي</option>
+                            <option value={LeaveRequestType.Emergency}>إجازة عارضه</option>
                         </select>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

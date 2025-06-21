@@ -105,7 +105,7 @@ useEffect(() => {
                 user:{id:auth.id,name:auth.name,role:auth.role}
             }
             const response = await PERMISSION.CREATE_OPINION(opinionData);
-
+            debugger
             if (response.error) {
                 toast.error(response.message || "Failed to submit opinion.");
             } else {
@@ -114,13 +114,13 @@ useEffect(() => {
                 const numericCalendarId = Number(calendarId);
                 if (!isNaN(numericCalendarId) && numericCalendarId > 0) {
                     const refetchResponse = await PERMISSION.GET_DETAILS(numericCalendarId);
-                    if (refetchResponse && !refetchResponse.error && refetchResponse.data) {
+                    if (refetchResponse && refetchResponse.error && refetchResponse.data) {
                         setRequest(refetchResponse.data);
                         setApprovals(refetchResponse.data.opinions ?? null);
                         const canComment = !refetchResponse.data.opinions?.some(op => op.user?.id === auth.id);
                         setCommentable(canComment);
                     } else {
-                        toast.error(refetchResponse?.message || "Failed to refresh permission details after submitting opinion.");
+                        // toast.error(refetchResponse?.message || "Failed to refresh permission details after submitting opinion.");
                     }
                 }
                 setComment(''); // Clear comment only on success

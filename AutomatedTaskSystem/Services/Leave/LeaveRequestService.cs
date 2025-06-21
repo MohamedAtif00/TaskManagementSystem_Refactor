@@ -181,7 +181,7 @@ namespace AutomatedTaskSystem.Services.Leave
                 // --- Auto-approval and email for Owner ---
                 if (user.Role == UserRoleEnum.Owner)
                 {
-                    int approvedDays = _leaveRequestHelper.CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
+                    int approvedDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
 
                     switch (leaveRequest.Type)
                     {
@@ -802,7 +802,7 @@ namespace AutomatedTaskSystem.Services.Leave
                 Id = leaveRequest.Id,
                 StartDate = leaveRequest.StartDate.ToString("M/d/yyyy h:mm:ss tt"),
                 EndDate = leaveRequest.EndDate.ToString("M/d/yyyy h:mm:ss tt"),
-                Duration = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate.AddDays(-1)), // Exclude end date
+                Duration = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate), // Exclude end date
                 Reason = leaveRequest.Reason,
                 NoteToManager = user.Role == UserRoleEnum.Owner ? leaveRequest.NoteForManager : null,
                 Status = leaveRequest.Status.ToString(),
@@ -1183,8 +1183,8 @@ namespace AutomatedTaskSystem.Services.Leave
 
         private static int CalculateWorkingDays(DateTime startDate, DateTime endDate)
         {
-            if (startDate > endDate)
-                return 0;
+            //if (startDate > endDate)
+            //    return 0;
 
             int workingDays = 0;
 

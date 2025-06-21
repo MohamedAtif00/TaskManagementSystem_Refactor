@@ -471,7 +471,7 @@ const UserProfile = () => {
 
     return (
         <div className="w-full flex align-middle justify-center">
-            <div className="w-10/12 ">
+            <div className="w-full ">
                 <Box sx={{ paddingTop: 2, paddingX: 4, borderRadius: 1, marginBottom: 2 }}>
                     <Paper sx={{ p: 3 }} elevation={2} className="flex ">
                         <UserProfileIcone />
@@ -481,120 +481,118 @@ const UserProfile = () => {
                     </Paper>
                 </Box>
 
-                <Box sx={{ p: 4, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <Box sx={{ p: 4, borderRadius: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
 
                     {/* User Profile Paper */}
-                    <Paper elevation={3} sx={{ p: 3 }} className="flex flex-col md:flex-row justify-between gap-4 bg-white shadow-md rounded-xl">
-
-                        {/* User Info Section */}
-                        <Box className="space-y-2 rounded-lg border border-gray-200 w-full md:w-2/3">
-                            <Grid sx={{ display: "flex" }} className="justify-between w-full">
-                                <Typography variant="body1" className="flex items-center gap-2 font-bold text-lg">
-                                    {user.name}
-                                </Typography>
-                            </Grid>
-
-                            {user.hrCode && ( // Changed from user.code to user.hrCode
-                                <Typography className="flex items-center gap-2 text-[#22648C] text-[14px]">
-                                    {user.hrCode}
-                                </Typography>
-                            )}
-
-                            <Grid container className="gap-x-20 gap-y-4">
-                                {/* Column 1 */}
-                                <Grid item xs={5}>
-                                    <div className="flex flex-col gap-4">
-                                        <Typography className="flex items-center text-gray-700">
-                                            <span className="font-bold w-fit">Department:</span>
-                                            <span className="text-[#5570FF]">{user.group?.name}</span>
+                    <Paper elevation={3} sx={{ p: 3 }} className="flex flex-col md:flex-row justify-between md:items-start gap-4 bg-white shadow-md rounded-xl">
+                        {/* Wrapper for User Info and Stats to control their collective layout and proportions */}
+                        <div className="flex flex-col md:flex-row flex-grow gap-4 w-full md:w-auto">
+                            {/* User Info Section */}
+                            <Box className="space-y-3 p-4 rounded-lg border border-gray-200 w-full md:w-2/3"> {/* Added p-4 for internal padding, space-y-3 */}
+                                <Grid sx={{ display: "flex" }} className="justify-between w-full items-center">
+                                    <Typography variant="h6" className="font-bold"> {/* Changed to h6 for semantic hierarchy */}
+                                        {user.name}
+                                    </Typography>
+                                    {user.hrCode && (
+                                        <Typography variant="subtitle1" className="text-[#22648C]"> {/* Changed to subtitle1 */}
+                                            {user.hrCode}
                                         </Typography>
-
-                                        <Typography className="flex items-center gap-2 text-gray-700">
-                                            <span className="font-bold w-fit ">Type:</span>
-                                            <span className="text-[#5570FF]">
-                                                {user.accountType === 0 ? "Internal" : "External"} {/* Corrected mapping */}
-                                            </span>
-                                        </Typography>
-
-                                        <Typography className="flex items-center gap-2 text-gray-700">
-                                            <span className="font-bold w-fit">Status:</span>
-                                            <span className="text-[#5570FF]">
-                                                {user.isArchived ? "Archived" : "Active"}
-                                            </span>
-                                        </Typography>
-
-                                        <Typography className="flex items-center gap-2 text-gray-700">
-                                            <span className="font-bold w-fit">HR Code:</span>
-                                            <span className="text-[#5570FF]">
-                                                {user.hrCode}
-                                            </span>
-                                        </Typography>
-                                    </div>
+                                    )}
                                 </Grid>
 
-                                {/* Column 2 */}
-                                <Grid item xs={5}>
-                                    <div className="flex flex-col gap-4">
-                                        <Typography className="flex items-center gap-2 text-gray-700">
-                                            <span className="font-bold w-fit">Role:</span>
-                                            <span className="text-[#5570FF]">
-                                                {user.role === 0 ? "Project Manager" :
-                                                    user.role === 1 ? "Section Head" :
-                                                        user.role === 2 ? "Team Leader" :
-                                                            user.role === 3 ? "Member" : "Owner"} {/* Added Owner */}
-                                            </span>
-                                        </Typography>
+                                <Grid container spacing={2} className="mt-2"> {/* Using MUI Grid spacing, added mt-2 */}
+                                    {/* Column 1 */}
+                                    <Grid item xs={12} sm={6}>
+                                        <div className="flex flex-col gap-3"> {/* Reduced gap */}
+                                            <Typography component="div" className="flex items-center text-gray-700 text-sm">
+                                                <span className="font-semibold w-28">Department:</span> {/* Fixed width for labels, or use MUI Grid for label/value pairs */}
+                                                <span className="text-[#5570FF]">{user.group?.name || 'N/A'}</span>
+                                            </Typography>
+                                            <Typography component="div" className="flex items-center text-gray-700 text-sm">
+                                                <span className="font-semibold w-28">Type:</span>
+                                                <span className="text-[#5570FF]">
+                                                    {user.accountType === 0 ? "Internal" : "External"}
+                                                </span>
+                                            </Typography>
+                                            <Typography component="div" className="flex items-center text-gray-700 text-sm">
+                                                <span className="font-semibold w-28">Status:</span>
+                                                <span className="text-[#5570FF]">
+                                                    {user.isArchived ? "Archived" : "Active"}
+                                                </span>
+                                            </Typography>
+                                            <Typography component="div" className="flex items-center text-gray-700 text-sm">
+                                                <span className="font-semibold w-28">HR Code:</span>
+                                                <span className="text-[#5570FF]">{user.hrCode || 'N/A'}</span>
+                                            </Typography>
+                                        </div>
+                                    </Grid>
 
-                                        <Typography className="flex items-center gap-2 text-gray-700">
-                                            <span className="font-bold w-fit">Email:</span>
-                                            <span className="text-[#5570FF]">{user.email}</span>
-                                        </Typography>
+                                    {/* Column 2 */}
+                                    <Grid item xs={12} sm={6}>
+                                        <div className="flex flex-col gap-3"> {/* Reduced gap */}
+                                            <Typography component="div" className="flex items-center text-gray-700 text-sm">
+                                                <span className="font-semibold w-28">Role:</span>
+                                                <span className="text-[#5570FF]">
+                                                    {user.role === 0 ? "Project Manager" :
+                                                        user.role === 1 ? "Section Head" :
+                                                            user.role === 2 ? "Team Leader" :
+                                                                user.role === 3 ? "Member" : "Owner"}
+                                                </span>
+                                            </Typography>
+                                            <Typography component="div" className="flex items-center text-gray-700 text-sm">
+                                                <span className="font-semibold w-28">Email:</span>
+                                                <span className="text-[#5570FF] truncate" title={user.email || ''}>{user.email || 'N/A'}</span>
+                                            </Typography>
+                                            <Typography component="div" className="flex items-center text-gray-700 text-sm">
+                                                <span className="font-semibold w-28">Phone:</span>
+                                                <span className="text-[#5570FF]">{user.phone || 'N/A'}</span>
+                                            </Typography>
+                                            <Typography component="div" className="flex items-center text-gray-700 text-sm">
+                                                <span className="font-semibold w-28">Title:</span>
+                                                <span className="text-[#5570FF]">{user.title || 'N/A'}</span>
+                                            </Typography>
+                                        </div>
+                                    </Grid>
+                                </Grid>
+                            </Box>
 
-                                        <Typography className="flex items-center gap-2 text-gray-700">
-                                            <span className="font-bold w-fit">Phone:</span>
-                                            <span className="text-[#5570FF]">{user.phone}</span>
-                                        </Typography>
+                            {/* Leave/Permission/Work From Home Info Section */}
+                             <div className="flex flex-col sm:flex-row sm:flex-wrap sm:justify-start items-center sm:items-stretch pt-4 w-full md:w-1/3 md:pl-4 gap-y-3 sm:gap-x-2 sm:gap-y-2"> {/* Enabled wrapping and adjusted gaps/justification for sm screens */}
+                                {[
+                                    { label: "Annual", value: userVacationInfo?.annual, total: userVacationInfo?.annual_MAX },
+                                    { label: "Sick", value: userVacationInfo?.sick, total: undefined },
+                                    { label: "Emergency", value: userVacationInfo?.emergency, total: userVacationInfo?.emergency_MAX },
+                                    { label: "Permissions", value: user.permission, total: user.permission_MAX },
+                                    { label: "Work From Home", value: userWorkFromHomeInfo?.used, total: userWorkFromHomeInfo?.max },
+                                ].map((item, index, array) => ( // Added 'array' to get array.length if needed, or use fixed length
+                                    <div
+                                        key={item.label}
+                                        className={`
+                                            flex flex-col items-center justify-center text-center
+                                            w-full px-4 py-3  /* Base: full width, generous padding for stacked view */
+                                            sm:w-auto sm:flex-grow sm:min-w-[90px] sm:px-1 sm:py-0 /* SM+: allow grow, wrap if needed, with a min-width */
+                                            ${index < 4 // Check if not the last item (0,1,2,3 for 5 items)
+                                                ? `border-b border-gray-300  /* Base: bottom border for stacked (not last) */
+                                                   sm:border-b-0             /* SM+: remove bottom border */
+                                                   sm:border-r sm:border-gray-300` /* SM+: add right border (not last) */
+                                                : '' /* Last item: no conditional borders */
+                                            }
+                                        }`}
 
-                                        <Typography className="flex items-center gap-2 text-gray-700">
-                                            <span className="font-bold w-fit">Title:</span>
-                                            <span className="text-[#5570FF]">{user.title}</span>
+                                    >
+                                        <Typography variant="caption" className="font-semibold text-gray-700 uppercase"> {/* Smaller, bolder label */}
+                                            {item.label}
+                                        </Typography>
+                                        <Typography variant="h6" component="p" className="text-gray-800"> {/* Larger value */}
+                                            <span className="text-blue-600 font-bold">{item.value ?? 0}</span>
+                                            {item.total !== undefined ? <span className="text-sm text-gray-500">{`/${item.total ?? 0}`}</span> : ''}
                                         </Typography>
                                     </div>
-                                </Grid>
-                            </Grid>
-                        </Box>
-
-                        {/* Leave/Permission/Work From Home Info Section */}
-                        <div className="flex justify-between items-end pt-4 w-full md:w-1/3">
-                            {[
-                                { label: "Annual", value: userVacationInfo?.annual, total: userVacationInfo?.annual_MAX },
-                                { label: "Sick", value: userVacationInfo?.sick, total: undefined }, // Sick usually doesn't have a max
-                                { label: "Emergency", value: userVacationInfo?.emergency, total: userVacationInfo?.emergency_MAX },
-                                { label: "Permissions", value: user.permission, total: user.permission_MAX }, // Directly from user object
-                                { label: "Work From Home", value: userWorkFromHomeInfo?.used, total: userWorkFromHomeInfo?.max }, // NEW: WFH balance
-                            ].map((item, index) => (
-                                <div
-                                    key={item.label}
-                                    className={`flex flex-col items-center px-2 w-full ${
-                                        index < 4 ? 'border-r border-gray-300' : '' // Adjust border for 5 items
-                                    }`}
-                                    style={{
-                                        borderRight: index < 4 ? '1px solid #D1D5DB' : 'none',
-                                    }}
-                                >
-                                    <Typography variant="body1" className="font-bold text-gray-800">
-                                        {item.label}
-                                    </Typography>
-                                    <Typography variant="body1" component="p" className="text-gray-600 font-light">
-                                        <span className="text-blue-500 font-bold text-lg">{item.value ?? 0}</span>
-                                        {item.total !== undefined ? ` / ${item.total ?? 0}` : ''}
-                                    </Typography>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-
                         {/* Edit Button */}
-                        <div className="flex justify-center items-center">
+                        <div className="flex-shrink-0 mt-4 md:mt-0 self-center md:self-start"> {/* Adjusted self-alignment */}
                             <button
                                 onClick={handleEdit}
                                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
@@ -602,7 +600,6 @@ const UserProfile = () => {
                             </button>
                         </div>
                     </Paper>
-
                     {/* Tabs for Vacancies, Permissions, Updates, and Work From Home */}
                     <div className="relative mt-20">
                         <div className="flex gap-2 items-end h-9 absolute " style={{ top: -37 }}>
