@@ -23,8 +23,6 @@ public class Task
     public int? FromId { get; set; }
     public User? User { get; set; }
     public int? UserId { get; set; }
-    public int? SprintId { get; set; }
-    public Sprint? Sprint { get; set; }
     public LearningObjective LearningObjective { get; set; } = new LearningObjective { };
     public int LearningObjectiveId { get; set; }
     public bool IsReview { get; set; } = false;

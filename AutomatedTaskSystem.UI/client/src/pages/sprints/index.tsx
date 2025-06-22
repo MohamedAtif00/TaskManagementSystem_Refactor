@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import API from "../../lib/API";
-import Link from "next/link";
+import Link from "next/link"; // Ensure Link is imported
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import TaskIcon from "../../assets/Icons/Task";
+import TaskIcon from "../../assets/Icons/Task"; // Adjust path as needed
 import Head from "next/head";
-import Loader from "../../components/loader";
-import CreateSprint from "../../components/sprintComponents/createSprint";
+import Loader from "../../components/loader"; // Adjust path as needed
+import CreateSprint from "../../components/sprintComponents/createSprint"; // Adjust path as needed
 import { format } from "date-fns";
 
 // Columns for Sprints
@@ -22,9 +22,12 @@ const Sprints = () => {
     // Fetch Sprints
     useEffect(() => {
         API.SPRINTS.GET_ALL_SPRINTS().then((res) => {
-            if (res && !res.error) setSprints(res.value.data);
-            //console.log(sprints);
-            
+            if (res && !res.error && res.value?.data) {
+                setSprints(res.value.data);
+            } else {
+                console.error("Error fetching sprints:", res?.value?.message || "Unknown error");
+                setSprints([]); // Set to empty array on error to stop loading
+            }
         });
     }, []);
 
@@ -49,6 +52,7 @@ const Sprints = () => {
                         <TaskIcon className="stroke-black" />
                         <h1 className="font-bold text-2xl">Sprints</h1>
                     </div>
+                    {/* Fixed: Link wrapping a button for navigation */}
                     <Link
                         href={{
                             pathname: "/sprints",
@@ -70,33 +74,19 @@ const Sprints = () => {
                                 sortModel: [{ field: "col1", sort: "asc" }],
                             },
                         }}
-                        
                         slots={{
                             row: (r) => {
                                 return (
-                                    <Link href={{ pathname: `/sprints/${r.rowId}` }}>
-                                        <div
-                                            key={r.rowId}
-                                            style={{ height: r.rowHeight }}
-                                            className="group hover:bg-slate-50 flex border-solid border-b border-slate-200"
-                                        >
-                                            {r.visibleColumns.map((c: any) => {
-                                                if (c.field === "col1")
-                                                    return (
-                                                        <div
-                                                            key={c.headerName}
-                                                            style={{
-                                                                minWidth:
-                                                                    c.width,
-                                                                maxWidth:
-                                                                    c.width,
-                                                            }}
-                                                            className="px-[0.625rem] group-hover:pl-4 transition-all ease-in text-base flex items-center group-hover:text-blue-700"
-                                                        >
-                                                            {r.row[c.field]}
-                                                        </div>
-                                                    );
-
+                                    // Fixed: Move props directly to Link
+                                    <Link
+                                        href={`/sprints/${r.row.id}`} // Simpler template literal for dynamic routes
+                                        key={r.rowId} // Key usually goes on the outermost element of a list item
+                                        style={{ height: r.rowHeight }}
+                                        className="group hover:bg-slate-50 flex border-solid border-b border-slate-200"
+                                    >
+                                        {/* Now, the Link component itself will render the <a> tag with these styles */}
+                                        {r.visibleColumns.map((c: any) => {
+                                            if (c.field === "col1")
                                                 return (
                                                     <div
                                                         key={c.headerName}
@@ -104,13 +94,25 @@ const Sprints = () => {
                                                             minWidth: c.width,
                                                             maxWidth: c.width,
                                                         }}
-                                                        className="px-[0.625rem] group-hover:pl-4 transition-all ease-in text-sm flex items-center group-hover:text-blue-700"
+                                                        className="px-[0.625rem] group-hover:pl-4 transition-all ease-in text-base flex items-center group-hover:text-blue-700"
                                                     >
                                                         {r.row[c.field]}
                                                     </div>
                                                 );
-                                            })}
-                                        </div>
+
+                                            return (
+                                                <div
+                                                    key={c.headerName}
+                                                    style={{
+                                                        minWidth: c.width,
+                                                        maxWidth: c.width,
+                                                    }}
+                                                    className="px-[0.625rem] group-hover:pl-4 transition-all ease-in text-sm flex items-center group-hover:text-blue-700"
+                                                >
+                                                    {r.row[c.field]}
+                                                </div>
+                                            );
+                                        })}
                                     </Link>
                                 );
                             },
@@ -120,7 +122,7 @@ const Sprints = () => {
                                 id: s.id,
                                 col0: s.id,
                                 col1: s.name,
-                                col2: format(new Date(s.startDate), 'yyyy-MM-dd'), // Or 'dd/MM/yyyy' or any pattern
+                                col2: format(new Date(s.startDate), 'yyyy-MM-dd'),
                                 col3: format(new Date(s.endDate), 'yyyy-MM-dd')
                             };
                         })}

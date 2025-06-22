@@ -13,6 +13,7 @@ public class LearningObjective
     public int SchemaId { get; set; }
     public List<Models.Task> Tasks { get; set; } = new List<Task> { };
     public List<Comment> Comments { get; set; } = new List<Comment> { };
+    public List<SprintLearningObjective> SprintLearningObjectives { get; set; }
     public DateTime? StartedAt { get; set; } = null;
     public DateTime? DoneAt { get; set; } = null;
     public DateTime CreateAt { get; set; } = DateTime.Now;

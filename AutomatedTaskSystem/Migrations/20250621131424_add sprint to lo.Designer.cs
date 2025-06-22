@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AutomatedTaskSystem.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20250621131424_add sprint to lo")]
+    partial class addsprinttolo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -125,6 +127,9 @@ namespace AutomatedTaskSystem.Migrations
                     b.Property<int>("SchemaId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("SprintId")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("datetime2");
 
@@ -141,6 +146,8 @@ namespace AutomatedTaskSystem.Migrations
                     b.HasIndex("LessonId");
 
                     b.HasIndex("SchemaId");
+
+                    b.HasIndex("SprintId");
 
                     b.ToTable("LearningObjectives");
                 });
@@ -598,29 +605,6 @@ namespace AutomatedTaskSystem.Migrations
                     b.ToTable("Sprints");
                 });
 
-            modelBuilder.Entity("AutomatedTaskSystem.Models.SprintLearningObjective", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
-
-                    b.Property<int>("LearningObjectiveId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SprintId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LearningObjectiveId");
-
-                    b.HasIndex("SprintId");
-
-                    b.ToTable("SprintLearningObjective");
-                });
-
             modelBuilder.Entity("AutomatedTaskSystem.Models.Step", b =>
                 {
                     b.Property<int>("Id")
@@ -709,6 +693,9 @@ namespace AutomatedTaskSystem.Migrations
                     b.Property<int>("RollbackCount")
                         .HasColumnType("int");
 
+                    b.Property<int?>("SprintId")
+                        .HasColumnType("int");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -728,6 +715,8 @@ namespace AutomatedTaskSystem.Migrations
                     b.HasIndex("GroupId");
 
                     b.HasIndex("LearningObjectiveId");
+
+                    b.HasIndex("SprintId");
 
                     b.HasIndex("StepId");
 
@@ -1202,9 +1191,15 @@ namespace AutomatedTaskSystem.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("AutomatedTaskSystem.Models.Sprint", "Sprint")
+                        .WithMany()
+                        .HasForeignKey("SprintId");
+
                     b.Navigation("Lesson");
 
                     b.Navigation("Schema");
+
+                    b.Navigation("Sprint");
                 });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.LeaveRequest", b =>
@@ -1385,25 +1380,6 @@ namespace AutomatedTaskSystem.Migrations
                     b.Navigation("Section");
                 });
 
-            modelBuilder.Entity("AutomatedTaskSystem.Models.SprintLearningObjective", b =>
-                {
-                    b.HasOne("AutomatedTaskSystem.Models.LearningObjective", "LearningObjective")
-                        .WithMany("SprintLearningObjectives")
-                        .HasForeignKey("LearningObjectiveId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AutomatedTaskSystem.Models.Sprint", "Sprint")
-                        .WithMany("SprintLearningObjectives")
-                        .HasForeignKey("SprintId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LearningObjective");
-
-                    b.Navigation("Sprint");
-                });
-
             modelBuilder.Entity("AutomatedTaskSystem.Models.Step", b =>
                 {
                     b.HasOne("AutomatedTaskSystem.Models.Node", "Node")
@@ -1440,6 +1416,10 @@ namespace AutomatedTaskSystem.Migrations
                         .HasForeignKey("LearningObjectiveId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("AutomatedTaskSystem.Models.Sprint", null)
+                        .WithMany("Tasks")
+                        .HasForeignKey("SprintId");
 
                     b.HasOne("AutomatedTaskSystem.Models.Step", "Step")
                         .WithMany("Tasks")
@@ -1639,8 +1619,6 @@ namespace AutomatedTaskSystem.Migrations
                 {
                     b.Navigation("Comments");
 
-                    b.Navigation("SprintLearningObjectives");
-
                     b.Navigation("Tasks");
                 });
 
@@ -1693,7 +1671,7 @@ namespace AutomatedTaskSystem.Migrations
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.Sprint", b =>
                 {
-                    b.Navigation("SprintLearningObjectives");
+                    b.Navigation("Tasks");
                 });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.Step", b =>

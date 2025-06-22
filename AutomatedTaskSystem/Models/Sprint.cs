@@ -7,6 +7,6 @@
         public string Description { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
-        public List<Task> Tasks { get; set; } = new();
+        public List<SprintLearningObjective> SprintLearningObjectives { get; set; } = new();
     }
 }

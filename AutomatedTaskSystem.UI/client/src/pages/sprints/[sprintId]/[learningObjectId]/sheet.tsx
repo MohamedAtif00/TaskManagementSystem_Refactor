@@ -1,16 +1,17 @@
 import { Fragment, useEffect, useState } from "react";
-import { useAppSelector } from "../../../app/hooks";
 import Link from "next/link";
-import TaskIcon from "../../../assets/Icons/Task";
-import useTaskPathHandler from "../../../components/taskDetails/useTaskPathHandler.ts";
 import Head from "next/head";
-import Loader from "../../../components/loader";
-import { useRouter } from "next/router";
-import API from "../../../lib/API";
 import { ArrowPathRoundedSquareIcon } from "@heroicons/react/24/outline";
-import TaskDetails from "../../../components/taskDetails";
-import CreateStandAloneTaskForm from "../../../components/pageComponent/tasks/CreateStandAloneForm";
+
 import { PauseIcon } from "@heroicons/react/24/solid";
+import { Loader } from "lucide-react";
+import { useRouter } from "next/router";
+import { useAppSelector } from "../../../../app/hooks";
+import TaskIcon from "../../../../assets/Icons/Task";
+import CreateStandAloneTaskForm from "../../../../components/pageComponent/tasks/CreateStandAloneForm";
+import TaskDetails from "../../../../components/taskDetails";
+import useTaskPathHandler from "../../../../components/taskDetails/useTaskPathHandler.ts";
+import API from "../../../../lib/API";
 
 interface LocalProject {
     id: number;

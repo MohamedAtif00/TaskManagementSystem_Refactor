@@ -51,7 +51,10 @@ namespace AutomatedTaskSystem.Services.Sprint
 
             try
             {
-                var sprint = await dataContext.Sprints.FirstOrDefaultAsync(x => x.Id == id);
+                var sprint = await dataContext.Sprints
+                    .Include(s => s.SprintLearningObjectives) // Include the join table entries
+                        .ThenInclude(slo => slo.LearningObjective) // Then include the actual LearningObjective from the join table
+                    .FirstOrDefaultAsync(s => s.Id == id);
 
                 if (sprint == null)
                 {
@@ -60,21 +63,36 @@ namespace AutomatedTaskSystem.Services.Sprint
                     return response;
                 }
 
+                // Map the sprint and its associated learning objectives to the DTO
                 response.Data = new SprintDTO
                 {
                     Id = sprint.Id,
                     Name = sprint.Name,
                     Description = sprint.Description,
                     StartDate = sprint.StartDate,
-                    EndDate = sprint.EndDate
+                    EndDate = sprint.EndDate,
+                    // Project the LearningObjectives from the join table
+                    // This is safer than assuming a direct `sprint.LearningObjectives` if not explicitly configured as a skip navigation.
+                    learningObjects = sprint.SprintLearningObjectives
+                                            .Select(slo => slo.LearningObjective) // Get the LearningObjective from each join entry
+                                            .Where(lo => lo != null) // Ensure the LO was loaded successfully (should be with ThenInclude)
+                                            .Select(lo => new Responses.IDName
+                                            {
+                                                Id = lo.Id,
+                                                Name = lo.Name,
+                                            }).ToList()
                 };
 
                 response.Message = "Sprint fetched successfully.";
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                // Log the exception for debugging purposes (use a proper logger in production)
+                Console.WriteLine($"Error in GetSingleSprintAsync: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+
                 response.Error = true;
-                response.Message = "Unexpected error occurred.";
+                response.Message = $"An unexpected error occurred: {ex.Message}";
             }
 
             return response;
@@ -86,39 +104,98 @@ namespace AutomatedTaskSystem.Services.Sprint
 
             try
             {
-                var startDate = DateOnly.Parse(request.StartDate);
-                var endDate = DateOnly.Parse(request.EndDate);
+                // Parse dates from string to DateOnly for overlap check
+                var startDateOnly = DateOnly.Parse(request.StartDate);
+                var endDateOnly = DateOnly.Parse(request.EndDate);
 
-                if (await IsOverlappingAsync(startDate, endDate))
+                // Input validation: Ensure StartDate is not after EndDate
+                if (startDateOnly > endDateOnly)
+                {
+                    response.Error = true;
+                    response.Message = "Start Date cannot be after End Date.";
+                    return response;
+                }
+
+                if (await IsOverlappingAsync(startDateOnly, endDateOnly))
                 {
                     response.Error = true;
                     response.Message = "There is another sprint within this date range.";
                     return response;
                 }
 
-                var sprint = new Models.Sprint
+                // Create the new Sprint model
+                var sprint = new Models.Sprint // Assuming Models.Sprint is your EF Core entity
                 {
                     Name = request.Name,
                     Description = request.Description,
-                    StartDate = DateTime.Parse(request.StartDate),
-                    EndDate = DateTime.Parse(request.EndDate)
+                    StartDate = DateTime.Parse(request.StartDate), 
+                    EndDate = DateTime.Parse(request.EndDate)      
                 };
 
+                // Add the sprint to the context but don't save yet
                 dataContext.Sprints.Add(sprint);
+
+                // --- Associate Learning Objectives ---
+                if (request.Los != null && request.Los.Any())
+                {
+                    var learningObjectiveIdsToAssociate = request.Los.Select(lo => lo.Id).ToList();
+
+                    var existingLearningObjectives = await dataContext.LearningObjectives
+                        .Where(lo => learningObjectiveIdsToAssociate.Contains(lo.Id))
+                        .ToListAsync();
+
+                    if (existingLearningObjectives.Count != learningObjectiveIdsToAssociate.Count)
+                    {
+                        // This is good validation to ensure all requested LOs exist
+                        response.Error = true;
+                        response.Message = "One or more specified Learning Objectives were not found.";
+                        // You might want to remove the newly added sprint if you don't want partial creation
+                        // dataContext.Sprints.Remove(sprint);
+                        return response;
+                    }
+
+                    // Create SprintLearningObjective entries for the many-to-many relationship
+                    foreach (var lo in existingLearningObjectives)
+                    {
+                        var sprintLo = new Models.SprintLearningObjective
+                        {
+                            Sprint = sprint, // Link to the new sprint entity
+                            LearningObjective = lo // Link to the existing learning objective entity
+                                                   // EF Core will automatically handle SprintId and LearningObjectiveId when SaveChanges is called
+                                                   // because it tracks the Sprint and LearningObjective entities.
+                        };
+                        // Add to the sprint's navigation collection
+                        sprint.SprintLearningObjectives.Add(sprintLo);
+                    }
+                }
+
+                // Save all changes (new sprint and updated learning objectives) to the database
                 await dataContext.SaveChangesAsync();
 
+                // Prepare the successful response DTO
                 response.Data = new Responses.SprintDto
                 {
-                    Id = sprint.Id,
+                    Id = sprint.Id, 
                     Name = sprint.Name,
                     Description = sprint.Description,
-                    StartDate = DateOnly.FromDateTime(sprint.StartDate),
-                    EndDate = DateOnly.FromDateTime(sprint.EndDate)
+                    StartDate = DateOnly.FromDateTime(sprint.StartDate).ToString(),
+                    EndDate = DateOnly.FromDateTime(sprint.EndDate).ToString()
                 };
-                response.Message = "Sprint created successfully.";
+
+                response.Message = "Sprint created successfully and learning objectives associated.";
+            }
+            catch (FormatException)
+            {
+                response.Error = true;
+                response.Message = "Invalid date format. Please use a valid date string (e.g., 'YYYY-MM-DD').";
             }
             catch (Exception ex)
             {
+                // Log the exception for debugging purposes
+                // Consider using a proper logging framework (e.g., Serilog, NLog)
+                Console.WriteLine($"Error in CreateNewSprintAsync: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+
                 response.Error = true;
                 response.Message = $"An unexpected error occurred: {ex.Message}";
             }

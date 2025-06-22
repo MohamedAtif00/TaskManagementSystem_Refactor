@@ -224,40 +224,63 @@ public class TaskService : ITaskService
         await createTask(step: step, learningObjective: lo, from);
 
 
-    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTasksBySprint(int sprintId)
-    {
-        //var user = await _authService.GetAuthedUser();
-        //if (user is null)
-        //    return new UnauthorizedObjectResult(
-        //        new BaseResponseService { Error = false, Message = "Invalid auth" }
-        //    );
 
-        var sprint = await _context.Sprints
-        .Include(s => s.Tasks)
-            .ThenInclude(t => t.LearningObjective)
+    /// <summary>
+    /// Retrieves a list of task cards associated with a specific Learning Objective.
+    /// </summary>
+    /// <param name="learningObjectiveId">The ID of the Learning Objective.</param>
+    /// <returns>A ResponseService containing a list of GetTaskCardDto if successful, otherwise an error response.</returns>
+    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksByLearningObjectiveId(int learningObjectiveId)
+    {
+        var user = await _authService.GetAuthedUser();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid authentication request." }
+            );
+        var learningObjective = await _context.LearningObjectives
+            .Where(lo => lo.Id == learningObjectiveId && !lo.Archived)
+            .Include(lo => lo.Lesson)
+                .ThenInclude(l => l.Unit)
+                    .ThenInclude(u => u.Project)
+                        .ThenInclude(p => p.Users) // Include project users for auth check
+            .FirstOrDefaultAsync();
+
+        if (learningObjective is null)
+        {
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Learning Objective not found or archived." }
+            );
+        }
+
+        if (user.Role == UserRoleEnum.Member || user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
+        {
+            var hasAccess = learningObjective.Lesson.Unit.Project.Users.Any(u => u.Id == user.Id) ||
+                            (user.Role == UserRoleEnum.TeamLeader && user.GroupId == learningObjective.Lesson.Unit.Lessons.FirstOrDefault()?.LearningObjectives.FirstOrDefault()?.Tasks.FirstOrDefault()?.GroupId) ||
+                            (user.Role == UserRoleEnum.SectionHead && _context.SectionGroups.Any(sg => sg.Section.HeadId == user.Id && sg.GroupId == learningObjective.Lesson.Unit.Lessons.FirstOrDefault().LearningObjectives.FirstOrDefault().Tasks.FirstOrDefault().GroupId)); ;
+
+            if (!hasAccess)
+            {
+                return new UnauthorizedObjectResult(
+                    new BaseResponseService { Error = true, Message = "You do not have permission to view tasks for this Learning Objective." }
+                );
+            }
+        }
+
+
+        var tasks = await _context.Tasks
+            .Where(t => !t.Archived && t.LearningObjectiveId == learningObjectiveId)
+            .Include(t => t.LearningObjective) // Already loaded, but good practice to include if directly projecting
                 .ThenInclude(lo => lo.Lesson)
                     .ThenInclude(l => l.Unit)
-        .Include(s => s.Tasks)
-            .ThenInclude(t => t.User)
-        .Include(s => s.Tasks)
-            .ThenInclude(t => t.Group)
-        .Include(s => s.Tasks)
-            .ThenInclude(t => t.From)
-        .FirstOrDefaultAsync(s => s.Id == sprintId);
-
-        if (sprint is null)
-            return new NotFoundObjectResult(
-                new BaseResponseService { Error = true, Message = "Sprint not found" }
-            );
-
-        var tasks = sprint.Tasks
-            .Where(t => !t.Archived)
+            .Include(t => t.User)
+            .Include(t => t.Group)
+            .Include(t => t.From)
             .Select(t => new GetTaskCardDto
             {
                 Paused = t.Pause,
                 Attention = t.Attention,
                 Flagged = t.Flagged,
-                From = t.From is null ? "" : t.From.Name,
+                From = t.From == null ? "" : t.From.Name,
                 Id = t.Id,
                 IsReview = t.IsReview,
                 IsRollback = t.IsRollback,
@@ -270,7 +293,7 @@ public class TaskService : ITaskService
                 Priority = t.Priority,
                 RollbackCount = t.RollbackCount,
                 Status = t.Status,
-                User = t.User is null
+                User = t.User == null
                     ? null
                     : new BasicInfoDto
                     {
@@ -280,17 +303,85 @@ public class TaskService : ITaskService
                 baseDuration = t.Duration,
                 duration = (decimal?)_context.TaskWorkTimes
                     .Where(q => q.TaskId == t.Id)
-                    .Sum(q => q.Duration) / 60000
+                    .Sum(q => q.Duration) / 60000 // Convert milliseconds to minutes
             })
-            .ToList();
+            .ToListAsync();
 
         return new ResponseService<List<GetTaskCardDto>>
         {
             Data = tasks,
             Error = false,
-            Message = "Public list of tasks in sprint"
+            Message = $"Successfully retrieved tasks for Learning Objective ID: {learningObjectiveId}."
         };
     }
+
+    //public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTasksBySprint(int sprintId)
+    //{
+    //    //var user = await _authService.GetAuthedUser();
+    //    //if (user is null)
+    //    //    return new UnauthorizedObjectResult(
+    //    //        new BaseResponseService { Error = false, Message = "Invalid auth" }
+    //    //    );
+
+    //    var sprint = await _context.Sprints
+    //    .Include(s => s.Tasks)
+    //        .ThenInclude(t => t.LearningObjective)
+    //            .ThenInclude(lo => lo.Lesson)
+    //                .ThenInclude(l => l.Unit)
+    //    .Include(s => s.Tasks)
+    //        .ThenInclude(t => t.User)
+    //    .Include(s => s.Tasks)
+    //        .ThenInclude(t => t.Group)
+    //    .Include(s => s.Tasks)
+    //        .ThenInclude(t => t.From)
+    //    .FirstOrDefaultAsync(s => s.Id == sprintId);
+
+    //    if (sprint is null)
+    //        return new NotFoundObjectResult(
+    //            new BaseResponseService { Error = true, Message = "Sprint not found" }
+    //        );
+
+    //    var tasks = sprint.Tasks
+    //        .Where(t => !t.Archived)
+    //        .Select(t => new GetTaskCardDto
+    //        {
+    //            Paused = t.Pause,
+    //            Attention = t.Attention,
+    //            Flagged = t.Flagged,
+    //            From = t.From is null ? "" : t.From.Name,
+    //            Id = t.Id,
+    //            IsReview = t.IsReview,
+    //            IsRollback = t.IsRollback,
+    //            LearningObjective = new BasicInfoDto
+    //            {
+    //                Id = t.LearningObjective.Id,
+    //                Name = t.LearningObjective.Name
+    //            },
+    //            Name = t.Name,
+    //            Priority = t.Priority,
+    //            RollbackCount = t.RollbackCount,
+    //            Status = t.Status,
+    //            User = t.User is null
+    //                ? null
+    //                : new BasicInfoDto
+    //                {
+    //                    Name = t.User.Name,
+    //                    Id = t.User.Id
+    //                },
+    //            baseDuration = t.Duration,
+    //            duration = (decimal?)_context.TaskWorkTimes
+    //                .Where(q => q.TaskId == t.Id)
+    //                .Sum(q => q.Duration) / 60000
+    //        })
+    //        .ToList();
+
+    //    return new ResponseService<List<GetTaskCardDto>>
+    //    {
+    //        Data = tasks,
+    //        Error = false,
+    //        Message = "Public list of tasks in sprint"
+    //    };
+    //}
     public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid)
     {
         var user = await _authService.GetAuthedUser();
@@ -1020,7 +1111,6 @@ public class TaskService : ITaskService
             IsRollback = false,
             Duration = taskBank.Duration,
             Priority = TaskPriorityEnum.None,
-            SprintId = sprintId
         };
 
         var createdAct = new TaskActivity

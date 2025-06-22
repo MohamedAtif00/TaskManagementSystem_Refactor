@@ -140,11 +140,11 @@ public class DataContext : DbContext
             .HasOne(p => p.Step)
             .WithMany()
             .OnDelete(DeleteBehavior.NoAction);
-        modelBuilder
-            .Entity<Sprint>()
-            .HasMany(x => x.Tasks)
-            .WithOne(x => x.Sprint)
-            .OnDelete(DeleteBehavior.NoAction);
+        //modelBuilder
+        //    .Entity<Sprint>()
+        //    .HasMany(x => x.Tasks)
+        //    .WithOne(x => x.Sprint)
+        //    .OnDelete(DeleteBehavior.NoAction);
         ////////
         modelBuilder
             .Entity<LeaveRequest>()

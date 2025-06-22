@@ -193,6 +193,7 @@ interface ISprint{
     description:string,
     startDate:string,
     endDate:string
+    learningObjects:IDName[]
 }
 
 interface ISection {

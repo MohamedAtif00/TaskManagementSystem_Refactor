@@ -1,42 +1,179 @@
+import { GridColDef, DataGrid } from "@mui/x-data-grid";
 import Head from "next/head";
-import Loader from "../../../components/loader";
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import { format } from "date-fns";
+import { useState, useEffect } from "react";
+import TaskIcon from "../../../assets/Icons/Task"; // Adjust path as needed
+import API from "../../../lib/API"; // Adjust path as needed
+import Loader from "../../../components/loader"; // Adjust path as needed
 
-const TaskSheet = () => {
-    const [done, setDone] = useState(false);
+// Assuming these interfaces are defined in your project:
+
+// Columns for Learning Objectives
+const loColumns: GridColDef[] = [
+    { field: "id", headerName: "LO ID", width: 90 },
+    { field: "name", headerName: "LO Name", flex: 1, minWidth: 250 },
+    // Add more columns here if your ILearningObjective interface includes more fields
+    // { field: "tag", headerName: "Tag", width: 150 },
+];
+
+const SingleSprintPage = () => {
     const router = useRouter();
+    // Ensure that the dynamic route segment in your file system matches this name:
+    // pages/sprints/[sprintId].tsx, so the key is 'sprintId'
+    const { sprintId } = router.query;
+    const [sprint, setSprint] = useState<ISprint | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        const preferredView = localStorage.getItem("tasks:view");
-        console.log('hello',router.query.sprintId);
-        
-        if (preferredView !== null && preferredView === "sheet") 
-            router.replace(`/sprints/${router.query.sprintId}/sheet`)
-        else
-            router.replace(`/sprints/${router.query.sprintId}/board`)
+        // Ensure sprintId is available and is a string (can be string | string[] initially)
+        if (sprintId && typeof sprintId === "string") {
+            setLoading(true);
+            setError(null);
+            // Assuming API.SPRINTS.GET_ONE takes a number for ID
+            API.SPRINTS.GET_ONE(sprintId)
+                .then((res) => {
+                    // Assuming API response structure is { data: ISprint, error: boolean, message: string }
+                    if (res && !res.error && res.data) {
+                        setSprint(res.data);
+                    } else {
+                        setError(res?.message || "Failed to load sprint.");
+                    }
+                })
+                .catch((err) => {
+                    console.error("Error fetching sprint:", err);
+                    setError("An unexpected error occurred while fetching sprint details.");
+                })
+                .finally(() => {
+                    setLoading(false);
+                });
+        }
+    }, [sprintId]); // Dependency array: re-run effect when sprintId changes
 
-        return setDone(true);
-    }, [])
-
-    if (done) {
-        <div className="flex items-center justify-center mx-auto h-full">
-            <Head>
-                <title>ATS - Select a view</title>
-            </Head>
-            <div>
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center mx-auto h-full">
+                <Head>
+                    <title>ATS - Loading Sprint</title>
+                </Head>
+                {/* Assuming Loader is a React component */}
+                <Loader />
             </div>
-        </div>
+        );
     }
 
-    return (
-        <div className="flex items-center justify-center mx-auto h-full">
-            <Head>
-                <title>ATS - Loading</title>
-            </Head>
-            <Loader />
-        </div>
-    );
-}
+    if (error) {
+        return (
+            <div className="flex items-center justify-center mx-auto h-full text-red-500">
+                <Head>
+                    <title>ATS - Error</title>
+                </Head>
+                <p>{error}</p>
+            </div>
+        );
+    }
 
-export default TaskSheet;
+    if (!sprint) {
+        return (
+            <div className="flex items-center justify-center mx-auto h-full text-gray-500">
+                <Head>
+                    <title>ATS - Sprint Not Found</title>
+                </Head>
+                <p>Sprint not found.</p>
+            </div>
+        );
+    }
+
+    // Prepare rows for Learning Objectives DataGrid
+    // DataGrid requires a unique 'id' property for each row
+    const loRows = sprint.learningObjects.map((lo) => ({
+        id: lo.id,
+        name: lo.name,
+        // Add other properties if you want them accessible in the row object for custom rendering
+        // tag: lo.tag,
+    }));
+
+    return (
+        <>
+            <Head>
+                <title>ATS - {sprint.name}</title>
+            </Head>
+            <div className="mx-auto relative max-h-screen overflow-y-auto pr-4 w-11/12">
+                <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
+                    <div className="flex gap-2 items-center">
+                        <TaskIcon className="stroke-black" />
+                        <h1 className="font-bold text-2xl">Sprint: {sprint.name}</h1>
+                    </div>
+                    {/* Link for Back to Sprints button - corrected for Next.js 13+ */}
+                    <Link href="/sprints">
+                        <button className="px-4 py-1 rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">
+                            Back to Sprints
+                        </button>
+                    </Link>
+                </div>
+
+                <div className="p-8">
+                    <div className="bg-white p-6 rounded-md shadow-sm mb-6">
+                        <h2 className="text-xl font-semibold mb-4">Sprint Details</h2>
+                        <p className="text-gray-700 mb-2"><strong>Description:</strong> {sprint.description}</p>
+                        {/* Ensure dates are handled as strings from backend for consistency with format() */}
+                        <p className="text-gray-700 mb-2"><strong>Start Date:</strong> {format(new Date(sprint.startDate), 'yyyy-MM-dd')}</p>
+                        <p className="text-gray-700 mb-2"><strong>End Date:</strong> {format(new Date(sprint.endDate), 'yyyy-MM-dd')}</p>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-md shadow-sm">
+                        <h2 className="text-xl font-semibold mb-4">Associated Learning Objectives</h2>
+                        {sprint.learningObjects.length > 0 ? (
+                            <div style={{ width: '100%' }}>
+                                <DataGrid
+                                    rows={loRows}
+                                    columns={loColumns}
+                                    autoHeight // Adjusts height based on content, avoiding fixed height
+                                    initialState={{ pagination: { paginationModel: { pageSize: 5 } } }}
+                                    pageSizeOptions={[5, 10, 25]}
+                                    // Make LO rows clickable
+                                    slots={{
+                                        row: (rowParams) => {
+                                            // Construct the href for the LO detail page
+                                            const loDetailHref = `/sprints/${sprint.id}/${rowParams.row.id}/board`;
+                                            return (
+                                                <Link
+                                                    href={loDetailHref}
+                                                    key={rowParams.row.id} // Use the LO's ID as the key for the row
+                                                    // Apply your desired styling to the Link component
+                                                    className="group hover:bg-slate-50 flex border-solid border-b border-slate-200 cursor-pointer"
+                                                    style={{ height: rowParams.rowHeight }}
+                                                >
+                                                    {/* Map over visible columns to render content within the Link */}
+                                                    {rowParams.visibleColumns.map((col: any) => (
+                                                        <div
+                                                            key={col.field}
+                                                            style={{
+                                                                minWidth: col.width || 0, // Fallback for flex columns
+                                                                maxWidth: col.width || '100%',
+                                                                flexGrow: col.flex || 0,
+                                                            }}
+                                                            className="px-[0.625rem] group-hover:pl-4 transition-all ease-in text-sm flex items-center group-hover:text-blue-700"
+                                                        >
+                                                            {rowParams.row[col.field]}
+                                                        </div>
+                                                    ))}
+                                                </Link>
+                                            );
+                                        },
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            <p className="text-gray-500">No learning objectives associated with this sprint.</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+
+export default SingleSprintPage;

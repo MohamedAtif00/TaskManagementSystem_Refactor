@@ -4,13 +4,18 @@ import { motion } from "framer-motion";
 import { addDays } from "date-fns";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
+import { IDName } from "../../lib/API/workFromHome";
 
 // Define a Project interface (adjust based on your actual data structure)
-interface Project {
-    _id: string; // Or 'id: number' or similar, depending on your backend
-    name: string;
-}
+// interface IProject {
+//     id: string; // Or 'id: number' or similar, depending on your backend
+//     name: string;
+// }
 
+// interface ILearningOutcome {
+//     id: string;
+//     name: string;
+// }
 // Helper function to format date for input type="date"
 const formatDateForInput = (date: Date): string => {
     return date.toISOString().split('T')[0];
@@ -29,9 +34,15 @@ const CreateSprint = () => {
     const [selectedProjectId, setSelectedProjectId] = useState<string>('');
 
     // State for projects list
-    const [projects, setProjects] = useState<Project[]>([]);
+    const [projects, setProjects] = useState<IProject[]>([]);
     const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(false);
     const [projectFetchError, setProjectFetchError] = useState<string>('');
+
+    // State for Learning Outcomes list
+    const [learningOutcomes, setLearningOutcomes] = useState<IDName[]>([]);
+    const [isLoadingLOs, setIsLoadingLOs] = useState<boolean>(false);
+    const [loFetchError, setLoFetchError] = useState<string>('');
+    const [selectedLos, setSelectedLos] = useState<IDName[]>([]);
 
     // Error state for the form
     const [formError, setFormError] = useState('');
@@ -53,11 +64,11 @@ const CreateSprint = () => {
                     // IMPORTANT: Assume API.PROJECTS.GET_ALL_PROJECTS() exists and
                     // returns an object like { data: Project[], error?: boolean, message?: string }
                     // Adjust this call and response handling to match your actual API.
-                    const response = await API.PROJECTS.GET_ALL_PROJECTS(); 
+                    const response = await API.PROJECTS.GET_ALL(); 
                     if (response && response.data && !response.error) {
                         setProjects(response.data);
                     } else {
-                        setProjectFetchError(response?.message || "Failed to fetch projects.");
+                        setProjectFetchError( response?.message || "Failed to fetch projects.");
                     }
                 } catch (err) {
                     console.error("Error fetching projects:", err);
@@ -70,12 +81,52 @@ const CreateSprint = () => {
         }
     }, [active]);
 
+    useEffect(() => {
+        // This effect fetches learning outcomes when a project is selected.
+        if (selectedProjectId) {
+            const fetchLOs = async () => {
+                setIsLoadingLOs(true);
+                setLoFetchError('');
+                setLearningOutcomes([]); // Reset previous LOs
+                try {
+                    // IMPORTANT: Assume an API endpoint exists to get LOs by project ID.
+                    // Adjust this call to match your actual API.
+                    const response = await API.PROJECTS.GET_ALL_LOS(Number(selectedProjectId));
+                    if (response && response.data && !response.error) {
+                        setLearningOutcomes(response.data);
+                    } else {
+                        setLoFetchError(response?.message || "Failed to fetch learning outcomes.");
+                    }       
+                } catch (err) {
+                    console.error("Error fetching learning outcomes:", err);
+                    setLoFetchError("An error occurred while fetching learning outcomes.");
+                } finally {
+                    setIsLoadingLOs(false);
+                }
+            };
+            fetchLOs();
+        }
+    }, [selectedProjectId]);
+
+    const handleSelectLo = (lo: IDName) => {
+        // Add to selected if not already there
+        if (!selectedLos.some(selected => selected.id === lo.id)) {
+            setSelectedLos([...selectedLos, lo]);
+        }
+    };
+
+    const handleDeselectLo = (lo: IDName) => {
+        // Remove from selected
+        setSelectedLos(selectedLos.filter(selected => selected.id !== lo.id));
+    };
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setFormError("");
 
         if (sprintName.trim() === "") return setFormError("Please enter a sprint name.");
         if (selectedProjectId === "") return setFormError("Please select a project.");
+        if (selectedLos.length === 0) return setFormError("Please select at least one learning outcome.");
         if (!startDate) return setFormError("Please select a start date.");
         if (!endDate) return setFormError("Please select an end date.");
 
@@ -94,7 +145,7 @@ const CreateSprint = () => {
                 description,
                 startDate: dStartDate.toISOString(),
                 endDate: dEndDate.toISOString(),
-                projectId: selectedProjectId 
+                los: selectedLos
             });
 
             if (response && !response.error) {
@@ -150,7 +201,87 @@ const CreateSprint = () => {
                         />  
                     </div>
                     
-                    
+                    <div>
+                        <label htmlFor="project" className="block text-gray-700 font-medium mb-1">Project</label>
+                        {isLoadingProjects && <p className="text-gray-500">Loading projects...</p>}
+                        {projectFetchError && <p className="text-red-500">{projectFetchError}</p>}
+                        {!isLoadingProjects && !projectFetchError && (
+                            <>
+                                <select
+                                    id="project"
+                                    value={selectedProjectId}
+                                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
+                                    required
+                                >
+                                    <option value="" disabled>Select a project</option>
+                                    {projects.length === 0 && !isLoadingProjects && <option value="" disabled>No projects available</option>}
+                                    {projects.map((project) => (
+                                        <option key={project.id} value={project.id}>
+                                            {project.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">You can switch projects to add learning outcomes from multiple sources.</p>
+                            </>
+                        )}
+                    </div>
+
+                    {selectedProjectId && (
+                        <div>
+                            <label className="block text-gray-700 font-medium mb-1">Learning Outcomes</label>
+                            {isLoadingLOs && <p className="text-gray-500">Loading learning outcomes...</p>}
+                            {loFetchError && <p className="text-red-500">{loFetchError}</p>}
+                            {!isLoadingLOs && !loFetchError && (
+                                <>
+                                    {learningOutcomes.length === 0 ? (
+                                        <p className="text-gray-500 p-2 border rounded-lg">No learning outcomes available for this project.</p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg">
+                                            <div>
+                                                <h4 className="font-semibold mb-2 text-gray-800">Available</h4>
+                                                <div className="h-48 overflow-y-auto border rounded p-2 space-y-1 bg-gray-50">
+                                                    {learningOutcomes
+                                                        .filter(lo => !selectedLos.some(selected => selected.id === lo.id))
+                                                        .map(lo => (
+                                                            <div
+                                                                key={lo.id}
+                                                                onClick={() => handleSelectLo(lo)}
+                                                                className="p-2 border rounded cursor-pointer hover:bg-blue-100 transition-colors"
+                                                            >
+                                                                {lo.name}
+                                                            </div>
+                                                        ))
+                                                    }
+                                                    {learningOutcomes.filter(lo => !selectedLos.some(selected => selected.id === lo.id)).length === 0 && (
+                                                        <p className="text-gray-500 text-sm p-2">All available LOs selected.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold mb-2 text-gray-800">Selected ({selectedLos.length})</h4>
+                                                <div className="h-48 overflow-y-auto border rounded p-2 space-y-1 bg-blue-50">
+                                                    {selectedLos.map(lo => (
+                                                        <div
+                                                            key={lo.id}
+                                                            onClick={() => handleDeselectLo(lo)}
+                                                            className="p-2 border rounded cursor-pointer hover:bg-red-100 transition-colors flex justify-between items-center bg-white"
+                                                        >
+                                                            <span>{lo.name}</span>
+                                                            <span className="text-red-500 font-bold text-lg leading-none">&times;</span>
+                                                        </div>
+                                                    ))}
+                                                    {selectedLos.length === 0 && (
+                                                        <p className="text-gray-500 text-sm p-2">Click on an available LO to select it.</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -173,28 +304,6 @@ const CreateSprint = () => {
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
                             />
                         </div>
-                    </div>
-                    <div>
-                        <label htmlFor="project" className="block text-gray-700 font-medium mb-1">Project</label>
-                        {isLoadingProjects && <p className="text-gray-500">Loading projects...</p>}
-                        {projectFetchError && <p className="text-red-500">{projectFetchError}</p>}
-                        {!isLoadingProjects && !projectFetchError && (
-                            <select
-                                id="project"
-                                value={selectedProjectId}
-                                onChange={(e) => setSelectedProjectId(e.target.value)}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
-                                required
-                            >
-                                <option value="" disabled>Select a project</option>
-                                {projects.length === 0 && !isLoadingProjects && <option value="" disabled>No projects available</option>}
-                                {projects.map((project) => (
-                                    <option key={project._id} value={project._id}>
-                                        {project.name}
-                                    </option>
-                                ))}
-                            </select>
-                        )}
                     </div>
 
                     <div className="flex justify-end pt-4">

@@ -10,6 +10,7 @@ using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using AutomatedTaskSystem.Services.UnitService;
 using Microsoft.AspNetCore.Mvc;
+using static AutomatedTaskSystem.DTO.Responses;
 
 namespace AutomatedTaskSystem.Services.ProjectService;
 
@@ -316,9 +317,24 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<
-        ActionResult<ResponseService<Responses.DetailedProjectDTO>>
-    > GetProjectDetails(int Id)
+    public async Task<ActionResult<ResponseService<List<LearningObjectiveDTO>>>> GetLOsForSprint(int id) {
+        var learningObjects = await _context.LearningObjectives.Include(x => x.Schema).Include(x => x.SprintLearningObjectives).Where(x => x.SprintLearningObjectives.Any(slo => slo.SprintId == id)).Select(x => new LearningObjectiveDTO { 
+            Id = x.Id,
+            Name = x.Name,
+            Tag = x.Tag,
+            Environment = x.Environment,
+            Template = x.Template,
+            Schema = new IDName { Id=x.Schema.Id,Name = x.Schema.Name}
+        }).ToListAsync();
+
+
+        return new ResponseService<List<LearningObjectiveDTO>>
+        {
+            Data = learningObjects
+        };
+    }
+
+    public async Task<ActionResult<ResponseService<Responses.DetailedProjectDTO>>> GetProjectDetails(int Id)
     {
         var project = await _context.Projects
             .Where(p => p.Id == Id && !p.Archived)
@@ -528,7 +544,7 @@ public class ProjectService : IProjectService
                     t.LearningObjective.Lesson != null &&
                     t.LearningObjective.Lesson.Unit != null &&
                     projectIds.Contains(t.LearningObjective.Lesson.Unit.ProjectId) &&
-                    t.Status != TaskStatusEnum.Done // Filter out 'Done' tasks
+                    (t.Status == TaskStatusEnum.Backlog || t.Status == TaskStatusEnum.Doing || t.Status == TaskStatusEnum.ToDo) // Filter out 'Done' tasks
                 )
                 .GroupBy(t => t.LearningObjective.Lesson.Unit.ProjectId)
                 .Select(g => new { ProjectId = g.Key, Count = g.Count() })

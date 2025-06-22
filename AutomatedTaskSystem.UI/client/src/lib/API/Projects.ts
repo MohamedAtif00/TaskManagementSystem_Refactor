@@ -2,6 +2,7 @@ import { ISummary } from "../../pages/summaries/[projectId]";
 import authService from "../Auth";
 import { BasicInfo, url } from "./";
 import REPORTS from "./Reports";
+import { IDName } from "./workFromHome";
 
 const PROJECTS = {
     REPORTS,
@@ -195,32 +196,26 @@ const PROJECTS = {
         }
     },
     GET_ALL_LOS: async (projectId: number) => {
-        try {
-            const res = await fetch(`${url}/projects/${projectId}/los`);
-            const data: {
-                error: boolean;
-                message: string;
-                data: IProject[];
-            } = await res.json();
-            return data;
-        } catch (error) {
-            console.error(error);
-            return false;
-        }
+
+        const res = await fetch(`${url}/projects/${projectId}/los`);
+        const data: {
+            error: boolean;
+            message: string;
+            data: IDName[];
+        } = await res.json();
+        return data;
+
     },
     GET_ALL: async () => {
-        try {
-            const res = await fetch(`${url}/projects`);
-            const data: {
-                data: IProject[];
-                error: boolean;
-                message: string;
-            } = await res.json();
-            return data;
-        } catch (error) {
-            console.error(error);
-            return false;
-        }
+      
+        const res = await fetch(`${url}/projects`);
+        const data: {
+            data: IProject[];
+            error: boolean;
+            message: string;
+        } = await res.json();
+        return data;
+
     },
     GET_ONE: async (id: string | string[]) => {
         try {

@@ -1,4 +1,6 @@
-﻿namespace AutomatedTaskSystem.Dtos.SprintDtos
+﻿using AutomatedTaskSystem.DTO;
+
+namespace AutomatedTaskSystem.Dtos.SprintDtos
 {
     public class SprintDTO
     {
@@ -7,5 +9,6 @@
         public string Description { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime  EndDate { get; set; }
+        public List<Responses.IDName> learningObjects { get; set; }
     }
 }

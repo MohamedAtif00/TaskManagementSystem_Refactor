@@ -82,9 +82,9 @@ public class TaskController : ControllerBase
 
 
     [HttpGet("/sprints/{id}/tasks/cards")]
-    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetCardTasksBySprint(int id)
+    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetCardTasksByLearningObject(int id)
     {
-        return await _taskService.GetProjectTasksBySprint(id);
+        return await _taskService.GetTasksByLearningObjectiveId(id);
     }
 
     // GET:
