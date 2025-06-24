@@ -9,7 +9,8 @@ namespace AutomatedTaskSystem.Services.Sprint
     {
         Task<ResponseService<Responses.SprintDto>> CreateNewSprintAsync(Request.CreateSprint request);
         Task<ActionResult<BaseResponseService>> DeleteSprint(int id);
-        Task<ActionResult<ResponseService<List<SprintDTO>>>> GetAllSprints();
+        Task<ResponseService<List<SprintDTO>>> GetAllSprints();
         Task<ResponseService<SprintDTO>> GetSingleSprintAsync(int id);
+        Task<ResponseService<Responses.SprintDto>> UpdateSprintAsync(int sprintId, Request.UpdateSprint request);
     }
 }

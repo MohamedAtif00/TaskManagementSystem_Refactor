@@ -60,13 +60,13 @@ const TaskBoard = () => {
 
     // Function to fetch tasks, **now only taking the learningObjectiveId based on your API's definition**
     const fetchTasks = async (loIdInPath: string) => { // This parameter maps to `learningObjectId` in your API definition
-        if (!loIdInPath) { // Ensure the ID for the path is not empty
+        if (!loIdInPath ||!sprintId) { // Ensure the ID for the path is not empty
             console.warn("No learning objective ID provided for fetching tasks.");
             setTasks([]); // Set to empty to clear previous tasks if no LO is selected
             return;
         }
 
-        const res = await API.SPRINTS.GET_ALL_CARDS(loIdInPath); // Call API with the LO ID
+        const res = await API.SPRINTS.GET_ALL_CARDS_FOR_LO(loIdInPath,sprintId); // Call API with the LO ID
 
         if (res && !res.error) {
             setTasks(res.data);

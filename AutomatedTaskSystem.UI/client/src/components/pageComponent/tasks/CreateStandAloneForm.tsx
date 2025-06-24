@@ -9,7 +9,7 @@ import useTaskPathHandler from "../../taskDetails/useTaskPathHandler.ts";
 interface Props {
     projectId: number;
     refreshTasks: () => void;
-    type:"tasks" | "sprints"
+    type:TaskType
 }
 
 const CreateStandAloneTaskForm: React.FC<Props> = (props) => {

@@ -43,4 +43,5 @@ public interface IProjectService
         int id,
         ProjectStatusEnum priority
     );
+    Task<ActionResult<ResponseService<List<Responses.ProjectDTO>>>> GetAllProjectsForSprint();
 }

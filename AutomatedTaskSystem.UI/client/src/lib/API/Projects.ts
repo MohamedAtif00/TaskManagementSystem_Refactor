@@ -216,7 +216,16 @@ const PROJECTS = {
         } = await res.json();
         return data;
 
-    },
+    },GET_ALL_FOR_SPRINT:async ()=>{
+
+        const res = await fetch(`${url}/projects/GetAllForSprint`);
+        const data: {
+            data: IProject[];
+            error: boolean;
+            message: string;
+        } = await res.json();
+        return data;
+    }    ,
     GET_ONE: async (id: string | string[]) => {
         try {
             const res = await fetch(`${url}/projects/${id}`);

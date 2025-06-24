@@ -18,7 +18,7 @@ namespace AutomatedTaskSystem.Services.Sprint
             this.dataContext = dataContext;
         }
 
-        public async Task<ActionResult<ResponseService<List<SprintDTO>>>> GetAllSprints()
+        public async Task<ResponseService<List<SprintDTO>>> GetAllSprints()
         {
             try
             {
@@ -41,7 +41,7 @@ namespace AutomatedTaskSystem.Services.Sprint
             }
             catch (Exception ex)
             {
-                return new NotFoundObjectResult(new BaseResponseService() { Error = true, Message = "Unexcepected error" });
+                return new ResponseService<List<SprintDTO>>() { Error = true, Message = "Unexcepected error" };
             }
         }
 
@@ -55,7 +55,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                     .Include(s => s.SprintLearningObjectives) // Include the join table entries
                         .ThenInclude(slo => slo.LearningObjective) // Then include the actual LearningObjective from the join table
                     .FirstOrDefaultAsync(s => s.Id == id);
-
+                    
                 if (sprint == null)
                 {
                     response.Error = true;
@@ -203,6 +203,130 @@ namespace AutomatedTaskSystem.Services.Sprint
             return response;
         }
 
+        /// <summary>
+        /// Updates an existing sprint with new details and manages its associated learning objectives.
+        /// </summary>
+        /// <param name="sprintId">The ID of the sprint to update.</param>
+        /// <param name="request">The request body containing the updated sprint information.</param>
+        /// <returns>A ResponseService indicating the success or failure of the update operation.</returns>
+        public async Task<ResponseService<Responses.SprintDto>> UpdateSprintAsync(int sprintId,Request.UpdateSprint request)
+        {
+            var response = new ResponseService<Responses.SprintDto>();
+
+            try
+            {
+                // 1. Find the existing sprint
+                var sprintToUpdate = await dataContext.Sprints
+                                                        .Include(s => s.SprintLearningObjectives) // Include for managing LOs
+                                                            .ThenInclude(slo => slo.LearningObjective) // Include actual LO data for response DTO
+                                                        .FirstOrDefaultAsync(s => s.Id == sprintId);
+
+                if (sprintToUpdate == null)
+                {
+                    response.Error = true;
+                    response.Message = "Sprint not found.";
+                    return response;
+                }
+
+                // 2. Parse and validate dates
+                // Using DateOnly for comparison, then converting to DateTime for storing in model
+                var newStartDateOnly = DateOnly.Parse(request.StartDate);
+                var newEndDateOnly = DateOnly.Parse(request.EndDate);
+
+                if (newStartDateOnly > newEndDateOnly)
+                {
+                    response.Error = true;
+                    response.Message = "Start Date cannot be after End Date.";
+                    return response;
+                }
+
+                // Check for overlaps, excluding the current sprint being updated
+                if (await IsOverlappingAsync(newStartDateOnly, newEndDateOnly,sprintId))
+                {
+                    response.Error = true;
+                    response.Message = "The updated date range overlaps with another existing sprint.";
+                    return response;
+                }
+
+                // 3. Update basic sprint properties
+                sprintToUpdate.Name = request.Name;
+                sprintToUpdate.Description = request.Description;
+                sprintToUpdate.StartDate = DateTime.Parse(request.StartDate); // Convert back to DateTime for storage
+                sprintToUpdate.EndDate = DateTime.Parse(request.EndDate);     // Convert back to DateTime for storage
+
+                // 4. Manage Learning Objectives (many-to-many relationship)
+                var currentLoIds = sprintToUpdate.SprintLearningObjectives.Select(slo => slo.LearningObjectiveId).ToList();
+                var requestedLoIds = request.Los ?? new List<int>();
+
+                // LOs to remove: In current but not in requested
+                var loIdsToRemove = currentLoIds.Except(requestedLoIds).ToList();
+                foreach (var loIdToRemove in loIdsToRemove)
+                {
+                    var sprintLoToRemove = sprintToUpdate.SprintLearningObjectives
+                                                         .FirstOrDefault(slo => slo.LearningObjectiveId == loIdToRemove);
+                    if (sprintLoToRemove != null)
+                    {
+                        dataContext.SprintLearningObjectives.Remove(sprintLoToRemove);
+                    }
+                }
+
+                // LOs to add: In requested but not in current
+                var loIdsToAdd = requestedLoIds.Except(currentLoIds).ToList();
+                if (loIdsToAdd.Any())
+                {
+                    var learningObjectivesToAdd = await dataContext.LearningObjectives
+                        .Where(lo => loIdsToAdd.Contains(lo.Id))
+                        .ToListAsync();
+
+                    if (learningObjectivesToAdd.Count != loIdsToAdd.Count)
+                    {
+                        response.Error = true;
+                        response.Message = "One or more new Learning Objectives specified were not found.";
+                        return response;
+                    }
+
+                    foreach (var lo in learningObjectivesToAdd)
+                    {
+                        sprintToUpdate.SprintLearningObjectives.Add(new Models.SprintLearningObjective
+                        {
+                            Sprint = sprintToUpdate,
+                            LearningObjective = lo
+                        });
+                    }
+                }
+
+                // 5. Save all changes to the database
+                await dataContext.SaveChangesAsync();
+
+                // 6. Prepare the successful response DTO
+                response.Data = new Responses.SprintDto
+                {
+                    Id = sprintToUpdate.Id,
+                    Name = sprintToUpdate.Name,
+                    Description = sprintToUpdate.Description,
+                    StartDate = sprintToUpdate.StartDate.ToString(),
+                    EndDate = sprintToUpdate.EndDate.ToString()
+                };
+                response.Message = "Sprint updated successfully and learning objectives managed.";
+            }
+            catch (FormatException)
+            {
+                response.Error = true;
+                response.Message = "Invalid date format. Please use a valid date string (e.g., 'MM/DD/YYYY' or 'YYYY-MM-DD').";
+            }
+            catch (Exception ex)
+            {
+                // Log the exception for debugging purposes
+                Console.WriteLine($"Error in UpdateSprintAsync: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+
+                response.Error = true;
+                response.Message = $"An unexpected error occurred: {ex.Message}";
+            }
+
+            return response;
+        }
+
         public async Task<ActionResult<BaseResponseService>> DeleteSprint(int id)
         {
             var response = new BaseResponseService();
@@ -241,6 +365,34 @@ namespace AutomatedTaskSystem.Services.Sprint
             );
 
             return condition;
+        }
+
+        /// <summary>
+        /// Checks if a given date range for a sprint overlaps with any other existing sprints.
+        /// When updating a sprint, the ID of the current sprint can be provided to exclude it
+        /// from the overlap check, preventing a sprint from overlapping with itself.
+        /// </summary>
+        /// <param name="newStartDate">The start date of the new or updated sprint's range.</param>
+        /// <param name="newEndDate">The end date of the new or updated sprint's range.</param>
+        /// <param name="currentSprintId">Optional: The ID of the sprint currently being updated.
+        /// If provided, this sprint will be excluded from the overlap check.</param>
+        /// <returns>True if an overlap is found, false otherwise.</returns>
+        private async Task<bool> IsOverlappingAsync(DateOnly newStartDate, DateOnly newEndDate, int? currentSprintId = null)
+        {
+            // Convert DateOnly to DateTime for comparison with existing DateTime properties in Sprint model.
+            // Using .Date to ensure only the date portion is compared, ignoring time.
+            var start = newStartDate.ToDateTime(TimeOnly.MinValue).Date;
+            var end = newEndDate.ToDateTime(TimeOnly.MaxValue).Date;
+
+            // Query for any existing sprints that overlap with the new date range.
+            // The condition for overlap is: (StartDate <= newEndDate AND EndDate >= newStartDate)
+            // Additionally, if currentSprintId is provided (for updates),
+            // we ensure that the queried sprint's ID is NOT the currentSprintId.
+            var isOverlap = await dataContext.Sprints
+                .AnyAsync(s => (currentSprintId == null || s.Id != currentSprintId.Value) && // Exclude the current sprint if ID is provided
+                               (start <= s.EndDate.Date && end >= s.StartDate.Date)); // Check for overlap condition
+
+            return isOverlap;
         }
 
 

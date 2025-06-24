@@ -55,6 +55,8 @@ public interface ITaskService
     Task<ActionResult<ResponseService<TaskCommentDto>>> DeleteComment(int taskId, int commentId);
     Task<BaseResponseService> CreateProcess(List<int> options, int schemaId, int loId);
     void PauseAllTasksForUser(int userId);
-    Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksByLearningObjectiveId(int learningObjectiveId);
+    Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksByLearningObjectiveId(int learningObjectiveId, int sprintId);
+    Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksBySprintId(int sprintId);
+    //Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksByLearningObjectiveId(int learningObjectiveId);
     //Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTasksBySprint(int sprintId);
 }

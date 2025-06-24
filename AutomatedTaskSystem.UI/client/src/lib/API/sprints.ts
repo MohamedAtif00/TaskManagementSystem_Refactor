@@ -88,10 +88,77 @@ const SPRINTS = {
             return { success: false, error: (err as Error).message || "Unknown error occurred" };
         }
     },
-    GET_ALL_CARDS: async (learningObjectId: string | string[]):Promise<ResponseService<TaskInfo[]>> => {
+    UPDATE_SPRINT: async (
+        sprintId: string,
+        {
+            name,
+            description,
+            startDate, // ISO string expected from frontend
+            endDate,   // ISO string expected from frontend
+            los        // ⭐ This now expects an array of numbers (IDs)
+        }: {
+            name: string;
+            description: string;
+            startDate: string;
+            endDate: string;
+            los: number[]; // Change IDName[] to number[]
+        }
+    ): Promise<ResponseService<ISprint>> => {
+        try {
+            const authHeader = authService.authHeader();
+
+            const res = await fetch(`${url}/Sprint/update-sprint/${sprintId}`, {
+                method: 'PUT', // Use PUT for updates
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...authHeader,
+                },
+                body: JSON.stringify({
+                    name,
+                    description,
+                    // Format dates to "M/d/yyyy" for the backend
+                    // Your C# backend expects "M/d/yyyy" if you use DateOnly.Parse directly.
+                    // If DateOnly.Parse is robust enough for "YYYY-MM-DD", then keep it as is.
+                    // For consistency, I'll use the format from CREATE_SPRINT.
+                    startDate: format(new Date(startDate), "M/d/yyyy"),
+                    endDate: format(new Date(endDate), "M/d/yyyy"),
+                    los, // Send just the array of numbers
+                }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                console.error(`API Error: ${res.status} - ${errorData.message || res.statusText}`);
+                return { error: true, message: errorData.message || res.statusText };
+            }
+
+            const data: ResponseService<ISprint> = await res.json();
+            return data;
+        } catch (err) {
+            console.error("An unexpected error occurred while updating sprint:", err);
+            return { error: true, message: (err as Error).message || "Unknown error occurred" };
+        }
+    },
+    GET_ALL_CARDS_FOR_LO: async (learningObjectId: string | string[],sprintId:string |string[]):Promise<ResponseService<TaskInfo[]>> => {
 
         const auth = authService.authHeader();
-        const res = await fetch(`${url}/sprints/${learningObjectId}/tasks/cards`, {
+        const res = await fetch(`${url}/sprints/${learningObjectId}/${sprintId}/tasks/cards`, {
+            headers: {
+                ...auth,
+            },
+        });
+        const data: {
+            data: TaskInfo[];
+            error: boolean;
+            message: string;
+        } = await res.json();
+        return data;
+
+	},
+    GET_ALL_CARDS: async (sprintId:string |string[]):Promise<ResponseService<TaskInfo[]>> => {
+
+        const auth = authService.authHeader();
+        const res = await fetch(`${url}/sprints/${sprintId}/tasks/cards`, {
             headers: {
                 ...auth,
             },

@@ -5,9 +5,10 @@ import { useRouter } from "next/router";
 import { format } from "date-fns";
 import { useState, useEffect } from "react";
 import TaskIcon from "../../../assets/Icons/Task"; // Adjust path as needed
-import API from "../../../lib/API"; // Adjust path as needed
+import API from "../../../lib/API";
 import Loader from "../../../components/loader"; // Adjust path as needed
-
+import { useAppSelector } from "../../../app/hooks";
+import EditSprint from "../../../components/sprintComponents/editSprint";
 // Assuming these interfaces are defined in your project:
 
 // Columns for Learning Objectives
@@ -23,19 +24,17 @@ const SingleSprintPage = () => {
     // Ensure that the dynamic route segment in your file system matches this name:
     // pages/sprints/[sprintId].tsx, so the key is 'sprintId'
     const { sprintId } = router.query;
+    const { role } = useAppSelector((s) => s.authSlice);
     const [sprint, setSprint] = useState<ISprint | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        // Ensure sprintId is available and is a string (can be string | string[] initially)
+    const refreshSprintDetails = () => {
         if (sprintId && typeof sprintId === "string") {
             setLoading(true);
             setError(null);
-            // Assuming API.SPRINTS.GET_ONE takes a number for ID
             API.SPRINTS.GET_ONE(sprintId)
                 .then((res) => {
-                    // Assuming API response structure is { data: ISprint, error: boolean, message: string }
                     if (res && !res.error && res.data) {
                         setSprint(res.data);
                     } else {
@@ -43,14 +42,19 @@ const SingleSprintPage = () => {
                     }
                 })
                 .catch((err) => {
-                    console.error("Error fetching sprint:", err);
-                    setError("An unexpected error occurred while fetching sprint details.");
+                    console.error("Error fetching sprint:", err); setError("An unexpected error occurred while fetching sprint details.");
                 })
                 .finally(() => {
                     setLoading(false);
                 });
         }
-    }, [sprintId]); // Dependency array: re-run effect when sprintId changes
+    };
+
+    useEffect(() => {
+        if (router.isReady) {
+            refreshSprintDetails();
+        }
+    }, [sprintId, router.isReady]); // Dependency array: re-run effect when sprintId changes
 
     if (loading) {
         return (
@@ -106,12 +110,20 @@ const SingleSprintPage = () => {
                         <TaskIcon className="stroke-black" />
                         <h1 className="font-bold text-2xl">Sprint: {sprint.name}</h1>
                     </div>
-                    {/* Link for Back to Sprints button - corrected for Next.js 13+ */}
-                    <Link href="/sprints">
-                        <button className="px-4 py-1 rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">
-                            Back to Sprints
-                        </button>
-                    </Link>
+                    <div className="flex items-center gap-4">
+                        {(role === 0 || role === 2) && (
+                            <Link href={{ pathname: router.pathname, query: { ...router.query, form: "edit-sprint" } }}>
+                                <button className="px-4 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+                                    Edit Sprint
+                                </button>
+                            </Link>
+                        )}
+                        <Link href="/sprints">
+                            <button className="px-4 py-1 rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">
+                                Back to Sprints
+                            </button>
+                        </Link>
+                    </div>
                 </div>
 
                 <div className="p-8">
@@ -172,6 +184,9 @@ const SingleSprintPage = () => {
                     </div>
                 </div>
             </div>
+            {(role === 0 || role === 2) && sprintId && typeof sprintId === 'string' && (
+                <EditSprint sprintId={sprintId} onSprintUpdated={refreshSprintDetails} />
+            )}
         </>
     );
 };

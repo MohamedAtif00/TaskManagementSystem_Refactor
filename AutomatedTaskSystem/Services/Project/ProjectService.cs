@@ -247,6 +247,34 @@ public class ProjectService : IProjectService
         };
     }
 
+    public async Task<ActionResult<ResponseService<List<Responses.ProjectDTO>>>> GetAllProjectsForSprint()
+    {
+        var projects = await _context.Projects
+            .Where(p => !p.Archived && p.Status != ProjectStatusEnum.Hold && p.Status != ProjectStatusEnum.Closed)
+            .Include(p => p.Year)
+            .ToListAsync();
+
+        return new ResponseService<List<Responses.ProjectDTO>>
+        {
+            Error = false,
+            Data = projects
+                .Select(
+                    p =>
+                        new Responses.ProjectDTO
+                        {
+                            Description = p.Description,
+                            Id = p.Id,
+                            Name = p.Name,
+                            Term = p.Term,
+                            Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number },
+                            Status = p.Status
+                        }
+                )
+                .ToList(),
+            Message = "List of all projects"
+        };
+    }
+
     public async Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetAssignedUsers(
         int Id
     )

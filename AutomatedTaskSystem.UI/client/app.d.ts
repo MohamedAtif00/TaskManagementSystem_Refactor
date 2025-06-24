@@ -71,6 +71,8 @@ interface ICreateUser{
 //     vacation?: IVacation;
 // }
 
+type TaskType = "sprints"|"tasks"|"task-sprint";
+
 interface IVacation{
     annual:number;
     sick:number;    

@@ -1,7 +1,9 @@
 ﻿using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.Sprint;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using static AutomatedTaskSystem.DTO.Request;
 
 namespace AutomatedTaskSystem.Controllers
 {
@@ -58,6 +60,47 @@ namespace AutomatedTaskSystem.Controllers
                 return StatusCode(500, "Unexpected error occurred.");
             }
         }
+
+        /// <summary>
+        /// Updates an existing sprint.
+        /// </summary>
+        /// <param name="id">The ID of the sprint to update (from route).</param>
+        /// <param name="request">The request body containing updated sprint details.</param>
+        /// <returns>The updated SprintDTO if successful, otherwise an error response.</returns>
+        [HttpPut("update-sprint/{id}")] // Route for updating a sprint
+        public async Task<IActionResult> UpdateSprint(int id, [FromBody] UpdateSprint request) // [FromBody] ensures the request body is correctly deserialized
+        {
+            try
+            {
+                // Call the service method to update the sprint
+                var result = await sprintService.UpdateSprintAsync(id, request);
+
+                // Check the service's response for errors
+                if (result.Error)
+                {
+                    // If the service reports an error (e.g., sprint not found, validation error),
+                    // return a BadRequest (400) or NotFound (404) with the error message.
+                    if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+
+                // If successful, return OK (200) with the updated sprint data
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                // Log the exception for debugging purposes (use a proper logging framework in production)
+                Console.WriteLine($"Error in UpdateSprint controller: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+
+                // Return a 500 Internal Server Error for unhandled exceptions
+                return StatusCode(500, new BaseResponseService { Error = true, Message = $"An unexpected server error occurred: {ex.Message}" });
+            }
+        }
+
 
 
     }

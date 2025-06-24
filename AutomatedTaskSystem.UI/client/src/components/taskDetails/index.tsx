@@ -77,7 +77,7 @@ export interface ITask {
 
 interface Props {
 	refreshTasks: () => void;
-	type:"tasks" | "sprints"
+	type:TaskType
 }
 
 const TaskDetails = ({ refreshTasks ,type}: Props) => {

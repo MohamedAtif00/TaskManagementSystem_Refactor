@@ -7,7 +7,7 @@ namespace AutomatedTaskSystem.DTO
 			public string Name { get; set; } = "";
 			public int HeadId { get; set; }
 			public List<int> Groups { get; set; } = new List<int> { };
-		}
+		}	
 	}
 
 	public static partial class Responses

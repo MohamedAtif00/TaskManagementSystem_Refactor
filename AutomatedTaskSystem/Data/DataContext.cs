@@ -224,4 +224,5 @@ public class DataContext : DbContext
     public DbSet<WorkFromHomeRequest> WorkFromHomeRequests => Set<WorkFromHomeRequest>();
     public DbSet<UserChanges> UserChanges => Set<UserChanges>();
     public DbSet<Opinion> Opinions => Set<Opinion>();
+    public DbSet<SprintLearningObjective> SprintLearningObjectives => Set<SprintLearningObjective>();
 }

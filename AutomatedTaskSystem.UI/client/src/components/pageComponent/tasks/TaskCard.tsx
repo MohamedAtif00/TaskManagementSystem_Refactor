@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
-import RotatingArrowsIcon from "../../../assets/Icons/RotatingArrows"; // Adjust path as needed
-import { PauseIcon } from "@heroicons/react/24/solid"; // Adjust path as needed
+import RotatingArrowsIcon from "../../../assets/Icons/RotatingArrows";
+import { PauseIcon } from "@heroicons/react/24/solid";
 
 const TaskCard = ({
-    id, // This is the taskId
-    name, // This is the task name
-    lo, // This is the Learning Objective Name (for display)
+    id,
+    name,
+    lo,
     flagged = false,
     attention,
     userName,
@@ -17,11 +17,11 @@ const TaskCard = ({
     paused,
     baseDuration,
     duration,
-    type // 'tasks' or 'sprints'
+    type
 }: {
     id: number;
     name: string;
-    lo: string; // Learning Objective Name (string, for display)
+    lo: string;
     flagged: boolean;
     attention: boolean;
     userName?: string;
@@ -30,30 +30,24 @@ const TaskCard = ({
     rollbackCount: number;
     priority: number | null;
     paused: boolean;
-    baseDuration?: number;
-    duration?: number;
-    type: "tasks" | "sprints"
+    baseDuration?:number;
+    duration?:number;
+    type: TaskType
 }) => {
     const router = useRouter();
-
-    // Extract relevant IDs directly from the router's query
-    const parentId = type === "tasks" ? router.query.projectId : router.query.sprintId;
-    const learningObjectId = router.query.learningObjectId; // Get LO ID from the route
-
-    // Ensure parentId and learningObjectId are strings (as router.query can return string | string[])
-    const currentParentId = Array.isArray(parentId) ? parentId[0] : parentId;
-    const currentLearningObjectId = Array.isArray(learningObjectId) ? learningObjectId[0] : learningObjectId;
-
-    // Construct the href dynamically
-    // This assumes your target route for a task detail page looks like:
-    // `/[type]/[projectIdOrSprintId]/[learningObjectId]/[taskId]`
-    const linkHref = {
-        pathname: `/${type}/${currentParentId}/${currentLearningObjectId}/${id}`, // `id` is the taskId
-    };
+    const projectId = type == "tasks"? router.query.projectId : router.query.sprintId;
+    const learningObjectId = router.query.learningObjectId; // Get learningObjectId from query
 
     return (
         <Link
-            href={linkHref}
+            href={{
+                pathname: type === 'tasks' ? `/${type}/${projectId}/board` :
+                 type === "sprints" ?`/${type}/${projectId}/${learningObjectId}/board`:
+                 `/tasks/sprint/${projectId}/board`,
+                query: {
+                    taskId: id,
+                },
+            }}
             className="relative"
         >
             <div
@@ -71,7 +65,6 @@ const TaskCard = ({
                         : "border-2 border-solid border-blue-200",
                 ].join(" ")}
             >
-                {/* Conditional rendering for rollback and paused states */}
                 {isRollback || paused ? (
                     <div
                         className={`flex px-4 pt-4 pb-2 ${
@@ -85,9 +78,8 @@ const TaskCard = ({
                         )}
                         {isRollback && (
                             <div className="w-8 h-8 shrink-0 flex relative items-center justify-center">
-                                {/* Assuming RotatingArrowsIcon is an SVG component */}
                                 <RotatingArrowsIcon className="fill-red-600 w-full h-full" />
-                                <div className="absolute text-red-600 font-bold text-sm">
+                                <div className="absolute text-red-600">
                                     {rollbackCount}
                                 </div>
                             </div>
@@ -96,33 +88,28 @@ const TaskCard = ({
                 ) : (
                     ""
                 )}
-
-                {/* Conditional rendering for exceeded base duration */}
-                {baseDuration !== undefined && baseDuration > 0 && duration !== undefined && duration > baseDuration ? (
-                    <div className="text-xs text-red-600 font-medium bg-red-100 px-3 py-1 rounded-md self-start mx-auto -mt-2">
+                {/* Second block: Checking for baseDuration */}
+                {baseDuration !== undefined && baseDuration > 0  && duration !== undefined && duration> baseDuration? (
+                    <div className="text-xs text-red-600 font-medium bg-red-100 px-3 py-1 rounded-md">
                         Exceeded base duration!
                     </div>
                 ) : null}
-
                 <div
                     className={`px-6 flex flex-col${
                         isRollback || paused ? "" : " pt-4"
                     }`}
                 >
-                    {/* Display Learning Objective name */}
                     <div className="text-lg text-black group-hover:text-2xl group-hover:mt-1 mt-0 transition-all ease-out">
-                        <div className="whitespace-normal font-semibold text-gray-800">{lo}</div>
+                        <div className="whitespace-normal">{lo}</div>
                     </div>
-
-                    {/* Priority and "From" information */}
                     <div
                         className={`flex ${
-                            priority !== null && priority !== 0 ? "justify-between" : "justify-end"
-                        } mt-2 items-center`}
+                            priority !== 0 ? "justify-between" : "justify-end"
+                        } mt-2`}
                     >
-                        {priority !== null && priority !== 0 && ( // Ensure priority is not null and not 0 for display
+                        {priority !== 0 && (
                             <div className="flex flex-col items-start">
-                                <div className="text-xs opacity-60 text-gray-500">
+                                <div className="text-xs opacity-60 flex justify-end">
                                     Priority:
                                 </div>
                                 {priority === 1 ? (
@@ -138,38 +125,32 @@ const TaskCard = ({
                                         Low
                                     </div>
                                 ) : (
-                                    <div className="font-bold text-gray-500">
-                                        N/A
-                                    </div>
+                                    ""
                                 )}
                             </div>
                         )}
                         {from && (
-                            <div className="text-right">
-                                <div className="text-xs opacity-60 text-orange-600">
+                            <div>
+                                <div className="text-xs opacity-60 text-orange-600 flex justify-end">
                                     From:
                                 </div>
-                                <div className="text-sm opacity-80 font-medium text-gray-700">{from}</div>
+                                <div className="text-sm opacity-60">{from}</div>
                             </div>
                         )}
                     </div>
                 </div>
-
-                {/* Bottom block: Task Name and User Name */}
                 <div
-                    className={`bg-white mt-4 px-6 flex flex-col gap-4 py-4 rounded-b-md border-t border-gray-100`}
+                    className={`bg-white mt-4 px-6 flex flex-col gap-4 py-4 rounded-b-md`}
                 >
-                    <div className="font-medium whitespace-normal text-base">
-                        <div className="text-gray-900">{name}</div>
+                    <div className="font-medium whitespace-normal">
+                        <div>{name}</div>
                     </div>
                     {userName ? (
-                        <div className="text-slate-600 text-sm">
-                            <div>Assigned to: <span className="font-medium">{userName}</span></div>
+                        <div className="text-slate-600">
+                            <div>{userName}</div>
                         </div>
                     ) : (
-                        <div className="text-slate-500 text-sm">
-                            No user assigned
-                        </div>
+                        ""
                     )}
                 </div>
             </div>

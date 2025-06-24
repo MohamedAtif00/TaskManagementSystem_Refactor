@@ -82,6 +82,10 @@ public class ProjectController : ControllerBase
     public async Task<ActionResult<ResponseService<List<Responses.ProjectDTO>>>> GetProjects() =>
         await _projectService.GetAllProjects();
 
+    [HttpGet("GetAllForSprint")]
+    public async Task<ActionResult<ResponseService<List<Responses.ProjectDTO>>>> GetProjectsForSprint() =>
+        await _projectService.GetAllProjectsForSprint();
+
     // Get all Projects LO
     [HttpGet("{id}/los")]
     public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetProjectsLo(

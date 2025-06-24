@@ -12,7 +12,7 @@ interface Props {
     updateTask: (value: SetStateAction<ITask | undefined>) => void;
     comments: IComment[];
     reload: () => void;
-     type:"tasks"|"sprints"
+     type:TaskType
 }
 
 interface CommentProps {
@@ -23,7 +23,7 @@ interface CommentProps {
     isEdited: boolean;
     isDeleted: boolean;
     taskId: number;
-     type:"tasks"|"sprints"
+     type:TaskType
 }
 
 const Comment: React.FC<CommentProps> = ({

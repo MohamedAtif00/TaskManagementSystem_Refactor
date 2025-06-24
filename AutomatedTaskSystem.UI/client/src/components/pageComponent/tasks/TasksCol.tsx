@@ -3,7 +3,7 @@ import TaskCard from "./TaskCard";
 interface Props {
     items: TaskInfo[];
     label: string;
-    type:"tasks"|"sprints"
+    type:TaskType
 }
 
 const TaskCol: React.FC<Props> = ({ items, label,type }) => {

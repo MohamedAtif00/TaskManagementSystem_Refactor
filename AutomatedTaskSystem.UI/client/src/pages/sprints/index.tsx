@@ -22,10 +22,11 @@ const Sprints = () => {
     // Fetch Sprints
     useEffect(() => {
         API.SPRINTS.GET_ALL_SPRINTS().then((res) => {
-            if (res && !res.error && res.value?.data) {
-                setSprints(res.value.data);
+            if (res && !res.error && res.data) {
+                debugger
+                setSprints(res.data);
             } else {
-                console.error("Error fetching sprints:", res?.value?.message || "Unknown error");
+                console.error("Error fetching sprints:", res?.message || "Unknown error");
                 setSprints([]); // Set to empty array on error to stop loading
             }
         });

@@ -230,19 +230,24 @@ public class TaskService : ITaskService
     /// </summary>
     /// <param name="learningObjectiveId">The ID of the Learning Objective.</param>
     /// <returns>A ResponseService containing a list of GetTaskCardDto if successful, otherwise an error response.</returns>
-    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksByLearningObjectiveId(int learningObjectiveId)
+    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksByLearningObjectiveId(int learningObjectiveId, int sprintId)
     {
         var user = await _authService.GetAuthedUser();
         if (user is null)
+        {
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = true, Message = "Invalid authentication request." }
             );
+        }
+
         var learningObjective = await _context.LearningObjectives
             .Where(lo => lo.Id == learningObjectiveId && !lo.Archived)
             .Include(lo => lo.Lesson)
                 .ThenInclude(l => l.Unit)
                     .ThenInclude(u => u.Project)
                         .ThenInclude(p => p.Users) // Include project users for auth check
+            .Include(lo => lo.SprintLearningObjectives)
+                .ThenInclude(slo => slo.Sprint)
             .FirstOrDefaultAsync();
 
         if (learningObjective is null)
@@ -252,11 +257,32 @@ public class TaskService : ITaskService
             );
         }
 
+        // --- AUTH CHECK --- (No changes from previous refined version, assuming it's correct now)
         if (user.Role == UserRoleEnum.Member || user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
         {
-            var hasAccess = learningObjective.Lesson.Unit.Project.Users.Any(u => u.Id == user.Id) ||
-                            (user.Role == UserRoleEnum.TeamLeader && user.GroupId == learningObjective.Lesson.Unit.Lessons.FirstOrDefault()?.LearningObjectives.FirstOrDefault()?.Tasks.FirstOrDefault()?.GroupId) ||
-                            (user.Role == UserRoleEnum.SectionHead && _context.SectionGroups.Any(sg => sg.Section.HeadId == user.Id && sg.GroupId == learningObjective.Lesson.Unit.Lessons.FirstOrDefault().LearningObjectives.FirstOrDefault().Tasks.FirstOrDefault().GroupId)); ;
+            var hasAccess = learningObjective.Lesson.Unit.Project.Users.Any(u => u.Id == user.Id);
+
+            if (!hasAccess && (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead))
+            {
+                var relevantTaskGroupIds = await _context.Tasks
+                                                .Where(t => t.LearningObjectiveId == learningObjectiveId)
+                                                .Select(t => (int?)t.GroupId)
+                                                .Distinct()
+                                                .ToListAsync();
+
+                if (relevantTaskGroupIds.Any())
+                {
+                    if (user.Role == UserRoleEnum.TeamLeader && relevantTaskGroupIds.Contains(user.GroupId))
+                    {
+                        hasAccess = true;
+                    }
+                    else if (user.Role == UserRoleEnum.SectionHead &&
+                             await _context.SectionGroups.AnyAsync(sg => sg.Section.HeadId == user.Id && relevantTaskGroupIds.Contains(sg.GroupId)))
+                    {
+                        hasAccess = true;
+                    }
+                }
+            }
 
             if (!hasAccess)
             {
@@ -265,13 +291,46 @@ public class TaskService : ITaskService
                 );
             }
         }
+        // --- END AUTH CHECK ---
 
+        DateTime? sprintStartDate = null;
+        DateTime? sprintEndDate = null; // Will store the start of the day *after* the sprint's actual end date
+
+        var currentSprint = learningObjective.SprintLearningObjectives
+                                .Select(slo => slo.Sprint)
+                                .FirstOrDefault(s => s.Id == sprintId);
+
+        if (currentSprint != null)
+        {
+            sprintStartDate = currentSprint.StartDate.Date;
+            sprintEndDate = currentSprint.EndDate.Date.AddDays(1);
+        }
+        else
+        {
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Learning Objective is not associated with the specified sprint." }
+            );
+        }
+
+        // --- Core Logic: Get tasks where their LATEST activity falls within the sprint period ---
 
         var tasks = await _context.Tasks
             .Where(t => !t.Archived && t.LearningObjectiveId == learningObjectiveId)
-            .Include(t => t.LearningObjective) // Already loaded, but good practice to include if directly projecting
-                .ThenInclude(lo => lo.Lesson)
-                    .ThenInclude(l => l.Unit)
+            // Join with TaskActivities to find the last activity for each task
+            .Select(t => new
+            {
+                Task = t,
+                // Get the latest activity timestamp for this task
+                LatestActivityTimeStamp = _context.TaskActivities
+                                                    .Where(ta => ta.TaskId == t.Id)
+                                                    .OrderByDescending(ta => ta.TimeStamp)
+                                                    .Select(ta => ta.TimeStamp)
+                                                    .FirstOrDefault() // This will give DateTime.MinValue if no activities
+            })
+            // Filter based on the latest activity timestamp falling within the sprint dates
+            .Where(x => x.LatestActivityTimeStamp.Date >= sprintStartDate.Value.Date &&
+                        x.LatestActivityTimeStamp.Date < sprintEndDate.Value.Date)
+            .Select(x => x.Task) // Select the original Task entity back
             .Include(t => t.User)
             .Include(t => t.Group)
             .Include(t => t.From)
@@ -292,7 +351,7 @@ public class TaskService : ITaskService
                 Name = t.Name,
                 Priority = t.Priority,
                 RollbackCount = t.RollbackCount,
-                Status = t.Status,
+                Status = t.Status, // Displays the *current* status from the Task entity
                 User = t.User == null
                     ? null
                     : new BasicInfoDto
@@ -311,7 +370,151 @@ public class TaskService : ITaskService
         {
             Data = tasks,
             Error = false,
-            Message = $"Successfully retrieved tasks for Learning Objective ID: {learningObjectiveId}."
+            Message = $"Successfully retrieved tasks for Learning Objective ID: {learningObjectiveId} within sprint ID: {sprintId}."
+        };
+    }
+
+    /// <summary>
+    /// Retrieves a list of all task cards associated with a specific Sprint.
+    /// </summary>
+    /// <param name="sprintId">The ID of the Sprint.</param>
+    /// <returns>A ResponseService containing a list of GetTaskCardDto if successful, otherwise an error response.</returns>
+    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksBySprintId(int sprintId)
+    {
+        var user = await _authService.GetAuthedUser();
+        if (user is null)
+        {
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid authentication request." }
+            );
+        }
+
+        var sprint = await _context.Sprints
+            .Where(s => s.Id == sprintId )
+            // **CRITICAL FIX: Correctly traverse to Project.Users via LearningObjective chain**
+            .Include(s => s.SprintLearningObjectives)
+                .ThenInclude(slo => slo.LearningObjective)
+                    .ThenInclude(lo => lo.Lesson)
+                        .ThenInclude(l => l.Unit)
+                            .ThenInclude(u => u.Project)
+                                .ThenInclude(p => p.Users) // Now correctly includes project users for auth check
+            .FirstOrDefaultAsync();
+
+        if (sprint is null)
+        {
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Sprint not found or archived." }
+            );
+        }
+
+        // --- AUTH CHECK ---
+        if (user.Role == UserRoleEnum.Member || user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
+        {
+            // To check access, we need to see if the user is part of ANY project
+            // associated with learning objectives in this sprint.
+            var hasAccess = sprint.SprintLearningObjectives
+                                    .Any(slo => slo.LearningObjective.Lesson.Unit.Project.Users.Any(u => u.Id == user.Id));
+
+            if (!hasAccess && (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead))
+            {
+                // If the user is a TeamLeader or SectionHead, they might have access
+                // through their group to tasks within this sprint.
+                var relevantLearningObjectiveIds = await _context.SprintLearningObjectives
+                    .Where(slo => slo.SprintId == sprintId)
+                    .Select(slo => slo.LearningObjectiveId)
+                    .ToListAsync();
+
+                var relevantTaskGroupIds = await _context.Tasks
+                    .Where(t => relevantLearningObjectiveIds.Contains(t.LearningObjectiveId) && !t.Archived)
+                    .Select(t => (int?)t.GroupId)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (relevantTaskGroupIds.Any())
+                {
+                    if (user.Role == UserRoleEnum.TeamLeader && relevantTaskGroupIds.Contains(user.GroupId))
+                    {
+                        hasAccess = true;
+                    }
+                    else if (user.Role == UserRoleEnum.SectionHead &&
+                             await _context.SectionGroups.AnyAsync(sg => sg.Section.HeadId == user.Id && relevantTaskGroupIds.Contains(sg.GroupId)))
+                    {
+                        hasAccess = true;
+                    }
+                }
+            }
+
+            if (!hasAccess)
+            {
+                return new UnauthorizedObjectResult(
+                    new BaseResponseService { Error = true, Message = "You do not have permission to view tasks for this Sprint." }
+                );
+            }
+        }
+        // --- END AUTH CHECK ---
+
+        DateTime sprintStartDate = sprint.StartDate.Date;
+        DateTime sprintEndDate = sprint.EndDate.Date.AddDays(1); // End of sprint's last day
+
+        // --- Core Logic: Get tasks where their LATEST activity falls within the sprint period ---
+
+        var tasks = await _context.Tasks
+            .Where(t => !t.Archived && t.LearningObjective.SprintLearningObjectives.Any(slo => slo.SprintId == sprintId))
+            .Select(t => new
+            {
+                Task = t,
+                // Get the latest activity timestamp for this task
+                LatestActivityTimeStamp = _context.TaskActivities
+                                                    .Where(ta => ta.TaskId == t.Id)
+                                                    .OrderByDescending(ta => ta.TimeStamp)
+                                                    .Select(ta => ta.TimeStamp)
+                                                    .FirstOrDefault() // This will give DateTime.MinValue if no activities
+            })
+            // Filter based on the latest activity timestamp falling within the sprint dates
+            .Where(x => x.LatestActivityTimeStamp.Date >= sprintStartDate.Date &&
+                        x.LatestActivityTimeStamp.Date < sprintEndDate.Date)
+            .Select(x => x.Task) // Select the original Task entity back
+            .Include(t => t.User)
+            .Include(t => t.Group)
+            .Include(t => t.From)
+            .Include(t => t.LearningObjective) // Include LearningObjective for the DTO mapping
+            .Select(t => new GetTaskCardDto
+            {
+                Paused = t.Pause,
+                Attention = t.Attention,
+                Flagged = t.Flagged,
+                From = t.From == null ? "" : t.From.Name,
+                Id = t.Id,
+                IsReview = t.IsReview,
+                IsRollback = t.IsRollback,
+                LearningObjective = new BasicInfoDto
+                {
+                    Id = t.LearningObjective.Id,
+                    Name = t.LearningObjective.Name
+                },
+                Name = t.Name,
+                Priority = t.Priority,
+                RollbackCount = t.RollbackCount,
+                Status = t.Status, // Displays the *current* status from the Task entity
+                User = t.User == null
+                    ? null
+                    : new BasicInfoDto
+                    {
+                        Name = t.User.Name,
+                        Id = t.User.Id
+                    },
+                baseDuration = t.Duration,
+                duration = (decimal?)_context.TaskWorkTimes
+                    .Where(q => q.TaskId == t.Id)
+                    .Sum(q => q.Duration) / 60000 // Convert milliseconds to minutes
+            })
+            .ToListAsync();
+
+        return new ResponseService<List<GetTaskCardDto>>
+        {
+            Data = tasks,
+            Error = false,
+            Message = $"Successfully retrieved tasks for Sprint ID: {sprintId}."
         };
     }
 
