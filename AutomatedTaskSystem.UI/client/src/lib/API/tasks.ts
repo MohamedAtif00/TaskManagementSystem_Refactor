@@ -181,6 +181,29 @@ const TASKS = {
 			return false;
 		}
 	},
+	GET_ONE_FOR_SPRINT: async (sprintId:string|string[],taskId: string | string[]) => {
+		try {
+			const auth = authService.authHeader();
+			if (!auth) {
+				console.error("Unathorized");
+				return false;
+			}
+			const res = await fetch(`${url}/tasks/sprint/${sprintId}/task/${taskId}`, {
+				headers: {
+					...auth,
+				},
+			});
+			const data: {
+				error: boolean;
+				message: string;
+				data: ITask;
+			} = await res.json();
+			return data;
+		} catch (error) {
+			console.error(error);
+			return false;
+		}
+	},
 	GET_ALL_CARDS: async (projectId: string | string[]) => {
 		try {
 			const auth = authService.authHeader();

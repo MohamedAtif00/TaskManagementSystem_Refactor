@@ -29,7 +29,7 @@ const TaskBoard = () => {
             API.SPRINTS.GET_ONE(id).then(
                 (res) => res && !res.error && setSprint(res.data)
             );
-    }, [router.query.projectId]);
+    }, [router.query.sprintId]);
 
     useEffect(() => {
         sprint &&
@@ -44,7 +44,7 @@ const TaskBoard = () => {
     useEffect(() => {
         if (sprint) {
             const refreshInterval = setInterval(() => {
-                API.TASKS.GET_ALL_CARDS(sprint.id.toString()).then(
+                API.SPRINTS.GET_ALL_CARDS(sprint.id.toString()).then(
                     (res) => { if (res && !res.error) { setTasks(res.data); };
                     }
                 );
@@ -66,7 +66,7 @@ const TaskBoard = () => {
     const refreshTasks = () => {
         const sprintId = router.query.sprintId;
         if (sprintId)
-            API.TASKS.GET_ALL_CARDS(sprintId).then(
+            API.SPRINTS.GET_ALL_CARDS(sprintId).then(
                 (res) => {
                     if (res && !res.error)
                         setTasks(res.data)
@@ -264,12 +264,12 @@ const TaskBoard = () => {
                 </div>
                 <TaskDetails
                     refreshTasks={refreshTasks}
-                    type="sprints"
+                    type={"task-sprint"}
                 />
                 <CreateStandAloneTaskForm
                     refreshTasks={refreshTasks}
                     projectId={sprint.id}
-                    type="sprints"
+                    type={"task-sprint"}
                 />
             </div>
         </>

@@ -57,6 +57,7 @@ public interface ITaskService
     void PauseAllTasksForUser(int userId);
     Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksByLearningObjectiveId(int learningObjectiveId, int sprintId);
     Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksBySprintId(int sprintId);
+    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetailsAdjustedForSprint(int taskId,int sprintId);
     //Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksByLearningObjectiveId(int learningObjectiveId);
     //Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTasksBySprint(int sprintId);
 }

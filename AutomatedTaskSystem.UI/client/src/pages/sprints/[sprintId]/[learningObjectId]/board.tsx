@@ -277,12 +277,12 @@ const TaskBoard = () => {
                 </div>
                 <TaskDetails
                     refreshTasks={refreshTasks}
-                    type="sprints"
+                    type={"sprints"}
                 />
                 <CreateStandAloneTaskForm
                     refreshTasks={refreshTasks}
                     projectId={project.id}
-                    type="sprints"
+                    type={"sprints"}
                 />
             </div>
         </>

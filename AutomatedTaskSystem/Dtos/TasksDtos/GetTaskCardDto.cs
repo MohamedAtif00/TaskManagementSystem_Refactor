@@ -20,5 +20,7 @@ public class GetTaskCardDto
     public string From { get; set; } = "";
     public decimal? duration { get; set; }
     public int? baseDuration { get; set; }
+    public DateTime? AdjustedStartDate { get; set; }
+    public DateTime? AdjustedEndDate { get; set; }
     public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
 }

@@ -89,16 +89,24 @@ const TaskDetails = ({ refreshTasks ,type}: Props) => {
 
 	useEffect(() => {
 		const id = router.query.taskId;
-		if (id)
+		const sprintId = router.query.sprintId;
+		debugger
+		if (id && type == "tasks")
 		{
 			API.TASKS.GET_ONE(id).then((res) => {
 				debugger
 				if (res && !res.error) setTask(res.data);
 			});
 
+		}else if(id && sprintId&&(type === "task-sprint"|| type === "sprints"))
+		{
+			API.TASKS.GET_ONE_FOR_SPRINT(sprintId,id).then((res) => {
+				debugger
+				if (res && !res.error) setTask(res.data);
+			});
 		}
 		else setTask(undefined);
-	}, [setTask, router.query.taskId]);
+	}, [setTask, router.query.taskId,router.query.sprintId]);
 
 	const handleUpdate = (res: ITask) => {
 		setTask(res);

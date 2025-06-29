@@ -80,6 +80,14 @@ public class TaskController : ControllerBase
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTask(int id) =>
         await _taskService.GetTaskDetails(id);
 
+    // GET:
+    // Get one Task
+    [HttpGet("sprint/{id}/task/{taskid}")]
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskForSprint(int taskid,int id) =>
+        await _taskService.GetTaskDetailsAdjustedForSprint(taskid,id);
+
+
+
 
     [HttpGet("/sprints/{loid}/{sprintid}/tasks/cards")]
     public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetCardTasksByLearningObject(int loid,int sprintid)

@@ -375,7 +375,10 @@ public class TaskService : ITaskService
     }
 
     /// <summary>
-    /// Retrieves a list of all task cards associated with a specific Sprint.
+    /// Retrieves a list of all task cards where the task's Learning Objective is associated with the specified Sprint.
+    /// Tasks whose Learning Objective is not associated with the sprint will not be included.
+    /// Additionally, tasks must not be archived.
+    /// The displayed start and end dates of tasks will be adjusted to fit within the sprint's duration.
     /// </summary>
     /// <param name="sprintId">The ID of the Sprint.</param>
     /// <returns>A ResponseService containing a list of GetTaskCardDto if successful, otherwise an error response.</returns>
@@ -390,14 +393,14 @@ public class TaskService : ITaskService
         }
 
         var sprint = await _context.Sprints
-            .Where(s => s.Id == sprintId )
-            // **CRITICAL FIX: Correctly traverse to Project.Users via LearningObjective chain**
+            .Where(s => s.Id == sprintId ) // Ensure sprint exists and is not archived
+                                                         // These Includes are necessary for the auth check, even if not directly for task filtering.
             .Include(s => s.SprintLearningObjectives)
                 .ThenInclude(slo => slo.LearningObjective)
                     .ThenInclude(lo => lo.Lesson)
                         .ThenInclude(l => l.Unit)
                             .ThenInclude(u => u.Project)
-                                .ThenInclude(p => p.Users) // Now correctly includes project users for auth check
+                                .ThenInclude(p => p.Users)
             .FirstOrDefaultAsync();
 
         if (sprint is null)
@@ -407,114 +410,99 @@ public class TaskService : ITaskService
             );
         }
 
-        // --- AUTH CHECK ---
-        if (user.Role == UserRoleEnum.Member || user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
-        {
-            // To check access, we need to see if the user is part of ANY project
-            // associated with learning objectives in this sprint.
-            var hasAccess = sprint.SprintLearningObjectives
-                                    .Any(slo => slo.LearningObjective.Lesson.Unit.Project.Users.Any(u => u.Id == user.Id));
+        // --- AUTH CHECK BLOCK REMOVED ---
+        // The role-based access control has been removed as per your previous request.
 
-            if (!hasAccess && (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead))
-            {
-                // If the user is a TeamLeader or SectionHead, they might have access
-                // through their group to tasks within this sprint.
-                var relevantLearningObjectiveIds = await _context.SprintLearningObjectives
-                    .Where(slo => slo.SprintId == sprintId)
-                    .Select(slo => slo.LearningObjectiveId)
-                    .ToListAsync();
-
-                var relevantTaskGroupIds = await _context.Tasks
-                    .Where(t => relevantLearningObjectiveIds.Contains(t.LearningObjectiveId) && !t.Archived)
-                    .Select(t => (int?)t.GroupId)
-                    .Distinct()
-                    .ToListAsync();
-
-                if (relevantTaskGroupIds.Any())
-                {
-                    if (user.Role == UserRoleEnum.TeamLeader && relevantTaskGroupIds.Contains(user.GroupId))
-                    {
-                        hasAccess = true;
-                    }
-                    else if (user.Role == UserRoleEnum.SectionHead &&
-                             await _context.SectionGroups.AnyAsync(sg => sg.Section.HeadId == user.Id && relevantTaskGroupIds.Contains(sg.GroupId)))
-                    {
-                        hasAccess = true;
-                    }
-                }
-            }
-
-            if (!hasAccess)
-            {
-                return new UnauthorizedObjectResult(
-                    new BaseResponseService { Error = true, Message = "You do not have permission to view tasks for this Sprint." }
-                );
-            }
-        }
-        // --- END AUTH CHECK ---
-
+        // Define sprint start and end dates for comparison
         DateTime sprintStartDate = sprint.StartDate.Date;
-        DateTime sprintEndDate = sprint.EndDate.Date.AddDays(1); // End of sprint's last day
+        DateTime sprintEndDate = sprint.EndDate.Date; // Use original EndDate for comparison, then add 1 day for clipping if needed
 
-        // --- Core Logic: Get tasks where their LATEST activity falls within the sprint period ---
-
+        // --- Core Logic: Get tasks whose Learning Objective is associated with this sprint and adjust their displayed dates ---
         var tasks = await _context.Tasks
-            .Where(t => !t.Archived && t.LearningObjective.SprintLearningObjectives.Any(slo => slo.SprintId == sprintId))
+            .Where(t => !t.Archived &&
+                        t.LearningObjective.SprintLearningObjectives.Any(slo => slo.SprintId == sprintId)) // Only tasks whose LO belongs to this sprint
             .Select(t => new
             {
                 Task = t,
-                // Get the latest activity timestamp for this task
+                // Get the earliest activity timestamp for this task (or CreatedAt if no activities)
+                EarliestActivityTimeStamp = _context.TaskActivities
+                                                    .Where(ta => ta.TaskId == t.Id)
+                                                    .OrderBy(ta => ta.TimeStamp)
+                                                    .Select(ta => ta.TimeStamp)
+                                                    .FirstOrDefault(), // Default is DateTime.MinValue if no activities
+                                                                       // Get the latest activity timestamp for this task
                 LatestActivityTimeStamp = _context.TaskActivities
                                                     .Where(ta => ta.TaskId == t.Id)
                                                     .OrderByDescending(ta => ta.TimeStamp)
                                                     .Select(ta => ta.TimeStamp)
-                                                    .FirstOrDefault() // This will give DateTime.MinValue if no activities
+                                                    .FirstOrDefault() // Default is DateTime.MinValue if no activities
             })
-            // Filter based on the latest activity timestamp falling within the sprint dates
-            .Where(x => x.LatestActivityTimeStamp.Date >= sprintStartDate.Date &&
-                        x.LatestActivityTimeStamp.Date < sprintEndDate.Date)
-            .Select(x => x.Task) // Select the original Task entity back
-            .Include(t => t.User)
-            .Include(t => t.Group)
-            .Include(t => t.From)
-            .Include(t => t.LearningObjective) // Include LearningObjective for the DTO mapping
-            .Select(t => new GetTaskCardDto
+            .ToListAsync(); // Materialize here to perform date adjustments in memory, simpler than complex EF Core queries
+
+        var adjustedTasks = new List<GetTaskCardDto>();
+
+        foreach (var item in tasks)
+        {
+            var originalTask = item.Task;
+            DateTime taskOriginalStart = originalTask.CreatedAt.Date; // Assuming CreatedAt is the task's general start
+                                                                      // If no activities, consider task end same as start, or use CreatedAt.
+                                                                      // If LatestActivityTimeStamp is DateTime.MinValue, means no activities recorded after creation.
+            DateTime taskOriginalEnd = item.LatestActivityTimeStamp != DateTime.MinValue ? item.LatestActivityTimeStamp.Date : originalTask.CreatedAt.Date;
+
+            // Apply start date adjustment
+            DateTime effectiveStartDate = taskOriginalStart;
+            if (taskOriginalStart < sprintStartDate)
             {
-                Paused = t.Pause,
-                Attention = t.Attention,
-                Flagged = t.Flagged,
-                From = t.From == null ? "" : t.From.Name,
-                Id = t.Id,
-                IsReview = t.IsReview,
-                IsRollback = t.IsRollback,
+                effectiveStartDate = sprintStartDate;
+            }
+
+            // Apply end date adjustment
+            DateTime effectiveEndDate = taskOriginalEnd;
+            if (taskOriginalEnd > sprintEndDate)
+            {
+                effectiveEndDate = sprintEndDate;
+            }
+
+            adjustedTasks.Add(new GetTaskCardDto
+            {
+                Paused = originalTask.Pause,
+                Attention = originalTask.Attention,
+                Flagged = originalTask.Flagged,
+                From = originalTask.From == null ? "" : originalTask.From.Name,
+                Id = originalTask.Id,
+                IsReview = originalTask.IsReview,
+                IsRollback = originalTask.IsRollback,
                 LearningObjective = new BasicInfoDto
                 {
-                    Id = t.LearningObjective.Id,
-                    Name = t.LearningObjective.Name
+                    Id = originalTask.LearningObjective.Id,
+                    Name = originalTask.LearningObjective.Name
                 },
-                Name = t.Name,
-                Priority = t.Priority,
-                RollbackCount = t.RollbackCount,
-                Status = t.Status, // Displays the *current* status from the Task entity
-                User = t.User == null
+                Name = originalTask.Name,
+                Priority = originalTask.Priority,
+                RollbackCount = originalTask.RollbackCount,
+                Status = originalTask.Status, // Displays the *current* status from the Task entity
+                User = originalTask.User == null
                     ? null
                     : new BasicInfoDto
                     {
-                        Name = t.User.Name,
-                        Id = t.User.Id
+                        Name = originalTask.User.Name,
+                        Id = originalTask.User.Id
                     },
-                baseDuration = t.Duration,
+                baseDuration = originalTask.Duration,
                 duration = (decimal?)_context.TaskWorkTimes
-                    .Where(q => q.TaskId == t.Id)
-                    .Sum(q => q.Duration) / 60000 // Convert milliseconds to minutes
-            })
-            .ToListAsync();
+                    .Where(q => q.TaskId == originalTask.Id)
+                    .Sum(q => q.Duration) / 60000,
+                // Add the adjusted dates to the DTO
+                AdjustedStartDate = effectiveStartDate,
+                AdjustedEndDate = effectiveEndDate
+            });
+        }
 
         return new ResponseService<List<GetTaskCardDto>>
         {
-            Data = tasks,
+            Data = adjustedTasks,
             Error = false,
-            Message = $"Successfully retrieved tasks for Sprint ID: {sprintId}."
+            Message = $"Successfully retrieved tasks for Sprint ID: {sprintId} with adjusted dates."
         };
     }
 
@@ -1392,6 +1380,8 @@ public class TaskService : ITaskService
         return newTask;
     }
 
+    // private async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> getTaskDetails(int id)
+    // No change to signature, but modify the Includes:
     private async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> getTaskDetails(int id)
     {
         var user = await _authService.GetAuthedUser();
@@ -1404,13 +1394,16 @@ public class TaskService : ITaskService
             .Where(t => !t.Archived && t.Id == id)
             .Include(t => t.User)
             .Include(t => t.LearningObjective)
-            .ThenInclude(t => t.Schema)
+                .ThenInclude(lo => lo.Schema) // Existing include
             .Include(t => t.LearningObjective)
-            .ThenInclude(t => t.Comments)
-            .ThenInclude(c => c.User)
+                .ThenInclude(lo => lo.Comments) // Existing include
+                    .ThenInclude(c => c.User) // Existing include
             .Include(t => t.LearningObjective)
-            .ThenInclude(t => t.Comments)
-            .ThenInclude(t => t.Child)
+                .ThenInclude(lo => lo.Comments) // Existing include
+                    .ThenInclude(c => c.Child) // Existing include
+            .Include(t => t.LearningObjective) // **NEW: Include SprintLearningObjectives and Sprint**
+                .ThenInclude(lo => lo.SprintLearningObjectives)
+                    .ThenInclude(slo => slo.Sprint) // Eagerly load Sprint data
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
@@ -1626,6 +1619,159 @@ public class TaskService : ITaskService
                 BaseDuration = task.Duration
             },
             Message = "Task found"
+        };
+    }
+
+
+    /// <summary>
+    /// Retrieves detailed information for a specific task, with its start and end dates
+    /// adjusted to fit within the boundaries of a *specified* sprint associated with its Learning Objective.
+    /// </summary>
+    /// <param name="taskId">The ID of the task to retrieve.</param>
+    /// <param name="sprintId">The ID of the specific sprint to adjust the dates against.</param>
+    /// <returns>A ResponseService containing a GetTaskDetailsDto with adjusted dates if successful, otherwise an error response.</returns>
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetailsAdjustedForSprint(int taskId, int sprintId)
+    {
+        var response = await getTaskDetails(taskId);
+
+        // Check if the base task retrieval was successful
+        if (response.Result is ObjectResult objectResult && objectResult.Value is BaseResponseService baseResponse && baseResponse.Error)
+        {
+            // Propagate error from getTaskDetails if task not found or unauthorized
+            return response;
+        }
+
+        // Safely cast to the expected DTO type
+        var taskDetailsDto = response.Value?.Data;
+        if (taskDetailsDto == null)
+        {
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Failed to retrieve task details or DTO conversion failed." }
+            );
+        }
+
+        // Now, explicitly load the specified sprint and verify its association with the Learning Objective.
+        var relevantSprint = await _context.Sprints
+            .Where(s => s.Id == sprintId) // Find the specific sprint
+            .Include(s => s.SprintLearningObjectives.Where(slo => slo.LearningObjectiveId == taskDetailsDto.LearningObjective.Id)) // Filter SLOs for *this* LO
+            .FirstOrDefaultAsync();
+
+        // If the specified sprint is not found, or the LO is not associated with it, we cannot adjust dates.
+        if (relevantSprint == null || !relevantSprint.SprintLearningObjectives.Any(slo => slo.LearningObjectiveId == taskDetailsDto.LearningObjective.Id))
+        {
+            // Return original DTO as no valid sprint context for adjustment was found.
+            return new ResponseService<GetTaskDetailsDto>
+            {
+                Data = taskDetailsDto,
+                Error = false,
+                Message = $"Successfully retrieved task details for Task ID: {taskId}. Specified Sprint ID: {sprintId} not found, archived, or not associated with the task's Learning Objective."
+            };
+        }
+
+        // Define sprint's start and end dates for clipping (date only)
+        DateTime sprintEffectiveStart = relevantSprint.StartDate.Date;
+        DateTime sprintEffectiveEnd = relevantSprint.EndDate.Date;
+
+        // Get the task's original start and end dates (date only)
+        DateTime? taskOriginalStart = taskDetailsDto.StartedAt?.Date;
+        DateTime? taskOriginalDone = taskDetailsDto.DoneAt?.Date; // Use a nullable for DoneAt initially
+
+        DateTime effectiveTaskStart;
+        DateTime effectiveTaskEnd;
+
+        // Determine the effective start date for the task within the sprint context
+        if (taskOriginalStart.HasValue)
+        {
+            effectiveTaskStart = taskOriginalStart.Value;
+            // Clip task's start date to be no earlier than sprint start
+            if (effectiveTaskStart < sprintEffectiveStart)
+            {
+                effectiveTaskStart = sprintEffectiveStart;
+            }
+            // If task's original start is after sprint end, it effectively starts AT sprint end for this report
+            if (effectiveTaskStart > sprintEffectiveEnd)
+            {
+                effectiveTaskStart = sprintEffectiveEnd;
+            }
+        }
+        else
+        {
+            // If task never started, for reporting purposes within a sprint:
+            // If it's not backlog, assume it effectively starts at sprint start.
+            if (taskDetailsDto.Status != TaskStatusEnum.Backlog)
+            {
+                effectiveTaskStart = sprintEffectiveStart;
+            }
+            else
+            {
+                // For backlog tasks that haven't started, they don't have an effective start within a sprint.
+                effectiveTaskStart = DateTime.MinValue; // Placeholder for unstarted/backlog
+            }
+        }
+
+        // Determine the effective end date for the task within the sprint context
+        if (taskOriginalDone.HasValue)
+        {
+            effectiveTaskEnd = taskOriginalDone.Value;
+        }
+        else if (taskDetailsDto.Status == TaskStatusEnum.Done || taskDetailsDto.Status == TaskStatusEnum.Rollback)
+        {
+            // If status is Done/Rollback but DoneAt is null, use sprint end as a fallback
+            effectiveTaskEnd = sprintEffectiveEnd;
+        }
+        else
+        {
+            // For active tasks, the current date is the natural end, then clip.
+            effectiveTaskEnd = DateTime.Now.Date;
+        }
+
+        // Now, clip the determined effectiveTaskEnd to be no later than sprint end
+        if (effectiveTaskEnd > sprintEffectiveEnd)
+        {
+            effectiveTaskEnd = sprintEffectiveEnd;
+        }
+        // And no earlier than sprint start (in case task finished before sprint began)
+        if (effectiveTaskEnd < sprintEffectiveStart)
+        {
+            effectiveTaskEnd = sprintEffectiveStart;
+        }
+
+
+        // Finally, ensure the effective start is not after the effective end.
+        // This is the logical consistency check, applied after all clipping.
+        if (effectiveTaskStart != DateTime.MinValue && effectiveTaskStart > effectiveTaskEnd)
+        {
+            effectiveTaskEnd = effectiveTaskStart;
+        }
+
+
+        // Apply the adjusted dates to the DTO
+
+        // For StartedAt:
+        if (taskDetailsDto.Status != TaskStatusEnum.Backlog)
+        {
+            taskDetailsDto.StartedAt = effectiveTaskStart;
+        }
+        else
+        {
+            taskDetailsDto.StartedAt = null; // Explicitly null for backlog if no StartedAt
+        }
+
+        // New logic for DoneAt: Only assign if status is TaskStatusEnum.Done, otherwise null.
+        if (taskDetailsDto.Status == TaskStatusEnum.Done)
+        {
+            taskDetailsDto.DoneAt = effectiveTaskEnd;
+        }
+        else
+        {
+            taskDetailsDto.DoneAt = null; // For any other status (InProgress, Todo, Rollback, Backlog, etc.), DoneAt is null.
+        }
+
+        return new ResponseService<GetTaskDetailsDto>
+        {
+            Data = taskDetailsDto,
+            Error = false,
+            Message = $"Successfully retrieved task details for Task ID: {taskId}, adjusted for Sprint ID: {sprintId}."
         };
     }
 

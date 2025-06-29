@@ -145,7 +145,8 @@ const Sidebar = () => {
                             </>
                         </NavList>
                         <Navlink
-                            activeCondition={path.includes("/sprint")}
+                            // Modified activeCondition for Sprints
+                            activeCondition={path === "/sprints" || path.startsWith("/sprints/")}
                             to="/sprints"
                             icon="Sprint"
                             text="Sprints"
