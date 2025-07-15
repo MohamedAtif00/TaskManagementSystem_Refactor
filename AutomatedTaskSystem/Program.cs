@@ -69,6 +69,7 @@ try
             };
         });
 
+    builder.Services.AddHostedService<MonthlyDatabaseOperationWorker>();
 
     builder.Services.AddDbContext<DataContext>(opts =>
     {

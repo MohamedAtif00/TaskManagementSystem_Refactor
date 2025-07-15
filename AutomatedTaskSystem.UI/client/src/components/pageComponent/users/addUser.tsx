@@ -140,7 +140,6 @@ const AddUser = () => {
             workFromHome,
             workFromHome_MAX
         } = formState;
-        debugger
         if (!name || !group || !role || !hrCode || !accountType ) {
             return setFormState((prev) => ({
                 ...prev,

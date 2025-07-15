@@ -59,7 +59,7 @@ namespace AutomatedTaskSystem.Services.Email
                             <span class='label'> مدة الأجازة:</span> {duration}
                         </div>
                         <div class='section'>
-                            <span class='label'>نوع الأجازة:</span> {(leaveType == LeaveRequestType.Sick?"مرضي":leaveType == LeaveRequestType.Emergency?"عرضة":"سنويا")}
+                            <span class='label'>نوع الأجازة:</span> {(leaveType == LeaveRequestType.Sick?"مرضى":leaveType == LeaveRequestType.Emergency?"عارضة":"إعتيادي")}
                         </div>
                         <div class='section'>
                             <span class='label'>كود الموظف:</span>
@@ -171,7 +171,7 @@ namespace AutomatedTaskSystem.Services.Email
                         <div class='section'><span class='label'>تاريخ البدء:</span> {startDate}</div>
                         <div class='section'><span class='label'>تاريخ الانتهاء:</span> {endDate}</div>
                         <div class='section'><span class='label'>مدة الأجازة:</span> {duration} يوم</div>
-                        <div class='section'><span class='label'>نوع الأجازة:</span> {(leaveType == LeaveRequestType.Sick ? "مرضي" : leaveType == LeaveRequestType.Emergency ? "عرضة" : "سنوية")}</div>
+                        <div class='section'><span class='label'>نوع الأجازة:</span> {(leaveType == LeaveRequestType.Sick ? "مرضى" : leaveType == LeaveRequestType.Emergency ? "عارضة" : "سنوية")}</div>
                         <div class='section'><span class='label'>كود الموظف:</span> {hrCode}</div>
                     </div>
                 </body>
@@ -300,7 +300,7 @@ namespace AutomatedTaskSystem.Services.Email
                 <body>
                     <div class='container'>
                         <h1>Digital<h1>
-                        <h2> إلغاء طلب عمل من المنزل</h2>
+                        <h2> إلغاء طلب العمل من المنزل</h2>
                         <div class='section'><span class='label'>الموظف:</span> {fullName}</div>
                         <div class='section'><span class='label'>تاريخ العمل من المنزل:</span> {date}</div>
                         <div class='section'><span class='label'>كود الموظف:</span> {hrCode}</div>
@@ -316,7 +316,7 @@ namespace AutomatedTaskSystem.Services.Email
             {
                 PermissionType.WorkAssignment => "مهمة عمل",
                 PermissionType.EarlyDeparture => "انصراف مبكر",
-                PermissionType.LateArrival => "حضور متأخر",
+                PermissionType.LateArrival => "تأخير",
                 PermissionType.Departure => "انصراف",
                 _ => "غير معروف"
             };

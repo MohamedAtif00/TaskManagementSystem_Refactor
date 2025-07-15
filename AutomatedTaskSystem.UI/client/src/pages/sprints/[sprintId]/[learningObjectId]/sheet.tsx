@@ -28,7 +28,7 @@ const SheetView = () => {
 
     useEffect(() => {
         const id = router.query.sprintId;
-        console.log('the id that i get ',id);
+        // console.log('the id that i get ',id);
         
         if (id !== undefined)
             API.TASKS.GET_PROJECT_SHEET(id).then(

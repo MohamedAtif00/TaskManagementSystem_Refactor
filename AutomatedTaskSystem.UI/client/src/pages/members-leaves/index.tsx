@@ -25,7 +25,7 @@ const MembersLeavesPage = () => {
       const response = await API.RESOURCES.USERS.GET_ALL();
       if (response && !response.error && response.data) {
         setMemberLeaves(response.data);
-        console.log(response.data,"data");
+        // console.log(response.data,"data");
         
         setError(null);
       } else {

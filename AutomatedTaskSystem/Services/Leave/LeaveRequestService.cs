@@ -473,6 +473,7 @@ namespace AutomatedTaskSystem.Services.Leave
 
                     case UserRoleEnum.TeamLeader:
                     case UserRoleEnum.ProjectManger:
+                    case UserRoleEnum.SectionHead:
                         _dataContext.Opinions.Add(opinion);
                         break;
 
@@ -588,31 +589,33 @@ namespace AutomatedTaskSystem.Services.Leave
             };
         }
 
-        var query = _dataContext.LeaveRequests
+        var query = _dataContext.LeaveRequests.Where(x => x.Status != LeaveRequestStatusEnum.Cancelled)
             .Include(v => v.User)
-            .Include(v => v.Opinions) // <<< IMPORTANT: Include Opinions here for MyStatus calculation and filtering
+            .Include(v => v.Opinions) 
             .AsQueryable();
 
-        // 1. Apply Role-Based Filtering
-        // Note: 'userId' parameter was previously named 'userId', now using 'currentUserId' consistently.
-        // If you have a 'userId' parameter intended to filter by a *specific* user (not the logged-in one)
-        // you'll need to decide how that interacts with currentUserId and roles.
-        if (user.Role == UserRoleEnum.TeamLeader)
-        {
-            query = query.Where(v => v.User.TeamleaderId == currentUserId);
-        }
-        else if (user.Role == UserRoleEnum.Member) // Assuming regular users only see their own requests
-        {
-            query = query.Where(v => v.UserId == currentUserId);
-        }
-        // Add logic for ProjectManager, Admin, etc., if they have broader access
 
-        // 2. Apply Search Term Filtering
+            if (user.Role == UserRoleEnum.TeamLeader)
+            {
+                query = query.Where(v => v.User.TeamleaderId == currentUserId);
+            }
+            else if (user.Role == UserRoleEnum.Member) 
+            {
+                query = query.Where(v => v.UserId == currentUserId);
+            }
+            else if (user.Role == UserRoleEnum.SectionHead)
+            {
+                query = query.Where(v => v.User.Group != null && 
+                                 v.User.Group.sectionGroups.Any(sg =>
+                                     sg.Section != null && 
+                                     sg.Section.HeadId == currentUserId));
+            }
+
         if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            query = query.Where(v => v.User.Name.Contains(searchTerm) ||
-                                     v.Reason.Contains(searchTerm));
-        }
+            {
+                query = query.Where(v => v.User.Name.Contains(searchTerm) ||
+                                         v.Reason.Contains(searchTerm));
+            }
 
         // 3. Apply Date Range Filtering
         if (!string.IsNullOrWhiteSpace(fromDate) && DateTime.TryParse(fromDate, out DateTime parsedFromDate))

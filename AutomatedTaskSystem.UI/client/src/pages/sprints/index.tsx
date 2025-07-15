@@ -23,7 +23,6 @@ const Sprints = () => {
     useEffect(() => {
         API.SPRINTS.GET_ALL_SPRINTS().then((res) => {
             if (res && !res.error && res.data) {
-                debugger
                 setSprints(res.data);
             } else {
                 console.error("Error fetching sprints:", res?.message || "Unknown error");

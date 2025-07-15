@@ -18,7 +18,7 @@ const TaskSheet = () => {
         }
 
         const preferredView = localStorage.getItem("tasks:view");
-        console.log('Redirecting for Sprint:', sprintId, 'Learning Objective:', learingObjectId); // Improved log
+        // console.log('Redirecting for Sprint:', sprintId, 'Learning Objective:', learingObjectId); // Improved log
 
         // Construct the base path using the now-guaranteed string IDs
         const basePath = `/sprints/${sprintId}/${learingObjectId}`;

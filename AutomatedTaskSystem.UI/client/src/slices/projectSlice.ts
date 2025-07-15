@@ -13,10 +13,10 @@ export const projectsSlice = createSlice({
             const newState: IProject[] = [];
 
             state.forEach((p) => {
-                console.log({
-                    p,
-                    pl: action.payload,
-                });
+                // console.log({
+                //     p,
+                //     pl: action.payload,
+                // });
                 p.id === action.payload.id
                     ? newState.push(action.payload)
                     : newState.push(p);

@@ -28,8 +28,8 @@ const Sidebar = () => {
     };
 
     useEffect(() => {
-        console.log("🔄 Sidebar - pendingNumber:", pendingNumber);
-        console.log("🔄 Sidebar - connectionState:", connectionState);
+        // console.log("🔄 Sidebar - pendingNumber:", pendingNumber);
+        // console.log("🔄 Sidebar - connectionState:", connectionState);
     }, [pendingNumber, connectionState]);
 
     // Build the NavList items conditionally

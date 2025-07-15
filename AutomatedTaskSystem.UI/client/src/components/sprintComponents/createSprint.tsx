@@ -63,7 +63,6 @@ const CreateSprint = () => {
                 setProjectFetchError('');
                 try {
                     const response = await API.PROJECTS.GET_ALL_FOR_SPRINT(); 
-                    debugger
                     if (response && response.data && !response.error) {
                         setProjects(response.data);
                     } else {

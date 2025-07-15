@@ -29,7 +29,7 @@ const Reports = {
 					urlArr.push(`end=${end.getMonth() + 1}-${end.getDate()}-${end.getFullYear()}`);
 			}
 
-			console.log(urlArr.join(""))
+			// console.log(urlArr.join(""))
 
 			const res = await fetch(urlArr.join(""));
 			const data: ResponseService<Report[]> = await res.json();

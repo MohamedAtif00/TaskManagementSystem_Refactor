@@ -97,7 +97,6 @@ const WorkFromHomeRequestDetails = () => {
             };
 
             const response = await WORK_FROM_HOME.CREATE_OPINION(opinionData);
-            debugger
 
             if (response.error) {
                 toast.error(response.message || "Failed to submit opinion.");

@@ -185,7 +185,7 @@ const TaskBoard = () => {
                         </div>
                         <div className="flex gap-4 items-center">
                             {/* Link to Sheet View - Ensure both sprintId and learningObjectId are passed */}
-                            <Link href={
+                            {/* <Link href={
                                 typeof sprintId === 'string' && typeof learningObjectId === 'string'
                                     ? `/sprints/${sprintId}/${learningObjectId}/sheet`
                                     : `/sprints/${sprintId}/sheet` // Fallback if learningObjectId is not valid (e.g., initially undefined)
@@ -193,7 +193,7 @@ const TaskBoard = () => {
                                 <button className="px-4 py-1 bg-slate-50 rounded-md text-black border border-solid border-black text-sm hover:border-pink-700 hover:text-pink-700 transition ease-in">
                                     Sheet View
                                 </button>
-                            </Link>
+                            </Link> */}
                             {/* LO Filter Combobox */}
                             <div>
                                 <form className="flex gap-4 items-end" onSubmit={e => { e.preventDefault(); }}>

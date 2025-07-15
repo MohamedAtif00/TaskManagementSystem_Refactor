@@ -446,6 +446,11 @@ public class UserService : IUserService
                     Code = u.Code,
                     OnBoard = u.OnBoard,
                     Name = u.Name,
+                    Group = u.Group != null ? new IDName
+                    {
+                        Name = u.Group.Name ?? "", // If Group.Name is null, use an empty string
+                        Id = u.Group.Id
+                    } : null,
                     AccountType = u.AccountType,
                     Annual_leave_MAX = u.Annual_leave_MAX,
                     Annual_leave = u.Annual_leave,

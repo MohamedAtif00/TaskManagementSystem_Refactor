@@ -11,7 +11,6 @@ public class Task
     public bool Attention { get; set; } = false;
     public int Id { get; set; }
     public string Name { get; set; } = "";
-
     [Range(0, 4)]
     public TaskStatusEnum Status { get; set; } = TaskStatusEnum.Backlog;
     public Step? Step { get; set; }

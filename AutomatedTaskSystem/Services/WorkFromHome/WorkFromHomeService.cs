@@ -306,7 +306,6 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                         break;
 
                     case UserRoleEnum.TeamLeader:
-                    case UserRoleEnum.ProjectManger:
                     case UserRoleEnum.SectionHead: // Section Head can also give opinion
                         // No direct status change here, just add opinion
                         break;
@@ -396,6 +395,13 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
             else if (user.Role == UserRoleEnum.Member)
             {
                 query = query.Where(wfh => wfh.UserId == currentUserId);
+            }
+            else if (user.Role == UserRoleEnum.SectionHead)
+            {
+                query = query.Where(v => v.User.Group != null && 
+                                 v.User.Group.sectionGroups.Any(sg => 
+                                     sg.Section != null && 
+                                     sg.Section.HeadId == currentUserId));
             }
             // Add logic for ProjectManager, SectionHead if they have broader WFH access
 

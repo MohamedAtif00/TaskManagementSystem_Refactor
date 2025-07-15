@@ -493,6 +493,7 @@ public class ProjectService : IProjectService
             Message = $"List of unassigned users for project of id:{project.Id}"
         };
     }
+
     public async Task<ActionResult<ResponseService<List<Responses.ProjectDTO>>>> GetUserSpecificProjects()
     {
         var authRes = _tokenService.GetUserIdFromToken();
@@ -567,7 +568,7 @@ public class ProjectService : IProjectService
             // Task counting logic for ProjectManager/Owner roles
             var taskCounts = await _context.Tasks
                 .Where(t =>
-                    !t.Archived &&
+                    !t.Archived && 
                     t.LearningObjective != null &&
                     t.LearningObjective.Lesson != null &&
                     t.LearningObjective.Lesson.Unit != null &&
@@ -611,6 +612,7 @@ public class ProjectService : IProjectService
         IQueryable<Models.Task> baseTaskQuery = _context.Tasks
             .Where(t =>
                 !t.Archived &&
+                 t.GroupId == user.GroupId &&
                 t.LearningObjective != null &&
                 t.LearningObjective.Lesson != null &&
                 t.LearningObjective.Lesson.Unit != null &&
@@ -638,6 +640,7 @@ public class ProjectService : IProjectService
             .Select(g => new { ProjectId = g.Key, Count = g.Count() })
             .ToListAsync();
 
+        
         var listOfProjects = userProjects.Select(project => new Responses.ProjectDTO
         {
             Id = project.Id,

@@ -330,6 +330,14 @@ namespace AutomatedTaskSystem.Services.Permission
                         query = query.Where(p => p.User.TeamleaderId == currentUserId);
                     }
                 }
+                else if (currentUser.Role == UserRoleEnum.SectionHead)
+                {
+                    query = query.Where(v => v.User.Group != null && // Ensure the user has a Group
+                                 v.User.Group.sectionGroups.Any(sg => // Check if any SectionGroup linked to this Group...
+                                     sg.Section != null && // ...has a valid Section...
+                                     sg.Section.HeadId == currentUserId));
+                }
+
 
                 // --- End of Role-Based Filtering Logic ---
 

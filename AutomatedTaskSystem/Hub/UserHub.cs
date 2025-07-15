@@ -40,7 +40,7 @@ namespace AutomatedTaskSystem.Hub
                         });
                     }// ... (your existing code before this section)
 
-                    else if (user.Role == Models.Enums.UserRole.UserRoleEnum.ProjectManger)
+                    else if (user.Role == Models.Enums.UserRole.UserRoleEnum.SectionHead)
                     {
                         // Find IDs of users whose group belongs to a section headed by the current projectManager
                         var userIdsManagedByThisProjectManager = await _dataContext.Users

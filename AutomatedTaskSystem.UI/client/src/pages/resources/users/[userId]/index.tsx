@@ -411,7 +411,7 @@ const UserProfile = () => {
     };
 
     const handleDelete = () => {
-        console.log("Delete user", user);
+        // console.log("Delete user", user);
         handleClose();
     };
 
@@ -511,7 +511,7 @@ const UserProfile = () => {
                                             <Typography component="div" className="flex items-center text-gray-700 text-sm">
                                                 <span className="font-semibold w-28">Type:</span>
                                                 <span className="text-[#5570FF]">
-                                                    {user.accountType === 0 ? "Internal" : "External"}
+                                                    {user.accountType}
                                                 </span>
                                             </Typography>
                                             <Typography component="div" className="flex items-center text-gray-700 text-sm">
@@ -657,9 +657,9 @@ const UserProfile = () => {
                                         <Typography variant="body1" fontWeight="bold" color="primary">
                                             {user.permission ?? 0} / {user.permission_MAX ?? 0}
                                         </Typography>
-                                        <Box sx={{ ml: 2 }}>
+                                        {/* <Box sx={{ ml: 2 }}>
                                             <ExportButton data={transformedPermissionData} filename={`user_${userId}_permissions.csv`}></ExportButton>
-                                        </Box>
+                                        </Box> */}
                                     </Box>
                                 </Box>
                                 <DataTable

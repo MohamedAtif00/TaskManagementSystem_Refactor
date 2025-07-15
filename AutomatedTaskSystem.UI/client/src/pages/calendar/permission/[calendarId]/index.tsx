@@ -43,7 +43,6 @@ useEffect(() => {
 
                 if (isMounted) {
                     if (response && !response.error && response.data) {
-                      debugger
                         setRequest(response.data);
                         setApprovals(response.data.opinions ?? null);
                         const canComment = response.data.status.toLowerCase() == PermissionRequestStatus.Pending.toString();
@@ -105,7 +104,6 @@ useEffect(() => {
                 user:{id:auth.id,name:auth.name,role:auth.role}
             }
             const response = await PERMISSION.CREATE_OPINION(opinionData);
-            debugger
             if (response.error) {
                 toast.error(response.message || "Failed to submit opinion.");
             } else {

@@ -78,6 +78,25 @@ const EditUser = () => {
         { id: 3, name: "Member" },
     ];
 
+    const resetForm = () => {
+        setName("");
+        setHrCode("");
+        setEmail("");
+        setArchived(false);
+        setGroup(null);
+        setRole(null);
+        setAccountType(null);
+        setTeamleader(null);
+        setTeamleaderId(null);
+        setTeamLeaders([]);
+        setTite("");
+        setPhone("");
+        setPermission(null);
+        setWorkFromHome(null);
+        setVacation({ annual: 0, sick: 0, emergency: 0, annual_MAX: 0, emergency_MAX: 0 });
+        setError("");
+    };
+
       const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         // Basic phone number formatting
@@ -90,6 +109,8 @@ const EditUser = () => {
 
     useEffect(() => {
         if (query.form === "edit-user" && query.userId) {
+            setActive(true);
+            resetForm();
             API.RESOURCES.USERS.GET_ONE(query.userId.toString()).then((res) => {
                 if (res && !res.error) {
                     const { name, hrCode, email, archived, group, role, 
@@ -131,10 +152,10 @@ const EditUser = () => {
                     setTeamleaderId(teamleaderId??null)
                 }
             });
-            return setActive(true);
+        } else {
+            setActive(false);
         }
-        setActive(false);
-    }, [query]);
+    }, [query.form, query.userId]);
 
     useEffect(() => {
         if (active) {
@@ -255,7 +276,7 @@ const EditUser = () => {
                             </div>
 
                             {/* Show rest of the fields only if role !== 3 */}
-                            {auth.role !== 3 && (
+                            {auth.role !== 3 &&auth.role !== 2 && (
                                 <>
                                     <InputTextField label="Name" value={name} handleChange={setName} />
                                     <InputTextField label="HR Code" value={hrCode} handleChange={setHrCode} />
@@ -303,7 +324,7 @@ const EditUser = () => {
 
 
 
-                        {auth.role !== 3 &&accountType?.id === 0 && (
+                        {auth.role !== 3 && auth.role !== 2 &&accountType?.id === 0 && (
                             <div className="mt-4">
                                 <h3 className="text-md font-semibold mb-4">Vacations</h3>
                                 

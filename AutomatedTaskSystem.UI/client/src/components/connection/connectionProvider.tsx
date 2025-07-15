@@ -88,7 +88,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 
             connection.on("OnConnectedMessage", (data) => {
                 if (isMounted && data?.pendings !== undefined) {
-                    console.log("OnConnectedMessage received:", data);
+                    // console.log("OnConnectedMessage received:", data);
                     setPendingNumber(data.pendings);
                 }
             });
@@ -129,7 +129,6 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 
         // Combined handlers
          const onRequestOpinion = (data: any, type: 'leave' | 'permission' | 'workFromHome') => {
-            debugger
             let requestTypeString = '';
             switch(type) {
                 case 'leave':
@@ -144,7 +143,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
                 default:
                     requestTypeString = 'Request';
             }
-            console.log(`${requestTypeString} request opinion received:`, data);
+            // console.log(`${requestTypeString} request opinion received:`, data);
             if (data.isApproved) {
                 toast.success(`${requestTypeString} request has been Approved.`);
             } else {
@@ -153,14 +152,12 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
         };
 
         const onUpdatePendings = (data: any) => {
-            console.log("UpdatePendings received:", data);
-            debugger
+            // console.log("UpdatePendings received:", data);
             if (data.pendings !== undefined) {
                 setPendingNumber(data.pendings);
             }
 
             if (data.isNewRequest) {
-                debugger
                 if (data.newLeaveRequestId) {
                     toast.info(
                         ({ closeToast }) => <NewLeaveRequestToast leaveRequestId={data.newLeaveRequestId} closeToast={closeToast} />,
@@ -186,7 +183,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
         };
 
         const onReceiveError = (data: any) => {
-            console.log("ReceiveError received:", data);
+            // console.log("ReceiveError received:", data);
             toast.error(data.message);
         };
 

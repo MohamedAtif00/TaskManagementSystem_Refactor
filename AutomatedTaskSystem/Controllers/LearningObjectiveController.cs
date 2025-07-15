@@ -119,10 +119,10 @@ namespace AutomatedTaskSystem.Controllers
                 var newLo = await _lessonService.CreateLO(lo.LessonId,
                          new Requests.LearningObjectiveDTO
                          {
-                             Name = lo.Name,
-                             Tag = lo.Tag,
-                             Template = lo.Template,
-                             Environment = lo.Environment,
+                             Name = req.Name,
+                             Tag = req.Tag,
+                             Template = req.Template,
+                             Environment = req.Environment,
                              SchemaId = req.SchemaId
                          });
 
@@ -196,8 +196,8 @@ namespace AutomatedTaskSystem.Controllers
                 if (schema is null)
                     return NotFound(new Responses.BadRequestsDTO("Schema not found"));
 
-                
-                
+
+
 
                 foreach (var task in loTasks)
                 {
@@ -218,9 +218,9 @@ namespace AutomatedTaskSystem.Controllers
                     _context.TaskActivities.Add(newTaskAct2);
                     //task.Name = req.Name;
 
-					task.Status = TaskStatusEnum.Done;
-                    
-					//task.Archived = true;
+                    task.Status = TaskStatusEnum.Done;
+
+                    //task.Archived = true;
                 }
 
                 //var res = await _taskService.CreateProcess(
@@ -235,10 +235,13 @@ namespace AutomatedTaskSystem.Controllers
                 //lo.Schema = schema;
                 //lo.SchemaId = schema.Id;
             }
-            lo.Environment = req.Environment;
-            lo.Template = req.Template;
-            lo.Tag = req.Tag;
-            //lo.Name = req.Name;
+            else { 
+                lo.Environment = req.Environment;
+                lo.Template = req.Template;
+                lo.Tag = req.Tag;
+                lo.Name = req.Name;
+            
+            }
             if (lo.SchemaId != req.SchemaId)
                 lo.Name = lo.Name + "_old_" + DateTime.Now.Day+"_"+DateTime.Now.Month;
             else

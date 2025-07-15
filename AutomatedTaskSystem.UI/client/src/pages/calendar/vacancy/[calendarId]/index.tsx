@@ -388,7 +388,7 @@ const LeaveRequestDetails = () => {
                 </div>
                 <div>
                   <span className="text-gray-500">Role: </span>
-                  <span className="text-blue-600">{approval.user?.role == 0?"Cordinator":approval.user?.role == 2?"TeamLeader":"Owner"}</span>
+                  <span className="text-blue-600">{approval.user?.role == 0?"ProjectManager":approval.user?.role == 1?"SectionHead":approval.user?.role == 2?"TeamLeader":"Owner"}</span>
                 </div>
                 <div>
                   <span className="text-gray-500">Status: </span>

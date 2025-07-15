@@ -325,11 +325,13 @@ public class TaskService : ITaskService
                                                     .Where(ta => ta.TaskId == t.Id)
                                                     .OrderByDescending(ta => ta.TimeStamp)
                                                     .Select(ta => ta.TimeStamp)
-                                                    .FirstOrDefault() // This will give DateTime.MinValue if no activities
+                                                    .FirstOrDefault() ,// This will give DateTime.MinValue if no activities
+                t.CreatedAt,
+                t.Status
             })
             // Filter based on the latest activity timestamp falling within the sprint dates
-            .Where(x => x.LatestActivityTimeStamp.Date >= sprintStartDate.Value.Date &&
-                        x.LatestActivityTimeStamp.Date < sprintEndDate.Value.Date)
+            .Where(x => (x.LatestActivityTimeStamp.Date >= sprintStartDate.Value.Date &&
+                        x.LatestActivityTimeStamp.Date <= sprintEndDate.Value.Date) || (x.CreatedAt < sprintStartDate && x.Status == TaskStatusEnum.Backlog))
             .Select(x => x.Task) // Select the original Task entity back
             .Include(t => t.User)
             .Include(t => t.Group)

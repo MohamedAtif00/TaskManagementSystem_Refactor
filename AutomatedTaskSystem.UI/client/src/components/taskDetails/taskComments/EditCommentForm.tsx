@@ -9,7 +9,7 @@ interface Props {
     taskId: number;
     comment?: IComment;
     update: () => void;
-    type:"tasks"|"sprints"
+    type:TaskType
 }
 
 const EditCommentForm: React.FC<Props> = ({

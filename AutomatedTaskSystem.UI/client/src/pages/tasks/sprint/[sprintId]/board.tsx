@@ -35,7 +35,7 @@ const TaskBoard = () => {
         sprint &&
             API.SPRINTS.GET_ALL_CARDS(sprint.id.toString()).then(
                 (res) => { if (res && !res.error) { setTasks(res.data);
-                    console.log(res.data);
+                    // console.log(res.data);
                     
                  }}
             );
@@ -138,7 +138,8 @@ const TaskBoard = () => {
                             <span className="text-2xl font-bold">{sprint.name}</span>
                         </div>
                         <div className="flex gap-4 items-center">
-                            <div>
+                            
+                            {/* <div>
                                 <Link href={{
                                     pathname: `/tasks/sprint/${sprint.id}/sheet`,
                                 }} onClick={() => {
@@ -157,7 +158,7 @@ const TaskBoard = () => {
                                     }}>
                                         <button className="px-4 py-1 bg-slate-50 rounded-md text-black border border-solid border-black text-sm hover:border-green-600 hover:text-green-600 transition ease-in">New Task</button>
                                     </Link>}
-                            </div>
+                            </div> */}
                             <div>
                                 <form className="flex gap-4 items-end" onSubmit={e => { e.preventDefault(); }}>
                                     <label className="relative block">

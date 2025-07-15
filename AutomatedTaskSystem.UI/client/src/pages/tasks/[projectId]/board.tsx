@@ -35,7 +35,7 @@ const TaskBoard = () => {
         project &&
             API.TASKS.GET_ALL_CARDS(project.id.toString()).then(
                 (res) => { if (res && !res.error) { setTasks(res.data);
-                    console.log(res.data);
+                    // console.log(res.data);
                     
                  }}
             );

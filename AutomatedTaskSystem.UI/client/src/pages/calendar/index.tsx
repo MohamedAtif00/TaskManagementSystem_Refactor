@@ -169,7 +169,7 @@ const Calendar = () => {
     }, []);
 
     const transformedVacancyData = useMemo(() => {
-        const isPrivilegedUser = auth.role === 0 || auth.role === 2; // Project Manager or Team Leader
+        const isPrivilegedUser = auth.role === 0 || auth.role === 2 || auth.role === 1; // Project Manager or Team Leader
         return vacancies.map(vacancy => {
             const baseData: Record<string, any> = {
                 "User name": vacancy.user?.name ?? "N/A",
@@ -187,7 +187,7 @@ const Calendar = () => {
     }, [vacancies, formatDateForDisplay, auth.role]);
 
     const transformedPermissionData = useMemo(() => {
-        const isPrivilegedUser = auth.role === 0 || auth.role === 2; // Project Manager or Team Leader
+        const isPrivilegedUser = auth.role === 0 || auth.role === 2 || auth.role === 1; // Project Manager or Team Leader
         return permissions.map(permission => {
             const baseData: Record<string, any> = {
                 "User name": permission.user?.name ?? "N/A",
@@ -206,7 +206,7 @@ const Calendar = () => {
 
     // New: Transformed data for Work From Home requests
     const transformedWorkFromHomeData = useMemo(() => {
-        const isPrivilegedUser = auth.role === 0 || auth.role === 2; // Project Manager or Team Leader
+        const isPrivilegedUser = auth.role === 0 || auth.role === 2 || auth.role === 1; // Project Manager or Team Leader
         return workFromHomeRequests.map(wfh => {
             const baseData: Record<string, any> = {
                 "User name": wfh.user?.name ?? "N/A",
@@ -260,7 +260,7 @@ const Calendar = () => {
                 ]
             }
         ];
-        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+        if (auth.role === 0 || auth.role === 2 || auth.role === 1) { // Project Manager or Team Leader
             config.push({
                 key: "myStatus",
                 label: "My Status",
@@ -309,7 +309,7 @@ const Calendar = () => {
                 ]
             }
         ];
-        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+        if (auth.role === 0 || auth.role === 2 || auth.role === 1) { // Project Manager or Team Leader
             config.push({
                 key: "myStatus",
                 label: "My Status",
@@ -352,7 +352,7 @@ const Calendar = () => {
                 ]
             }
         ];
-        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+        if (auth.role === 0 || auth.role === 2 || auth.role === 1) { // Project Manager or Team Leader
             config.push({
                 key: "myStatus",
                 label: "My Status",
@@ -402,7 +402,7 @@ const Calendar = () => {
             "Final Status": commonStatusRenderer,
             "Actions": (value: number) => commonActionsRenderer(value, 'vacancy')
         };
-        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+        if (auth.role === 0 || auth.role === 2 || auth.role === 1) { // Project Manager or Team Leader
             renderers["My Status"] = commonStatusRenderer;
         }
         return renderers;
@@ -413,7 +413,7 @@ const Calendar = () => {
             "Final Status": commonStatusRenderer,
             "Actions": (value: number) => commonActionsRenderer(value, 'permission')
         };
-        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+        if (auth.role === 0 || auth.role === 2|| auth.role === 1) { // Project Manager or Team Leader
             renderers["My Status"] = commonStatusRenderer;
         }
         return renderers;
@@ -425,7 +425,7 @@ const Calendar = () => {
             "Final Status": commonStatusRenderer,
             "Actions": (value: number) => commonActionsRenderer(value, 'workFromHome') // New path for WFH details
         };
-        if (auth.role === 0 || auth.role === 2) { // Project Manager or Team Leader
+        if (auth.role === 0 || auth.role === 2 || auth.role === 1) { // Project Manager or Team Leader
             renderers["My Status"] = commonStatusRenderer;
         }
         return renderers;
@@ -443,7 +443,7 @@ const Calendar = () => {
                 toDate: filters.toDate as string | undefined,
                 status: filters.status === "all" ? undefined : filters.status as LeaveRequestStatus,
                 type: filters.type === "all" ? undefined : filters.type as LeaveRequestType,
-                myStatus: (auth.role === 0 || auth.role === 2) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as LeaveRequestStatus : undefined,
+                myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as LeaveRequestStatus : undefined,
             };
 
             const response = await LEAVE.GET_ALL_DB(params as Record<string, string | number | boolean | undefined>);
@@ -476,7 +476,7 @@ const Calendar = () => {
                 date: filters.date as string | undefined,
                 type: filters.type === "all" ? undefined : filters.type as PermissionType,
                 status: filters.status === "all" ? undefined : filters.status as PermissionRequestStatus,
-                myStatus: (auth.role === 0 || auth.role === 2) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as PermissionRequestStatus : undefined,
+                myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as PermissionRequestStatus : undefined,
             };
 
             const response = await PERMISSION.GET_ALL(params as Record<string, string | number | boolean | undefined>);
@@ -509,7 +509,7 @@ const Calendar = () => {
                 fromDate: filters.fromDate as string | undefined,
                 toDate: filters.toDate as string | undefined,
                 status: filters.status === "all" ? undefined : filters.status as WorkFromHomeStatus,
-                myStatus: (auth.role === 0 || auth.role === 2) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as WorkFromHomeStatus : undefined,
+                myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as WorkFromHomeStatus : undefined,
             };
 
             const response = await WORK_FROM_HOME.GET_ALL(params as Record<string, string | number | boolean | undefined>);
@@ -559,7 +559,7 @@ const Calendar = () => {
             setVacancyCurrentPage(1);
             setVacancyItemsPerPage(10);
             const baseVacancyFilters: Record<string, any> = { fromDate: undefined, toDate: undefined, status: "all", type: "all" };
-            if (auth.role === 0 || auth.role === 2) {
+            if (auth.role === 0 || auth.role === 2 || auth.role === 1) {
                 baseVacancyFilters.myStatus = "all";
             }
             setVacancyFilters(baseVacancyFilters);
@@ -568,7 +568,7 @@ const Calendar = () => {
             setPermissionCurrentPage(1);
             setPermissionItemsPerPage(10);
             const basePermissionFilters: Record<string, any> = { date: undefined, type: "all", status: "all" };
-            if (auth.role === 0 || auth.role === 2) {
+            if (auth.role === 0 || auth.role === 2 || auth.role === 1) {
                 basePermissionFilters.myStatus = "all";
             }
             setPermissionFilters(basePermissionFilters);
@@ -577,7 +577,7 @@ const Calendar = () => {
             setWorkFromHomeCurrentPage(1);
             setWorkFromHomeItemsPerPage(10);
             const baseWorkFromHomeFilters: Record<string, any> = { fromDate: undefined, toDate: undefined, status: "all" }; // WFH doesn't have a 'type' like leave
-            if (auth.role === 0 || auth.role === 2) {
+            if (auth.role === 0 || auth.role === 2 || auth.role === 1) {
                 baseWorkFromHomeFilters.myStatus = "all";
             }
             setWorkFromHomeFilters(baseWorkFromHomeFilters);
@@ -618,12 +618,12 @@ const Calendar = () => {
             status: vacancyFilters.status === "all" ? undefined : vacancyFilters.status as LeaveRequestStatus,
             type: vacancyFilters.type === "all" ? undefined : vacancyFilters.type as LeaveRequestType,
             disablePagination: true,
-            myStatus: (auth.role === 0 || auth.role === 2) && vacancyFilters.myStatus && vacancyFilters.myStatus !== "all" ? vacancyFilters.myStatus as LeaveRequestStatus : undefined,
+            myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && vacancyFilters.myStatus && vacancyFilters.myStatus !== "all" ? vacancyFilters.myStatus as LeaveRequestStatus : undefined,
         };
         const response = await LEAVE.GET_ALL_FOR_EXPORT(params);
 
         if (response && response.data && Array.isArray(response.data.items)) {
-            const isPrivilegedUser = auth.role === 0 || auth.role === 2;
+            const isPrivilegedUser = auth.role === 0 || auth.role === 2 || auth.role === 1;
             return response.data.items.map(item => {
                 const exportItem: Record<string, any> = {
                     "Id": item.id,
@@ -651,11 +651,11 @@ const Calendar = () => {
             type: permissionFilters.type === "all" ? undefined : permissionFilters.type as PermissionType,
             status: permissionFilters.status === "all" ? undefined : permissionFilters.status as PermissionRequestStatus,
             disablePagination: true,
-            myStatus: (auth.role === 0 || auth.role === 2) && permissionFilters.myStatus && permissionFilters.myStatus !== "all" ? permissionFilters.myStatus as PermissionRequestStatus : undefined,
+            myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && permissionFilters.myStatus && permissionFilters.myStatus !== "all" ? permissionFilters.myStatus as PermissionRequestStatus : undefined,
         };
         const response = await PERMISSION.GET_ALL_FOR_EXPORT(params);
         if (response && response.data && Array.isArray(response.data.items)) {
-            const isPrivilegedUser = auth.role === 0 || auth.role === 2;
+            const isPrivilegedUser = auth.role === 0 || auth.role === 2 || auth.role === 1;
             return response.data.items.map((item: IPermission) => {
                 const exportItem: Record<string, any> = {
                     "Id": item.id,
@@ -685,11 +685,11 @@ const Calendar = () => {
             toDate: workFromHomeFilters.toDate as string | undefined,
             status: workFromHomeFilters.status === "all" ? undefined : workFromHomeFilters.status as WorkFromHomeStatus,
             disablePagination: true,
-            myStatus: (auth.role === 0 || auth.role === 2) && workFromHomeFilters.myStatus && workFromHomeFilters.myStatus !== "all" ? workFromHomeFilters.myStatus as WorkFromHomeStatus : undefined,
+            myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && workFromHomeFilters.myStatus && workFromHomeFilters.myStatus !== "all" ? workFromHomeFilters.myStatus as WorkFromHomeStatus : undefined,
         };
         const response = await WORK_FROM_HOME.GET_ALL_FOR_EXPORT(params);
         if (response && response.data && Array.isArray(response.data.items)) {
-            const isPrivilegedUser = auth.role === 0 || auth.role === 2;
+            const isPrivilegedUser = auth.role === 0 || auth.role === 2 || auth.role === 1;
             return response.data.items.map((item: IGetWorkFromHomeRequest) => { // Use IGetWorkFromHomeRequest type
                 const exportItem: Record<string, any> = {
                     "Id": item.id,
