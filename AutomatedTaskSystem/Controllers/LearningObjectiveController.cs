@@ -119,6 +119,7 @@ namespace AutomatedTaskSystem.Controllers
                 var newLo = await _lessonService.CreateLO(lo.LessonId,
                          new Requests.LearningObjectiveDTO
                          {
+                             
                              Name = req.Name,
                              Tag = req.Tag,
                              Template = req.Template,
@@ -243,10 +244,12 @@ namespace AutomatedTaskSystem.Controllers
             
             }
             if (lo.SchemaId != req.SchemaId)
-                lo.Name = lo.Name + "_old_" + DateTime.Now.Day+"_"+DateTime.Now.Month;
+                lo.Name = lo.Name + "_old_" + DateTime.Now.Day + "_" + DateTime.Now.Month;
             else
+            { 
                 lo.Name = req.Name;
-            lo.DoneAt = DateTime.Now;
+                //lo.DoneAt = DateTime.Now;            
+            }
             await _context.SaveChangesAsync();
 
 

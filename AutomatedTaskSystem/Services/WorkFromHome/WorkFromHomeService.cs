@@ -388,13 +388,9 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                 .AsQueryable();
 
             // Role-Based Filtering (similar to LeaveRequestService)
-            if (user.Role == UserRoleEnum.TeamLeader)
+            if (user.Role == UserRoleEnum.TeamLeader && _dataContext.Users.Any(x => x.TeamleaderId == user.Id))
             {
-                query = query.Where(wfh => wfh.User.TeamleaderId == currentUserId);
-            }
-            else if (user.Role == UserRoleEnum.Member)
-            {
-                query = query.Where(wfh => wfh.UserId == currentUserId);
+                query = query.Where(wfh => wfh.User.GroupId == user.GroupId);
             }
             else if (user.Role == UserRoleEnum.SectionHead)
             {
@@ -402,6 +398,15 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                                  v.User.Group.sectionGroups.Any(sg => 
                                      sg.Section != null && 
                                      sg.Section.HeadId == currentUserId));
+            }
+            else if (user.Role == UserRoleEnum.TeamLeader && !_dataContext.Users.Any(x => x.TeamleaderId == user.Id))
+            {
+                return new ResponseService<PageList<GetWorkFromHomeDto>>
+                {
+                    Error = false,
+                    Message = "Work from home requests retrieved successfully.",
+                    Data = null
+                };
             }
             // Add logic for ProjectManager, SectionHead if they have broader WFH access
 

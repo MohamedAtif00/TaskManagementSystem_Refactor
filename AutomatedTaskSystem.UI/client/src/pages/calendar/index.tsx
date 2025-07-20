@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { format } from "date-fns";
-import LEAVE, { IGetAllLeavesRequestNoPagination, IGetLeaveRequestForCalander, LeaveRequestStatus, LeaveRequestType } from "../../lib/API/Leave";
+import LEAVE, { IGetAllLeavesRequestNoPagination, IGetLeaveRequestForCalander, IOpinion, LeaveRequestStatus, LeaveRequestType } from "../../lib/API/Leave";
 import PERMISSION, { IPermission, PermissionRequestStatus, PermissionType } from "../../lib/API/Permission";
 import ExportButton from "../../components/button/ExportButton"; // This is likely for client-side export
 import Link from "next/link";
@@ -8,6 +8,7 @@ import { useAppSelector } from "../../app/hooks";
 import DataTable from "../../components/table/tablePagination";
 import ServerExportButton from "../../components/button/serverExportButtonProps";
 import WORK_FROM_HOME, { WorkFromHomeStatus, IGetAllWorkFromHomeRequestNoPagination, IGetWorkFromHomeRequest, IDName } from "../../lib/API/workFromHome";
+import { toast } from "react-toastify";
 
 // Assume these interfaces are imported or defined globally if they are not part of LEAVE/PERMISSION
 // Re-declaring for clarity within this file's context, but ideally these would be in a shared types file.
@@ -107,7 +108,7 @@ const Calendar = () => {
     //#region  States and variables 
 
     const [activeTab, setActiveTab] = useState<"vacancy" | "permission" | "workFromHome">("vacancy"); // Added 'workFromHome'
-
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [vacancies, setVacancies] = useState<IGetLeaveRequestForCalander[]>([]);
     const [permissions, setPermissions] = useState<IPermission[]>([]);
     const [workFromHomeRequests, setWorkFromHomeRequests] = useState<IGetWorkFromHomeRequestForCalanderDisplay[]>([]); // New state for WFH
@@ -157,6 +158,110 @@ const Calendar = () => {
     const auth = useAppSelector((s) => s.authSlice);
     //#endregion
 
+    // fetch all
+
+
+     const fetchVacancies = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
+        setLoading(prev => ({ ...prev, vacancies: true }));
+        try {
+            const params: IGetAllLeavesRequest = {
+                page: page,
+                pageSize: itemsPerPage,
+                searchTerm: searchText === "" ? undefined : searchText,
+                fromDate: filters.fromDate as string | undefined,
+                toDate: filters.toDate as string | undefined,
+                status: filters.status === "all" ? undefined : filters.status as LeaveRequestStatus,
+                type: filters.type === "all" ? undefined : filters.type as LeaveRequestType,
+                myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as LeaveRequestStatus : undefined,
+            };
+
+            const response = await LEAVE.GET_ALL_DB(params as Record<string, string | number | boolean | undefined>);
+
+            if (response && response.data) {
+                setVacancies(response.data.items || []);
+                setTotalVacanciesCount(response.data.totalCount || 0);
+            } else {
+                console.error("Invalid response format or error from LEAVE.GET_ALL_DB:", response);
+                setVacancies([]);
+                setTotalVacanciesCount(0);
+            }
+        } catch (error) {
+            console.error("Error fetching vacancies:", error);
+            setVacancies([]);
+            setTotalVacanciesCount(0);
+        } finally {
+            setLoading(prev => ({ ...prev, vacancies: false }));
+        }
+    }, [auth.id, auth.role]);
+    
+
+    const fetchPermissions = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
+        setLoading(prev => ({ ...prev, permissions: true }));
+        try {
+            const params: IGetAllPermissionsRequest = {
+                page: page,
+                pageSize: itemsPerPage,
+                role: auth.role,
+                searchTerm: searchText === "" ? undefined : searchText,
+                date: filters.date as string | undefined,
+                type: filters.type === "all" ? undefined : filters.type as PermissionType,
+                status: filters.status === "all" ? undefined : filters.status as PermissionRequestStatus,
+                myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as PermissionRequestStatus : undefined,
+            };
+
+            const response = await PERMISSION.GET_ALL(params as Record<string, string | number | boolean | undefined>);
+
+            if (response && response.data && !response.error) {
+                setPermissions(response.data.items || []);
+                setTotalPermissionsCount(response.data.totalCount || 0);
+            } else {
+                console.error("Invalid response format or error from PERMISSION.GET_ALL:", response);
+                setPermissions([]);
+                setTotalPermissionsCount(0);
+            }
+        } catch (error) {
+            console.error("Error fetching permissions:", error);
+            setPermissions([]);
+            setTotalPermissionsCount(0);
+        } finally {
+            setLoading(prev => ({ ...prev, permissions: false }));
+        }
+    }, [auth.role]);
+
+    // New: Fetch function for Work From Home requests
+    const fetchWorkFromHome = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
+        setLoading(prev => ({ ...prev, workFromHome: true }));
+        try {
+            const params: IGetAllWorkFromHomeRequest = {
+                page: page,
+                pageSize: itemsPerPage,
+                searchTerm: searchText === "" ? undefined : searchText,
+                fromDate: filters.fromDate as string | undefined,
+                toDate: filters.toDate as string | undefined,
+                status: filters.status === "all" ? undefined : filters.status as WorkFromHomeStatus,
+                myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as WorkFromHomeStatus : undefined,
+            };
+
+            const response = await WORK_FROM_HOME.GET_ALL(params as Record<string, string | number | boolean | undefined>);
+
+            if (response && response.data && !response.error) {
+                setWorkFromHomeRequests(response.data.items || []); // Assuming response.data.items matches IGetWorkFromHomeRequestForCalanderDisplay
+                setTotalWorkFromHomeCount(response.data.totalCount || 0);
+            } else {
+                console.error("Invalid response format or error from WORK_FROM_HOME.GET_ALL:", response);
+                setWorkFromHomeRequests([]);
+                setTotalWorkFromHomeCount(0);
+            }
+        } catch (error) {
+            console.error("Error fetching work from home requests:", error);
+            setWorkFromHomeRequests([]);
+            setTotalWorkFromHomeCount(0);
+        } finally {
+            setLoading(prev => ({ ...prev, workFromHome: false }));
+        }
+    }, [auth.role]);
+    //
+
     const formatDateForDisplay = useCallback((dateStr: string | Date) => {
         if (!dateStr) return "N/A";
         try {
@@ -167,6 +272,21 @@ const Calendar = () => {
             return String(dateStr);
         }
     }, []);
+
+     var refetchData = useCallback(() => {
+    if (activeTab === 'vacancy') {
+        fetchVacancies(vacancyCurrentPage, vacancyItemsPerPage, vacancyFilters, vacancySearchText);
+    } else if (activeTab === 'permission') {
+        fetchPermissions(permissionCurrentPage, permissionItemsPerPage, permissionFilters, permissionSearchText);
+    } else if (activeTab === 'workFromHome') {
+        fetchWorkFromHome(workFromHomeCurrentPage, workFromHomeItemsPerPage, workFromHomeFilters, workFromHomeSearchText);
+    }
+    }, [
+        activeTab,
+        fetchVacancies, vacancyCurrentPage, vacancyItemsPerPage, vacancyFilters, vacancySearchText,
+        fetchPermissions, permissionCurrentPage, permissionItemsPerPage, permissionFilters, permissionSearchText,
+        fetchWorkFromHome, workFromHomeCurrentPage, workFromHomeItemsPerPage, workFromHomeFilters, workFromHomeSearchText
+    ]);
 
     const transformedVacancyData = useMemo(() => {
         const isPrivilegedUser = auth.role === 0 || auth.role === 2 || auth.role === 1; // Project Manager or Team Leader
@@ -388,19 +508,63 @@ const Calendar = () => {
         return <span className={`font-medium ${getStatusColor(value)}`}>{value}</span>;
     }, []);
 
-    const commonActionsRenderer = useCallback((id: number, path: string) => (
-        <Link href={`/calendar/${path}/${id}`} className="text-gray-600 hover:text-gray-900 transition-colors " >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-            </svg>
-        </Link>
-    ), []);
+
+ 
+
+    const handleSubmitOpinion = useCallback(async (id: number, status: LeaveRequestStatus.Approved | LeaveRequestStatus.Rejected) => {
+        setIsSubmitting(true);
+        try {
+            const op: IOpinion = {
+                leaveRequestId: id,
+                comment: "",
+                status: status,
+                isApproved: status === LeaveRequestStatus.Approved,
+                user: { id: auth.id, name: auth.name, role: auth.role }
+            };
+            const response = await LEAVE.CREATE_OPINION(op);
+            if (response && !response.error) {
+                toast.success(response.message || "Opinion submitted successfully!");
+                // refetchData now has the correct, current filter/pagination state
+                // because this chain of callbacks is correctly memoized.
+                refetchData();
+            } else {
+                toast.error(response?.message || "Failed to submit opinion.");
+            }
+        } catch (error) {
+            toast.error("An error occurred while submitting your opinion.");
+            console.error('Error submitting opinion:', error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [auth.id, auth.name, auth.role, refetchData]);
+
+    const commonActionsRenderer = useCallback((id: number, path: string, currentOpinion:LeaveRequestStatus) => (
+        <div className="flex  gap-2">
+            {currentOpinion === LeaveRequestStatus.Pending && // This condition makes buttons appear only if pending
+            <div className="flex gap-1">
+                {/* Disable buttons while submitting to prevent double clicks */}
+                <button onClick={() => handleSubmitOpinion(id, LeaveRequestStatus.Approved)} disabled={isSubmitting} className="bg-green-600 rounded p-2 text-white disabled:bg-gray-400">Accept</button>
+                <button onClick={() => handleSubmitOpinion(id, LeaveRequestStatus.Rejected)} disabled={isSubmitting} className="bg-red-600 rounded p-2 text-white disabled:bg-gray-400">Reject</button>
+            </div>
+            }
+            <Link href={`/calendar/${path}/${id}`} className="text-gray-600 hover:text-gray-900 transition-colors " >
+                <button className="bg-blue-600 rounded p-2 text-white">Show</button>
+            </Link>
+        </div>
+    ), [handleSubmitOpinion, isSubmitting]);
 
     const vacancyColumnRenderers = useMemo(() => {
         const renderers: Record<string, (value: any, row?: Record<string, any>) => React.ReactNode> = {
             "Final Status": commonStatusRenderer,
-            "Actions": (value: number) => commonActionsRenderer(value, 'vacancy')
+            // FIX: Make 'row' optional and handle it, then pass the specific status
+            "Actions": (value: number, row?: Record<string, any>) => {
+                let status ;
+            if(auth.role == 4)
+                status =  row ? row["Final Status"]  : undefined;
+            else
+                status =  row ?  row["My Status"] : undefined;
+                return commonActionsRenderer(value, 'vacancy', status);
+            }
         };
         if (auth.role === 0 || auth.role === 2 || auth.role === 1) { // Project Manager or Team Leader
             renderers["My Status"] = commonStatusRenderer;
@@ -408,12 +572,20 @@ const Calendar = () => {
         return renderers;
     }, [commonStatusRenderer, commonActionsRenderer, auth.role]);
 
+
     const permissionColumnRenderers = useMemo(() => {
         const renderers: Record<string, (value: any, row?: Record<string, any>) => React.ReactNode> = {
             "Final Status": commonStatusRenderer,
-            "Actions": (value: number) => commonActionsRenderer(value, 'permission')
+            "Actions": (value: number, row?: Record<string, any>) => {
+                let status ;
+            if(auth.role == 4)
+                status =  row ? row["Final Status"]  : undefined;
+            else
+                status =  row ?  row["My Status"] : undefined;
+                return commonActionsRenderer(value, 'permission', status);
+            }
         };
-        if (auth.role === 0 || auth.role === 2|| auth.role === 1) { // Project Manager or Team Leader
+        if (auth.role === 0 || auth.role === 2 || auth.role === 1) { // Project Manager or Team Leader
             renderers["My Status"] = commonStatusRenderer;
         }
         return renderers;
@@ -423,7 +595,14 @@ const Calendar = () => {
     const workFromHomeColumnRenderers = useMemo(() => {
         const renderers: Record<string, (value: any, row?: Record<string, any>) => React.ReactNode> = {
             "Final Status": commonStatusRenderer,
-            "Actions": (value: number) => commonActionsRenderer(value, 'workFromHome') // New path for WFH details
+            "Actions": (value: number, row?: Record<string, any>) => {
+                let status ;
+            if(auth.role == 4)
+                status =  row ? row["Final Status"]  : undefined;
+            else
+                status =  row ?  row["My Status"] : undefined;
+                return commonActionsRenderer(value, 'workFromHome', status);
+            }
         };
         if (auth.role === 0 || auth.role === 2 || auth.role === 1) { // Project Manager or Team Leader
             renderers["My Status"] = commonStatusRenderer;
@@ -431,105 +610,6 @@ const Calendar = () => {
         return renderers;
     }, [commonStatusRenderer, commonActionsRenderer, auth.role]);
 
-
-    const fetchVacancies = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
-        setLoading(prev => ({ ...prev, vacancies: true }));
-        try {
-            const params: IGetAllLeavesRequest = {
-                page: page,
-                pageSize: itemsPerPage,
-                searchTerm: searchText === "" ? undefined : searchText,
-                fromDate: filters.fromDate as string | undefined,
-                toDate: filters.toDate as string | undefined,
-                status: filters.status === "all" ? undefined : filters.status as LeaveRequestStatus,
-                type: filters.type === "all" ? undefined : filters.type as LeaveRequestType,
-                myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as LeaveRequestStatus : undefined,
-            };
-
-            const response = await LEAVE.GET_ALL_DB(params as Record<string, string | number | boolean | undefined>);
-
-            if (response && response.data) {
-                setVacancies(response.data.items || []);
-                setTotalVacanciesCount(response.data.totalCount || 0);
-            } else {
-                console.error("Invalid response format or error from LEAVE.GET_ALL_DB:", response);
-                setVacancies([]);
-                setTotalVacanciesCount(0);
-            }
-        } catch (error) {
-            console.error("Error fetching vacancies:", error);
-            setVacancies([]);
-            setTotalVacanciesCount(0);
-        } finally {
-            setLoading(prev => ({ ...prev, vacancies: false }));
-        }
-    }, [auth.id, auth.role]);
-
-    const fetchPermissions = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
-        setLoading(prev => ({ ...prev, permissions: true }));
-        try {
-            const params: IGetAllPermissionsRequest = {
-                page: page,
-                pageSize: itemsPerPage,
-                role: auth.role,
-                searchTerm: searchText === "" ? undefined : searchText,
-                date: filters.date as string | undefined,
-                type: filters.type === "all" ? undefined : filters.type as PermissionType,
-                status: filters.status === "all" ? undefined : filters.status as PermissionRequestStatus,
-                myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as PermissionRequestStatus : undefined,
-            };
-
-            const response = await PERMISSION.GET_ALL(params as Record<string, string | number | boolean | undefined>);
-
-            if (response && response.data && !response.error) {
-                setPermissions(response.data.items || []);
-                setTotalPermissionsCount(response.data.totalCount || 0);
-            } else {
-                console.error("Invalid response format or error from PERMISSION.GET_ALL:", response);
-                setPermissions([]);
-                setTotalPermissionsCount(0);
-            }
-        } catch (error) {
-            console.error("Error fetching permissions:", error);
-            setPermissions([]);
-            setTotalPermissionsCount(0);
-        } finally {
-            setLoading(prev => ({ ...prev, permissions: false }));
-        }
-    }, [auth.role]);
-
-    // New: Fetch function for Work From Home requests
-    const fetchWorkFromHome = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
-        setLoading(prev => ({ ...prev, workFromHome: true }));
-        try {
-            const params: IGetAllWorkFromHomeRequest = {
-                page: page,
-                pageSize: itemsPerPage,
-                searchTerm: searchText === "" ? undefined : searchText,
-                fromDate: filters.fromDate as string | undefined,
-                toDate: filters.toDate as string | undefined,
-                status: filters.status === "all" ? undefined : filters.status as WorkFromHomeStatus,
-                myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as WorkFromHomeStatus : undefined,
-            };
-
-            const response = await WORK_FROM_HOME.GET_ALL(params as Record<string, string | number | boolean | undefined>);
-
-            if (response && response.data && !response.error) {
-                setWorkFromHomeRequests(response.data.items || []); // Assuming response.data.items matches IGetWorkFromHomeRequestForCalanderDisplay
-                setTotalWorkFromHomeCount(response.data.totalCount || 0);
-            } else {
-                console.error("Invalid response format or error from WORK_FROM_HOME.GET_ALL:", response);
-                setWorkFromHomeRequests([]);
-                setTotalWorkFromHomeCount(0);
-            }
-        } catch (error) {
-            console.error("Error fetching work from home requests:", error);
-            setWorkFromHomeRequests([]);
-            setTotalWorkFromHomeCount(0);
-        } finally {
-            setLoading(prev => ({ ...prev, workFromHome: false }));
-        }
-    }, [auth.role]);
 
     // Use useEffect to trigger data fetches when pagination/filter states change
     useEffect(() => {

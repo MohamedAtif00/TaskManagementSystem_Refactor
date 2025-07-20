@@ -314,7 +314,7 @@ namespace AutomatedTaskSystem.Services.Permission
                 // --- Start of Role-Based Filtering Logic (similar to GetAllVacationsAsync) ---
 
                 // If the current user is a TeamLeader
-                if (currentUser.Role == UserRoleEnum.TeamLeader)
+                if (currentUser.Role == UserRoleEnum.TeamLeader && _dataContext.Users.Any(x => x.TeamleaderId == currentUser.Id))
                 {
                     // Team Leaders should only see permissions of their direct team members.
                     // If a specific userId is provided in the request, check if that userId
@@ -327,7 +327,7 @@ namespace AutomatedTaskSystem.Services.Permission
                     else
                     {
                         // If no specific userId is requested, show all permissions for current TeamLeader's team members.
-                        query = query.Where(p => p.User.TeamleaderId == currentUserId);
+                        query = query.Where(p => p.User.GroupId == currentUser.GroupId);
                     }
                 }
                 else if (currentUser.Role == UserRoleEnum.SectionHead)
@@ -337,12 +337,20 @@ namespace AutomatedTaskSystem.Services.Permission
                                      sg.Section != null && // ...has a valid Section...
                                      sg.Section.HeadId == currentUserId));
                 }
+                else if (currentUser.Role == UserRoleEnum.TeamLeader && !_dataContext.Users.Any(x => x.TeamleaderId == currentUser.Id)) {
+                    return new ResponseService<PageList<GetPermissionDto>>
+                    {
+                        Error = false,
+                        Message = "Permissions retrieved successfully.",
+                        Data = null
+                    };
+                }
 
 
-                // --- End of Role-Based Filtering Logic ---
+                    // --- End of Role-Based Filtering Logic ---
 
-                // 3. Apply Search Term Filtering
-                if (!string.IsNullOrWhiteSpace(searchTerm))
+                    // 3. Apply Search Term Filtering
+                    if (!string.IsNullOrWhiteSpace(searchTerm))
                 {
                     query = query.Where(p => p.User.Name.Contains(searchTerm) ||
                                              p.Reason.Contains(searchTerm));

@@ -34,23 +34,23 @@ public class DataContext : DbContext
             .HasOne(sg => sg.Section)
             .WithMany(s => s.SectionGroups)
             .HasForeignKey(sg => sg.SectionId)
-            .OnDelete(DeleteBehavior.NoAction); // Explicitly NoAction
+            .OnDelete(DeleteBehavior.NoAction);
 
         // 2. SectionGroup to Group (as per your Group model having sectionGroups)
         modelBuilder.Entity<SectionGroup>()
             .HasOne(sg => sg.Group)
             .WithMany(g => g.sectionGroups)
             .HasForeignKey(sg => sg.GroupId)
-            .OnDelete(DeleteBehavior.NoAction); // Explicitly NoAction
+            .OnDelete(DeleteBehavior.NoAction); 
 
         // 3. Section to User (Head) - Assuming HeadId is nullable, SetNull is fine.
         // If HeadId is non-nullable, it *must* be NoAction.
         modelBuilder.Entity<Section>()
             .HasOne(s => s.Head)
-            .WithMany() // Assuming User doesn't have a direct collection for sections it heads
+            .WithMany() 
             .HasForeignKey(s => s.HeadId)
-            .IsRequired(false) // Assuming HeadId is nullable (int?)
-            .OnDelete(DeleteBehavior.NoAction); // SetNull is also an option if nullable, but NoAction is safer for cycles.
+            .IsRequired(false) 
+            .OnDelete(DeleteBehavior.NoAction); 
 
         // 4. *** CRITICAL NEW ADDITION: User to Group relationship ***
         // This is the most likely missing piece, as Group.Users suggests User has a GroupId.

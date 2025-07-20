@@ -267,8 +267,8 @@ namespace AutomatedTaskSystem.Services.Leave
                     else
                     {
                         Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId.");
-                    }
-                }
+                        }
+                        }
 
                 response.Data = true;
                 response.Message = "Leave request created successfully." + (user.Role == UserRoleEnum.Owner ? " It has been automatically approved." : "");
@@ -490,7 +490,8 @@ namespace AutomatedTaskSystem.Services.Leave
                 if (user.Role == UserRoleEnum.Owner)
                 {
                     await _leaveRequestHelper.SendProjectManagersPendingUpdateWithoutNew(leaveRequest.Id);
-                    await _leaveRequestHelper.SendTeamLeaderPendingUpdatesWithoutNew(leaveRequest.User.TeamleaderId.Value); 
+                    if(leaveRequest.User.TeamleaderId != null)
+                    await _leaveRequestHelper.SendTeamLeaderPendingUpdatesWithoutNew(leaveRequest.User.TeamleaderId!.Value); 
                 }
 
               
@@ -595,13 +596,9 @@ namespace AutomatedTaskSystem.Services.Leave
             .AsQueryable();
 
 
-            if (user.Role == UserRoleEnum.TeamLeader)
+            if (user.Role == UserRoleEnum.TeamLeader && _dataContext.Users.Any(x => x.TeamleaderId == user.Id))
             {
-                query = query.Where(v => v.User.TeamleaderId == currentUserId);
-            }
-            else if (user.Role == UserRoleEnum.Member) 
-            {
-                query = query.Where(v => v.UserId == currentUserId);
+                query = query.Where(v => v.User.GroupId == user.GroupId && v.User.Id != user.Id);
             }
             else if (user.Role == UserRoleEnum.SectionHead)
             {
@@ -609,6 +606,15 @@ namespace AutomatedTaskSystem.Services.Leave
                                  v.User.Group.sectionGroups.Any(sg =>
                                      sg.Section != null && 
                                      sg.Section.HeadId == currentUserId));
+            }
+            else if(user.Role == UserRoleEnum.TeamLeader && !_dataContext.Users.Any(x => x.TeamleaderId == user.Id))
+            {
+                return new ResponseService<PageList<GetLeaveRequestDto>>
+                {
+                    Error = false,
+                    Message = "Vacations retrieved successfully.",
+                    Data = null
+                };
             }
 
         if (!string.IsNullOrWhiteSpace(searchTerm))

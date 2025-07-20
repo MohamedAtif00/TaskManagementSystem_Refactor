@@ -15,6 +15,10 @@ namespace AutomatedTaskSystem.Services.Email
                 <html lang='ar' dir='rtl'>
                 <head>
                     <style>
+                        *{{
+                            font-size: 10px;
+
+                        }}
                         body {{
                             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                             background-color: #f9f9f9;
@@ -44,8 +48,8 @@ namespace AutomatedTaskSystem.Services.Email
                 </head>
                 <body>
                     <div class='container'>
-                        <h1>Digital<h1>
-                        <h2>طلب أجازة</h2>
+                        <h3>Digital<h3>
+                        <h4>طلب أجازة</h4>
                         <div class='section'>
                             <span class='label'>الموظف:</span> {fullName}
                         </div>
@@ -82,6 +86,10 @@ namespace AutomatedTaskSystem.Services.Email
                         <html lang='ar' dir='rtl'>
                         <head>
                             <style>
+*{{
+                            font-size: 10px;
+
+                        }}
                                 body {{
                                     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                                     background-color: #f9f9f9;
@@ -111,8 +119,8 @@ namespace AutomatedTaskSystem.Services.Email
                         </head>
                         <body>
                             <div class='container'>
-                                <h1>Digital<h1>
-                                <h2>  طلب الإذن</h2>
+                                <h3>Digital<h3>
+                                <h4>  طلب الإذن</h4>
                                 <div class='section'>
                                     <span class='label'>الموظف:</span> {fullName}
                                 </div>
@@ -140,6 +148,10 @@ namespace AutomatedTaskSystem.Services.Email
                 <html lang='ar' dir='rtl'>
                 <head>
                     <style>
+*{{
+                            font-size: 10px;
+
+                        }}
                         body {{
                             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                             background-color: #f9f9f9;
@@ -165,8 +177,8 @@ namespace AutomatedTaskSystem.Services.Email
                 </head>
                 <body>
                     <div class='container'>
-                        <h1>Digital<h1>
-                        <h2> إلغاء طلب الأجازة</h2>
+                        <h3>Digital<h3>
+                        <h4> إلغاء طلب الأجازة</h4>
                         <div class='section'><span class='label'>الموظف:</span> {fullName}</div>
                         <div class='section'><span class='label'>تاريخ البدء:</span> {startDate}</div>
                         <div class='section'><span class='label'>تاريخ الانتهاء:</span> {endDate}</div>
@@ -183,6 +195,10 @@ namespace AutomatedTaskSystem.Services.Email
                 <html lang='ar' dir='rtl'>
                 <head>
                     <style>
+*{{
+                            font-size: 10px;
+
+                        }}
                         body {{
                             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                             background-color: #f9f9f9;
@@ -208,8 +224,8 @@ namespace AutomatedTaskSystem.Services.Email
                 </head>
                 <body>
                     <div class='container'>
-                        <h1>Digital<h1>
-                        <h2> إلغاء طلب الإذن</h2>
+                        <h3>Digital<h3>
+                        <h4> إلغاء طلب الإذن</h4>
                         <div class='section'><span class='label'>الموظف:</span> {fullName}</div>
                         <div class='section'><span class='label'>تاريخ الإذن:</span> {permissionDate}</div>
                         <div class='section'><span class='label'>من الساعة:</span> {from}</div>
@@ -225,6 +241,10 @@ namespace AutomatedTaskSystem.Services.Email
                 <html lang='ar' dir='rtl'>
                 <head>
                     <style>
+*{{
+                            font-size: 10px;
+
+                        }}
                         body {{
                             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                             background-color: #f9f9f9;
@@ -254,13 +274,16 @@ namespace AutomatedTaskSystem.Services.Email
                 </head>
                 <body>
                     <div class='container'>
-                        <h1>Digital<h1>
-                        <h2>طلب عمل من المنزل</h2>
+                        <h3>Digital<h3>
+                        <h4>طلب عمل من المنزل</h4>
                         <div class='section'>
                             <span class='label'>الموظف:</span> {fullName}
                         </div>
                         <div class='section'>
                             <span class='label'>تاريخ العمل من المنزل:</span> {date:yyyy-MM-dd}
+                        </div>
+                        <div class='section'>
+                            <span class='label'>عدد ساعات العمل من المنزل:</span> 8
                         </div>
                         <div class='section'>
                           <div class='section'><span class='label'>كود الموظف:</span> {hrCode}</div>
@@ -274,6 +297,10 @@ namespace AutomatedTaskSystem.Services.Email
                 <html lang='ar' dir='rtl'>
                 <head>
                     <style>
+                        *{{
+                            font-size: 10px;
+
+                        }}
                         body {{
                             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                             background-color: #f9f9f9;
@@ -299,8 +326,8 @@ namespace AutomatedTaskSystem.Services.Email
                 </head>
                 <body>
                     <div class='container'>
-                        <h1>Digital<h1>
-                        <h2> إلغاء طلب العمل من المنزل</h2>
+                        <h3>Digital<h3>
+                        <h4> إلغاء طلب العمل من المنزل</h4>
                         <div class='section'><span class='label'>الموظف:</span> {fullName}</div>
                         <div class='section'><span class='label'>تاريخ العمل من المنزل:</span> {date}</div>
                         <div class='section'><span class='label'>كود الموظف:</span> {hrCode}</div>
