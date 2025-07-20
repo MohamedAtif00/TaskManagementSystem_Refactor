@@ -154,9 +154,87 @@ const Calendar = () => {
     });
     const [workFromHomeSearchText, setWorkFromHomeSearchText] = useState<string>("");
 
+    const [selectedRows, setSelectedRows] = useState(new Set<string | number>());
+
 
     const auth = useAppSelector((s) => s.authSlice);
     //#endregion
+
+    const handleSelectionChange = useCallback((newSelection: Set<string | number>) => {
+        debugger
+        // Determine the correct data source based on the active tab
+        const dataMap = {
+            vacancy: vacancies,
+            permission: permissions,
+            workFromHome: workFromHomeRequests,
+        };
+        const currentData = dataMap[activeTab];
+
+        // Filter the new selection to only include items that are in a 'Pending' state
+        const pendingSelection = new Set<string | number>();
+        const isPrivilegedUser = auth.role === 0 || auth.role === 2 || auth.role === 1;
+
+        newSelection.forEach(id => {
+            // Find the item in the current data source
+            const item = currentData.find(x => x.id == id);
+            if (item) {
+                // For privileged users, their actionable items are those with 'myStatus' as Pending.
+                // If 'myStatus' isn't available, it falls back to the overall 'status'.
+                // For other users, it's just the overall 'status'.
+                const statusToCheck = isPrivilegedUser ? (item.myStatus ?? item.status) : item.status;
+
+                // Only add the item to the selection if its status is "Pending"
+                if (statusToCheck === "Pending") {
+                    pendingSelection.add(id);
+                }
+            }
+        });
+
+        setSelectedRows(pendingSelection);
+    }, [activeTab, vacancies, permissions, workFromHomeRequests, auth.role]);
+
+    const handleBulkOpinion = async (status: 'Approved' | 'Rejected') => {
+        const selectedIds = Array.from(selectedRows).map(id => Number(id));
+        if (selectedIds.length === 0) {
+            toast.warn("No rows selected for bulk action.");
+            return;
+        }
+
+        setIsSubmitting(true);
+        toast.info(`Submitting bulk ${status.toLowerCase()} for ${selectedIds.length} items...`);
+
+        try {
+            let response: ResponseService<any> | undefined;
+            const opinionStatus = status === 'Approved' ? LeaveRequestStatus.Approved : LeaveRequestStatus.Rejected;
+
+            // NOTE: The following API calls are assumed to exist and need to be implemented in your API service files.
+            // They should accept an object with an array of IDs and the new status.
+            switch (activeTab) {
+                case 'vacancy':
+                    response = await LEAVE.BULK_UPDATE_STATUS({ ids: selectedIds, status: opinionStatus });
+                    break;
+                case 'permission':
+                    response = await PERMISSION.BULK_UPDATE_STATUS({ ids: selectedIds, status: opinionStatus as unknown as PermissionRequestStatus });
+                    break;
+                // case 'workFromHome':
+                //     response = await WORK_FROM_HOME.BULK_UPDATE_STATUS({ ids: selectedIds, status: opinionStatus as unknown as WorkFromHomeStatus });
+                //     break;
+            }
+
+            if (response && !response.error) {
+                toast.success(response.message || `Successfully ${status.toLowerCase()}ed ${selectedIds.length} requests.`);
+                setSelectedRows(new Set()); // Clear selection after action
+                refetchData(); // Refresh the data in the table
+            } else {
+                toast.error(response?.message || `Failed to submit bulk action. Please ensure you have the correct permissions.`);
+            }
+        } catch (error) {
+            toast.error(`An error occurred during the bulk ${status.toLowerCase()} process.`);
+            console.error(`Error during bulk ${status.toLowerCase()} for tab ${activeTab}:`, error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     // fetch all
 
@@ -634,6 +712,7 @@ const Calendar = () => {
     // Handle tab change (reset pagination/filters for the new tab)
     const handleTabChange = useCallback((tab: "vacancy" | "permission" | "workFromHome") => {
         setActiveTab(tab);
+        setSelectedRows(new Set()); // Clear selection on tab change
         // Reset to page 1 for the newly active tab
         if (tab === "vacancy") {
             setVacancyCurrentPage(1);
@@ -836,6 +915,24 @@ const Calendar = () => {
             </div>
 
             <div className="flex justify-end gap-3 mb-4">
+                {selectedRows.size > 0 && (auth.role === 0 || auth.role === 2 || auth.role === 1|| auth.role === 4) && (
+                    <>
+                        <button
+                            onClick={() => handleBulkOpinion('Approved')}
+                            disabled={isSubmitting}
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-lg transition-all disabled:bg-gray-400"
+                        >
+                            Approve Selected ({selectedRows.size})
+                        </button>
+                        <button
+                            onClick={() => handleBulkOpinion('Rejected')}
+                            disabled={isSubmitting}
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-lg transition-all disabled:bg-gray-400"
+                        >
+                            Reject Selected ({selectedRows.size})
+                        </button>
+                    </>
+                )}
                 {activeTab === "vacancy" && (
                     <ServerExportButton
                         fetchDataFunction={getVacanciesForExport}
@@ -869,6 +966,10 @@ const Calendar = () => {
                     filterConfig={vacancyFilterConfig}
                     loading={loading.vacancies}
                     columnRenderers={vacancyColumnRenderers}
+                    enableSelection={true}
+                    rowIdKey="Actions"
+                    selectedRows={selectedRows}
+                    onSelectionChange={handleSelectionChange}
                     serverSide={true}
                 />
             )}
@@ -884,6 +985,10 @@ const Calendar = () => {
                     loading={loading.permissions}
                     columnRenderers={permissionColumnRenderers}
                     serverSide={true}
+                    enableSelection={true}
+                    rowIdKey="Actions"
+                    selectedRows={selectedRows}
+                    onSelectionChange={handleSelectionChange}
                 />
             )}
 
@@ -898,6 +1003,10 @@ const Calendar = () => {
                     loading={loading.workFromHome}
                     columnRenderers={workFromHomeColumnRenderers}
                     serverSide={true}
+                    enableSelection={true}
+                    rowIdKey="Actions"
+                    selectedRows={selectedRows}
+                    onSelectionChange={handleSelectionChange}
                 />
             )}
         </div>

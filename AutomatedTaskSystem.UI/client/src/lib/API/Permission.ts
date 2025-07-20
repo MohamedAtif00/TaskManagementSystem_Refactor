@@ -90,10 +90,10 @@ interface IGetPermissionDetails {
 }
 
  enum PermissionRequestStatus {
-    Pending = "pending", // Assign string values for clarity and easier debugging
-    Approved = "approved",
-    Rejected = "rejected",
-    Cancelled = "cancelled"
+    Pending = "Pending",
+    Approved = "Approved",
+    Rejected = "Rejected",
+    Cancelled = "Cancelled"
 }
 
  enum PermissionType {
@@ -114,6 +114,11 @@ interface IOpinion {
 interface IGetOpinion extends IOpinion {
     id: number;
     dateCreated: string;
+}
+
+interface IBulkUpdatePermissionStatusRequest {
+    ids: number[];
+    status: PermissionRequestStatus;
 }
 
 // Updated interface to reflect server-side pagination response structure
@@ -200,8 +205,7 @@ const PERMISSION = {
             console.error("Error fetching all permissions for export:", error);
             throw error;
         }
-    },
-    
+    },   
     CREATE: async (permission: ICreatePermission): Promise<ResponseService<boolean>> => {
         try {
             const auth = authService.authHeader();
@@ -384,6 +388,38 @@ const PERMISSION = {
         }
     },
 
+    BULK_UPDATE_STATUS: async (request: IBulkUpdatePermissionStatusRequest): Promise<ResponseService<boolean>> => {
+        try {
+            const auth = authService.authHeader();
+            const res = await fetch(`${url}/Permission/BulkUpdateStatus`, { // Assuming this is the new endpoint
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...auth
+                },
+                body: JSON.stringify(request),
+            });
+
+            if (!res.ok) {
+                const errorResponse = await res.json().catch(() => ({ message: `HTTP error! status: ${res.status}` }));
+                return {
+                    error: true,
+                    message: errorResponse.message || `Failed to perform bulk update.`,
+                    data: false
+                };
+            }
+
+            return await res.json();
+        } catch (error) {
+            console.error("Error during bulk status update:", error);
+            return {
+                error: true,
+                message: error instanceof Error ? error.message : 'An unknown error occurred during bulk update.',
+                data: false
+            };
+        }
+    },
+
     GET_BY_SAME_USER: async (): Promise<ResponseService<IPermission[]> | false> => {
         try {
             const auth = authService.authHeader();
@@ -407,7 +443,8 @@ export type{
     ICreatePermission,
     IGetPermissionDetails,
     IOpinion,
-    IGetOpinion
+    IGetOpinion,
+    IBulkUpdatePermissionStatusRequest
 };
 
 export {PermissionRequestStatus,

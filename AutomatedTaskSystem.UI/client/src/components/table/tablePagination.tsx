@@ -53,6 +53,12 @@ interface DataTableProps {
     serverSide?: boolean;
     showSearchInput?: boolean;
     shouldFocusSearch?: boolean;
+    // New checkbox-related props
+    enableSelection?: boolean;
+    selectedRows?: Set<string | number>;
+    onSelectionChange?: (selectedRows: Set<string | number>) => void;
+    rowIdKey?: string; // Key to use as unique identifier for each row (defaults to array index)
+    selectionMode?: 'multiple' | 'single'; // Defaults to 'multiple'
 }
 
 interface PaginationButtonProps {
@@ -74,6 +80,12 @@ const DataTable: React.FC<DataTableProps> = ({
     serverSide = false,
     showSearchInput = true,
     shouldFocusSearch = false,
+    // New props with defaults
+    enableSelection = false,
+    selectedRows = new Set(),
+    onSelectionChange,
+    rowIdKey,
+    selectionMode = 'multiple',
 }) => {
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [currentItemsPerPage, setCurrentItemsPerPage] = useState<number>(propItemsPerPage);
@@ -88,6 +100,10 @@ const DataTable: React.FC<DataTableProps> = ({
     const lastSentSearchTextRef = useRef<string>("");
     const isInitialMount = useRef(true);
 
+    // Helper function to get unique row identifier
+    const getRowId = useCallback((row: Record<string, any>, index: number): string | number => {
+        return rowIdKey && row[rowIdKey] !== undefined ? row[rowIdKey] : index;
+    }, [rowIdKey]);
 
     useEffect(() => {
         if (shouldFocusSearch && searchInputRef.current) {
@@ -218,6 +234,76 @@ const DataTable: React.FC<DataTableProps> = ({
         const endIndex = startIndex + currentItemsPerPage;
         return filteredData.slice(startIndex, endIndex);
     }, [data, filteredData, currentPage, currentItemsPerPage, serverSide]);
+
+    // Selection handlers
+    const handleRowSelect = useCallback((rowId: string | number, isSelected: boolean) => {
+        debugger
+        if (!onSelectionChange) return;
+        
+        const newSelection = new Set(selectedRows);
+        
+        if (selectionMode === 'single') {
+            // For single selection, clear all and add only this one if selected
+            newSelection.clear();
+            if (isSelected) {
+                newSelection.add(rowId);
+            }
+        } else {
+            // For multiple selection
+            if (isSelected) {
+                newSelection.add(rowId);
+            } else {
+                newSelection.delete(rowId);
+            }
+        }
+        
+        onSelectionChange(newSelection);
+    }, [selectedRows, onSelectionChange, selectionMode]);
+
+    const handleSelectAll = useCallback((isSelected: boolean) => {
+        if (!onSelectionChange || selectionMode === 'single') return;
+
+        const newSelection = new Set<string | number>();
+        
+        if (isSelected) {
+            // Add all visible rows to selection
+            const dataToUse = serverSide ? data : paginatedData;
+            dataToUse.forEach((row, index) => {
+                const rowId = getRowId(row, index);
+                newSelection.add(rowId);
+            });
+        }
+        
+        onSelectionChange(newSelection);
+    }, [onSelectionChange, serverSide, data, paginatedData, getRowId, selectionMode]);
+
+    // Check if all visible rows are selected
+    const isAllSelected = useMemo(() => {
+        if (!enableSelection || selectionMode === 'single') return false;
+        
+        const dataToUse = serverSide ? data : paginatedData;
+        if (dataToUse.length === 0) return false;
+        
+        return dataToUse.every((row, index) => {
+            const rowId = getRowId(row, index);
+            return selectedRows.has(rowId);
+        });
+    }, [enableSelection, selectionMode, serverSide, data, paginatedData, selectedRows, getRowId]);
+
+    // Check if some (but not all) visible rows are selected
+    const isIndeterminate = useMemo(() => {
+        if (!enableSelection || selectionMode === 'single') return false;
+        
+        const dataToUse = serverSide ? data : paginatedData;
+        if (dataToUse.length === 0) return false;
+        
+        const selectedCount = dataToUse.filter((row, index) => {
+            const rowId = getRowId(row, index);
+            return selectedRows.has(rowId);
+        }).length;
+        
+        return selectedCount > 0 && selectedCount < dataToUse.length;
+    }, [enableSelection, selectionMode, serverSide, data, paginatedData, selectedRows, getRowId]);
 
     const getPageNumbers = useMemo(() => {
         const pageNumbers = [];
@@ -370,18 +456,16 @@ const DataTable: React.FC<DataTableProps> = ({
         return String(value);
     }, [columnRenderers]);
 
-    // --- Start of the change for loading overlay ---
     const displayData = serverSide ? data : paginatedData;
     const currentTotalCount = serverSide ? totalCount : filteredData.length;
 
     return (
-        <div className="w-full bg-white rounded-lg shadow-lg p-6 relative"> {/* Add relative positioning here */}
+        <div className="w-full bg-white rounded-lg shadow-lg p-6 relative">
             {loading && (
                 <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 rounded-lg">
-                    <TableLoader /> {/* Render your TableLoader component */}
+                    <TableLoader />
                 </div>
             )}
-    {/* --- End of the change for loading overlay --- */}
 
             <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 {showSearchInput && (
@@ -407,6 +491,14 @@ const DataTable: React.FC<DataTableProps> = ({
                 ))}
             </div>
 
+            {enableSelection && selectedRows.size > 0 && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <span className="text-sm text-blue-800">
+                        {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
+                    </span>
+                </div>
+            )}
+
             {displayData.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                     {searchText || Object.values(filters).some(f => f && f !== "all") ? "No results found for your criteria" : "No data available"}
@@ -416,6 +508,22 @@ const DataTable: React.FC<DataTableProps> = ({
                     <table className="w-full table-auto">
                         <thead>
                             <tr className="bg-gray-50">
+                                {enableSelection && (
+                                    <th className="px-6 py-3 text-left">
+                                        {selectionMode === 'multiple' && (
+                                            <input
+                                                type="checkbox"
+                                                checked={isAllSelected}
+                                                ref={(input) => {
+                                                    if (input) input.indeterminate = isIndeterminate;
+                                                }}
+                                                onChange={(e) => handleSelectAll(e.target.checked)}
+                                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                aria-label="Select all rows"
+                                            />
+                                        )}
+                                    </th>
+                                )}
                                 {Object.keys(displayData[0])
                                     .filter(header => !header.startsWith('original'))
                                     .map((header) => (
@@ -429,20 +537,39 @@ const DataTable: React.FC<DataTableProps> = ({
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {displayData.map((row, rowIndex) => (
-                                <tr key={rowIndex} className="hover:bg-gray-50 transition-colors">
-                                    {Object.keys(row)
-                                        .filter(header => !header.startsWith('original'))
-                                        .map((header, cellIndex) => (
-                                            <td
-                                                key={cellIndex}
-                                                className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
-                                            >
-                                                {renderCellContent(header, row[header], row)}
+                            {displayData.map((row, rowIndex) => {
+                                const rowId = getRowId(row, rowIndex);
+                                const isSelected = selectedRows.has(rowId);
+                                
+                                return (
+                                    <tr 
+                                        key={rowIndex} 
+                                        className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
+                                    >
+                                        {enableSelection && (
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={(e) => handleRowSelect(rowId, e.target.checked)}
+                                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                    aria-label={`Select row ${rowIndex + 1}`}
+                                                />
                                             </td>
-                                        ))}
-                                </tr>
-                            ))}
+                                        )}
+                                        {Object.keys(row)
+                                            .filter(header => !header.startsWith('original'))
+                                            .map((header, cellIndex) => (
+                                                <td
+                                                    key={cellIndex}
+                                                    className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                                                >
+                                                    {renderCellContent(header, row[header], row)}
+                                                </td>
+                                            ))}
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
