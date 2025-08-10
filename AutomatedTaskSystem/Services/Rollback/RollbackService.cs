@@ -11,7 +11,7 @@ namespace AutomatedTaskSystem.Services.RollbackService;
 public class RollbackService : IRollbackService
 {
     private readonly DataContext _context;
-    private readonly IAuthService _authService;
+    private readonly IAuthService _authService; 
 
     public RollbackService(DataContext context, IAuthService authService)
     {

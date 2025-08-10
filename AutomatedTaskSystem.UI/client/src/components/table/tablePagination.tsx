@@ -59,6 +59,12 @@ interface DataTableProps {
     onSelectionChange?: (selectedRows: Set<string | number>) => void;
     rowIdKey?: string; // Key to use as unique identifier for each row (defaults to array index)
     selectionMode?: 'multiple' | 'single'; // Defaults to 'multiple'
+    // Props to control current state values (for preserving state across tab switches)
+    currentPage?: number;
+    currentFilters?: Record<string, any>;
+    currentSearchText?: string;
+    // Function to determine if a row can be selected (for business logic filtering)
+    isRowSelectable?: (row: Record<string, any>, index: number) => boolean;
 }
 
 interface PaginationButtonProps {
@@ -86,11 +92,17 @@ const DataTable: React.FC<DataTableProps> = ({
     onSelectionChange,
     rowIdKey,
     selectionMode = 'multiple',
+    // New state control props
+    currentPage: propCurrentPage = 1,
+    currentFilters: propCurrentFilters = {},
+    currentSearchText: propCurrentSearchText = "",
+    // Row selection filter
+    isRowSelectable,
 }) => {
-    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [currentPage, setCurrentPage] = useState<number>(propCurrentPage);
     const [currentItemsPerPage, setCurrentItemsPerPage] = useState<number>(propItemsPerPage);
-    const [filters, setFilters] = useState<Record<string, any>>({});
-    const [searchText, setSearchText] = useState<string>("");
+    const [filters, setFilters] = useState<Record<string, any>>(propCurrentFilters);
+    const [searchText, setSearchText] = useState<string>(propCurrentSearchText);
 
     const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -110,6 +122,19 @@ const DataTable: React.FC<DataTableProps> = ({
             searchInputRef.current.focus();
         }
     }, [shouldFocusSearch]);
+
+    // Sync internal state with props when they change (for tab switching)
+    useEffect(() => {
+        setCurrentPage(propCurrentPage);
+    }, [propCurrentPage]);
+
+    useEffect(() => {
+        setFilters(propCurrentFilters);
+    }, [propCurrentFilters]);
+
+    useEffect(() => {
+        setSearchText(propCurrentSearchText);
+    }, [propCurrentSearchText]);
 
     useEffect(() => {
         if (isInitialMount.current && serverSide) {
@@ -264,46 +289,66 @@ const DataTable: React.FC<DataTableProps> = ({
         if (!onSelectionChange || selectionMode === 'single') return;
 
         const newSelection = new Set<string | number>();
-        
+
         if (isSelected) {
-            // Add all visible rows to selection
+            // Add all visible selectable rows to selection
             const dataToUse = serverSide ? data : paginatedData;
             dataToUse.forEach((row, index) => {
-                const rowId = getRowId(row, index);
-                newSelection.add(rowId);
+                // Only add row if it's selectable (if isRowSelectable is provided)
+                if (!isRowSelectable || isRowSelectable(row, index)) {
+                    const rowId = getRowId(row, index);
+                    newSelection.add(rowId);
+                }
             });
         }
-        
-        onSelectionChange(newSelection);
-    }, [onSelectionChange, serverSide, data, paginatedData, getRowId, selectionMode]);
 
-    // Check if all visible rows are selected
+        onSelectionChange(newSelection);
+    }, [onSelectionChange, serverSide, data, paginatedData, getRowId, selectionMode, isRowSelectable]);
+
+    // Check if all visible selectable rows are selected
     const isAllSelected = useMemo(() => {
         if (!enableSelection || selectionMode === 'single') return false;
-        
+
         const dataToUse = serverSide ? data : paginatedData;
         if (dataToUse.length === 0) return false;
-        
-        return dataToUse.every((row, index) => {
-            const rowId = getRowId(row, index);
+
+        // Filter to only selectable rows
+        const selectableRows = dataToUse.filter((row, index) =>
+            !isRowSelectable || isRowSelectable(row, index)
+        );
+
+        if (selectableRows.length === 0) return false;
+
+        return selectableRows.every((row) => {
+            // Find the original index in the full data array
+            const fullIndex = dataToUse.findIndex(r => r === row);
+            const rowId = getRowId(row, fullIndex);
             return selectedRows.has(rowId);
         });
-    }, [enableSelection, selectionMode, serverSide, data, paginatedData, selectedRows, getRowId]);
+    }, [enableSelection, selectionMode, serverSide, data, paginatedData, selectedRows, getRowId, isRowSelectable]);
 
-    // Check if some (but not all) visible rows are selected
+    // Check if some (but not all) visible selectable rows are selected
     const isIndeterminate = useMemo(() => {
         if (!enableSelection || selectionMode === 'single') return false;
-        
+
         const dataToUse = serverSide ? data : paginatedData;
         if (dataToUse.length === 0) return false;
-        
-        const selectedCount = dataToUse.filter((row, index) => {
-            const rowId = getRowId(row, index);
+
+        // Filter to only selectable rows
+        const selectableRows = dataToUse.filter((row, index) =>
+            !isRowSelectable || isRowSelectable(row, index)
+        );
+
+        if (selectableRows.length === 0) return false;
+
+        const selectedCount = selectableRows.filter((row) => {
+            const fullIndex = dataToUse.findIndex(r => r === row);
+            const rowId = getRowId(row, fullIndex);
             return selectedRows.has(rowId);
         }).length;
-        
-        return selectedCount > 0 && selectedCount < dataToUse.length;
-    }, [enableSelection, selectionMode, serverSide, data, paginatedData, selectedRows, getRowId]);
+
+        return selectedCount > 0 && selectedCount < selectableRows.length;
+    }, [enableSelection, selectionMode, serverSide, data, paginatedData, selectedRows, getRowId, isRowSelectable]);
 
     const getPageNumbers = useMemo(() => {
         const pageNumbers = [];
@@ -390,51 +435,87 @@ const DataTable: React.FC<DataTableProps> = ({
         </button>
     );
 
+    const handleItemsPerPageChange = useCallback((newItemsPerPage: number) => {
+        setCurrentItemsPerPage(newItemsPerPage);
+        setCurrentPage(1); // Reset to first page when changing items per page
+
+        // Immediately notify parent of the change (don't wait for useEffect debounce)
+        if (serverSide && onPageChange) {
+            // Update the ref values to prevent duplicate calls from useEffect
+            lastSentPageRef.current = 1;
+            lastSentItemsPerPageRef.current = newItemsPerPage;
+            lastSentFiltersRef.current = filters;
+            lastSentSearchTextRef.current = searchText;
+
+            onPageChange(1, newItemsPerPage, filters, searchText);
+        }
+    }, [serverSide, onPageChange, filters, searchText]);
+
     const renderPagination = useMemo(() => (
-        <div className="flex items-center justify-center mt-4 space-x-2">
-            <PaginationButton
-                onClick={() => handlePageChange(1)}
-                disabled={currentPage === 1 || totalPages === 0}
-                ariaLabel="First page"
-            >
-                <FiChevronsLeft />
-            </PaginationButton>
-            <PaginationButton
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1 || totalPages === 0}
-                ariaLabel="Previous page"
-            >
-                <FiChevronLeft />
-            </PaginationButton>
-
-            {getPageNumbers.map((pageNumber) => (
-                <PaginationButton
-                    key={pageNumber}
-                    onClick={() => handlePageChange(pageNumber)}
-                    disabled={false}
-                    ariaLabel={`Page ${pageNumber}`}
-                    isActive={pageNumber === currentPage}
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 space-y-2 sm:space-y-0 sm:space-x-4">
+            {/* Items per page selector */}
+            <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-700">Show:</span>
+                <select
+                    value={currentItemsPerPage}
+                    onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                    {pageNumber}
-                </PaginationButton>
-            ))}
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                </select>
+                <span className="text-sm text-gray-700">entries</span>
+            </div>
 
-            <PaginationButton
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages || totalPages === 0}
-                ariaLabel="Next page"
-            >
-                <FiChevronRight />
-            </PaginationButton>
-            <PaginationButton
-                onClick={() => handlePageChange(totalPages)}
-                disabled={currentPage >= totalPages || totalPages === 0}
-                ariaLabel="Last page"
-            >
-                <FiChevronsRight />
-            </PaginationButton>
+            {/* Pagination controls */}
+            <div className="flex items-center space-x-2">
+                <PaginationButton
+                    onClick={() => handlePageChange(1)}
+                    disabled={currentPage === 1 || totalPages === 0}
+                    ariaLabel="First page"
+                >
+                    <FiChevronsLeft />
+                </PaginationButton>
+                <PaginationButton
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1 || totalPages === 0}
+                    ariaLabel="Previous page"
+                >
+                    <FiChevronLeft />
+                </PaginationButton>
+
+                {getPageNumbers.map((pageNumber) => (
+                    <PaginationButton
+                        key={pageNumber}
+                        onClick={() => handlePageChange(pageNumber)}
+                        disabled={false}
+                        ariaLabel={`Page ${pageNumber}`}
+                        isActive={pageNumber === currentPage}
+                    >
+                        {pageNumber}
+                    </PaginationButton>
+                ))}
+
+                <PaginationButton
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages || totalPages === 0}
+                    ariaLabel="Next page"
+                >
+                    <FiChevronRight />
+                </PaginationButton>
+                <PaginationButton
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={currentPage >= totalPages || totalPages === 0}
+                    ariaLabel="Last page"
+                >
+                    <FiChevronsRight />
+                </PaginationButton>
+            </div>
         </div>
-    ), [currentPage, totalPages, handlePageChange, getPageNumbers]);
+    ), [currentPage, totalPages, handlePageChange, getPageNumbers, currentItemsPerPage, handleItemsPerPageChange]);
 
     const renderCellContent = useCallback((header: string, value: any, row: Record<string, any>) => {
         if (columnRenderers[header]) {
@@ -540,10 +621,11 @@ const DataTable: React.FC<DataTableProps> = ({
                             {displayData.map((row, rowIndex) => {
                                 const rowId = getRowId(row, rowIndex);
                                 const isSelected = selectedRows.has(rowId);
-                                
+                                const isSelectable = !isRowSelectable || isRowSelectable(row, rowIndex);
+
                                 return (
-                                    <tr 
-                                        key={rowIndex} 
+                                    <tr
+                                        key={rowIndex}
                                         className={`hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
                                     >
                                         {enableSelection && (
@@ -551,8 +633,9 @@ const DataTable: React.FC<DataTableProps> = ({
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
+                                                    disabled={!isSelectable}
                                                     onChange={(e) => handleRowSelect(rowId, e.target.checked)}
-                                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                    className={`w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 ${!isSelectable ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                     aria-label={`Select row ${rowIndex + 1}`}
                                                 />
                                             </td>
@@ -575,7 +658,7 @@ const DataTable: React.FC<DataTableProps> = ({
                 </div>
             )}
 
-            {totalPages > 1 && renderPagination}
+            {renderPagination}
 
             <div className="mt-4 text-sm text-gray-500 text-center">
                 Showing {displayData.length > 0 ? (currentPage - 1) * currentItemsPerPage + 1 : 0} to {Math.min(currentPage * currentItemsPerPage, currentTotalCount)} of {currentTotalCount} results

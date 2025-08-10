@@ -22,5 +22,6 @@ namespace AutomatedTaskSystem.Services.Leave
         Task<ResponseService<PageList<GetLeaveRequestDto>>> GetAllVacationsAsync( int page = 1, int pageSize = 10, string? searchTerm = null, string? fromDate = null, string? toDate = null, string? status = null,string? myStatus = null, string? type = null, bool disablePagination = false);
         Task<ResponseService<PageList<GetLeaveRequestDto>>> GetLeaveRequestsByUserId(int userId, int page, int pageSize, string? searchTerm, string? fromDate, string? toDate, string? status, string? type, bool disablePagination);
         Task<LeaveRequestService.OperationResult> GiveOpinion(CreateOpinionDto request);
+        Task<LeaveRequestService.OperationResult> GiveBulkOpinion(CreateBulkOpinionDto request);
     }
 }

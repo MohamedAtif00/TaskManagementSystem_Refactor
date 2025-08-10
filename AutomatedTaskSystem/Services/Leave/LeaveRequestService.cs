@@ -377,7 +377,8 @@ namespace AutomatedTaskSystem.Services.Leave
                                                                     leaveRequest.Type,
                                                                     leaveRequest.User.HR_code),
                                 IsHtml = true,
-                                CcEmails = new List<string> { _emailRecipients.SectionHead??null, leaveRequest.User.Email} // Note: Your EmailService doesn't send CCs if commented out
+                                CcEmails = _emailRecipients.SectionHead != null?  new List<string> { _emailRecipients.SectionHead??null, leaveRequest.User.Email}:
+                                 new List<string> { leaveRequest.User.Email }// Note: Your EmailService doesn't send CCs if commented out
                             };
 
                             if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
@@ -506,8 +507,84 @@ namespace AutomatedTaskSystem.Services.Leave
                 return OperationResult.Failed("An unexpected error occurred while processing your opinion. Please try again.");
             }
         }
-       
 
+
+        /// <summary>
+        /// Gives opinions (approve/reject) on multiple leave requests in bulk.
+        /// Each individual opinion is processed by the existing GiveOpinion method.
+        /// </summary>
+        /// <param name="request">A DTO containing a list of leave request IDs and the desired status.</param>
+        /// <returns>An OperationResult summarizing the overall outcome of the bulk operation.</returns>
+        public async Task<OperationResult> GiveBulkOpinion(CreateBulkOpinionDto request)
+        {
+            _logService.LogInformation("Attempting to process {Count} bulk opinions.", request.Ids.Length);
+
+            if (request.Ids == null || !request.Ids.Any())
+            {
+                _logService.LogWarning("No leave request IDs provided for bulk opinion operation.");
+                return OperationResult.Failed("No leave request IDs provided for bulk operation.");
+            }
+
+            // Determine IsApproved based on the provided Status
+            bool? isApproved = null;
+            if (request.Status == LeaveRequestStatusEnum.Approved)
+            {
+                isApproved = true;
+            }
+            else if (request.Status == LeaveRequestStatusEnum.Rejected)
+            {
+                isApproved = false;
+            }
+            else
+            {
+                _logService.LogError(null, "Invalid status '{Status}' provided for bulk opinion. Only Approved or Rejected are allowed.", request.Status);
+                return OperationResult.Failed("Invalid status for bulk opinion. Only 'Approved' or 'Rejected' statuses are allowed.");
+            }
+
+            bool overallSuccess = true;
+            int successfulCount = 0;
+            int failedCount = 0;
+            var failedMessages = new List<string>();
+
+            foreach (var leaveRequestId in request.Ids)
+            {
+                var opinionDto = new CreateOpinionDto
+                {
+                    LeaveRequestId = leaveRequestId,
+                    IsApproved = isApproved.Value, // Use the determined approval status
+                };
+
+                var individualResult = await GiveOpinion(opinionDto);
+
+                if (!individualResult.error)
+                {
+                    successfulCount++;
+                }
+                else
+                {
+                    failedCount++;
+                    overallSuccess = false; // Mark overall operation as failed if any individual one fails
+                    failedMessages.Add($"Leave Request ID {leaveRequestId}: {individualResult.Message}");
+                    _logService.LogError(null, "Individual opinion for LeaveRequest {LeaveRequestId} failed: {Message}", leaveRequestId, individualResult.Message);
+                }
+            }
+
+            string finalMessage;
+            if (overallSuccess)
+            {
+                finalMessage = $"Successfully processed all {successfulCount} opinions.";
+            }
+            else
+            {
+                finalMessage = $"Processed {successfulCount} opinions successfully, but {failedCount} failed. Details: {string.Join("; ", failedMessages)}";
+            }
+
+            _logService.LogInformation("Bulk opinion operation completed. {Message}", finalMessage);
+
+            return overallSuccess
+                ? OperationResult.Succeeded(finalMessage)
+                : OperationResult.Failed(finalMessage);
+        }
 
 
         public async Task<List<GetOpinion>> GetAllOpinionsForLeaveRequest(int leaveRequestId) { 

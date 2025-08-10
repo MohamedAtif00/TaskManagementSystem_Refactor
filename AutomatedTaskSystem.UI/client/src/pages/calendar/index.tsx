@@ -9,6 +9,9 @@ import DataTable from "../../components/table/tablePagination";
 import ServerExportButton from "../../components/button/serverExportButtonProps";
 import WORK_FROM_HOME, { WorkFromHomeStatus, IGetAllWorkFromHomeRequestNoPagination, IGetWorkFromHomeRequest, IDName } from "../../lib/API/workFromHome";
 import { toast } from "react-toastify";
+import EyeIcon from "../../assets/Icons/Eye";
+import CheckIcon from "../../assets/Icons/Check";
+import XIcon from "../../assets/Icons/x";
 
 // Assume these interfaces are imported or defined globally if they are not part of LEAVE/PERMISSION
 // Re-declaring for clarity within this file's context, but ideally these would be in a shared types file.
@@ -154,11 +157,42 @@ const Calendar = () => {
     });
     const [workFromHomeSearchText, setWorkFromHomeSearchText] = useState<string>("");
 
-    const [selectedRows, setSelectedRows] = useState(new Set<string | number>());
+    // Separate selection states for each tab
+    const [vacancySelectedRows, setVacancySelectedRows] = useState(new Set<string | number>());
+    const [permissionSelectedRows, setPermissionSelectedRows] = useState(new Set<string | number>());
+    const [workFromHomeSelectedRows, setWorkFromHomeSelectedRows] = useState(new Set<string | number>());
 
 
     const auth = useAppSelector((s) => s.authSlice);
     //#endregion
+
+    // Helper functions to get current selection state and setter based on active tab
+    const getCurrentSelectedRows = useCallback(() => {
+        switch (activeTab) {
+            case 'vacancy':
+                return vacancySelectedRows;
+            case 'permission':
+                return permissionSelectedRows;
+            case 'workFromHome':
+                return workFromHomeSelectedRows;
+            default:
+                return new Set<string | number>();
+        }
+    }, [activeTab, vacancySelectedRows, permissionSelectedRows, workFromHomeSelectedRows]);
+
+    const setCurrentSelectedRows = useCallback((newSelection: Set<string | number>) => {
+        switch (activeTab) {
+            case 'vacancy':
+                setVacancySelectedRows(newSelection);
+                break;
+            case 'permission':
+                setPermissionSelectedRows(newSelection);
+                break;
+            case 'workFromHome':
+                setWorkFromHomeSelectedRows(newSelection);
+                break;
+        }
+    }, [activeTab]);
 
     const handleSelectionChange = useCallback((newSelection: Set<string | number>) => {
         debugger
@@ -170,10 +204,11 @@ const Calendar = () => {
         };
         const currentData = dataMap[activeTab];
 
-        // Filter the new selection to only include items that are in a 'Pending' state
-        const pendingSelection = new Set<string | number>();
+        // Create a new selection set that will contain only valid pending items
+        const validSelection = new Set<string | number>();
         const isPrivilegedUser = auth.role === 0 || auth.role === 2 || auth.role === 1;
 
+        // Process each item in the new selection
         newSelection.forEach(id => {
             // Find the item in the current data source
             const item = currentData.find(x => x.id == id);
@@ -185,16 +220,32 @@ const Calendar = () => {
 
                 // Only add the item to the selection if its status is "Pending"
                 if (statusToCheck === "Pending") {
-                    pendingSelection.add(id);
+                    validSelection.add(id);
                 }
             }
         });
 
-        setSelectedRows(pendingSelection);
-    }, [activeTab, vacancies, permissions, workFromHomeRequests, auth.role]);
+        // Handle deselection: if an item was previously selected but is not in newSelection,
+        // it means the user unchecked it, so we should respect that action
+        // The validSelection already contains only the items that should remain selected
+
+        setCurrentSelectedRows(validSelection);
+    }, [activeTab, vacancies, permissions, workFromHomeRequests, auth.role, setCurrentSelectedRows]);
+
+    // Function to determine if a row can be selected (only pending items)
+    const isRowSelectable = useCallback((row: Record<string, any>) => {
+        const isPrivilegedUser = auth.role === 0 || auth.role === 2 || auth.role === 1;
+
+        // Get the status to check based on user role
+        const statusToCheck = isPrivilegedUser ? (row["My Status"] ?? row["Final Status"]) : row["Final Status"];
+
+        // Only pending items can be selected
+        return statusToCheck === "Pending";
+    }, [auth.role]);
 
     const handleBulkOpinion = async (status: 'Approved' | 'Rejected') => {
-        const selectedIds = Array.from(selectedRows).map(id => Number(id));
+        const currentSelection = getCurrentSelectedRows();
+        const selectedIds = Array.from(currentSelection).map(id => Number(id));
         if (selectedIds.length === 0) {
             toast.warn("No rows selected for bulk action.");
             return;
@@ -223,7 +274,7 @@ const Calendar = () => {
 
             if (response && !response.error) {
                 toast.success(response.message || `Successfully ${status.toLowerCase()}ed ${selectedIds.length} requests.`);
-                setSelectedRows(new Set()); // Clear selection after action
+                setCurrentSelectedRows(new Set()); // Clear selection after action
                 refetchData(); // Refresh the data in the table
             } else {
                 toast.error(response?.message || `Failed to submit bulk action. Please ensure you have the correct permissions.`);
@@ -587,26 +638,73 @@ const Calendar = () => {
     }, []);
 
 
- 
+type RequestType = "vacancy" | "permission" | "workFromHome";
 
-    const handleSubmitOpinion = useCallback(async (id: number, status: LeaveRequestStatus.Approved | LeaveRequestStatus.Rejected) => {
+// ... (existing LeaveRequestStatus, PermissionRequestStatus enums)
+
+    const handleSubmitOpinion = useCallback(async (
+        id: number,
+        status: LeaveRequestStatus | PermissionRequestStatus | WorkFromHomeStatus,
+        type: RequestType
+        ) => {
         setIsSubmitting(true);
         try {
-            const op: IOpinion = {
-                leaveRequestId: id,
-                comment: "",
-                status: status,
-                isApproved: status === LeaveRequestStatus.Approved,
-                user: { id: auth.id, name: auth.name, role: auth.role }
+            const commonFields = {
+            comment: "",
+            isApproved: status === LeaveRequestStatus.Approved || 
+                        status === PermissionRequestStatus.Approved ||
+                        status === WorkFromHomeStatus.Approved,
+            user: { id: auth.id, name: auth.name, role: auth.role }
             };
-            const response = await LEAVE.CREATE_OPINION(op);
+
+            let op: IOpinion;
+            switch (type) {
+            case 'vacancy':
+                op = {
+                type: 'leave',
+                leaveRequestId: id,
+                status: status as LeaveRequestStatus,
+                ...commonFields
+                };
+                break;
+            case 'permission':
+                op = {
+                type: 'permission',
+                permissionId: id,
+                status: status as PermissionRequestStatus,
+                ...commonFields
+                };
+                break;
+            case 'workFromHome':
+                op = {
+                type: 'workFromHome',
+                workFromHomeId: id,
+                status: status as WorkFromHomeStatus,
+                ...commonFields
+                };
+                break;
+            default:
+                throw new Error(`Unknown request type: ${type}`);
+            }
+
+            let response;
+            switch (op.type) {
+            case 'leave':
+                response = await LEAVE.CREATE_OPINION(op);
+                break;
+            case 'permission':
+                response = await PERMISSION.CREATE_OPINION(op);
+                break;
+            case 'workFromHome':
+                response = await WORK_FROM_HOME.CREATE_OPINION(op);
+                break;
+            }
+
             if (response && !response.error) {
-                toast.success(response.message || "Opinion submitted successfully!");
-                // refetchData now has the correct, current filter/pagination state
-                // because this chain of callbacks is correctly memoized.
-                refetchData();
+            toast.success(response.message || "Opinion submitted successfully!");
+            refetchData();
             } else {
-                toast.error(response?.message || "Failed to submit opinion.");
+            toast.error(response?.message || "Failed to submit opinion.");
             }
         } catch (error) {
             toast.error("An error occurred while submitting your opinion.");
@@ -614,22 +712,56 @@ const Calendar = () => {
         } finally {
             setIsSubmitting(false);
         }
-    }, [auth.id, auth.name, auth.role, refetchData]);
+        }, [auth.id, auth.name, auth.role, refetchData]);
 
-    const commonActionsRenderer = useCallback((id: number, path: string, currentOpinion:LeaveRequestStatus) => (
-        <div className="flex  gap-2">
-            {currentOpinion === LeaveRequestStatus.Pending && // This condition makes buttons appear only if pending
-            <div className="flex gap-1">
-                {/* Disable buttons while submitting to prevent double clicks */}
-                <button onClick={() => handleSubmitOpinion(id, LeaveRequestStatus.Approved)} disabled={isSubmitting} className="bg-green-600 rounded p-2 text-white disabled:bg-gray-400">Accept</button>
-                <button onClick={() => handleSubmitOpinion(id, LeaveRequestStatus.Rejected)} disabled={isSubmitting} className="bg-red-600 rounded p-2 text-white disabled:bg-gray-400">Reject</button>
-            </div>
-            }
-            <Link href={`/calendar/${path}/${id}`} className="text-gray-600 hover:text-gray-900 transition-colors " >
-                <button className="bg-blue-600 rounded p-2 text-white">Show</button>
+
+    const commonActionsRenderer = useCallback((id: number, path: string, currentStatus: LeaveRequestStatus | PermissionRequestStatus | WorkFromHomeStatus) => (
+        <div className="flex gap-2">
+            {currentStatus === LeaveRequestStatus.Pending || 
+            currentStatus === PermissionRequestStatus.Pending ||
+            currentStatus === WorkFromHomeStatus.Pending ? (
+                <div className="flex gap-1">
+                    <button 
+                        onClick={() => {
+                            // Determine the approved status based on activeTab
+                            const approvedStatus = 
+                                activeTab === "vacancy" ? LeaveRequestStatus.Approved :
+                                activeTab === "permission" ? PermissionRequestStatus.Approved :
+                                activeTab === "workFromHome" ? WorkFromHomeStatus.Approved :
+                                LeaveRequestStatus.Approved; // default fallback
+                            
+                            handleSubmitOpinion(id, approvedStatus , activeTab);
+                        }} 
+                        disabled={isSubmitting} 
+                        className="bg-green-600 rounded p-2 text-white disabled:bg-gray-400"
+                    >
+                        <CheckIcon/>
+                    </button>
+                    <button 
+                        onClick={() => {
+                            // Determine the rejected status based on activeTab
+                            const rejectedStatus = 
+                                activeTab === "vacancy" ? LeaveRequestStatus.Rejected :
+                                activeTab === "permission" ? PermissionRequestStatus.Rejected :
+                                activeTab === "workFromHome" ? WorkFromHomeStatus.Rejected :
+                                LeaveRequestStatus.Rejected; // default fallback
+                            
+                            handleSubmitOpinion(id, rejectedStatus, activeTab);
+                        }} 
+                        disabled={isSubmitting} 
+                        className="bg-red-600 rounded p-2 text-white disabled:bg-gray-400"
+                    >
+                        <XIcon/>
+                    </button>
+                </div>
+            ) : null}
+            <Link href={`/calendar/${path}/${id}`} className="text-gray-600 hover:text-gray-900 transition-colors">
+                <button className="bg-blue-600 rounded p-2 text-white"><EyeIcon /></button>
             </Link>
         </div>
-    ), [handleSubmitOpinion, isSubmitting]);
+    ), [handleSubmitOpinion, isSubmitting, activeTab]);
+
+   
 
     const vacancyColumnRenderers = useMemo(() => {
         const renderers: Record<string, (value: any, row?: Record<string, any>) => React.ReactNode> = {
@@ -709,40 +841,13 @@ const Calendar = () => {
     }, [activeTab, workFromHomeCurrentPage, workFromHomeItemsPerPage, workFromHomeFilters, workFromHomeSearchText, fetchWorkFromHome]);
 
 
-    // Handle tab change (reset pagination/filters for the new tab)
+    // Handle tab change (preserve filters and pagination state)
     const handleTabChange = useCallback((tab: "vacancy" | "permission" | "workFromHome") => {
         setActiveTab(tab);
-        setSelectedRows(new Set()); // Clear selection on tab change
-        // Reset to page 1 for the newly active tab
-        if (tab === "vacancy") {
-            setVacancyCurrentPage(1);
-            setVacancyItemsPerPage(10);
-            const baseVacancyFilters: Record<string, any> = { fromDate: undefined, toDate: undefined, status: "all", type: "all" };
-            if (auth.role === 0 || auth.role === 2 || auth.role === 1) {
-                baseVacancyFilters.myStatus = "all";
-            }
-            setVacancyFilters(baseVacancyFilters);
-            setVacancySearchText("");
-        } else if (tab === "permission") {
-            setPermissionCurrentPage(1);
-            setPermissionItemsPerPage(10);
-            const basePermissionFilters: Record<string, any> = { date: undefined, type: "all", status: "all" };
-            if (auth.role === 0 || auth.role === 2 || auth.role === 1) {
-                basePermissionFilters.myStatus = "all";
-            }
-            setPermissionFilters(basePermissionFilters);
-            setPermissionSearchText("");
-        } else { // 'workFromHome' tab
-            setWorkFromHomeCurrentPage(1);
-            setWorkFromHomeItemsPerPage(10);
-            const baseWorkFromHomeFilters: Record<string, any> = { fromDate: undefined, toDate: undefined, status: "all" }; // WFH doesn't have a 'type' like leave
-            if (auth.role === 0 || auth.role === 2 || auth.role === 1) {
-                baseWorkFromHomeFilters.myStatus = "all";
-            }
-            setWorkFromHomeFilters(baseWorkFromHomeFilters);
-            setWorkFromHomeSearchText("");
-        }
-    }, [auth.role]);
+        // setSelectedRows(new Set()); // Clear selection on tab change
+        // Note: We no longer reset pagination/filters to preserve user's filter state
+        // Each tab maintains its own filter state independently
+    }, []);
 
     const handleVacancyDataTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
         setVacancyCurrentPage(page);
@@ -915,21 +1020,21 @@ const Calendar = () => {
             </div>
 
             <div className="flex justify-end gap-3 mb-4">
-                {selectedRows.size > 0 && (auth.role === 0 || auth.role === 2 || auth.role === 1|| auth.role === 4) && (
+                {getCurrentSelectedRows().size > 0 && (auth.role === 0 || auth.role === 2 || auth.role === 1|| auth.role === 4) && (
                     <>
                         <button
                             onClick={() => handleBulkOpinion('Approved')}
                             disabled={isSubmitting}
                             className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow-lg transition-all disabled:bg-gray-400"
                         >
-                            Approve Selected ({selectedRows.size})
+                            Approve Selected ({getCurrentSelectedRows().size})
                         </button>
                         <button
                             onClick={() => handleBulkOpinion('Rejected')}
                             disabled={isSubmitting}
                             className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded shadow-lg transition-all disabled:bg-gray-400"
                         >
-                            Reject Selected ({selectedRows.size})
+                            Reject Selected ({getCurrentSelectedRows().size})
                         </button>
                     </>
                 )}
@@ -966,11 +1071,15 @@ const Calendar = () => {
                     filterConfig={vacancyFilterConfig}
                     loading={loading.vacancies}
                     columnRenderers={vacancyColumnRenderers}
-                    enableSelection={true}
+                    enableSelection={auth.role == 4}
                     rowIdKey="Actions"
-                    selectedRows={selectedRows}
+                    selectedRows={vacancySelectedRows}
                     onSelectionChange={handleSelectionChange}
                     serverSide={true}
+                    currentPage={vacancyCurrentPage}
+                    currentFilters={vacancyFilters}
+                    currentSearchText={vacancySearchText}
+                    isRowSelectable={isRowSelectable}
                 />
             )}
 
@@ -985,10 +1094,14 @@ const Calendar = () => {
                     loading={loading.permissions}
                     columnRenderers={permissionColumnRenderers}
                     serverSide={true}
-                    enableSelection={true}
+                    enableSelection={auth.role == 4}
                     rowIdKey="Actions"
-                    selectedRows={selectedRows}
+                    selectedRows={permissionSelectedRows}
                     onSelectionChange={handleSelectionChange}
+                    currentPage={permissionCurrentPage}
+                    currentFilters={permissionFilters}
+                    currentSearchText={permissionSearchText}
+                    isRowSelectable={isRowSelectable}
                 />
             )}
 
@@ -1003,10 +1116,14 @@ const Calendar = () => {
                     loading={loading.workFromHome}
                     columnRenderers={workFromHomeColumnRenderers}
                     serverSide={true}
-                    enableSelection={true}
+                    enableSelection={auth.role == 4}
                     rowIdKey="Actions"
-                    selectedRows={selectedRows}
+                    selectedRows={workFromHomeSelectedRows}
                     onSelectionChange={handleSelectionChange}
+                    currentPage={workFromHomeCurrentPage}
+                    currentFilters={workFromHomeFilters}
+                    currentSearchText={workFromHomeSearchText}
+                    isRowSelectable={isRowSelectable}
                 />
             )}
         </div>

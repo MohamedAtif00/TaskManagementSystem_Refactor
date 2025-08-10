@@ -26,6 +26,16 @@
             public List<string> CcEmails { get; set; } = new List<string>();
             public List<Attachment> Attachments { get; set; } = new List<Attachment>();
         }
+        public class BulkEmailResult
+        {
+            public bool OverallSuccess { get; set; }
+            public int TotalEmailsAttempted { get; set; }
+            public int SuccessfulEmails { get; set; }
+            public int FailedEmails { get; set; }
+            public List<EmailResult> IndividualResults { get; set; } = new List<EmailResult>();
+            public string Message { get; set; }
+        }
+
 
         public class EmailResult
         {

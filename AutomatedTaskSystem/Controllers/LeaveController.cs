@@ -2,6 +2,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Helper;
+using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.Leave;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Hosting;
@@ -167,6 +168,18 @@ namespace AutomatedTaskSystem.Controllers
                 return BadRequest("Opinion data is required.");
             }
             var result = await _leaveRequestService.GiveOpinion(opinion);
+            // Logic to create a new opinion
+            return Ok(result);
+        }
+
+        [HttpPost("CreateBulkOpinion")]
+        public async Task<IActionResult> CreateBulkOpinion([FromBody] CreateBulkOpinionDto opinion) {
+            // Validate the opinion object
+            if (opinion == null)
+            {
+                return BadRequest("Opinion data is required.");
+            }
+            var result = await _leaveRequestService.GiveBulkOpinion(opinion);
             // Logic to create a new opinion
             return Ok(result);
         }

@@ -85,12 +85,15 @@ interface IGetLeaveRequest extends ILeave {
     Cancelled = "Cancelled",
 }
 
-interface IOpinion {
-    leaveRequestId: number,
-    comment: string,
-    status: LeaveRequestStatus
-    isApproved?: boolean,
-    user: { id: number, name: string, role: UserRole },
+// Specific opinion types
+interface LeaveOpinion extends BaseOpinion {
+  type: 'leave';
+  leaveRequestId: number;
+  status: LeaveRequestStatus;
+}
+interface IBulkUpdateStatusRequest {
+    ids: number[];
+    status: LeaveRequestStatus;
 }
 
 type IGetAllLeavesRequestNoPagination = Omit<IGetAllLeavesRequest, 'page' | 'pageSize'> & { disablePagination: true };
@@ -330,6 +333,38 @@ const LEAVE = {
         return data;
 
     },
+    BULK_UPDATE_STATUS: async (request: IBulkUpdateStatusRequest): Promise<ResponseService<boolean>> => {
+        try {
+            debugger
+            const auth = authService.authHeader();
+            const res = await fetch(`${url}/Leave/CreateBulkOpinion`, { // Assuming this is the new endpoint
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...auth
+                },
+                body: JSON.stringify(request),
+            });
+
+            if (!res.ok) {
+                const errorResponse = await res.json().catch(() => ({ message: `HTTP error! status: ${res.status}` }));
+                return {
+                    error: true,
+                    message: errorResponse.message || `Failed to perform bulk update.`,
+                    data: false
+                };
+            }
+
+            return await res.json();
+        } catch (error) {
+            console.error("Error during bulk status update:", error);
+            return {
+                error: true,
+                message: error instanceof Error ? error.message : 'An unknown error occurred during bulk update.',
+                data: false
+            };
+        }
+    },
     GET_USER_INFO: async (userId: number): Promise<ResponseServiceWithData<IUser> | false> => {
         try {
             const res = await fetch(`${url}/users/${userId}`);
@@ -399,7 +434,8 @@ export type {
     IGetAllLeavesRequest,
     IOpinion,
     IGetOpinion,
-    IGetAllLeavesRequestNoPagination
+    IGetAllLeavesRequestNoPagination,
+    IBulkUpdateStatusRequest
 };
 
 export { LeaveRequestStatus,

@@ -9,8 +9,8 @@ import PERMISSION from "./Permission";
 import WORK_FROM_HOME from "./workFromHome";
 
 
-// export const url = "/api";
-export const url = "http://localhost:5238";
+export const url = "/api";
+// export const url = "http://localhost:5238";
 
 export interface BasicInfo {
     id: number;

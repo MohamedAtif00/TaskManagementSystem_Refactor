@@ -103,15 +103,13 @@ interface IGetPermissionDetails {
     Departure = "Departure"
 }
 
-interface IOpinion {
-    permissionId: number;
-    comment?: string;
-    status: PermissionRequestStatus;
-    isApproved?: boolean;
-    user?: { id: number; name: string; role: number };
+interface PermissionOpinion extends BaseOpinion {
+  type: 'permission';
+  permissionId: number;
+  status: PermissionRequestStatus;
 }
 
-interface IGetOpinion extends IOpinion {
+interface IGetOpinion extends PermissionOpinion {
     id: number;
     dateCreated: string;
 }
@@ -316,7 +314,7 @@ const PERMISSION = {
         //     return false;
         // }
     },
-    CREATE_OPINION: async (opinion: IOpinion): Promise<ResponseService<IGetOpinion>> => {
+    CREATE_OPINION: async (opinion: PermissionOpinion): Promise<ResponseService<IGetOpinion>> => {
         // try {
             const auth = authService.authHeader();
             const res = await fetch(`${url}/Permission/approve`, {
@@ -391,7 +389,7 @@ const PERMISSION = {
     BULK_UPDATE_STATUS: async (request: IBulkUpdatePermissionStatusRequest): Promise<ResponseService<boolean>> => {
         try {
             const auth = authService.authHeader();
-            const res = await fetch(`${url}/Permission/BulkUpdateStatus`, { // Assuming this is the new endpoint
+            const res = await fetch(`${url}/Permission/BulkApprove`, { // Assuming this is the new endpoint
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -442,7 +440,7 @@ export type{
     IPermission,
     ICreatePermission,
     IGetPermissionDetails,
-    IOpinion,
+    PermissionOpinion,
     IGetOpinion,
     IBulkUpdatePermissionStatusRequest
 };

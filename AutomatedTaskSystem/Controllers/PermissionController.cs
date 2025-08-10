@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using AutomatedTaskSystem.Dtos.PermissionDtos;
 using AutomatedTaskSystem.Services.Permission;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -169,6 +170,23 @@ namespace AutomatedTaskSystem.Controllers
                 request.PermissionId,
                 request.IsApproved,
                 request.Comment);
+
+            //if (!success)
+            //    return BadRequest(new { error = true, message = "Could not process approval" });
+
+            return Ok(new { error = false, message = "Permission status updated" });
+        }
+
+        // POST: api/Permission/Approve
+        [HttpPost("BulkApprove")]
+        public async Task<IActionResult> BulkApprovePermission([FromBody] CreateBulkPermissionOpinionDto request)
+        {
+            if (request == null)
+            {
+                return BadRequest("Approval data is required.");
+            }
+
+            var success = await _permissionService.GiveBulkPermissionOpinion(request);
 
             //if (!success)
             //    return BadRequest(new { error = true, message = "Could not process approval" });

@@ -298,6 +298,12 @@ type TaskStatus = 0 | 1 | 2 | 3 | 4;
 type UserRole = 0 | 1 | 2 | 3| 4;
 type ProjectStatus = 0 | 1 | 2 | 3;
 
+interface BaseOpinion {
+  comment?: string;
+  isApproved: boolean;
+  user: { id: number; name: string; role: UserRole };
+}
+
 interface ProjectSheet {
     id: number;
     name: string;

@@ -73,11 +73,17 @@ interface IGetWorkFromHomeRequestForDetails extends IWorkFromHome {
   opinions: IGetOpinionWorkFromHome[];
 }
 
-interface ICreateWorkFromHomeOpinion {
+interface ICreateWorkFromHomeOpinion extends BaseOpinion {
+  type: 'workFromHome';
   workFromHomeId: number;
-  comment?: string;
-  isApproved: boolean;
+  status: WorkFromHomeStatus;
 }
+
+// interface ICreateWorkFromHomeOpinion {
+//   workFromHomeId: number;
+//   comment?: string;
+//   isApproved: boolean;
+// }
 
 interface IGetOpinionWorkFromHome {
   id: number;

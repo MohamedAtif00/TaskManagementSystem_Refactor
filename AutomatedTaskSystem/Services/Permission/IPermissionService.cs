@@ -1,4 +1,5 @@
-﻿using AutomatedTaskSystem.Helper;
+﻿using AutomatedTaskSystem.Dtos.PermissionDtos;
+using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Services.Leave;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
@@ -43,6 +44,7 @@ namespace AutomatedTaskSystem.Services.Permission
         Task<ResponseService<PageList<GetPermissionDto>>> GetPermissionByIdAsync(int userId, int page, int pageSize);
         Task<ResponseService<GetSinglePermissionDto>> GetPermissionDetailByIdAsync(int permissionId);
         Task<ResponseService<PageList<GetPermissionDto>>> GetPermissionsByUserId(int userId, int page, int pageSize, string? searchTerm, string? fromDate, string? toDate, string? status, string? type, bool disablePagination);
+        Task<LeaveRequestService.OperationResult> GiveBulkPermissionOpinion(CreateBulkPermissionOpinionDto request);
 
         //Task<ResponseService<List<GetPermissionDto>>> GetPermissionsByUserIdAsync(int userId);
         Task<bool> UpdatePermissionAsync(UpdatePermissionDto request);

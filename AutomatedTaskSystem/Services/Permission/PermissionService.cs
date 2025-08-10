@@ -3,6 +3,7 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
+using AutomatedTaskSystem.Dtos.PermissionDtos;
 using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Hub;
 using AutomatedTaskSystem.Models;
@@ -157,27 +158,18 @@ namespace AutomatedTaskSystem.Services.Permission
                     };
 
                     var emailResult = await _emailService.SendEmailAsync(emailMessage);
-                    if (!emailResult.Success)
-                    {
-                        //_logService.LogError(emailResult.Exception,
-                        //    "Error sending auto-approval permission email for Owner's request {PermissionId} to CEO/Section Head: {ErrorMessage}",
-                        //    permission.Id, emailResult.Message);
-                        // You might choose to return an error here or just log it, as the request is already approved in DB.
-                    }
 
                 }
                 else if (user.Role == UserRoleEnum.ProjectManger)
                 {
-                    // Notify Owner and Project Managers about the new pending permission request
                     await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
                 }
                 else if (user.Role == UserRoleEnum.TeamLeader)
                 {
-                    // Notify Owner, Project Managers, and the Team Leader themselves (if they are also a TL)
                     await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
                     await _permissionRequestHelper.SendProjectManagersPendingUpdate(permission.Id);
                 }
-                else // Normal flow for non-Owner/PM/TL roles: Notify Owner/Admin and Team Leader about new pending request
+                else 
                 {
                     await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
                     await _permissionRequestHelper.SendProjectManagersPendingUpdate(permission.Id);
@@ -1086,6 +1078,73 @@ namespace AutomatedTaskSystem.Services.Permission
             }
         }
 
+        /// <summary>
+        /// Gives opinions (approve/reject) on multiple permission requests in bulk.
+        /// Each individual opinion is processed by the existing ApproveOrRejectPermissionAsync method.
+        /// </summary>
+        /// <param name="request">A DTO containing a list of permission request IDs and the desired status.</param>
+        /// <returns>An OperationResult summarizing the overall outcome of the bulk operation.</returns>
+        public async Task<OperationResult> GiveBulkPermissionOpinion(CreateBulkPermissionOpinionDto request)
+        {
+
+            if (request.Ids == null || !request.Ids.Any())
+            {
+                return OperationResult.Failed("No permission request IDs provided for bulk operation.");
+            }
+
+            // Determine IsApproved based on the provided Status
+            bool? isApproved = null;
+            if (request.Status == PermissionStatusEnum.Approved)
+            {
+                isApproved = true;
+            }
+            else if (request.Status == PermissionStatusEnum.Rejected)
+            {
+                isApproved = false;
+            }
+            else
+            {
+                return OperationResult.Failed("Invalid status for bulk permission opinion. Only 'Approved' or 'Rejected' statuses are allowed.");
+            }
+
+            bool overallSuccess = true;
+            int successfulCount = 0;
+            int failedCount = 0;
+            var failedMessages = new List<string>();
+
+            foreach (var permissionId in request.Ids)
+            {
+                // Call the existing individual method
+                // Note: I'm using request.Comment for all individual opinions.
+                // If you need per-permission comments, your DTO and logic would need to change.
+                var individualResult = await ApproveOrRejectPermissionAsync(permissionId, isApproved.Value, "");
+
+                if (!individualResult.error) // Assuming OperationResult has a 'Success' property
+                {
+                    successfulCount++;
+                }
+                else
+                {
+                    failedCount++;
+                    overallSuccess = false; // Mark overall operation as failed if any individual one fails
+                    failedMessages.Add($"Permission ID {permissionId}: {individualResult.Message}");
+                }
+            }
+
+            string finalMessage;
+            if (overallSuccess)
+            {
+                finalMessage = $"Successfully processed all {successfulCount} permission opinions.";
+            }
+            else
+            {
+                finalMessage = $"Processed {successfulCount} permission opinions successfully, but {failedCount} failed. Details: {string.Join("; ", failedMessages)}";
+            }
+
+            return overallSuccess
+                ? OperationResult.Succeeded(finalMessage)
+                : OperationResult.Failed(finalMessage);
+        }
 
         private static decimal CalculateDurationInHours(DateTime fromTime, DateTime toTime)
         {

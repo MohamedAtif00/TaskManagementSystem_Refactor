@@ -122,6 +122,7 @@ const AddUser = () => {
     }, [formState.group]);
     
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        debugger
         e.preventDefault();
          e.stopPropagation(); // Add this to prevent event bubbling
         setError("");
@@ -140,7 +141,11 @@ const AddUser = () => {
             workFromHome,
             workFromHome_MAX
         } = formState;
-        if (!name || !group || !role || !hrCode || !accountType ) {
+
+        if (name === null || name === undefined || name === "" ||
+            group === null || group === undefined ||
+            role === null || role === undefined ||
+            hrCode === null || hrCode === undefined || hrCode === "")  {
             return setFormState((prev) => ({
                 ...prev,
                 error: "Please fill out all required fields",
@@ -149,7 +154,7 @@ const AddUser = () => {
         
         API.RESOURCES.USERS.CREATE({
             name,
-            role,
+            role:role??3,
             groupId: group.id,
             hrCode,
             email: email ?? "",
@@ -199,6 +204,7 @@ const AddUser = () => {
     };
 
     const handleChange = (field: keyof typeof formState) => (value: any) => {
+        debugger
         if (field === 'role') {
             // Clear teamleader when changing to higher role
             const newTeamleader = (value === 0 || value === 1 || value === 2) ? null : formState.teamleader;
