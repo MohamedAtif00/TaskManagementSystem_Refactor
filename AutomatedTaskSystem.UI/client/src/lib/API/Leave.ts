@@ -335,7 +335,7 @@ const LEAVE = {
     },
     BULK_UPDATE_STATUS: async (request: IBulkUpdateStatusRequest): Promise<ResponseService<boolean>> => {
         try {
-            debugger
+            
             const auth = authService.authHeader();
             const res = await fetch(`${url}/Leave/CreateBulkOpinion`, { // Assuming this is the new endpoint
                 method: "POST",

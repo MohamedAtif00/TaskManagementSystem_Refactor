@@ -195,7 +195,6 @@ const Calendar = () => {
     }, [activeTab]);
 
     const handleSelectionChange = useCallback((newSelection: Set<string | number>) => {
-        debugger
         // Determine the correct data source based on the active tab
         const dataMap = {
             vacancy: vacancies,

@@ -22,34 +22,33 @@ const Navlink = ({
     const [hover, setHover] = useState(false);
     const color = hover || activeCondition ? "#fff" : "#97a6ba";
     return (
-        <Link href={to}>
-            <div
-                className={[
-                    styles.navlink,
-                    activeCondition ? styles.active : "",
-                ].join(" ")}
-                onMouseEnter={() => setHover(true)}
-                onMouseLeave={() => setHover(false)}
-            >
-                <div className="flex h-5 w-5">
-                    {icon === "Home" ? (
-                        <HomeIcon color={color} />
-                    ) : icon === "Resources" ? (
-                        <ResourcesIcon color={color} />
-                    ) : icon === "Schema" ? (
-                        <SchemaIcon color={color} />
-                    ) : icon === "Project" ? (
-                        <ProjectIcon color={color} />
-                    ) : icon === "Task" ? (
-                        <TaskIcon color={color} />
-                    ) : icon === "Sprint" ? (
-                        <SprintIcon width="100" height="20" />
-                    ) :(
-                        <></>
-                    )}
-                </div>
-                <div>{text}</div>
+        <Link
+            href={to}
+            className={[
+                styles.navlink,
+                activeCondition ? styles.active : "",
+            ].join(" ")}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+        >
+            <div className="flex h-5 w-5">
+                {icon === "Home" ? (
+                    <HomeIcon color={color} />
+                ) : icon === "Resources" ? (
+                    <ResourcesIcon color={color} />
+                ) : icon === "Schema" ? (
+                    <SchemaIcon color={color} />
+                ) : icon === "Project" ? (
+                    <ProjectIcon color={color} />
+                ) : icon === "Task" ? (
+                    <TaskIcon color={color} />
+                ) : icon === "Sprint" ? (
+                    <SprintIcon width="100" height="20" />
+                ) :(
+                    <></>
+                )}
             </div>
+            <div>{text}</div>
         </Link>
     );
 };

@@ -14,6 +14,7 @@ import  { getConnection } from "../app/connection";
 import * as signalR from "@microsoft/signalr";
 import { useAppSelector } from "../app/hooks";
 import SignalRProvider from "../components/connection/connectionProvider";
+import { useRouter } from "next/router";
 
 
 const inter = Inter({
@@ -22,6 +23,7 @@ const inter = Inter({
 });
 
 const MyApp = ({ Component, pageProps }: AppProps) => {
+    const router = useRouter();
     
 
 
@@ -37,7 +39,7 @@ const MyApp = ({ Component, pageProps }: AppProps) => {
                     >
 
                         <Sidebar />
-                        <Component {...pageProps} />
+                        <Component key={router.asPath} {...pageProps} />
                     </div>
                 </SignalRProvider>
             </Auth>

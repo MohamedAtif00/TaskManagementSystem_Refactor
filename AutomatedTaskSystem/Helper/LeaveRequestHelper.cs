@@ -303,16 +303,16 @@ namespace AutomatedTaskSystem.Helper
                     .Distinct()
                     .ToListAsync();
             }
-            else
-            {
-                // Fallback: If no specific new request, or user/group not found for the request,
-                // include all users designated as ProjectManager based on their PermissionType enum.
-                relevantProjectManagers = await _dataContext.SectionGroups
-                     .Where(sg => sg.GroupId == requestingUser.GroupId.Value)
-                     .Select(sg => sg.Section.Head)
-                     .Distinct()
-                     .ToListAsync();
-            }
+            //else
+            //{
+            //    // Fallback: If no specific new request, or user/group not found for the request,
+            //    // include all users designated as ProjectManager based on their PermissionType enum.
+            //    relevantProjectManagers = await _dataContext.SectionGroups
+            //         .Where(sg => sg.GroupId == requestingUser.GroupId.Value)
+            //         .Select(sg => sg.Section.Head)
+            //         .Distinct()
+            //         .ToListAsync();
+            //}
 
             foreach (var projectManager in relevantProjectManagers)
             {

@@ -101,7 +101,6 @@ const LeaveRequestDetails = () => {
                 user:{id:auth.id,name:auth.name,role:auth.role}
             }
             var response = await LEAVE.CREATE_OPINION(op)
-            debugger
             if(!response.error)
             {
               toast.success(response.message)
