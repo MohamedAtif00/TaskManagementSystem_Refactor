@@ -24,6 +24,7 @@ import {
 import RollbackHistory from "./rollbacks";
 import useTaskPathHandler from "./useTaskPathHandler.ts";
 import BaseDuration from "./BaseDuration";
+import Loader from "../loader";
 
 export interface IComment {
 	user: {
@@ -84,6 +85,7 @@ const TaskDetails = ({ refreshTasks ,type}: Props) => {
 	
 	
 	const [task, setTask] = useState<ITask>();
+	const [isLoading, setIsLoading] = useState(false);
 	const router = useRouter();
 	const pathHandler = useTaskPathHandler({type:type});
 
@@ -92,18 +94,27 @@ const TaskDetails = ({ refreshTasks ,type}: Props) => {
 		const sprintId = router.query.sprintId;
 		if (id && type == "tasks")
 		{
+			setIsLoading(true);
 			API.TASKS.GET_ONE(id).then((res) => {
 				if (res && !res.error) setTask(res.data);
+			}).finally(() => {
+				setIsLoading(false);
 			});
 
 		}else if(id && sprintId&&(type === "task-sprint"|| type === "sprints"))
 		{
+			setIsLoading(true);
 			API.TASKS.GET_ONE_FOR_SPRINT(sprintId,id).then((res) => {
-				
+
 				if (res && !res.error) setTask(res.data);
+			}).finally(() => {
+				setIsLoading(false);
 			});
 		}
-		else setTask(undefined);
+		else {
+			setTask(undefined);
+			setIsLoading(false);
+		}
 	}, [setTask, router.query.taskId,router.query.sprintId]);
 
 	const handleUpdate = (res: ITask) => {
@@ -136,6 +147,44 @@ const TaskDetails = ({ refreshTasks ,type}: Props) => {
 
 	return (
 		<AnimatePresence>
+			{isLoading && (
+				<motion.div
+					key="loading-task"
+					initial={{
+						backgroundColor: "#00000000",
+					}}
+					animate={{
+						backgroundColor: "#00000066",
+					}}
+					exit={{
+						backgroundColor: "#00000000",
+						scale: 1.1,
+					}}
+					className="p-12 fixed top-0 left-0 right-0 bottom-0 z-40 flex justify-end"
+				>
+					<motion.div
+						initial={{
+							scale: 0.5,
+							opacity: 0,
+						}}
+						animate={{
+							opacity: 1,
+							scale: 1,
+						}}
+						transition={{
+							type: "just",
+						}}
+						exit={{
+							opacity: 0,
+						}}
+						className="rounded-lg bg-white flex flex-col grow"
+					>
+						<div className="flex items-center justify-center h-96">
+							<Loader />
+						</div>
+					</motion.div>
+				</motion.div>
+			)}
 			{task && (
 				<motion.div
 					key="main-task"

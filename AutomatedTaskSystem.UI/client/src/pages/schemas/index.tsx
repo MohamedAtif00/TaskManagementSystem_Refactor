@@ -144,6 +144,15 @@ const Schemas = () => {
                                 Create Schema
                             </button>
                         </Link>
+                        <Link
+                            href={{
+                                pathname: "/schemas/archived",
+                            }}
+                        >
+                            <button className="px-4 py-1 rounded bg-gray-700 text-white">
+                                Archived Schemas
+                            </button>
+                        </Link>
                     </div>
                 </div>
                 <div className="pb-4 mt-4">

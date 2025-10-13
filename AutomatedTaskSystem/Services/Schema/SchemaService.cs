@@ -77,121 +77,51 @@ public class SchemaService : ISchemaService
 
     public async Task<ActionResult<BaseResponseService>> DeleteSchema(int id)
     {
+        // Archive only the schema; do not modify tasks, nodes, or steps
         var schema = await _context.Schemas
             .Where(s => s.Id == id && !s.Archived)
-            .Include(s => s.Nodes)
-            .ThenInclude(n => n.Steps)
-            .ThenInclude(s => s.TaskBank)
-            .Include(s => s.LearningObjectives)
-            .ThenInclude(lo => lo.Lesson)
-            .ThenInclude(l => l.Unit)
-            .ThenInclude(u => u.Project)
-            .Include(s => s.LearningObjectives)
-            .ThenInclude(lo => lo.Tasks)
             .FirstOrDefaultAsync();
 
         if (schema is null)
             return new BaseResponseService { Error = true, Message = "Schema is not found" };
 
-        var activeTasks = new List<Models.Task> { };
+        schema.Archived = true;
+        await _context.SaveChangesAsync();
 
-        foreach (var lo in schema.LearningObjectives)
-            foreach (var task in lo.Tasks)
-                if (!task.Archived && (task.Status != TaskStatusEnum.Done || task.Status != TaskStatusEnum.Rollback))
-                    activeTasks.Add(task);
+        return new BaseResponseService { Error = false, Message = "Schema archived" };
+    }
 
-        if (activeTasks.Count == 0)
+    public async Task<ActionResult<BaseResponseService>> UnarchiveSchema(int id)
+    {
+        var schema = await _context.Schemas
+            .Where(s => s.Id == id && s.Archived)
+            .Include(s => s.Nodes)
+            .ThenInclude(n => n.Steps)
+            .FirstOrDefaultAsync();
+
+        if (schema is null)
+            return new BaseResponseService { Error = true, Message = "Schema is not found or already active" };
+
+        // Unarchive schema and all its nodes/steps
+        if (schema.Nodes != null)
         {
             foreach (var node in schema.Nodes)
             {
-                foreach (var step in node.Steps)
-                    step.Archived = true;
-                node.Archived = true;
+                node.Archived = false;
+                if (node.Steps != null)
+                {
+                    foreach (var step in node.Steps)
+                        step.Archived = false;
+                }
             }
-            schema.Archived = true;
-
-            await _context.SaveChangesAsync();
-
-            return new BaseResponseService { Error = false, Message = "Schema archived" };
         }
 
-        var projects = new List<Project> { };
-        var units = new List<Unit> { };
-        var lessons = new List<Models.Lesson> { };
-        var los = new List<LearningObjective> { };
+        schema.Archived = false;
+        await _context.SaveChangesAsync();
 
-        foreach (var task in activeTasks)
-        {
-            if (!projects.Any(p => task.LearningObjective.Lesson.Unit.ProjectId == p.Id))
-                projects.Add(task.LearningObjective.Lesson.Unit.Project);
-
-            if (!units.Any(u => task.LearningObjective.Lesson.UnitId == u.Id))
-                units.Add(task.LearningObjective.Lesson.Unit);
-            if (!lessons.Any(u => task.LearningObjective.LessonId == u.Id))
-                lessons.Add(task.LearningObjective.Lesson);
-            if (!los.Any(u => task.LearningObjectiveId == u.Id))
-                los.Add(task.LearningObjective);
-        }
-
-        var res = new List<Responses.ActiveProjectDTO> { };
-
-        res = projects
-            .Select(
-                p =>
-                    new Responses.ActiveProjectDTO
-                    {
-                        Id = p.Id,
-                        Name = p.Name,
-                        Units = units
-                            .Where(u => u.ProjectId == p.Id)
-                            .ToList()
-                            .Select(
-                                u =>
-                                    new Responses.ActiveProjectDTO.ActiveUnitDTO
-                                    {
-                                        Id = u.Id,
-                                        Name = u.Name,
-                                        Lessons = lessons
-                                            .Where(l => l.UnitId == u.Id)
-                                            .ToList()
-                                            .Select(
-                                                l =>
-                                                    new Responses.ActiveProjectDTO.ActiveUnitDTO.ActiveLessonDTO
-                                                    {
-                                                        Id = l.Id,
-                                                        Name = l.Name,
-                                                        LearningObjectives = los.Where(
-                                                                lo => lo.LessonId == l.Id
-                                                            )
-                                                            .ToList()
-                                                            .Select(
-                                                                lo =>
-                                                                    new Responses.ActiveProjectDTO.ActiveUnitDTO.ActiveLessonDTO.ActiveLearningObjectiveDTO
-                                                                    {
-                                                                        Id = lo.Id,
-                                                                        Name = lo.Name
-                                                                    }
-                                                            )
-                                                            .ToList()
-                                                    }
-                                            )
-                                            .ToList()
-                                    }
-                            )
-                            .ToList()
-                    }
-            )
-            .ToList();
-
-        return new BadRequestObjectResult(
-            new ResponseService<List<Responses.ActiveProjectDTO>>
-            {
-                Data = res,
-                Error = true,
-                Message = "Schema is unarchiveable due to still running tasks"
-            }
-        );
+        return new BaseResponseService { Error = false, Message = "Schema unarchived" };
     }
+
 
     public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> DuplicateSchema(int id)
     {
@@ -343,7 +273,7 @@ public class SchemaService : ISchemaService
     {
         var schema = await _context.Schemas
             .Include(s => s.Type)
-            .Where(s => s.Id == id)
+            .Where(s => s.Id == id && !s.Archived )
             .FirstOrDefaultAsync();
 
         if (schema is null)
@@ -442,12 +372,20 @@ public class SchemaService : ISchemaService
 
     public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetSchemaTypes()
     {
-        var types = await _context.SchemaTypes.ToListAsync();
+        // Return only schema types that have at least one non-archived schema (join-based, unique)
+        var data = await (
+            from t in _context.SchemaTypes
+            join s in _context.Schemas on t.Id equals s.TypeId
+            where !s.Archived
+            group t by new { t.Id, t.Name } into g
+            select new Responses.IDName { Id = g.Key.Id, Name = g.Key.Name }
+        ).ToListAsync();
+
         return new ResponseService<List<Responses.IDName>>
         {
             Message = "List of schema types",
             Error = false,
-            Data = types.Select(t => new Responses.IDName { Name = t.Name, Id = t.Id }).ToList()
+            Data = data
         };
     }
 

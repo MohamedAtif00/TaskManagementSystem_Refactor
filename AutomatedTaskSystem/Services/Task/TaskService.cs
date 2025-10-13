@@ -395,8 +395,7 @@ public class TaskService : ITaskService
         }
 
         var sprint = await _context.Sprints
-            .Where(s => s.Id == sprintId ) // Ensure sprint exists and is not archived
-                                                         // These Includes are necessary for the auth check, even if not directly for task filtering.
+            .Where(s => s.Id == sprintId)
             .Include(s => s.SprintLearningObjectives)
                 .ThenInclude(slo => slo.LearningObjective)
                     .ThenInclude(lo => lo.Lesson)
@@ -412,58 +411,87 @@ public class TaskService : ITaskService
             );
         }
 
-        // --- AUTH CHECK BLOCK REMOVED ---
-        // The role-based access control has been removed as per your previous request.
-
         // Define sprint start and end dates for comparison
         DateTime sprintStartDate = sprint.StartDate.Date;
-        DateTime sprintEndDate = sprint.EndDate.Date; // Use original EndDate for comparison, then add 1 day for clipping if needed
+        DateTime sprintEndDate = sprint.EndDate.Date;
 
-        // --- Core Logic: Get tasks whose Learning Objective is associated with this sprint and adjust their displayed dates ---
-        var tasks = await _context.Tasks
-            .Where(t => !t.Archived &&
-                        t.LearningObjective.SprintLearningObjectives.Any(slo => slo.SprintId == sprintId)) // Only tasks whose LO belongs to this sprint
+        // Base query: tasks in this sprint (via LO association) and not archived
+        IQueryable<Models.Task> tasksQuery = _context.Tasks
+            .Where(t => !t.Archived && t.LearningObjective.SprintLearningObjectives.Any(slo => slo.SprintId == sprintId))
+            .Include(t => t.LearningObjective)
+            .Include(t => t.User);
+
+        // Role-based filtering similar to project section, adapted to sprint context
+        if (user.Role == UserRoleEnum.ProjectManger)
+        {
+            // Project Managers see all sprint tasks
+        }
+        else if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
+        {
+            // Determine accessible groups
+            var groupIds = new List<int>();
+            if (user.GroupId.HasValue)
+                groupIds.Add(user.GroupId.Value);
+
+            if (user.Role == UserRoleEnum.SectionHead)
+            {
+                var section = await _context.Sections
+                    .Where(s => s.HeadId == user.Id && !s.Archived)
+                    .FirstOrDefaultAsync();
+
+                if (section is not null)
+                {
+                    var sectionGroupIds = await _context.SectionGroups
+                        .Where(sg => sg.SectionId == section.Id)
+                        .Select(sg => sg.GroupId)
+                        .ToListAsync();
+                    groupIds.AddRange(sectionGroupIds);
+                }
+            }
+
+            // Team leaders/Section heads: tasks for their groups (include unassigned backlog as well)
+            tasksQuery = tasksQuery.Where(t => groupIds.Contains(t.GroupId));
+        }
+        else
+        {
+            // Members: tasks assigned to them or unassigned backlog in their group
+            tasksQuery = tasksQuery.Where(t =>
+                t.UserId == user.Id ||
+                (t.GroupId == user.GroupId && t.Status == TaskStatusEnum.Backlog)
+            );
+        }
+
+        // Fetch tasks with activity timestamps for date adjustment within sprint window
+        var tasks = await tasksQuery
             .Select(t => new
             {
                 Task = t,
-                // Get the earliest activity timestamp for this task (or CreatedAt if no activities)
                 EarliestActivityTimeStamp = _context.TaskActivities
-                                                    .Where(ta => ta.TaskId == t.Id)
-                                                    .OrderBy(ta => ta.TimeStamp)
-                                                    .Select(ta => ta.TimeStamp)
-                                                    .FirstOrDefault(), // Default is DateTime.MinValue if no activities
-                                                                       // Get the latest activity timestamp for this task
+                    .Where(ta => ta.TaskId == t.Id)
+                    .OrderBy(ta => ta.TimeStamp)
+                    .Select(ta => ta.TimeStamp)
+                    .FirstOrDefault(),
                 LatestActivityTimeStamp = _context.TaskActivities
-                                                    .Where(ta => ta.TaskId == t.Id)
-                                                    .OrderByDescending(ta => ta.TimeStamp)
-                                                    .Select(ta => ta.TimeStamp)
-                                                    .FirstOrDefault() // Default is DateTime.MinValue if no activities
+                    .Where(ta => ta.TaskId == t.Id)
+                    .OrderByDescending(ta => ta.TimeStamp)
+                    .Select(ta => ta.TimeStamp)
+                    .FirstOrDefault()
             })
-            .ToListAsync(); // Materialize here to perform date adjustments in memory, simpler than complex EF Core queries
+            .ToListAsync();
 
         var adjustedTasks = new List<GetTaskCardDto>();
 
         foreach (var item in tasks)
         {
             var originalTask = item.Task;
-            DateTime taskOriginalStart = originalTask.CreatedAt.Date; // Assuming CreatedAt is the task's general start
-                                                                      // If no activities, consider task end same as start, or use CreatedAt.
-                                                                      // If LatestActivityTimeStamp is DateTime.MinValue, means no activities recorded after creation.
-            DateTime taskOriginalEnd = item.LatestActivityTimeStamp != DateTime.MinValue ? item.LatestActivityTimeStamp.Date : originalTask.CreatedAt.Date;
+            DateTime taskOriginalStart = originalTask.CreatedAt.Date;
+            DateTime taskOriginalEnd = item.LatestActivityTimeStamp != DateTime.MinValue
+                ? item.LatestActivityTimeStamp.Date
+                : originalTask.CreatedAt.Date;
 
-            // Apply start date adjustment
-            DateTime effectiveStartDate = taskOriginalStart;
-            if (taskOriginalStart < sprintStartDate)
-            {
-                effectiveStartDate = sprintStartDate;
-            }
-
-            // Apply end date adjustment
-            DateTime effectiveEndDate = taskOriginalEnd;
-            if (taskOriginalEnd > sprintEndDate)
-            {
-                effectiveEndDate = sprintEndDate;
-            }
+            // Clip to sprint window
+            DateTime effectiveStartDate = taskOriginalStart < sprintStartDate ? sprintStartDate : taskOriginalStart;
+            DateTime effectiveEndDate = taskOriginalEnd > sprintEndDate ? sprintEndDate : taskOriginalEnd;
 
             adjustedTasks.Add(new GetTaskCardDto
             {
@@ -482,7 +510,7 @@ public class TaskService : ITaskService
                 Name = originalTask.Name,
                 Priority = originalTask.Priority,
                 RollbackCount = originalTask.RollbackCount,
-                Status = originalTask.Status, // Displays the *current* status from the Task entity
+                Status = originalTask.Status,
                 User = originalTask.User == null
                     ? null
                     : new BasicInfoDto
@@ -494,7 +522,6 @@ public class TaskService : ITaskService
                 duration = (decimal?)_context.TaskWorkTimes
                     .Where(q => q.TaskId == originalTask.Id)
                     .Sum(q => q.Duration) / 60000,
-                // Add the adjusted dates to the DTO
                 AdjustedStartDate = effectiveStartDate,
                 AdjustedEndDate = effectiveEndDate
             });

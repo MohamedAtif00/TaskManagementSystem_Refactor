@@ -9,12 +9,7 @@ import Auth from "../components/auth";
 import { Inter } from "next/font/google";
 import { ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
-import { useEffect, useRef } from "react";
-import  { getConnection } from "../app/connection";
-import * as signalR from "@microsoft/signalr";
-import { useAppSelector } from "../app/hooks";
 import SignalRProvider from "../components/connection/connectionProvider";
-import { useRouter } from "next/router";
 
 
 const inter = Inter({
@@ -23,7 +18,7 @@ const inter = Inter({
 });
 
 const MyApp = ({ Component, pageProps }: AppProps) => {
-    const router = useRouter();
+    // const router = useRouter();
     
 
 
@@ -39,7 +34,7 @@ const MyApp = ({ Component, pageProps }: AppProps) => {
                     >
 
                         <Sidebar />
-                        <Component key={router.asPath} {...pageProps} />
+                        <Component  {...pageProps} />
                     </div>
                 </SignalRProvider>
             </Auth>

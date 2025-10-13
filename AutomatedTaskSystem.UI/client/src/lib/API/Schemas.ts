@@ -133,6 +133,18 @@ const SCHEMAS = {
             return false;
         }
     },
+    GET_ARCHIVED: async () => {
+        try {
+            const res = await fetch(`${url}/schemas/archived`);
+            const json = await res.json();
+            if (Array.isArray(json)) return json as ISchema[];
+            if (json && Array.isArray(json.data)) return json.data as ISchema[];
+            return [] as ISchema[];
+        } catch (error) {
+            console.error(error);
+            return [] as ISchema[];
+        }
+    },
     GET_POINT: async (id: number) => {
         try {
             const res = await fetch(`${url}/schemas/${id}/points`);
@@ -196,6 +208,18 @@ const SCHEMAS = {
                       message: string;
                       data: UnarchivableSchemaResponse[];
                   } = await res.json();
+            return data;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
+    UNARCHIVE: async (id: number) => {
+        try {
+            const res = await fetch(`${url}/schemas/${id}/unarchive`, {
+                method: "POST",
+            });
+            const data: { error: boolean; message: string } = await res.json();
             return data;
         } catch (error) {
             console.error(error);

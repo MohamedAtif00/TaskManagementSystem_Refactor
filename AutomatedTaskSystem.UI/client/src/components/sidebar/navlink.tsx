@@ -22,8 +22,8 @@ const Navlink = ({
     const [hover, setHover] = useState(false);
     const color = hover || activeCondition ? "#fff" : "#97a6ba";
     return (
-        <Link
-            href={to}
+        <Link href={to}>
+            <div
             className={[
                 styles.navlink,
                 activeCondition ? styles.active : "",
@@ -49,6 +49,7 @@ const Navlink = ({
                 )}
             </div>
             <div>{text}</div>
+            </div>
         </Link>
     );
 };

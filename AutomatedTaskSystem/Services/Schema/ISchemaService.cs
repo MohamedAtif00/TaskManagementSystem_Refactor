@@ -23,4 +23,6 @@ public interface ISchemaService
 	Task<ActionResult<ResponseService<Responses.SchemaDTO>>> DuplicateSchema(int id);
 	Task<ActionResult<BaseResponseService>> DeleteSchema(int id);
 	Task<ActionResult<ResponseService<List<GetNodePointDto>>>> GetSchemaPoints(int id);
+		Task<ActionResult<BaseResponseService>> UnarchiveSchema(int id);
+
 }

@@ -18,6 +18,14 @@ const hoursList = [
 	{ value: 4, name: "4" },
 	{ value: 5, name: "5" },
 	{ value: 6, name: "6" },
+	{ value: 7, name: "7" },
+	{ value: 8, name: "8" },
+	{ value: 9, name: "9" },
+	{ value: 10, name: "10" },
+	{ value: 11, name: "11" },
+	{ value: 12, name: "12" },
+	{ value: 13, name: "13" },
+	{ value: 14, name: "14" },
 ];
 
 const Selector = ({
@@ -80,13 +88,13 @@ const Selector = ({
 			{toggle ? (
 				<div className="flex justify-end relative top-1">
 					<div
-						className={`z-50 bg-white py-1 rounded w-16 fixed border border-solid border-slate-600 text-slate-600`}
+						className={`z-50 bg-white py-1 rounded w-16 fixed border border-solid border-slate-600 text-slate-600 max-h-48 overflow-y-auto`}
 					>
 						{options.map((_) => {
 							return (
 								<div
 									key={_.value}
-									className="flex items-center justify-center py-1 hover:bg-slate-100"
+									className="flex items-center justify-center py-1 hover:bg-slate-100 cursor-pointer"
 									onClick={() => handleSet(_)}
 								>
 									{_.name}

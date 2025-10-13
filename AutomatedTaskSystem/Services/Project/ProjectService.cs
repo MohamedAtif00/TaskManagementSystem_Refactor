@@ -297,17 +297,28 @@ public class ProjectService : IProjectService
 
         var res = new List<Responses.UserDTO> { };
 
-        foreach (var user in project.Users)
+        foreach (var user in project.Users ?? new List<Models.User>())
+        {
             if (!user.Archived)
+            {
                 res.Add(
                     new Responses.UserDTO
                     {
                         Id = user.Id,
                         Name = user.Name,
-                        Group = new Responses.IDName { Id = user.GroupId ?? 0, Name = user.Group.Name },
+                        Group = user.Group == null
+                            ? null
+                            : new Responses.IDName
+                            {
+                                Id = user.GroupId ?? 0,
+                                Name = user.Group.Name
+                            },
                         Role = user.Role
                     }
                 );
+            }
+        }
+
 
         return new ResponseService<List<Responses.UserDTO>>
         {

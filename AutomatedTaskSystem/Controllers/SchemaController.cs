@@ -219,6 +219,35 @@ public class SchemaController : ControllerBase
         Requests.SchemaDTO req
     ) => await _schemaService.EditSchema(id, req.Name, req.Description, req.TypeId);
 
+
+	    // GET:
+	    // Get archived schemas (Simplified)
+	    [HttpGet("archived")]
+	    public async Task<ActionResult<List<Responses.SchemaDTO>>> GetArchivedSchemas()
+	    {
+	        var schemas = await _context.Schemas
+	            .Where(s => s.Archived)
+	            .Include(s => s.Type)
+	            .ToListAsync();
+
+	        var res = new List<Responses.SchemaDTO> { };
+
+	        foreach (var schema in schemas)
+	            res.Add(
+	                new Responses.SchemaDTO
+	                {
+	                    Description = schema.Description,
+	                    Id = schema.Id,
+	                    Name = schema.Name,
+	                    Type = schema.Type is null
+	                        ? null
+	                        : new Responses.IDName { Id = schema.Type.Id, Name = schema.Type.Name }
+	                }
+	            );
+
+	        return res;
+	    }
+
     // GET:
     // Get Schema Types
     [HttpGet("types")]
@@ -230,6 +259,13 @@ public class SchemaController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult<BaseResponseService>> ArchiveSchema(int id) =>
         await _schemaService.DeleteSchema(id);
+
+
+	    // POST:
+	    // Unarchive Schema
+	    [HttpPost("{id}/unarchive")]
+	    public async Task<ActionResult<BaseResponseService>> UnarchiveSchema(int id) =>
+	        await _schemaService.UnarchiveSchema(id);
 
     [HttpGet("{id}/points")]
     public async Task<ActionResult<ResponseService<List<GetNodePointDto>>>> GetSchemaPoints(
