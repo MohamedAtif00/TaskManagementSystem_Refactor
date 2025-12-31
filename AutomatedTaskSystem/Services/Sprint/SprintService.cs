@@ -18,22 +18,32 @@ namespace AutomatedTaskSystem.Services.Sprint
             this.dataContext = dataContext;
         }
 
-        public async Task<ResponseService<List<SprintDTO>>> GetAllSprints()
+        public async Task<ResponseService<List<SprintDTO>>> GetAllSprints(bool? archived = null)
         {
             try
             {
-                List<Models.Sprint> sprints = await dataContext.Sprints.ToListAsync();
+                IQueryable<Models.Sprint> query = dataContext.Sprints;
+
+                // Filter by archived status if specified
+                if (archived.HasValue)
+                {
+                    query = query.Where(s => s.IsArchived == archived.Value);
+                }
+
+                List<Models.Sprint> sprints = await query.ToListAsync();
                 List<SprintDTO> sprintDto = new();
 
                 foreach (var sprint in sprints)
                 {
+                    if (sprint.IsArchived) continue;
                     sprintDto.Add(new SprintDTO
                     {
                         Id = sprint.Id,
                         Name = sprint.Name,
                         Description = sprint.Description,
                         StartDate = sprint.StartDate,
-                        EndDate = sprint.EndDate
+                        EndDate = sprint.EndDate,
+                        IsArchived = sprint.IsArchived
                     });
                 }
 
@@ -71,6 +81,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                     Description = sprint.Description,
                     StartDate = sprint.StartDate,
                     EndDate = sprint.EndDate,
+                    IsArchived = sprint.IsArchived,
                     // Project the LearningObjectives from the join table
                     // This is safer than assuming a direct `sprint.LearningObjectives` if not explicitly configured as a skip navigation.
                     learningObjects = sprint.SprintLearningObjectives
@@ -393,6 +404,51 @@ namespace AutomatedTaskSystem.Services.Sprint
                                (start <= s.EndDate.Date && end >= s.StartDate.Date)); // Check for overlap condition
 
             return isOverlap;
+        }
+
+        /// <summary>
+        /// Archives or unarchives a sprint.
+        /// </summary>
+        /// <param name="sprintId">The ID of the sprint to archive/unarchive.</param>
+        /// <param name="archived">True to archive, false to unarchive.</param>
+        /// <returns>A ResponseService indicating the success or failure of the operation.</returns>
+        public async Task<ResponseService<Responses.SprintDto>> ArchiveSprintAsync(int sprintId, bool archived)
+        {
+            var response = new ResponseService<Responses.SprintDto>();
+
+            try
+            {
+                var sprint = await dataContext.Sprints.FindAsync(sprintId);
+
+                if (sprint == null)
+                {
+                    response.Error = true;
+                    response.Message = "Sprint not found.";
+                    return response;
+                }
+
+                sprint.IsArchived = archived;
+                await dataContext.SaveChangesAsync();
+
+                response.Data = new Responses.SprintDto
+                {
+                    Id = sprint.Id,
+                    Name = sprint.Name,
+                    Description = sprint.Description,
+                    StartDate = DateOnly.FromDateTime(sprint.StartDate).ToString(),
+                    EndDate = DateOnly.FromDateTime(sprint.EndDate).ToString(),
+                    IsArchived = sprint.IsArchived
+                };
+
+                response.Message = archived ? "Sprint archived successfully." : "Sprint unarchived successfully.";
+            }
+            catch (Exception ex)
+            {
+                response.Error = true;
+                response.Message = $"An unexpected error occurred: {ex.Message}";
+            }
+
+            return response;
         }
 
 

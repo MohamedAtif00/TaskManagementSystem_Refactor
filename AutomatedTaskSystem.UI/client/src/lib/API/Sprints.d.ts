@@ -6,6 +6,7 @@ export interface GetAllSprintsResponse{
     description:string,
     startDate:string,
     endDate:string,
+    isArchived:boolean,
 }
 
 

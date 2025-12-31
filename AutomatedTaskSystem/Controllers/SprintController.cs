@@ -19,11 +19,11 @@ namespace AutomatedTaskSystem.Controllers
 
 
         [HttpGet("get-all-sprint")]
-        public async Task<IActionResult> GetAllSprints()
+        public async Task<IActionResult> GetAllSprints([FromQuery] bool? archived = null)
         {
             try
             {
-                var result = await sprintService.GetAllSprints();
+                var result = await sprintService.GetAllSprints(archived);
 
                 return Ok(result);
             }
@@ -97,6 +97,38 @@ namespace AutomatedTaskSystem.Controllers
                 Console.WriteLine(ex.StackTrace);
 
                 // Return a 500 Internal Server Error for unhandled exceptions
+                return StatusCode(500, new BaseResponseService { Error = true, Message = $"An unexpected server error occurred: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Archives or unarchives a sprint.
+        /// </summary>
+        /// <param name="id">The ID of the sprint to archive/unarchive.</param>
+        /// <param name="archived">True to archive, false to unarchive.</param>
+        /// <returns>The updated sprint if successful, otherwise an error response.</returns>
+        [HttpPatch("{id}/archive")]
+        public async Task<IActionResult> ArchiveSprint(int id, [FromQuery] bool archived = true)
+        {
+            try
+            {
+                var result = await sprintService.ArchiveSprintAsync(id, archived);
+
+                if (result.Error)
+                {
+                    if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return NotFound(result);
+                    }
+                    return BadRequest(result);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in ArchiveSprint controller: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
                 return StatusCode(500, new BaseResponseService { Error = true, Message = $"An unexpected server error occurred: {ex.Message}" });
             }
         }

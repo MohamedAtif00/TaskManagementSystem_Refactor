@@ -45,21 +45,31 @@ public class UserService : IUserService
     )
     {
         Group group = null;
-         if (req.Role != UserRoleEnum.Owner)
-           { 
-            group = await _context.Groups
-                .Where(g => g.Id == req.GroupId && !g.Archived)
-                .FirstOrDefaultAsync();
-            if (group is null)
-                return new NotFoundObjectResult(
-                    new BaseResponseService
-                    {
-                        Error = true,
-                        Message = $"Group of id:{req.GroupId} is not found"
-                    }
-                );
-        
-         }
+	        if (req.Role != UserRoleEnum.Owner)
+	        {
+	            if (req.GroupId is null)
+	            {
+	                return new NotFoundObjectResult(
+	                    new BaseResponseService
+	                    {
+	                        Error = true,
+	                        Message = "GroupId is required for non-owner roles"
+	                    }
+	                );
+	            }
+
+	            group = await _context.Groups
+	                .Where(g => g.Id == req.GroupId.Value && !g.Archived)
+	                .FirstOrDefaultAsync();
+	            if (group is null)
+	                return new NotFoundObjectResult(
+	                    new BaseResponseService
+	                    {
+	                        Error = true,
+	                        Message = $"Group of id:{req.GroupId} is not found"
+	                    }
+	                );
+	        }
 
 
          if (req.Email != null && await CheckEmailExist(req.Email))
@@ -162,30 +172,45 @@ public class UserService : IUserService
                 new BaseResponseService { Error = true, Message = $"User of id:{id} is not found" }
             );
 
-        var group = await _context.Groups
-            .Where(g => g.Id == req.GroupId && !g.Archived)
-            .FirstOrDefaultAsync();
-        if (group is null && user.Role != UserRoleEnum.Owner)
-            return new NotFoundObjectResult(
-                new BaseResponseService
-                {
-                    Error = true,
-                    Message = $"Group of id:{req.GroupId} is not found"
-                }
-            );
+	        Group group = null;
+	        if (user.Role != UserRoleEnum.Owner)
+	        {
+	            if (req.GroupId is null)
+	            {
+	                return new NotFoundObjectResult(
+	                    new BaseResponseService
+	                    {
+	                        Error = true,
+	                        Message = "GroupId is required for non-owner roles"
+	                    }
+	                );
+	            }
+
+	            group = await _context.Groups
+	                .Where(g => g.Id == req.GroupId.Value && !g.Archived)
+	                .FirstOrDefaultAsync();
+	            if (group is null)
+	                return new NotFoundObjectResult(
+	                    new BaseResponseService
+	                    {
+	                        Error = true,
+	                        Message = $"Group of id:{req.GroupId} is not found"
+	                    }
+	                );
+	        }
 
         // Create a list to track changes
         var changes = new List<string>();
 
-        if (user.Role != UserRoleEnum.Owner)
-        {
-            if (user.GroupId != req.GroupId)
-            {
-                changes.Add($"Group changed from '{user.Group?.Name}' (ID:{user.GroupId}) to '{group.Name}' (ID:{req.GroupId})");
-                user.Group = group;
-                user.GroupId = group.Id;
-            }
-        }
+	        if (user.Role != UserRoleEnum.Owner && group != null)
+	        {
+	            if (user.GroupId != req.GroupId)
+	            {
+	                changes.Add($"Group changed from '{user.Group?.Name}' (ID:{user.GroupId}) to '{group.Name}' (ID:{req.GroupId})");
+	                user.Group = group;
+	                user.GroupId = group.Id;
+	            }
+	        }
         
         if (user.Archived != req.Archived)
         {

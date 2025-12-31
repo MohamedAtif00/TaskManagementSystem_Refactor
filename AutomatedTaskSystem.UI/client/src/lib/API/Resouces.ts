@@ -132,7 +132,7 @@ const RESOURCES = {
 			workFromHome_MAX
 		}: {
 			name: string;
-			groupId: number;
+				groupId: number | null;
 			role: UserRole;
 			hrCode: string;
 			email: string;

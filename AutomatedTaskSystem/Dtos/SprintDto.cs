@@ -11,6 +11,7 @@ namespace AutomatedTaskSystem.DTO
             public string Description { get; set; } = "";
             public string? StartDate { get; set; }
             public string? EndDate { get; set; }
+            public bool IsArchived { get; set; }
         }
 
 

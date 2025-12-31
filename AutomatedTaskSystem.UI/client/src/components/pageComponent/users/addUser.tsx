@@ -141,11 +141,13 @@ const AddUser = () => {
             workFromHome,
             workFromHome_MAX
         } = formState;
-
-        if (name === null || name === undefined || name === "" ||
-            group === null || group === undefined ||
-            role === null || role === undefined ||
-            hrCode === null || hrCode === undefined || hrCode === "")  {
+	        
+	        const isOwner = role === 4; // UserRoleEnum.Owner
+	
+	        if (name === null || name === undefined || name === "" ||
+	            (!isOwner && (group === null || group === undefined)) ||
+	            role === null || role === undefined ||
+	            hrCode === null || hrCode === undefined || hrCode === "")  {
             return setFormState((prev) => ({
                 ...prev,
                 error: "Please fill out all required fields",
@@ -154,8 +156,9 @@ const AddUser = () => {
         
         API.RESOURCES.USERS.CREATE({
             name,
-            role:role??3,
-            groupId: group.id,
+	            role: role ?? 3,
+	            // For Owner role, Group is not applicable so we send null
+	            groupId: role === 4 ? null : group!.id,
             hrCode,
             email: email ?? "",
             teamLeaderId: teamleader?.id ?? null,
@@ -322,13 +325,15 @@ const AddUser = () => {
                                 <InputTextField label="Name" value={formState.name} handleChange={handleChange("name")} />
                                 <InputTextField label="HR Code" value={formState.hrCode} handleChange={handleChange("hrCode")} />
                                 <InputTextField label="Email" value={formState.email || ""} handleChange={handleChange("email")} />
-                                
-                                <Dropdown
-                                    label="Group"
-                                    value={formState.group}
-                                    options={groups}
-                                    handleChange={handleChange("group")}
-                                />
+	                                
+	                                {formState.role !== 4 && (
+	                                    <Dropdown
+	                                        label="Group"
+	                                        value={formState.group}
+	                                        options={groups}
+	                                        handleChange={handleChange("group")}
+	                                    />
+	                                )}
 
                                 <Dropdown
                                     label="Role"

@@ -21,6 +21,8 @@ public class DataContext : DbContext
 
         modelBuilder.Entity<RefreshToken>().Property(rt => rt.Used).HasDefaultValue(false);
 
+        modelBuilder.Entity<Sprint>().Property(s => s.IsArchived).HasDefaultValue(false);
+
         modelBuilder
             .Entity<Node>()
             .HasMany(n => n.Next)

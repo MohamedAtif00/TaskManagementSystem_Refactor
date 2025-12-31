@@ -57,7 +57,7 @@ namespace AutomatedTaskSystem.DTO
         public class UserDTO
         {
             public string Name { get; set; } = "";
-            public int GroupId { get; set; }
+	            public int? GroupId { get; set; }
             public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
             public int? TeamleaderId { get; set; }
             public string? HrCode { get; set; } = "";

@@ -45,10 +45,10 @@ const Projects = () => {
         });
     }, []);
 
-    // Fetch sprints when switching to sprints view
+    // Fetch sprints when switching to sprints view (only non-archived sprints)
     useEffect(() => {
         if (view === "sprints" && !sprints) {
-            API.SPRINTS.GET_ALL_SPRINTS().then((res: any) => {
+            API.SPRINTS.GET_ALL_SPRINTS(false).then((res: any) => {
                 if (res && !res.error) setSprints(res.data);
             });
         }

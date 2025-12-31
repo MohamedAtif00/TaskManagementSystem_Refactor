@@ -1,27 +1,23 @@
 import { useEffect, useState } from "react";
 import API from "../../lib/API";
 import Link from "next/link"; // Ensure Link is imported
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import TaskIcon from "../../assets/Icons/Task"; // Adjust path as needed
+import TrashIcon from "../../assets/Icons/Trash";
+import ArchiveIcon from "../../assets/Icons/Archive";
+import RotatingArrowsIcon from "../../assets/Icons/RotatingArrows";
 import Head from "next/head";
 import Loader from "../../components/loader"; // Adjust path as needed
 import CreateSprint from "../../components/sprintComponents/createSprint"; // Adjust path as needed
 import { format } from "date-fns";
 
-// Columns for Sprints
-const sprintColumns: GridColDef[] = [
-    { field: "col0", headerName: "ID", width: 90 },
-    { field: "col1", headerName: "Sprint Name", width: 300 },
-    { field: "col2", headerName: "Start Date", width: 200 },
-    { field: "col3", headerName: "End Date", width: 200 }
-];
-
 const Sprints = () => {
     const [sprints, setSprints] = useState<ISprint[]>();
+    const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
 
-    // Fetch Sprints
-    useEffect(() => {
-        API.SPRINTS.GET_ALL_SPRINTS().then((res) => {
+    // Fetch Sprints based on active tab
+    const fetchSprints = (archived: boolean) => {
+        API.SPRINTS.GET_ALL_SPRINTS(archived).then((res) => {
             if (res && !res.error && res.data) {
                 setSprints(res.data);
             } else {
@@ -29,7 +25,64 @@ const Sprints = () => {
                 setSprints([]); // Set to empty array on error to stop loading
             }
         });
-    }, []);
+    };
+
+    // Fetch Sprints when tab changes
+    useEffect(() => {
+        setSprints(undefined); // Reset to show loading
+        fetchSprints(activeTab === 'archived');
+    }, [activeTab]);
+
+    // Handle archive/unarchive action
+    const handleArchiveToggle = async (sprintId: number, currentlyArchived: boolean) => {
+        const newArchivedState = !currentlyArchived;
+        const result = await API.SPRINTS.ARCHIVE_SPRINT(sprintId, newArchivedState);
+
+        if (result && !result.error) {
+            // Refresh the sprint list
+            fetchSprints(activeTab === 'archived');
+        } else {
+            console.error("Error archiving sprint:", result?.message || "Unknown error");
+            alert(`Failed to ${newArchivedState ? 'archive' : 'unarchive'} sprint`);
+        }
+    };
+
+    // Columns for Sprints with Actions column
+    const sprintColumns: GridColDef[] = [
+        { field: "col0", headerName: "ID", width: 90 },
+        { field: "col1", headerName: "Sprint Name", width: 300 },
+        { field: "col2", headerName: "Start Date", width: 200 },
+        { field: "col3", headerName: "End Date", width: 200 },
+        {
+            field: "actions",
+            headerName: "Actions",
+            width: 100,
+            sortable: false,
+            renderCell: (params: GridRenderCellParams) => {
+                const sprint = sprints?.find(s => s.id === params.row.id);
+                const isArchived = sprint?.isArchived || false;
+
+                return (
+                    <div className="flex items-center justify-center h-full">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleArchiveToggle(params.row.id, isArchived);
+                            }}
+                            className="p-2 rounded-md hover:bg-gray-100 transition-colors group/btn"
+                            title={activeTab === 'archived' ? 'Unarchive Sprint' : 'Archive Sprint'}
+                        >
+                            {activeTab === 'archived' ? (
+                                <RotatingArrowsIcon className="w-5 h-5 fill-green-600 group-hover/btn:fill-green-700" />
+                            ) : (
+                                <TrashIcon className="w-5 h-5 fill-red-600 group-hover/btn:fill-red-700" />
+                            )}
+                        </button>
+                    </div>
+                );
+            },
+        },
+    ];
 
     if (sprints === undefined)
         return (
@@ -66,6 +119,30 @@ const Sprints = () => {
                         </button>
                     </Link>
                 </div>
+
+                {/* Tabs for Active and Archived Sprints */}
+                <div className="flex gap-4 mt-4 mb-2 px-1">
+                    <button
+                        onClick={() => setActiveTab('active')}
+                        className={`px-6 py-2 rounded-md font-semibold transition-colors ${
+                            activeTab === 'active'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                    >
+                        Active Sprints
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('archived')}
+                        className={`px-6 py-2 rounded-md font-semibold transition-colors ${
+                            activeTab === 'archived'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                    >
+                        Archived Sprints
+                    </button>
+                </div>
                 <div className="pb-4 mt-4">
                     <DataGrid
                         className="bg-white relative h-full"
@@ -74,59 +151,29 @@ const Sprints = () => {
                                 sortModel: [{ field: "col1", sort: "asc" }],
                             },
                         }}
-                        slots={{
-                            row: (r) => {
-                                return (
-                                    // Fixed: Move props directly to Link
-                                    <Link
-                                        href={`/sprints/${r.row.id}`} // Simpler template literal for dynamic routes
-                                        key={r.rowId} // Key usually goes on the outermost element of a list item
-                                        style={{ height: r.rowHeight }}
-                                        className="group hover:bg-slate-50 flex border-solid border-b border-slate-200"
-                                    >
-                                        {/* Now, the Link component itself will render the <a> tag with these styles */}
-                                        {r.visibleColumns.map((c: any) => {
-                                            if (c.field === "col1")
-                                                return (
-                                                    <div
-                                                        key={c.headerName}
-                                                        style={{
-                                                            minWidth: c.width,
-                                                            maxWidth: c.width,
-                                                        }}
-                                                        className="px-[0.625rem] group-hover:pl-4 transition-all ease-in text-base flex items-center group-hover:text-blue-700"
-                                                    >
-                                                        {r.row[c.field]}
-                                                    </div>
-                                                );
-
-                                            return (
-                                                <div
-                                                    key={c.headerName}
-                                                    style={{
-                                                        minWidth: c.width,
-                                                        maxWidth: c.width,
-                                                    }}
-                                                    className="px-[0.625rem] group-hover:pl-4 transition-all ease-in text-sm flex items-center group-hover:text-blue-700"
-                                                >
-                                                    {r.row[c.field]}
-                                                </div>
-                                            );
-                                        })}
-                                    </Link>
-                                );
-                            },
-                        }}
                         rows={sprints.map((s) => {
                             return {
                                 id: s.id,
                                 col0: s.id,
                                 col1: s.name,
                                 col2: format(new Date(s.startDate), 'yyyy-MM-dd'),
-                                col3: format(new Date(s.endDate), 'yyyy-MM-dd')
+                                col3: format(new Date(s.endDate), 'yyyy-MM-dd'),
+                                actions: s.id, // Pass the id for the actions column
                             };
                         })}
                         columns={sprintColumns}
+                        onRowClick={(params) => {
+                            // Navigate to sprint detail page when clicking on the row (but not the actions button)
+                            window.location.href = `/sprints/${params.id}`;
+                        }}
+                        sx={{
+                            '& .MuiDataGrid-row': {
+                                cursor: 'pointer',
+                                '&:hover': {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                                },
+                            },
+                        }}
                     />
                 </div>
                 <CreateSprint />

@@ -19,10 +19,11 @@ const SPRINTS = {
         return data;
 
     },
-    GET_ALL_SPRINTS:async ()=>{
+    GET_ALL_SPRINTS:async (archived?: boolean)=>{
         try {
          const authHeader = authService.authHeader();
-                    const res = await fetch(`${url}/Sprint/get-all-sprint`, {
+                    const queryParam = archived !== undefined ? `?archived=${archived}` : '';
+                    const res = await fetch(`${url}/Sprint/get-all-sprint${queryParam}`, {
                         headers: {
                             ...authHeader,
                         },
@@ -171,7 +172,42 @@ const SPRINTS = {
         return data;
 
 	},
-    
+    ARCHIVE_SPRINT: async (
+        sprintId: number,
+        archived: boolean = true
+    ): Promise<ResponseService<ISprint>> => {
+        try {
+            const authHeader = authService.authHeader();
+
+            const res = await fetch(`${url}/Sprint/${sprintId}/archive?archived=${archived}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...authHeader,
+                },
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                return {
+                    error: true,
+                    message: errorData.message || 'Failed to archive sprint',
+                    data: undefined
+                };
+            }
+
+            const data: ResponseService<ISprint> = await res.json();
+            return data;
+        } catch (err) {
+            console.error(err);
+            return {
+                error: true,
+                message: 'An error occurred while archiving the sprint',
+                data: undefined
+            };
+        }
+    },
+
 }
 
 export default SPRINTS;
