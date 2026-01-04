@@ -1,5 +1,5 @@
 import { useRouter } from "next/router";
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useAppSelector } from "../../../../app/hooks";
 import TaskDetails from "../../../../components/taskDetails";
 import API from "../../../../lib/API";
@@ -21,7 +21,8 @@ const TaskBoard = () => {
     const pathHandler = useTaskPathHandler({type:"sprints"});
     const [selectedLo, setSelected] = useState<BasicInfo>({ id: 0, name: "None" });
     const [query, setQuery] = useState('');
-    const [searchType, setSearchType] = useState<'lo' | 'task'>('lo');
+	    const [searchType, setSearchType] = useState<'lo' | 'task'>('lo');
+	    const latestRequestId = useRef(0);
 
     useEffect(() => {
         const id = router.query.sprintId;
@@ -31,27 +32,47 @@ const TaskBoard = () => {
             );
     }, [router.query.sprintId]);
 
-    useEffect(() => {
-        sprint &&
-            API.SPRINTS.GET_ALL_CARDS(sprint.id.toString()).then(
-                (res) => { if (res && !res.error) { setTasks(res.data);
-                    // console.log(res.data);
-                    
-                 }}
-            );
-    }, [sprint]);
+	    const loadTasks = async (id: string | string[]) => {
+	        const currentRequestId = ++latestRequestId.current;
+	        try {
+	            const allTasks = await API.SPRINTS.GET_ALL_CARDS_STREAM(
+	                id,
+	                (streamedTasks, totalCount) => {
+	                    // Ignore stale responses from earlier requests
+	                    if (currentRequestId !== latestRequestId.current) return;
+	                    // Progressive UI updates as tasks are accumulated
+	                    setTasks([...streamedTasks]);
+	                }
+	            );
+	
+	            if (currentRequestId !== latestRequestId.current) return;
+	            setTasks(allTasks);
+	        } catch (error) {
+	            console.error('Error loading tasks:', error);
+	            if (currentRequestId !== latestRequestId.current) return;
+	
+	            // Fallback to non-streaming endpoint if streaming fails
+	            const res = await API.SPRINTS.GET_ALL_CARDS(id);
+	            if (res && !res.error) {
+	                setTasks(res.data);
+	            }
+	        }
+	    };
 
-    useEffect(() => {
-        if (sprint) {
-            const refreshInterval = setInterval(() => {
-                API.SPRINTS.GET_ALL_CARDS(sprint.id.toString()).then(
-                    (res) => { if (res && !res.error) { setTasks(res.data); };
-                    }
-                );
-            }, 30000);
-            return () => clearInterval(refreshInterval);
-        }
-    }, [sprint]);
+	    useEffect(() => {
+	        if (sprint) {
+	            loadTasks(sprint.id.toString());
+	        }
+	    }, [sprint]);
+
+	    useEffect(() => {
+	        if (sprint) {
+	            const refreshInterval = setInterval(() => {
+	                loadTasks(sprint.id.toString());
+	            }, 30000);
+	            return () => clearInterval(refreshInterval);
+	        }
+	    }, [sprint]);
 
     if (tasks === undefined)
         return (
@@ -63,16 +84,12 @@ const TaskBoard = () => {
             </div>
         );
 
-    const refreshTasks = () => {
-        const sprintId = router.query.sprintId;
-        if (sprintId)
-            API.SPRINTS.GET_ALL_CARDS(sprintId).then(
-                (res) => {
-                    if (res && !res.error)
-                        setTasks(res.data)
-                }
-            );
-    };
+	    const refreshTasks = () => {
+	        const sprintId = router.query.sprintId;
+	        if (sprintId) {
+	            loadTasks(sprintId);
+	        }
+	    };
 
     if (!sprint) return <div>Loading</div>;
 

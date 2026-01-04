@@ -12,6 +12,7 @@ using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Models.Enums.TaskBankType;
 using AutomatedTaskSystem.Services.RollbackService;
 using AutomatedTaskSystem.Dtos.Projects;
+using System.Text.Json;
 
 namespace AutomatedTaskSystem.Controllers;
 
@@ -100,6 +101,53 @@ public class TaskController : ControllerBase
     public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetCardTasksForSprint( int sprintid)
     {
         return await _taskService.GetTasksBySprintId( sprintid);
+    }
+
+    [HttpGet("/sprints/{sprintid}/tasks/cards/stream")]
+    public async System.Threading.Tasks.Task GetCardTasksForSprintStream(int sprintid)
+    {
+        // Disable response buffering to ensure streaming works
+        Response.ContentType = "application/json";
+        Response.Headers.Add("Cache-Control", "no-cache");
+        Response.Headers.Add("X-Accel-Buffering", "no"); // Disable nginx buffering if present
+        
+        // Disable response buffering
+        var bodyFeature = Response.HttpContext.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpResponseBodyFeature>();
+        if (bodyFeature != null)
+        {
+            bodyFeature.DisableBuffering();
+        }
+        
+        // Write opening bracket for JSON array
+        await Response.WriteAsync("[");
+        
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false
+        };
+        
+        bool isFirst = true;
+        
+        await foreach (var item in _taskService.GetTasksBySprintIdStream(sprintid))
+        {
+            if (!isFirst)
+            {
+                await Response.WriteAsync(",");
+            }
+            isFirst = false;
+            
+            // Serialize and write each item as it comes
+            var json = JsonSerializer.Serialize(item, jsonOptions);
+            await Response.WriteAsync(json);
+            
+            // Flush to ensure data is sent immediately
+            await Response.Body.FlushAsync();
+        }
+        
+        // Write closing bracket for JSON array
+        await Response.WriteAsync("]");
+        await Response.Body.FlushAsync();
     }
 
     // GET:

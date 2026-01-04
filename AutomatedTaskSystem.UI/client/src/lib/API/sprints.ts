@@ -172,6 +172,44 @@ const SPRINTS = {
         return data;
 
 	},
+    GET_ALL_CARDS_STREAM: async (
+        sprintId: string | string[],
+        onProgress?: (tasks: TaskInfo[], totalCount: number) => void
+    ): Promise<TaskInfo[]> => {
+	        try {
+	            const auth = authService.authHeader();
+	            const response = await fetch(`${url}/sprints/${sprintId}/tasks/cards/stream`, {
+	                headers: {
+	                    ...auth,
+	                },
+	            });
+	
+	            if (!response.ok) {
+	                throw new Error(`HTTP error! status: ${response.status}`);
+	            }
+	
+	            // Backend returns a single JSON array of task cards
+	            const tasks: TaskInfo[] = await response.json();
+	
+	            // Optionally provide progressive updates in batches from the
+	            // already-parsed array. This keeps the API surface similar to
+	            // true streaming without fragile partial JSON parsing.
+	            if (onProgress && tasks.length > 0) {
+	                const batchSize = 50;
+	                for (let i = batchSize; i < tasks.length; i += batchSize) {
+	                    onProgress(tasks.slice(0, i), tasks.length);
+	                    // Yield back to the event loop to allow the UI to paint.
+	                    await new Promise((resolve) => setTimeout(resolve, 0));
+	                }
+	                onProgress(tasks, tasks.length);
+	            }
+	
+	            return tasks;
+	        } catch (error) {
+	            console.error('Error streaming tasks:', error);
+	            throw error;
+	        }
+    },
     ARCHIVE_SPRINT: async (
         sprintId: number,
         archived: boolean = true

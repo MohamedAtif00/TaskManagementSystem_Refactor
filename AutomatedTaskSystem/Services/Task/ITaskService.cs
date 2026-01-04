@@ -56,7 +56,8 @@ public interface ITaskService
     Task<BaseResponseService> CreateProcess(List<int> options, int schemaId, int loId);
     void PauseAllTasksForUser(int userId);
     Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksByLearningObjectiveId(int learningObjectiveId, int sprintId);
-    Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksBySprintId(int sprintId);
+		    Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksBySprintId(int sprintId);
+		    IAsyncEnumerable<GetTaskCardDto> GetTasksBySprintIdStream(int sprintId);
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetailsAdjustedForSprint(int taskId,int sprintId);
     //Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksByLearningObjectiveId(int learningObjectiveId);
     //Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTasksBySprint(int sprintId);

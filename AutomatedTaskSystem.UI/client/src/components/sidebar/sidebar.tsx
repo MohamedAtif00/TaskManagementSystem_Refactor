@@ -97,7 +97,7 @@ const Sidebar = () => {
                     icon="Home"
                     text="Home"
                 />
-                {(auth.role === 0 || auth.role === 4) ? (
+                {(auth.role === 4 || auth.role === 0) ? (
                     <>
                         <Navlink
                             activeCondition={path.includes("/resources")}
