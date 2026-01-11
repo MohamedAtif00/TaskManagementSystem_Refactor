@@ -56,16 +56,7 @@ namespace AutomatedTaskSystem.Controllers
 
         // GET: api/Permission/{id}
         [HttpGet("GetPermissionsByUserId/{userId}")]
-        public async Task<IActionResult> GetPermissionsByUserId(
-                int userId,
-                [FromQuery] int page = 1,
-                [FromQuery] int pageSize = 10,
-                [FromQuery] string? searchTerm = null,
-                [FromQuery] string? fromDate = null,
-                [FromQuery] string? toDate = null,
-                [FromQuery] string? status = null,
-                [FromQuery] string? type = null,
-                [FromQuery] bool disablePagination = false)
+        public async Task<IActionResult> GetPermissionsByUserId(int userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? searchTerm = null, [FromQuery] string? fromDate = null, [FromQuery] string? toDate = null, [FromQuery] string? status = null, [FromQuery] string? type = null, [FromQuery] bool disablePagination = false)
         {
             var result = await _permissionService.GetPermissionsByUserId(
                 userId,

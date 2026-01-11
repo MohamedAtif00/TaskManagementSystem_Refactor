@@ -44,10 +44,7 @@ public class TaskController : ControllerBase
     ) => await _taskService.CreatableTasks(projectId);
 
     [HttpPatch("{id}/priority")]
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> EditTask(
-        int id,
-        Requests.PriorityUpdateDto req
-    ) => await _taskService.UpdateTaskPriority(id, req.Priority);
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> EditTask(int id, Requests.PriorityUpdateDto req) => await _taskService.UpdateTaskPriority(id, req.Priority);
 
     // POST:
     // Add Task
@@ -64,10 +61,7 @@ public class TaskController : ControllerBase
     // POST:
     // Add comment to task
     [Authorize, HttpPost("{id}/comment")]
-    public async Task<ActionResult<ResponseService<TaskCommentDto>>> AddComment(
-        int id,
-        Requests.CommentDTO req
-    ) => await _taskService.AddComment(id, req.Comment);
+    public async Task<ActionResult<ResponseService<TaskCommentDto>>> AddComment(int id, Requests.CommentDTO req) => await _taskService.AddComment(id, req.Comment);
 
     // GET:
     // Fetch currently assigned user to task (if any) and users that can work on the task
@@ -86,9 +80,6 @@ public class TaskController : ControllerBase
     [HttpGet("sprint/{id}/task/{taskid}")]
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskForSprint(int taskid,int id) =>
         await _taskService.GetTaskDetailsAdjustedForSprint(taskid,id);
-
-
-
 
     [HttpGet("/sprints/{loid}/{sprintid}/tasks/cards")]
     public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetCardTasksByLearningObject(int loid,int sprintid)
@@ -182,10 +173,7 @@ public class TaskController : ControllerBase
     // Rollback Task
     [Authorize]
     [HttpPost("rollback/{id}")]
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(
-        int id,
-        Requests.RollbackDTO req
-    ) =>
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(int id, Requests.RollbackDTO req) =>
         await _taskService.RollbackTask(
             taskId: id,
             stepId: req.StepId,
@@ -308,10 +296,7 @@ public class TaskController : ControllerBase
     // Assign Task to user
     [Authorize]
     [HttpPost("{id}/assign")]
-    public async Task<ActionResult<BaseResponseService>> AssignUser(
-        int id,
-        Requests.TaskUserAssignDTO req
-    ) => await _taskService.AssignUser(id, req.UserId);
+    public async Task<ActionResult<BaseResponseService>> AssignUser(int id, Requests.TaskUserAssignDTO req) => await _taskService.AssignUser(id, req.UserId);
 
     // PATCH:
     // Toggle Flag Route
@@ -340,26 +325,17 @@ public class TaskController : ControllerBase
     // PUT:
     // Jump Task
     [HttpPut("{id}/jump")]
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> JumpTask(
-        int id,
-        List<PutJumpedTaskDto> req
-    ) => await _taskService.JumpTask(id, req);
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> JumpTask(int id, List<PutJumpedTaskDto> req) => await _taskService.JumpTask(id, req);
 
     // PATCH:
     // Edit comment
     [Authorize, HttpPatch("{id}/comment")]
-    public async Task<ActionResult<ResponseService<TaskCommentDto>>> EditComment(
-        int id,
-        EditCommentDto req
-    ) => await _taskService.EditComment(id, req.CommentId, req.Comment);
+    public async Task<ActionResult<ResponseService<TaskCommentDto>>> EditComment(int id, EditCommentDto req) => await _taskService.EditComment(id, req.CommentId, req.Comment);
 
     // DELETE:
     // Delete comment
     [Authorize, HttpDelete("{id}/comment")]
-    public async Task<ActionResult<ResponseService<TaskCommentDto>>> DeleteComment(
-        int id,
-        DeleteCommentDto req
-    ) => await _taskService.DeleteComment(id, req.CommentId);
+    public async Task<ActionResult<ResponseService<TaskCommentDto>>> DeleteComment(int id, DeleteCommentDto req) => await _taskService.DeleteComment(id, req.CommentId);
 
     // GET:
     // Get Task Rollback History

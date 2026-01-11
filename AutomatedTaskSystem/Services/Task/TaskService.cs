@@ -34,45 +34,41 @@ public class TaskService : ITaskService
     private readonly IAuthService _authService;
     private readonly IRollbackService _rollbackService;
 
-	    private sealed class SprintTaskRow
-	    {
-	        public int Id { get; set; }
-	        public string Name { get; set; } = string.Empty;
-	        public TaskStatusEnum Status { get; set; } = TaskStatusEnum.Backlog;
-	        public bool Pause { get; set; }
-	        public bool Attention { get; set; }
-	        public bool Flagged { get; set; }
-	        public bool IsReview { get; set; }
-	        public bool IsRollback { get; set; }
-	        public int RollbackCount { get; set; }
-	        public int Duration { get; set; }
-	        public DateTime CreatedAt { get; set; }
-	        public int LearningObjectiveId { get; set; }
-	        public string LearningObjectiveName { get; set; } = string.Empty;
-	        public int? UserId { get; set; }
-	        public string? UserName { get; set; }
-	        public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
-	        public string? FromName { get; set; }
-	    }
+	private sealed class SprintTaskRow
+	{
+	    public int Id { get; set; }
+	    public string Name { get; set; } = string.Empty;
+	    public TaskStatusEnum Status { get; set; } = TaskStatusEnum.Backlog;
+	    public bool Pause { get; set; }
+	    public bool Attention { get; set; }
+	    public bool Flagged { get; set; }
+	    public bool IsReview { get; set; }
+	    public bool IsRollback { get; set; }
+	    public int RollbackCount { get; set; }
+	    public int Duration { get; set; }
+	    public DateTime CreatedAt { get; set; }
+	    public int LearningObjectiveId { get; set; }
+	    public string LearningObjectiveName { get; set; } = string.Empty;
+	    public int? UserId { get; set; }
+	    public string? UserName { get; set; }
+	    public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
+	    public string? FromName { get; set; }
+	}
 
-	    private sealed class TaskActivityRangeRow
-	    {
-	        public int TaskId { get; set; }
-	        public DateTime? Earliest { get; set; }
-	        public DateTime? Latest { get; set; }
-	    }
+	private sealed class TaskActivityRangeRow
+	{
+	    public int TaskId { get; set; }
+	    public DateTime? Earliest { get; set; }
+	    public DateTime? Latest { get; set; }
+	}
 
-	    private sealed class TaskDurationRow
-	    {
-	        public int TaskId { get; set; }
-	        public double Duration { get; set; }
-	    }
+	private sealed class TaskDurationRow
+	{
+	    public int TaskId { get; set; }
+	    public double Duration { get; set; }
+	}
 
-    public TaskService(
-        DataContext context,
-        IAuthService authService,
-        IRollbackService rollbackService
-    )
+    public TaskService(DataContext context, IAuthService authService, IRollbackService rollbackService)
     {
         _context = context;
         _authService = authService;
@@ -192,11 +188,7 @@ public class TaskService : ITaskService
     public async Task<Models.Task> CreateTask(TaskBank taskBank, LearningObjective lo) =>
         await createTask(taskBank, lo);
 
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CreateTask(
-        int taskBankId,
-        int loId,
-        int userId
-    )
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CreateTask(int taskBankId, int loId, int userId)
     {
         var lo = await _context.LearningObjectives
             .Where(lo => !lo.Archived && lo.Id == loId)
@@ -258,8 +250,6 @@ public class TaskService : ITaskService
 
     public async Task<Models.Task> CreateTask(Step step, LearningObjective lo, Models.Task? from) =>
         await createTask(step: step, learningObjective: lo, from);
-
-
 
     /// <summary>
     /// Retrieves a list of task cards associated with a specific Learning Objective.
@@ -420,7 +410,7 @@ public class TaskService : ITaskService
     /// </summary>
     /// <param name="sprintId">The ID of the Sprint.</param>
 	    /// <returns>A ResponseService containing a list of GetTaskCardDto if successful, otherwise an error response.</returns>
-	    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksBySprintId(int sprintId)
+	public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksBySprintId(int sprintId)
 	    {
 	        var user = await _authService.GetAuthedUser();
 	        if (user is null)
@@ -539,181 +529,340 @@ public class TaskService : ITaskService
 	        };
 		    }
 
-			/// <summary>
-			/// Streaming version of GetTasksBySprintId that yields task cards in batches
-			/// using Dapper instead of Entity Framework for data access, while preserving
-			/// the same business logic, batching, and dictionary-based caching.
-			/// </summary>
-			/// <param name="sprintId">The ID of the Sprint.</param>
-			/// <returns>An async stream of GetTaskCardDto instances.</returns>
-			public async IAsyncEnumerable<GetTaskCardDto> GetTasksBySprintIdStream(int sprintId)
-			{
-			    var user = await _authService.GetAuthedUser();
-			    if (user is null)
+	/// <summary>
+	    /// Streaming version of GetTasksBySprintId that yields task cards in batches
+	    /// using Dapper instead of Entity Framework for data access, while preserving
+	    /// the same business logic, batching, and dictionary-based caching.
+	    /// </summary>
+	    /// <param name="sprintId">The ID of the Sprint.</param>
+	    /// <returns>An async stream of GetTaskCardDto instances.</returns>
+	public async IAsyncEnumerable<GetTaskCardDto> GetTasksBySprintIdStream(int sprintId)
+	    {
+		    var user = await _authService.GetAuthedUser();
+		    if (user is null)
+		    {
+			    throw new UnauthorizedAccessException("Invalid auth");
+		    }
+
+		    var connection = _context.Database.GetDbConnection();
+		    if (connection.State != ConnectionState.Open)
+		    {
+			    await connection.OpenAsync();
+		    }
+
+		    var isProjectManager = user.Role == UserRoleEnum.ProjectManger;
+		    var isTeamLeader = user.Role == UserRoleEnum.TeamLeader;
+		    var isSectionHead = user.Role == UserRoleEnum.SectionHead;
+		    var isMember = user.Role == UserRoleEnum.Member;
+
+		    List<Group>? allowedGroups = null;
+		    List<int>? allowedGroupIds = null;
+
+		    if (isTeamLeader || isSectionHead)
+		    {
+			    var userGroup = await _context.Groups
+			        .Where(g => g.Id == user.GroupId)
+			        .FirstOrDefaultAsync();
+
+			    if (userGroup is null)
 			    {
-			        throw new UnauthorizedAccessException("Invalid auth");
+			        throw new Exception("User has a not found group");
 			    }
-			
-			    var connection = _context.Database.GetDbConnection();
-			    if (connection.State != ConnectionState.Open)
+
+			    allowedGroups = new List<Group> { userGroup };
+
+			    if (isSectionHead)
 			    {
-			        await connection.OpenAsync();
+			        var section = await _context.Sections
+			            .Where(s => s.HeadId == user.Id && !s.Archived)
+			            .FirstOrDefaultAsync();
+
+			        if (section is not null)
+			        {
+			            var groupIds = await _context.SectionGroups
+			                .Where(sg => sg.SectionId == section.Id)
+			                .Select(sg => sg.GroupId)
+			                .ToListAsync();
+
+			            if (groupIds.Count > 0)
+			            {
+			                var sectionGroups = await _context.Groups
+			                    .Where(g => groupIds.Contains(g.Id))
+			                    .ToListAsync();
+
+			                allowedGroups.AddRange(sectionGroups);
+			            }
+			        }
 			    }
-			
-			    const string sprintSql = @"SELECT TOP (1) Id, Name, Description, StartDate, EndDate, IsArchived
-			                               FROM Sprints
-			                               WHERE Id = @SprintId";
-			
-			    var sprint = await connection.QueryFirstOrDefaultAsync<AutomatedTaskSystem.Models.Sprint>(sprintSql, new { SprintId = sprintId });
-			    if (sprint is null)
-			    {
-			        throw new InvalidOperationException("Sprint not found");
-			    }
-			
-			    // Define sprint start and end dates for comparison
-			    var sprintStartDate = sprint.StartDate.Date;
-			    var sprintEndDate = sprint.EndDate.Date;
-			
-			    // Get all task IDs for this sprint (via LearningObjective-SprintLearningObjective association)
-			    const string taskIdsSql = @"SELECT DISTINCT t.Id
-			                                FROM Tasks t
-			                                INNER JOIN LearningObjectives lo ON t.LearningObjectiveId = lo.Id
-			                                INNER JOIN SprintLearningObjectives slo ON slo.LearningObjectiveId = lo.Id
-			                                WHERE t.Archived = 0 AND slo.SprintId = @SprintId";
-			
-			    var taskIds = (await connection.QueryAsync<int>(taskIdsSql, new { SprintId = sprintId })).ToList();
-			    if (taskIds.Count == 0)
+
+			    allowedGroupIds = allowedGroups
+			        .Select(g => g.Id)
+			        .Distinct()
+			        .ToList();
+
+			    if (allowedGroupIds.Count == 0)
 			    {
 			        yield break;
 			    }
-			
-			    // Preload activity ranges for all tasks in this sprint in a single query
-			    const string activitySql = @"SELECT
-			                                        ta.TaskId,
-			                                        MIN(ta.TimeStamp) AS Earliest,
-			                                        MAX(ta.TimeStamp) AS Latest
-			                                FROM TaskActivities ta
-			                                WHERE ta.TaskId IN @TaskIds
-			                                GROUP BY ta.TaskId";
-			
-			    var activityLookup = (await connection.QueryAsync<TaskActivityRangeRow>(
-			            activitySql,
-			            new { TaskIds = taskIds }
-			        ))
-			        .ToDictionary(x => x.TaskId);
-			
-			    // Preload work time durations for all sprint tasks in a single query.
-			    const string durationSql = @"SELECT
-			                                        twt.TaskId,
-			                                        SUM(twt.Duration) AS Duration
-			                                FROM TaskWorkTimes twt
-			                                WHERE twt.TaskId IN @TaskIds
-			                                GROUP BY twt.TaskId";
-			
-			    var durationLookup = (await connection.QueryAsync<TaskDurationRow>(
-			            durationSql,
-			            new { TaskIds = taskIds }
-			        ))
-			        .ToDictionary(x => x.TaskId);
-			
-			    // Stream tasks in batches to reduce memory usage while minimizing round trips.
-			    const int batchSize = 200; // tuned for 500–1000+ records per sprint
-			    var skip = 0;
-			
-			    const string tasksBatchSql = @"SELECT
-			                                            t.Id,
-			                                            t.Name,
-			                                            t.Status,
-			                                            t.Pause,
-			                                            t.Attention,
-			                                            t.Flagged,
-			                                            t.IsReview,
-			                                            t.IsRollback,
-			                                            t.RollbackCount,
-			                                            t.Duration,
-			                                            t.CreatedAt,
-			                                            t.LearningObjectiveId,
-			                                            lo.Name AS LearningObjectiveName,
-			                                            t.UserId,
-			                                            u.Name AS UserName,
-			                                            t.Priority,
-			                                            f.Name AS FromName
-			                                    FROM Tasks t
-			                                    INNER JOIN LearningObjectives lo ON t.LearningObjectiveId = lo.Id
-			                                    INNER JOIN SprintLearningObjectives slo ON slo.LearningObjectiveId = lo.Id
-			                                    LEFT JOIN Users u ON t.UserId = u.Id
-			                                    LEFT JOIN Tasks f ON t.FromId = f.Id
-			                                    WHERE t.Archived = 0 AND slo.SprintId = @SprintId
-			                                    ORDER BY t.Id
-			                                    OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
-			
-			    while (true)
+		    }
+		    else if (isMember)
+		    {
+			    if (!user.GroupId.HasValue)
 			    {
-			        var tasksBatch = (await connection.QueryAsync<SprintTaskRow>(
+			        yield break;
+			    }
+		    }
+
+		    const string sprintSql = @"SELECT TOP (1) Id, Name, Description, StartDate, EndDate, IsArchived
+			                            FROM Sprints
+			                            WHERE Id = @SprintId";
+
+		    var sprint = await connection.QueryFirstOrDefaultAsync<AutomatedTaskSystem.Models.Sprint>(
+			    sprintSql,
+			    new { SprintId = sprintId }
+		    );
+		    if (sprint is null)
+		    {
+			    throw new InvalidOperationException("Sprint not found");
+		    }
+
+		    // Define sprint start and end dates for comparison
+		    var sprintStartDate = sprint.StartDate.Date;
+		    var sprintEndDate = sprint.EndDate.Date;
+
+		    // Get all task IDs for this sprint (via LearningObjective-SprintLearningObjective association)
+		    var taskIdsSql = @"SELECT DISTINCT t.Id
+			                            FROM Tasks t
+			                            INNER JOIN LearningObjectives lo ON t.LearningObjectiveId = lo.Id
+			                            INNER JOIN SprintLearningObjectives slo ON slo.LearningObjectiveId = lo.Id
+			                            WHERE t.Archived = 0 AND slo.SprintId = @SprintId";
+
+		    if (isMember)
+		    {
+			    taskIdsSql += @" AND t.GroupId = @UserGroupId
+			                    AND (t.UserId = @UserId OR t.Status = @BacklogStatus)
+			                    AND (t.TL = 0 OR t.UserId = @UserId)";
+		    }
+		    else if (isTeamLeader || isSectionHead)
+		    {
+			    taskIdsSql += @" AND t.GroupId IN @GroupIds";
+		    }
+
+		    List<int> taskIds;
+		    if (isMember)
+		    {
+			    taskIds = (await connection.QueryAsync<int>(
+			            taskIdsSql,
+			            new
+			            {
+			                SprintId = sprintId,
+			                UserId = user.Id,
+			                UserGroupId = user.GroupId!.Value,
+			                BacklogStatus = (int)TaskStatusEnum.Backlog
+			            }
+			        ))
+			        .ToList();
+		    }
+		    else if (isTeamLeader || isSectionHead)
+		    {
+			    taskIds = (await connection.QueryAsync<int>(
+			            taskIdsSql,
+			            new
+			            {
+			                SprintId = sprintId,
+			                GroupIds = allowedGroupIds
+			            }
+			        ))
+			        .ToList();
+		    }
+		    else
+		    {
+			    taskIds = (await connection.QueryAsync<int>(
+			            taskIdsSql,
+			            new { SprintId = sprintId }
+			        ))
+			        .ToList();
+		    }
+
+		    if (taskIds.Count == 0)
+		    {
+			    yield break;
+		    }
+
+		    // Preload activity ranges for all tasks in this sprint in a single query
+		    const string activitySql = @"SELECT
+			                                    ta.TaskId,
+			                                    MIN(ta.TimeStamp) AS Earliest,
+			                                    MAX(ta.TimeStamp) AS Latest
+			                            FROM TaskActivities ta
+			                            WHERE ta.TaskId IN @TaskIds
+			                            GROUP BY ta.TaskId";
+
+		    var activityLookup = (await connection.QueryAsync<TaskActivityRangeRow>(
+			        activitySql,
+			        new { TaskIds = taskIds }
+			    ))
+			    .ToDictionary(x => x.TaskId);
+
+		    // Preload work time durations for all sprint tasks in a single query.
+		    const string durationSql = @"SELECT
+			                                    twt.TaskId,
+			                                    SUM(twt.Duration) AS Duration
+			                            FROM TaskWorkTimes twt
+			                            WHERE twt.TaskId IN @TaskIds
+			                            GROUP BY twt.TaskId";
+
+		    var durationLookup = (await connection.QueryAsync<TaskDurationRow>(
+			        durationSql,
+			        new { TaskIds = taskIds }
+			    ))
+			    .ToDictionary(x => x.TaskId);
+
+		    // Stream tasks in batches to reduce memory usage while minimizing round trips.
+		    const int batchSize = 200; // tuned for 50031000+ records per sprint
+		    var skip = 0;
+
+		    var tasksBatchSql = @"SELECT
+			                                        t.Id,
+			                                        t.Name,
+			                                        t.Status,
+			                                        t.Pause,
+			                                        t.Attention,
+			                                        t.Flagged,
+			                                        t.IsReview,
+			                                        t.IsRollback,
+			                                        t.RollbackCount,
+			                                        t.Duration,
+			                                        t.CreatedAt,
+			                                        t.LearningObjectiveId,
+			                                        lo.Name AS LearningObjectiveName,
+			                                        t.UserId,
+			                                        u.Name AS UserName,
+			                                        t.Priority,
+			                                        f.Name AS FromName
+			                                FROM Tasks t
+			                                INNER JOIN LearningObjectives lo ON t.LearningObjectiveId = lo.Id
+			                                INNER JOIN SprintLearningObjectives slo ON slo.LearningObjectiveId = lo.Id
+			                                LEFT JOIN Users u ON t.UserId = u.Id
+			                                LEFT JOIN Tasks f ON t.FromId = f.Id
+			                                WHERE t.Archived = 0 AND slo.SprintId = @SprintId";
+
+		    if (isMember)
+		    {
+			    tasksBatchSql += @" AND t.GroupId = @UserGroupId
+			                            AND (t.UserId = @UserId OR t.Status = @BacklogStatus)
+			                            AND (t.TL = 0 OR t.UserId = @UserId)";
+		    }
+		    else if (isTeamLeader || isSectionHead)
+		    {
+			    tasksBatchSql += @" AND t.GroupId IN @GroupIds";
+		    }
+
+		    tasksBatchSql += @"
+			                                ORDER BY t.Id
+			                                OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+
+		    while (true)
+		    {
+			    List<SprintTaskRow> tasksBatch;
+			    if (isMember)
+			    {
+			        tasksBatch = (await connection.QueryAsync<SprintTaskRow>(
+			                tasksBatchSql,
+			                new
+			                {
+			                    SprintId = sprintId,
+			                    Skip = skip,
+			                    Take = batchSize,
+			                    UserId = user.Id,
+			                    UserGroupId = user.GroupId!.Value,
+			                    BacklogStatus = (int)TaskStatusEnum.Backlog
+			                }
+			            ))
+			            .ToList();
+			    }
+			    else if (isTeamLeader || isSectionHead)
+			    {
+			        tasksBatch = (await connection.QueryAsync<SprintTaskRow>(
+			                tasksBatchSql,
+			                new
+			                {
+			                    SprintId = sprintId,
+			                    Skip = skip,
+			                    Take = batchSize,
+			                    GroupIds = allowedGroupIds
+			                }
+			            ))
+			            .ToList();
+			    }
+			    else
+			    {
+			        tasksBatch = (await connection.QueryAsync<SprintTaskRow>(
 			                tasksBatchSql,
 			                new { SprintId = sprintId, Skip = skip, Take = batchSize }
 			            ))
 			            .ToList();
-			
-			        if (tasksBatch.Count == 0)
-			        {
-			            yield break;
-			        }
-			
-			        foreach (var task in tasksBatch)
-			        {
-			            activityLookup.TryGetValue(task.Id, out var activityInfo);
-			            var latestTimestamp = activityInfo?.Latest ?? DateTime.MinValue;
-			
-			            var taskOriginalStart = task.CreatedAt.Date;
-			            var taskOriginalEnd = latestTimestamp != DateTime.MinValue
-			                ? latestTimestamp.Date
-			                : task.CreatedAt.Date;
-			
-			            // Clip to sprint window
-			            var effectiveStartDate = taskOriginalStart < sprintStartDate ? sprintStartDate : taskOriginalStart;
-			            var effectiveEndDate = taskOriginalEnd > sprintEndDate ? sprintEndDate : taskOriginalEnd;
-			
-			            durationLookup.TryGetValue(task.Id, out var durationInfo);
-			            var duration = durationInfo?.Duration ?? 0d;
-			
-			            yield return new GetTaskCardDto
-			            {
-			                Paused = task.Pause,
-			                Attention = task.Attention,
-			                Flagged = task.Flagged,
-			                From = task.FromName ?? string.Empty,
-			                Id = task.Id,
-			                IsReview = task.IsReview,
-			                IsRollback = task.IsRollback,
-			                LearningObjective = new BasicInfoDto
-			                {
-			                    Id = task.LearningObjectiveId,
-			                    Name = task.LearningObjectiveName
-			                },
-			                Name = task.Name,
-			                Priority = task.Priority,
-			                RollbackCount = task.RollbackCount,
-			                Status = task.Status,
-			                User = task.UserId == null
-			                    ? null
-			                    : new BasicInfoDto
-			                    {
-			                        Name = task.UserName ?? string.Empty,
-			                        Id = task.UserId.Value
-			                    },
-			                baseDuration = task.Duration,
-			                duration = (decimal?)duration / 60000m,
-			                AdjustedStartDate = effectiveStartDate,
-			                AdjustedEndDate = effectiveEndDate
-			            };
-			        }
-			
-			        skip += tasksBatch.Count;
 			    }
-			}
+
+			    if (tasksBatch.Count == 0)
+			    {
+			        yield break;
+			    }
+
+			    foreach (var task in tasksBatch)
+			    {
+			        activityLookup.TryGetValue(task.Id, out var activityInfo);
+			        var latestTimestamp = activityInfo?.Latest ?? DateTime.MinValue;
+
+			        var taskOriginalStart = task.CreatedAt.Date;
+			        var taskOriginalEnd = latestTimestamp != DateTime.MinValue
+			            ? latestTimestamp.Date
+			            : task.CreatedAt.Date;
+
+			        // Clip to sprint window
+			        var effectiveStartDate = taskOriginalStart < sprintStartDate ? sprintStartDate : taskOriginalStart;
+			        var effectiveEndDate = taskOriginalEnd > sprintEndDate ? sprintEndDate : taskOriginalEnd;
+
+			        durationLookup.TryGetValue(task.Id, out var durationInfo);
+			        var duration = durationInfo?.Duration ?? 0d;
+
+			        yield return new GetTaskCardDto
+			        {
+			            Paused = task.Pause,
+			            Attention = task.Attention,
+			            Flagged = task.Flagged,
+			            From = task.FromName ?? string.Empty,
+			            Id = task.Id,
+			            IsReview = task.IsReview,
+			            IsRollback = task.IsRollback,
+			            LearningObjective = new BasicInfoDto
+			            {
+			                Id = task.LearningObjectiveId,
+			                Name = task.LearningObjectiveName
+			            },
+			            Name = task.Name,
+			            Priority = task.Priority,
+			            RollbackCount = task.RollbackCount,
+			            Status = task.Status,
+			            User = task.UserId == null
+			                ? null
+			                : new BasicInfoDto
+			                {
+			                    Name = task.UserName ?? string.Empty,
+			                    Id = task.UserId.Value
+			                },
+			            baseDuration = task.Duration,
+			            duration = (decimal?)duration / 60000m,
+			            AdjustedStartDate = effectiveStartDate,
+			            AdjustedEndDate = effectiveEndDate
+			        };
+			    }
+
+			    skip += tasksBatch.Count;
+		    }
+	    }
 		
-		    //public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTasksBySprint(int sprintId)
+	//public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTasksBySprint(int sprintId)
     //{
     //    //var user = await _authService.GetAuthedUser();
     //    //if (user is null)
@@ -1023,12 +1172,7 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(
-        int taskId,
-        int stepId,
-        List<RollbackLogDto> logs,
-        string? clarification
-    )
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(int taskId, int stepId, List<RollbackLogDto> logs, string? clarification)
     {
         var user = await _authService.GetAuthedUser();
         if (user is null)
@@ -1418,10 +1562,7 @@ public class TaskService : ITaskService
         return await getTaskDetails(task.Id);
     }
 
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> UpdateTaskPriority(
-        int TaskId,
-        TaskPriorityEnum Priority
-    )
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> UpdateTaskPriority(int TaskId, TaskPriorityEnum Priority)
     {
         var user = await _authService.GetAuthedUser();
 
@@ -1470,17 +1611,9 @@ public class TaskService : ITaskService
         return await getTaskDetails(task.Id);
     }
 
-    private async Task<Models.Task> createTask(
-        TaskBank taskBank,
-        LearningObjective learningObjective
-    ) => await createTask(taskBank, learningObjective, null);
+    private async Task<Models.Task> createTask(TaskBank taskBank, LearningObjective learningObjective) => await createTask(taskBank, learningObjective, null);
 
-    private async Task<Models.Task> createTask(
-        TaskBank taskBank,
-        LearningObjective learningObjective,
-        User? user,
-        int? sprintId = null
-    )
+    private async Task<Models.Task> createTask(TaskBank taskBank, LearningObjective learningObjective, User? user, int? sprintId = null)
     {
         var authedUser = await _authService.GetAuthedUser();
 
@@ -1533,11 +1666,7 @@ public class TaskService : ITaskService
         return newTask;
     }
 
-    private async Task<Models.Task> createTask(
-        Step step,
-        LearningObjective learningObjective,
-        Models.Task? from
-    )
+    private async Task<Models.Task> createTask(Step step, LearningObjective learningObjective, Models.Task? from)
     {
         var newTask = new Models.Task
         {
@@ -2733,10 +2862,7 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> JumpTask(
-        int id,
-        List<PutJumpedTaskDto> options
-    )
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> JumpTask(int id, List<PutJumpedTaskDto> options)
     {
         var user = await _authService.GetAuthedUser();
         if (user is null || user.Role != UserRoleEnum.ProjectManger)
@@ -3034,10 +3160,7 @@ public class TaskService : ITaskService
         return depth;
     }
 
-    public async Task<ActionResult<ResponseService<TaskCommentDto>>> AddComment(
-        int id,
-        string comment
-    )
+    public async Task<ActionResult<ResponseService<TaskCommentDto>>> AddComment(int id, string comment)
     {
         var user = await _authService.GetAuthedUser();
 
@@ -3107,11 +3230,7 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<ActionResult<ResponseService<TaskCommentDto>>> EditComment(
-        int taskId,
-        int commentId,
-        string content
-    )
+    public async Task<ActionResult<ResponseService<TaskCommentDto>>> EditComment(int taskId, int commentId, string content)
     {
         var user = await _authService.GetAuthedUser();
 
@@ -3203,10 +3322,7 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<ActionResult<ResponseService<TaskCommentDto>>> DeleteComment(
-        int taskId,
-        int commentId
-    )
+    public async Task<ActionResult<ResponseService<TaskCommentDto>>> DeleteComment(int taskId, int commentId)
     {
         var user = await _authService.GetAuthedUser();
 

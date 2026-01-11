@@ -17,11 +17,7 @@ public class ProjectController : ControllerBase
     private readonly IProjectService _projectService;
     private readonly IYearService _yearService;
 
-    public ProjectController(
-        IAuthService authService,
-        IProjectService projectService,
-        IYearService yearService
-    )
+    public ProjectController(IAuthService authService, IProjectService projectService, IYearService yearService)
     {
         _authService = authService;
         _projectService = projectService;
@@ -61,10 +57,7 @@ public class ProjectController : ControllerBase
 
     // Unassign from project
     [HttpPost("{id}/unassign")]
-    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> UnassignFromProject(
-        int id,
-        Requests.LOAssignDTO req
-    ) => await _projectService.UnassignToProject(id, req.UserIds);
+    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> UnassignFromProject(int id, Requests.LOAssignDTO req) => await _projectService.UnassignToProject(id, req.UserIds);
 
     // Get Project details
     [HttpGet("{id}/details")]
@@ -122,8 +115,5 @@ public class ProjectController : ControllerBase
     // PATCH:
     // Update Project's status
     [HttpPatch("{id}/status")]
-    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateStatus(
-        int id,
-        UpdateProjectStatusDto req
-    ) => await _projectService.UpdateProjectStatus(id, req.Status);
+    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateStatus(int id, UpdateProjectStatusDto req) => await _projectService.UpdateProjectStatus(id, req.Status);
 }

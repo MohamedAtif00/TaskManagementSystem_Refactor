@@ -80,7 +80,7 @@ const Groups = () => {
         };
     }, [dispatch]);
 
-    if (!auth.isAuth || auth.role !== 0) return router.replace("/");
+    if (!auth.isAuth ||auth.role == 1 || auth.role == 2 || auth.role == 3) return router.replace("/");
 
     return (
         <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">

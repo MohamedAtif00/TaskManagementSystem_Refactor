@@ -512,6 +512,11 @@ namespace AutomatedTaskSystem.Services.Permission
         }
 
         // Get a detailed permission by ID
+        /// <summary>
+        /// Get specific permission details 
+        /// </summary>
+        /// <param name="permissionId"></param>
+        /// <returns></returns>
         public async Task<ResponseService<GetSinglePermissionDto>> GetPermissionDetailByIdAsync(int permissionId)
         {
             // Get the raw data from database
@@ -606,6 +611,19 @@ namespace AutomatedTaskSystem.Services.Permission
         }
 
         // Get all permissions for a specific user
+        /// <summary>
+        /// Get permissions for specific users
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="page"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="searchTerm"></param>
+        /// <param name="fromDate"></param>
+        /// <param name="toDate"></param>
+        /// <param name="status"></param>
+        /// <param name="type"></param>
+        /// <param name="disablePagination"></param>
+        /// <returns></returns>
         public async Task<ResponseService<PageList<GetPermissionDto>>> GetPermissionsByUserId(
             int userId,
             int page,
@@ -768,6 +786,11 @@ namespace AutomatedTaskSystem.Services.Permission
             return true;
         }
 
+        /// <summary>
+        /// Cancel permission
+        /// </summary>
+        /// <param name="permissionId"></param>
+        /// <returns></returns>
         public async Task<ResponseService<bool>> CancelPermissionAsync(int permissionId)
         {
             try
@@ -929,10 +952,12 @@ namespace AutomatedTaskSystem.Services.Permission
             }
         }
 
-
-
-
         // Delete a permission
+        /// <summary>
+        /// Delete permission using id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         public async Task<bool> DeletePermissionAsync(int id)
         {
             var permission = await _dataContext.Permissions.FindAsync(id);

@@ -22,13 +22,7 @@ public class ProjectService : IProjectService
     private readonly ILearningObjectiveService _learningObjectiveService;
     private readonly ITokenService _tokenService;
 
-    public ProjectService(
-        DataContext context,
-        IProjectAssignmentService projectAssignmentService,
-        IUnitService unitService,
-        ILearningObjectiveService learningObjectiveService,
-        ITokenService tokenService
-    )
+    public ProjectService(DataContext context, IProjectAssignmentService projectAssignmentService, IUnitService unitService, ILearningObjectiveService learningObjectiveService, ITokenService tokenService)
     {
         _context = context;
         _projectAssignmentService = projectAssignmentService;
@@ -37,10 +31,7 @@ public class ProjectService : IProjectService
         _tokenService = tokenService;
     }
 
-    public async Task<ActionResult<ResponseService<Responses.ProjectUnitDTO>>> AddUnit(
-        int Id,
-        string Name
-    )
+    public async Task<ActionResult<ResponseService<Responses.ProjectUnitDTO>>> AddUnit(int Id, string Name)
     {
         var project = await _context.Projects
             .Where(p => p.Id == Id && !p.Archived)
@@ -64,10 +55,7 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> AssignToProject(
-        int Id,
-        List<int> UserIds
-    )
+    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> AssignToProject(int Id, List<int> UserIds)
     {
         var user = await _projectAssignmentService.AssignUsersToProject(Id, UserIds);
 
@@ -84,12 +72,7 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> CreateProject(
-        string Name,
-        string Description,
-        int YearId,
-        bool Term
-    )
+    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> CreateProject(string Name, string Description, int YearId, bool Term)
     {
         var year = await _context.Years.Where(y => y.Id == YearId).FirstOrDefaultAsync();
 
@@ -169,13 +152,7 @@ public class ProjectService : IProjectService
         return new BaseResponseService { Error = false, Message = "Project is now Deleted" };
     }
 
-    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> EditProject(
-        int id,
-        string Name,
-        string Description,
-        int YearId,
-        bool term
-    )
+    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> EditProject(int id, string Name, string Description, int YearId, bool term)
     {
         var project = await _context.Projects
             .Where(p => p.Id == id && !p.Archived)
@@ -441,9 +418,7 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<
-        ActionResult<ResponseService<List<Responses.IDName>>>
-    > GetProjectLearningObjectives(int Id)
+    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetProjectLearningObjectives(int Id)
     {
         var res = await _learningObjectiveService.GetLearningObjectivesByProjectId(Id);
 
@@ -676,10 +651,7 @@ public class ProjectService : IProjectService
     }
 
 
-    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> UnassignToProject(
-        int Id,
-        List<int> UserIds
-    )
+    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> UnassignToProject(int Id, List<int> UserIds)
     {
         var res = await _projectAssignmentService.UnassignUsersToProject(Id, UserIds);
 
@@ -702,10 +674,7 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateProjectStatus(
-        int id,
-        ProjectStatusEnum status
-    )
+    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateProjectStatus(int id, ProjectStatusEnum status)
     {
         var project = await _context.Projects
             .Where(p => !p.Archived && p.Id == id)

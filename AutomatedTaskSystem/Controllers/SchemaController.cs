@@ -214,16 +214,13 @@ public class SchemaController : ControllerBase
     // PATCH:
     // Update Schema
     [HttpPatch("{id}")]
-    public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> UpdateSchema(
-        int id,
-        Requests.SchemaDTO req
-    ) => await _schemaService.EditSchema(id, req.Name, req.Description, req.TypeId);
+    public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> UpdateSchema(int id, Requests.SchemaDTO req) => await _schemaService.EditSchema(id, req.Name, req.Description, req.TypeId);
 
 
-	    // GET:
+	// GET:
 	    // Get archived schemas (Simplified)
-	    [HttpGet("archived")]
-	    public async Task<ActionResult<List<Responses.SchemaDTO>>> GetArchivedSchemas()
+	[HttpGet("archived")]
+	public async Task<ActionResult<List<Responses.SchemaDTO>>> GetArchivedSchemas()
 	    {
 	        var schemas = await _context.Schemas
 	            .Where(s => s.Archived)
@@ -261,10 +258,10 @@ public class SchemaController : ControllerBase
         await _schemaService.DeleteSchema(id);
 
 
-	    // POST:
+	// POST:
 	    // Unarchive Schema
-	    [HttpPost("{id}/unarchive")]
-	    public async Task<ActionResult<BaseResponseService>> UnarchiveSchema(int id) =>
+	[HttpPost("{id}/unarchive")]
+	public async Task<ActionResult<BaseResponseService>> UnarchiveSchema(int id) =>
 	        await _schemaService.UnarchiveSchema(id);
 
     [HttpGet("{id}/points")]

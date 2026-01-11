@@ -368,10 +368,7 @@ public class StepController : ControllerBase
     }
 
     [HttpPatch("{stepId}/add-rollback-point")]
-    public async Task<ActionResult<BaseResponseService>> AddToRollbacks(
-        int stepId,
-        UpdateRollbackStepDto req
-    )
+    public async Task<ActionResult<BaseResponseService>> AddToRollbacks(int stepId, UpdateRollbackStepDto req)
     {
         var step = await _context.Steps
             .Where(s => s.Id == stepId && !s.Archived)
@@ -400,10 +397,7 @@ public class StepController : ControllerBase
     }
 
     [HttpPatch("{stepId}/remove-rollback-point")]
-    public async Task<ActionResult<BaseResponseService>> RemoveFromRollbacks(
-        int stepId,
-        UpdateRollbackStepDto req
-    )
+    public async Task<ActionResult<BaseResponseService>> RemoveFromRollbacks(int stepId, UpdateRollbackStepDto req)
     {
         var step = await _context.Steps
             .Where(s => s.Id == stepId && !s.Archived)
