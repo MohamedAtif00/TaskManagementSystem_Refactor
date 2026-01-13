@@ -228,7 +228,7 @@ const Project = () => {
     const [activeLesson, setActiveLesson] = useState<Lesson>();
     const [activeLO, setActiveLO] = useState<LearningObjective>();
 
-    if (!auth.isAuth || auth.role !== 0 || auth.role !== 4) router.replace("/");
+    if (!auth.isAuth || (auth.role !== 0 && auth.role !== 4)) router.replace("/");
 
     useEffect(() => {
         if (router.query.projectId)

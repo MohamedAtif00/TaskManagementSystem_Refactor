@@ -31,7 +31,7 @@ public class ProjectService : IProjectService
         _tokenService = tokenService;
     }
 
-    public async Task<ActionResult<ResponseService<Responses.ProjectUnitDTO>>> AddUnit(int Id, string Name)
+    public async Task<ActionResult<ResponseService<ProjectUnitDTO>>> AddUnit(int Id, string Name)
     {
         var project = await _context.Projects
             .Where(p => p.Id == Id && !p.Archived)
@@ -42,37 +42,37 @@ public class ProjectService : IProjectService
 
         var unit = await _unitService.CreateUnit(Name, project);
 
-        return new ResponseService<Responses.ProjectUnitDTO>
+        return new ResponseService<ProjectUnitDTO>
         {
             Error = false,
             Message = unit.Message,
-            Data = new Responses.ProjectUnitDTO
+            Data = new ProjectUnitDTO
             {
                 Id = unit.Data!.Id,
                 Name = unit.Data.Name,
-                Lessons = new List<Responses.ProjectLessonDTO> { }
+                Lessons = new List<ProjectLessonDTO> { }
             }
         };
     }
 
-    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> AssignToProject(int Id, List<int> UserIds)
+    public async Task<ActionResult<ResponseService<List<IDName>>>> AssignToProject(int Id, List<int> UserIds)
     {
         var user = await _projectAssignmentService.AssignUsersToProject(Id, UserIds);
 
         if (user.Error)
             return new NotFoundObjectResult(user);
 
-        return new ResponseService<List<Responses.IDName>>
+        return new ResponseService<List<IDName>>
         {
             Error = false,
             Data = user.Data!
-                .Select(u => new Responses.IDName { Id = u.Id, Name = u.Name })
+                .Select(u => new IDName { Id = u.Id, Name = u.Name })
                 .ToList(),
             Message = user.Message
         };
     }
 
-    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> CreateProject(string Name, string Description, int YearId, bool Term)
+    public async Task<ActionResult<ResponseService<ProjectDTO>>> CreateProject(string Name, string Description, int YearId, bool Term)
     {
         var year = await _context.Years.Where(y => y.Id == YearId).FirstOrDefaultAsync();
 
@@ -94,14 +94,14 @@ public class ProjectService : IProjectService
         _context.Projects.Add(newProject);
         await _context.SaveChangesAsync();
 
-        return new ResponseService<Responses.ProjectDTO>
+        return new ResponseService<ProjectDTO>
         {
-            Data = new Responses.ProjectDTO
+            Data = new ProjectDTO
             {
                 Id = newProject.Id,
                 Description = newProject.Description,
                 Name = newProject.Name,
-                Year = new Responses.IDName
+                Year = new IDName
                 {
                     Id = newProject.YearId,
                     Name = newProject.Year.Number
@@ -152,7 +152,7 @@ public class ProjectService : IProjectService
         return new BaseResponseService { Error = false, Message = "Project is now Deleted" };
     }
 
-    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> EditProject(int id, string Name, string Description, int YearId, bool term)
+    public async Task<ActionResult<ResponseService<ProjectDTO>>> EditProject(int id, string Name, string Description, int YearId, bool term)
     {
         var project = await _context.Projects
             .Where(p => p.Id == id && !p.Archived)
@@ -180,15 +180,15 @@ public class ProjectService : IProjectService
 
         await _context.SaveChangesAsync();
 
-        return new ResponseService<Responses.ProjectDTO>
+        return new ResponseService<ProjectDTO>
         {
-            Data = new Responses.ProjectDTO
+            Data = new ProjectDTO
             {
                 Id = project.Id,
                 Description = project.Description,
                 Name = project.Name,
                 Term = project.Term,
-                Year = new Responses.IDName { Name = project.Year.Number, Id = project.Year.Id, },
+                Year = new IDName { Name = project.Year.Number, Id = project.Year.Id, },
                 Status = project.Status
             },
             Error = false,
@@ -196,26 +196,26 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ActionResult<ResponseService<List<Responses.ProjectDTO>>>> GetAllProjects()
+    public async Task<ActionResult<ResponseService<List<ProjectDTO>>>> GetAllProjects()
     {
         var projects = await _context.Projects
             .Where(p => !p.Archived)
             .Include(p => p.Year)
             .ToListAsync();
 
-        return new ResponseService<List<Responses.ProjectDTO>>
+        return new ResponseService<List<ProjectDTO>>
         {
             Error = false,
             Data = projects
                 .Select(
                     p =>
-                        new Responses.ProjectDTO
+                        new ProjectDTO
                         {
                             Description = p.Description,
                             Id = p.Id,
                             Name = p.Name,
                             Term = p.Term,
-                            Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number },
+                            Year = new IDName { Id = p.YearId, Name = p.Year.Number },
                             Status = p.Status
                         }
                 )
@@ -224,26 +224,26 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ActionResult<ResponseService<List<Responses.ProjectDTO>>>> GetAllProjectsForSprint()
+    public async Task<ActionResult<ResponseService<List<ProjectDTO>>>> GetAllProjectsForSprint()
     {
         var projects = await _context.Projects
             .Where(p => !p.Archived && p.Status != ProjectStatusEnum.Hold && p.Status != ProjectStatusEnum.Closed)
             .Include(p => p.Year)
             .ToListAsync();
 
-        return new ResponseService<List<Responses.ProjectDTO>>
+        return new ResponseService<List<ProjectDTO>>
         {
             Error = false,
             Data = projects
                 .Select(
                     p =>
-                        new Responses.ProjectDTO
+                        new ProjectDTO
                         {
                             Description = p.Description,
                             Id = p.Id,
                             Name = p.Name,
                             Term = p.Term,
-                            Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number },
+                            Year = new IDName { Id = p.YearId, Name = p.Year.Number },
                             Status = p.Status
                         }
                 )
@@ -252,9 +252,7 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetAssignedUsers(
-        int Id
-    )
+    public async Task<ActionResult<ResponseService<List<UserDTO>>>> GetAssignedUsers(int Id)
     {
         var project = await _context.Projects
             .Where(p => !p.Archived && p.Id == Id)
@@ -272,20 +270,20 @@ public class ProjectService : IProjectService
                 }
             );
 
-        var res = new List<Responses.UserDTO> { };
+        var res = new List<UserDTO> { };
 
         foreach (var user in project.Users ?? new List<Models.User>())
         {
             if (!user.Archived)
             {
                 res.Add(
-                    new Responses.UserDTO
+                    new UserDTO
                     {
                         Id = user.Id,
                         Name = user.Name,
                         Group = user.Group == null
                             ? null
-                            : new Responses.IDName
+                            : new IDName
                             {
                                 Id = user.GroupId ?? 0,
                                 Name = user.Group.Name
@@ -297,7 +295,7 @@ public class ProjectService : IProjectService
         }
 
 
-        return new ResponseService<List<Responses.UserDTO>>
+        return new ResponseService<List<UserDTO>>
         {
             Data = res,
             Error = false,
@@ -305,7 +303,7 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> GetProject(int Id)
+    public async Task<ActionResult<ResponseService<ProjectDTO>>> GetProject(int Id)
     {
         var project = await _context.Projects
             .Where(p => p.Id == Id && !p.Archived)
@@ -317,15 +315,15 @@ public class ProjectService : IProjectService
                 new BaseResponseService { Error = true, Message = "Project is not found" }
             );
 
-        return new ResponseService<Responses.ProjectDTO>
+        return new ResponseService<ProjectDTO>
         {
-            Data = new Responses.ProjectDTO
+            Data = new ProjectDTO
             {
                 Id = project.Id,
                 Name = project.Name,
                 Description = project.Description,
                 Term = project.Term,
-                Year = new Responses.IDName { Id = project.YearId, Name = project.Year.Number },
+                Year = new IDName { Id = project.YearId, Name = project.Year.Number },
                 Status = project.Status
             },
             Error = false,
@@ -350,7 +348,7 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ActionResult<ResponseService<Responses.DetailedProjectDTO>>> GetProjectDetails(int Id)
+    public async Task<ActionResult<ResponseService<DetailedProjectDTO>>> GetProjectDetails(int Id)
     {
         var project = await _context.Projects
             .Where(p => p.Id == Id && !p.Archived)
@@ -365,9 +363,9 @@ public class ProjectService : IProjectService
                 new BaseResponseService { Error = true, Message = "Project is not found" }
             );
 
-        return new ResponseService<Responses.DetailedProjectDTO>
+        return new ResponseService<DetailedProjectDTO>
         {
-            Data = new Responses.DetailedProjectDTO
+            Data = new DetailedProjectDTO
             {
                 Id = project.Id,
                 Name = project.Name,
@@ -377,7 +375,7 @@ public class ProjectService : IProjectService
                     .Where(u => !u.Archived)
                     .Select(
                         u =>
-                            new Responses.ProjectUnitDTO
+                            new ProjectUnitDTO
                             {
                                 Id = u.Id,
                                 Name = u.Name,
@@ -385,7 +383,7 @@ public class ProjectService : IProjectService
                                     .Where(l => !l.Archived)
                                     .Select(
                                         l =>
-                                            new Responses.ProjectLessonDTO
+                                            new ProjectLessonDTO
                                             {
                                                 Id = l.Id,
                                                 Name = l.Name,
@@ -393,12 +391,12 @@ public class ProjectService : IProjectService
                                                     .Where(lo => !lo.Archived)
                                                     .Select(
                                                         lo =>
-                                                            new Responses.LearningObjectiveDTO
+                                                            new LearningObjectiveDTO
                                                             {
                                                                 Id = lo.Id,
                                                                 Environment = lo.Environment,
                                                                 Name = lo.Name,
-                                                                Schema = new Responses.IDName
+                                                                Schema = new IDName
                                                                 {
                                                                     Id = lo.SchemaId,
                                                                     Name = lo.Schema.Name
@@ -418,26 +416,24 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetProjectLearningObjectives(int Id)
+    public async Task<ActionResult<ResponseService<List<IDName>>>> GetProjectLearningObjectives(int Id)
     {
         var res = await _learningObjectiveService.GetLearningObjectivesByProjectId(Id);
 
         if (res.Error)
             return new NotFoundObjectResult(res);
 
-        return new ResponseService<List<Responses.IDName>>
+        return new ResponseService<List<IDName>>
         {
             Data = res.Data!
-                .Select(lo => new Responses.IDName { Id = lo.Id, Name = lo.Name })
+                .Select(lo => new IDName { Id = lo.Id, Name = lo.Name })
                 .ToList(),
             Error = false,
             Message = $"List of learning objective for project of id:{Id}"
         };
     }
 
-    public async Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetUnassignedUsers(
-    int Id
-)
+    public async Task<ActionResult<ResponseService<List<UserDTO>>>> GetUnassignedUsers(int Id)
     {
         var project = await _context.Projects
             .Where(p => !p.Archived && p.Id == Id)
@@ -454,19 +450,19 @@ public class ProjectService : IProjectService
             .Include(u => u.Group) // Ensure Group is loaded
             .ToListAsync();
 
-        return new ResponseService<List<Responses.UserDTO>>
+        return new ResponseService<List<UserDTO>>
         {
             Data = users
                 .Select(
                     u =>
-                        new Responses.UserDTO
+                        new UserDTO
                         {
                             Id = u.Id,
                             Name = u.Name,
                             Role = u.Role,
                             // --- FIX APPLIED HERE ---
                             Group = u.Group != null // Check if u.Group is not null before accessing its properties
-                                ? new Responses.IDName // Assuming you have a GroupDTO in Responses namespace
+                                ? new IDName // Assuming you have a GroupDTO in Responses namespace
                                 {
                                     Id = u.GroupId ?? 0, // u.GroupId could be null, use null-coalescing
                                     Name = u.Group.Name // Now it's safe to access u.Group.Name
@@ -480,64 +476,34 @@ public class ProjectService : IProjectService
         };
     }
 
-    public async Task<ActionResult<ResponseService<List<Responses.ProjectDTO>>>> GetUserSpecificProjects()
-    {
-        var authRes = _tokenService.GetUserIdFromToken();
-        if (authRes.Error)
-            return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = authRes.Message }
-            );
+	    public async Task<ActionResult<ResponseService<List<ProjectDTO>>>> GetUserSpecificProjects()
+	    {
+	        var authRes = _tokenService.GetUserIdFromToken();
+	        if (authRes.Error)
+	            return new BadRequestObjectResult(
+	                new BaseResponseService { Error = true, Message = authRes.Message }
+	            );
 
-        var convertable = Int32.TryParse(authRes.Data!, out int uid);
+	        var convertable = Int32.TryParse(authRes.Data!, out int uid);
 
-        if (!convertable)
-            return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = "Invalid token" }
-            );
+	        if (!convertable)
+	            return new BadRequestObjectResult(
+	                new BaseResponseService { Error = true, Message = "Invalid token" }
+	            );
+	
+	        var user = await _context.Users
+	            .Where(u => u.Id == uid && !u.Archived)
+	            .Include(u => u.Projects)
+	            .ThenInclude(p => p.Year)
+	            .FirstOrDefaultAsync();
+	
+	        if (user is null)
+	            return new NotFoundObjectResult(
+	                new BaseResponseService { Error = true, Message = $"User of id:{uid} is not found" }
+	            );
 
-        var user = await _context.Users
-            .Where(u => u.Id == uid && !u.Archived)
-            .Include(u => u.Projects)
-            .ThenInclude(p => p.Year)
-            .FirstOrDefaultAsync();
-
-        if (user is null)
-            return new NotFoundObjectResult(
-                new BaseResponseService { Error = true, Message = $"User of id:{uid} is not found" }
-            );
-
-        // Common logic to determine the relevant groups for SectionHead
-        var userGroup = await _context.Groups
-            .Where(g => g.Id == user.GroupId)
-            .FirstOrDefaultAsync();
-
-        if (userGroup is null)
-            throw new Exception("User has a not found group");
-
-        var groups = new List<Group> { userGroup };
-
-        if (user.Role == UserRoleEnum.SectionHead)
-        {
-            var section = await _context.Sections
-                .Where(s => s.HeadId == user.Id && !s.Archived)
-                .FirstOrDefaultAsync();
-
-            if (section is not null)
-            {
-                var sectionGroupIds = await _context.SectionGroups
-                    .Where(sg => sg.SectionId == section.Id)
-                    .Select(sg => sg.GroupId)
-                    .ToListAsync();
-
-                var sectionGroups = await _context.Groups
-                    .Where(g => sectionGroupIds.Contains(g.Id))
-                    .ToListAsync();
-
-                groups.AddRange(sectionGroups);
-            }
-        }
-
-        if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
+	        // Project Manager & Owner can see all active/ongoing projects, no group context needed
+	        if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
         {
             var allProjects = await _context.Projects
                 .Where(
@@ -565,26 +531,64 @@ public class ProjectService : IProjectService
                 .Select(g => new { ProjectId = g.Key, Count = g.Count() })
                 .ToListAsync();
 
-            var data = allProjects.Select(p => new Responses.ProjectDTO
+            var data = allProjects.Select(p => new ProjectDTO
             {
                 Id = p.Id,
                 Name = p.Name,
                 Description = p.Description,
                 Term = p.Term,
-                Year = new Responses.IDName { Id = p.YearId, Name = p.Year.Number },
+                Year = new IDName { Id = p.YearId, Name = p.Year.Number },
                 Status = p.Status,
                 Count = taskCounts.FirstOrDefault(tc => tc.ProjectId == p.Id)?.Count ?? 0
             }).ToList();
 
-            return new ResponseService<List<Responses.ProjectDTO>>
-            {
-                Error = false,
-                Message = "List of all projects",
-                Data = data
-            };
-        }
+	            return new ResponseService<List<ProjectDTO>>
+	            {
+	                Error = false,
+	                Message = "List of all projects",
+	                Data = data
+	            };
+	        }
 
-        var userProjects = user.Projects
+	        // For non-owner/non-project-manager roles we need group context
+	        var groups = new List<Group>();
+
+	        if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
+	        {
+	            var userGroup = await _context.Groups
+	                .Where(g => g.Id == user.GroupId)
+	                .FirstOrDefaultAsync();
+
+	            if (userGroup is null)
+	                return new NotFoundObjectResult(
+	                    new BaseResponseService { Error = true, Message = "User's group is not found" }
+	                );
+
+	            groups.Add(userGroup);
+
+	            if (user.Role == UserRoleEnum.SectionHead)
+	            {
+	                var section = await _context.Sections
+	                    .Where(s => s.HeadId == user.Id && !s.Archived)
+	                    .FirstOrDefaultAsync();
+
+	                if (section is not null)
+	                {
+	                    var sectionGroupIds = await _context.SectionGroups
+	                        .Where(sg => sg.SectionId == section.Id)
+	                        .Select(sg => sg.GroupId)
+	                        .ToListAsync();
+
+	                    var sectionGroups = await _context.Groups
+	                        .Where(g => sectionGroupIds.Contains(g.Id))
+	                        .ToListAsync();
+
+	                    groups.AddRange(sectionGroups);
+	                }
+	            }
+	        }
+	
+	        var userProjects = user.Projects
             .Where(p =>
                 !p.Archived &&
                 p.Status != ProjectStatusEnum.Hold &&
@@ -627,13 +631,13 @@ public class ProjectService : IProjectService
             .ToListAsync();
 
         
-        var listOfProjects = userProjects.Select(project => new Responses.ProjectDTO
+        var listOfProjects = userProjects.Select(project => new ProjectDTO
         {
             Id = project.Id,
             Name = project.Name,
             Description = project.Description,
             Term = project.Term,
-            Year = new Responses.IDName
+            Year = new IDName
             {
                 Id = project.YearId,
                 Name = project.Year.Number
@@ -642,7 +646,7 @@ public class ProjectService : IProjectService
             Count = userTaskCounts.FirstOrDefault(tc => tc.ProjectId == project.Id)?.Count ?? 0
         }).ToList();
 
-        return new ResponseService<List<Responses.ProjectDTO>>
+        return new ResponseService<List<ProjectDTO>>
         {
             Error = false,
             Message = $"Projects assigned to users of id:{user.Id}",
@@ -650,8 +654,7 @@ public class ProjectService : IProjectService
         };
     }
 
-
-    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> UnassignToProject(int Id, List<int> UserIds)
+    public async Task<ActionResult<ResponseService<List<IDName>>>> UnassignToProject(int Id, List<int> UserIds)
     {
         var res = await _projectAssignmentService.UnassignUsersToProject(Id, UserIds);
 
@@ -664,17 +667,17 @@ public class ProjectService : IProjectService
                 }
             );
 
-        return new ResponseService<List<Responses.IDName>>
+        return new ResponseService<List<IDName>>
         {
             Data = res.Data!
-                .Select(u => new Responses.IDName { Id = u.Id, Name = u.Name })
+                .Select(u => new IDName { Id = u.Id, Name = u.Name })
                 .ToList(),
             Error = false,
             Message = res.Message
         };
     }
 
-    public async Task<ActionResult<ResponseService<Responses.ProjectDTO>>> UpdateProjectStatus(int id, ProjectStatusEnum status)
+    public async Task<ActionResult<ResponseService<ProjectDTO>>> UpdateProjectStatus(int id, ProjectStatusEnum status)
     {
         var project = await _context.Projects
             .Where(p => !p.Archived && p.Id == id)
@@ -731,17 +734,17 @@ public class ProjectService : IProjectService
 
         await _context.SaveChangesAsync();
 
-        return new ResponseService<Responses.ProjectDTO>
+        return new ResponseService<ProjectDTO>
         {
             Message = "Project Status is updated",
             Error = false,
-            Data = new Responses.ProjectDTO
+            Data = new ProjectDTO
             {
                 Status = project.Status,
                 Id = project.Id,
                 Name = project.Name,
                 Term = project.Term,
-                Year = new Responses.IDName { Name = project.Year.Number, Id = project.YearId },
+                Year = new IDName { Name = project.Year.Number, Id = project.YearId },
                 Description = project.Description
             }
         };
