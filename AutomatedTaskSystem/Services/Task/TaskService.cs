@@ -110,7 +110,8 @@ public class TaskService : ITaskService
                     new BaseResponseService { Error = true, Message = "User is not found" }
                 );
 
-            if (user.GroupId != task.GroupId)
+            // Owner and Project Manager can assign users to tasks regardless of group
+            if (authedUser.Role != UserRoleEnum.Owner && authedUser.Role != UserRoleEnum.ProjectManger && user.GroupId != task.GroupId)
                 return new BadRequestObjectResult(
                     new BaseResponseService { Error = true, Message = "Cannot assign user to task" }
                 );
@@ -190,6 +191,12 @@ public class TaskService : ITaskService
 
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CreateTask(int taskBankId, int loId, int userId)
     {
+        var authedUser = await _authService.GetAuthedUser();
+        if (authedUser is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid auth" }
+            );
+
         var lo = await _context.LearningObjectives
             .Where(lo => !lo.Archived && lo.Id == loId)
             .Include(lo => lo.Schema)
@@ -227,7 +234,8 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "User is not found" }
             );
 
-        if (user is not null && user.GroupId != TaskBankItem.GroupId)
+        // Owner and Project Manager can assign users from any group, others are restricted to same group
+        if (user is not null && authedUser.Role != UserRoleEnum.Owner && authedUser.Role != UserRoleEnum.ProjectManger && user.GroupId != TaskBankItem.GroupId)
             return new BadRequestObjectResult(
                 new BaseResponseService
                 {
@@ -550,7 +558,7 @@ public class TaskService : ITaskService
 			    await connection.OpenAsync();
 		    }
 
-		    var isProjectManager = user.Role == UserRoleEnum.ProjectManger;
+		    var isProjectManager = user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner;
 		    var isTeamLeader = user.Role == UserRoleEnum.TeamLeader;
 		    var isSectionHead = user.Role == UserRoleEnum.SectionHead;
 		    var isMember = user.Role == UserRoleEnum.Member;
@@ -929,16 +937,17 @@ public class TaskService : ITaskService
     //        Message = "Public list of tasks in sprint"
     //    };
     //}
-    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid)
-    {
-        var user = await _authService.GetAuthedUser();
-        if (user is null)
-            return new UnauthorizedObjectResult(
-                new BaseResponseService { Error = false, Message = "Invalid auth" }
-            );
+	    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid)
+	    {
+	        var user = await _authService.GetAuthedUser();
+	        if (user is null)
+	            return new UnauthorizedObjectResult(
+	                new BaseResponseService { Error = false, Message = "Invalid auth" }
+	            );
 
-        if (user.Role == UserRoleEnum.ProjectManger)
-        {
+	        // Project managers and owners can see all tasks in the project, regardless of group
+	        if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
+	        {
             var p = await _context.Projects
                 .Where(_ => _.Id == pid && !_.Archived)
                 .Include(p => p.Units)
@@ -1037,12 +1046,15 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "User is unassigned to project" }
             );
 
-        var userGroup = await _context.Groups
-            .Where(g => g.Id == user.GroupId)
-            .FirstOrDefaultAsync();
-
-        if (userGroup is null)
-            throw new Exception("User has a not found group");
+	        var userGroup = await _context.Groups
+	            .Where(g => g.Id == user.GroupId)
+	            .FirstOrDefaultAsync();
+	
+	        // If for some reason the user has no associated group, fail gracefully
+	        if (userGroup is null)
+	            return new BadRequestObjectResult(
+	                new BaseResponseService { Error = true, Message = "User has a not found group" }
+	            );
 
         var groups = new List<Group> { userGroup };
 
@@ -1190,7 +1202,8 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Invalid auth" }
             );
 
-        if (task.UserId is not null && task.UserId != user.Id)
+        // Owner and Project Manager can rollback any task, others can only rollback their own tasks
+        if (task.UserId is not null && task.UserId != user.Id && user.Role != UserRoleEnum.Owner && user.Role != UserRoleEnum.ProjectManger)
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Task is not assigned for you" }
             );
@@ -1778,7 +1791,7 @@ public class TaskService : ITaskService
 
         if (task.Status != TaskStatusEnum.Done && task.Status != TaskStatusEnum.Rollback)
         {
-            if (user.Role == UserRoleEnum.ProjectManger)
+            if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
             {
                 if (
                     task.Status == TaskStatusEnum.Backlog
@@ -2241,7 +2254,8 @@ public class TaskService : ITaskService
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Task may not be completed yet" }
             );
-        if (task.User is not null && user.Id != task.User.Id)
+        // Owner and Project Manager can complete any task, others can only complete their own tasks
+        if (task.User is not null && user.Id != task.User.Id && user.Role != UserRoleEnum.Owner && user.Role != UserRoleEnum.ProjectManger)
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Unauthorized" }
             );
@@ -2865,7 +2879,7 @@ public class TaskService : ITaskService
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> JumpTask(int id, List<PutJumpedTaskDto> options)
     {
         var user = await _authService.GetAuthedUser();
-        if (user is null || user.Role != UserRoleEnum.ProjectManger)
+        if (user is null || (user.Role != UserRoleEnum.ProjectManger && user.Role != UserRoleEnum.Owner))
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = true, Message = "Invalid auth" }
             );
@@ -3353,7 +3367,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Comment is not found" }
             );
 
-        if (comment.UserId != user.Id && user.Role != UserRoleEnum.ProjectManger)
+        if (comment.UserId != user.Id && user.Role != UserRoleEnum.ProjectManger && user.Role != UserRoleEnum.Owner)
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = true, Message = "Cannot delete others comments" }
             );
@@ -3398,7 +3412,7 @@ public class TaskService : ITaskService
     public async Task<BaseResponseService>  CreateProcess(List<int> options, int schemaId, int loId)
     {
         var user = await _authService.GetAuthedUser();
-        if (user is null || user.Role != UserRoleEnum.ProjectManger)
+        if (user is null || (user.Role != UserRoleEnum.ProjectManger && user.Role != UserRoleEnum.Owner))
             return new BaseResponseService { Error = true, Message = "Invalid auth" };
         
 

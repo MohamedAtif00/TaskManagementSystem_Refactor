@@ -102,7 +102,12 @@ try
                 policy
                     .AllowAnyHeader()
                     .AllowAnyMethod()
-                    .WithOrigins("http://localhost:3000", "http://stdigital.stp.local")
+                   .WithOrigins("http://localhost:3000",
+                         "http://stdigital.stp.local",
+                         "http://localhost:8081",
+                         "https://localhost",      // Add this
+                         "https://localhost:443", // Keep this
+                         "https://ats.stp.local") // Keep this
                     .AllowCredentials()
         );
     });

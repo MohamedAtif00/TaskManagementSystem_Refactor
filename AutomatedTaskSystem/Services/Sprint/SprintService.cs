@@ -35,7 +35,7 @@ namespace AutomatedTaskSystem.Services.Sprint
 
                 foreach (var sprint in sprints)
                 {
-                    if (sprint.IsArchived) continue;
+                    //if (sprint.IsArchived) continue;
                     sprintDto.Add(new SprintDTO
                     {
                         Id = sprint.Id,
@@ -362,20 +362,10 @@ namespace AutomatedTaskSystem.Services.Sprint
             return response;
         }
 
-        private async Task<bool> IsOverlappingAsync(DateOnly startDate, DateOnly endDate)
+        private Task<bool> IsOverlappingAsync(DateOnly startDate, DateOnly endDate)
         {
-            // Convert DateOnly to DateTime
-            var start = startDate.ToDateTime(TimeOnly.MinValue).Date;  // Extract only the Date portion
-            var end = endDate.ToDateTime(TimeOnly.MaxValue).Date;      // Extract only the Date portion
-
-            var condition = await dataContext.Sprints.AnyAsync(s =>
-                (start <= s.StartDate.Date && end >= s.StartDate.Date) ||  // Check if the new range starts before an existing start and ends after an existing start
-                (start <= s.EndDate.Date && end >= s.EndDate.Date) ||
-                (start >= s.StartDate.Date && end <= s.EndDate.Date) ||
-                start == s.StartDate.Date || end == s.EndDate.Date// Check if the new range starts before an existing end and ends after an existing end
-            );
-
-            return condition;
+            // Delegate to the main implementation, with no current sprint to exclude
+            return IsOverlappingAsync(startDate, endDate, null);
         }
 
         /// <summary>
@@ -390,18 +380,18 @@ namespace AutomatedTaskSystem.Services.Sprint
         /// <returns>True if an overlap is found, false otherwise.</returns>
         private async Task<bool> IsOverlappingAsync(DateOnly newStartDate, DateOnly newEndDate, int? currentSprintId = null)
         {
-            // Convert DateOnly to DateTime for comparison with existing DateTime properties in Sprint model.
-            // Using .Date to ensure only the date portion is compared, ignoring time.
-            var start = newStartDate.ToDateTime(TimeOnly.MinValue).Date;
-            var end = newEndDate.ToDateTime(TimeOnly.MaxValue).Date;
+            // Convert DateOnly to DateTime at the start of each day for comparison with stored DateTime values.
+            var start = newStartDate.ToDateTime(TimeOnly.MinValue);
+            var end = newEndDate.ToDateTime(TimeOnly.MinValue);
 
-            // Query for any existing sprints that overlap with the new date range.
-            // The condition for overlap is: (StartDate <= newEndDate AND EndDate >= newStartDate)
-            // Additionally, if currentSprintId is provided (for updates),
-            // we ensure that the queried sprint's ID is NOT the currentSprintId.
+            // Overlap condition: an existing (non-archived) sprint overlaps if
+            // existing.StartDate <= newEnd AND existing.EndDate >= newStart.
+            // If currentSprintId is provided (for updates), exclude that sprint from the check.
             var isOverlap = await dataContext.Sprints
-                .AnyAsync(s => (currentSprintId == null || s.Id != currentSprintId.Value) && // Exclude the current sprint if ID is provided
-                               (start <= s.EndDate.Date && end >= s.StartDate.Date)); // Check for overlap condition
+                .AnyAsync(s => !s.IsArchived &&
+                               (currentSprintId == null || s.Id != currentSprintId.Value) &&
+                               start <= s.EndDate &&
+                               end >= s.StartDate);
 
             return isOverlap;
         }

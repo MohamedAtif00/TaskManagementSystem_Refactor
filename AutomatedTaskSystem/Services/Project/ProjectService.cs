@@ -476,34 +476,34 @@ public class ProjectService : IProjectService
         };
     }
 
-	    public async Task<ActionResult<ResponseService<List<ProjectDTO>>>> GetUserSpecificProjects()
-	    {
-	        var authRes = _tokenService.GetUserIdFromToken();
-	        if (authRes.Error)
-	            return new BadRequestObjectResult(
-	                new BaseResponseService { Error = true, Message = authRes.Message }
-	            );
+	public async Task<ActionResult<ResponseService<List<ProjectDTO>>>> GetUserSpecificProjects()
+	{
+	    var authRes = _tokenService.GetUserIdFromToken();
+	    if (authRes.Error)
+	        return new BadRequestObjectResult(
+	            new BaseResponseService { Error = true, Message = authRes.Message }
+	        );
 
-	        var convertable = Int32.TryParse(authRes.Data!, out int uid);
+	    var convertable = Int32.TryParse(authRes.Data!, out int uid);
 
-	        if (!convertable)
-	            return new BadRequestObjectResult(
-	                new BaseResponseService { Error = true, Message = "Invalid token" }
-	            );
+	    if (!convertable)
+	        return new BadRequestObjectResult(
+	            new BaseResponseService { Error = true, Message = "Invalid token" }
+	        );
 	
-	        var user = await _context.Users
-	            .Where(u => u.Id == uid && !u.Archived)
-	            .Include(u => u.Projects)
-	            .ThenInclude(p => p.Year)
-	            .FirstOrDefaultAsync();
-	
-	        if (user is null)
-	            return new NotFoundObjectResult(
-	                new BaseResponseService { Error = true, Message = $"User of id:{uid} is not found" }
-	            );
+	    var user = await _context.Users
+	        .Where(u => u.Id == uid && !u.Archived)
+	        .Include(u => u.Projects)
+	        .ThenInclude(p => p.Year)
+	        .FirstOrDefaultAsync();
 
-	        // Project Manager & Owner can see all active/ongoing projects, no group context needed
-	        if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
+        if (user is null)
+	        return new NotFoundObjectResult(
+	            new BaseResponseService { Error = true, Message = $"User of id:{uid} is not found" }
+	        );
+
+	    // Project Manager & Owner can see all active/ongoing projects, no group context needed
+	    if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
         {
             var allProjects = await _context.Projects
                 .Where(
@@ -542,59 +542,59 @@ public class ProjectService : IProjectService
                 Count = taskCounts.FirstOrDefault(tc => tc.ProjectId == p.Id)?.Count ?? 0
             }).ToList();
 
-	            return new ResponseService<List<ProjectDTO>>
-	            {
-	                Error = false,
-	                Message = "List of all projects",
-	                Data = data
-	            };
-	        }
-
-	        // For non-owner/non-project-manager roles we need group context
-	        var groups = new List<Group>();
-
-	        if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
+	        return new ResponseService<List<ProjectDTO>>
 	        {
-	            var userGroup = await _context.Groups
-	                .Where(g => g.Id == user.GroupId)
+	            Error = false,
+	            Message = "List of all projects",
+	            Data = data
+	        };
+	    }
+
+	    // For non-owner/non-project-manager roles we need group context
+	    var groups = new List<Group>();
+
+	    if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
+	    {
+	        var userGroup = await _context.Groups
+	            .Where(g => g.Id == user.GroupId)
+	            .FirstOrDefaultAsync();
+
+	        if (userGroup is null)
+	            return new NotFoundObjectResult(
+	                new BaseResponseService { Error = true, Message = "User's group is not found" }
+	            );
+
+	        groups.Add(userGroup);
+
+	        if (user.Role == UserRoleEnum.SectionHead)
+	        {
+	            var section = await _context.Sections
+	                .Where(s => s.HeadId == user.Id && !s.Archived)
 	                .FirstOrDefaultAsync();
 
-	            if (userGroup is null)
-	                return new NotFoundObjectResult(
-	                    new BaseResponseService { Error = true, Message = "User's group is not found" }
-	                );
-
-	            groups.Add(userGroup);
-
-	            if (user.Role == UserRoleEnum.SectionHead)
+	            if (section is not null)
 	            {
-	                var section = await _context.Sections
-	                    .Where(s => s.HeadId == user.Id && !s.Archived)
-	                    .FirstOrDefaultAsync();
+	                var sectionGroupIds = await _context.SectionGroups
+	                    .Where(sg => sg.SectionId == section.Id)
+	                    .Select(sg => sg.GroupId)
+	                    .ToListAsync();
 
-	                if (section is not null)
-	                {
-	                    var sectionGroupIds = await _context.SectionGroups
-	                        .Where(sg => sg.SectionId == section.Id)
-	                        .Select(sg => sg.GroupId)
-	                        .ToListAsync();
+	                var sectionGroups = await _context.Groups
+	                    .Where(g => sectionGroupIds.Contains(g.Id))
+	                    .ToListAsync();
 
-	                    var sectionGroups = await _context.Groups
-	                        .Where(g => sectionGroupIds.Contains(g.Id))
-	                        .ToListAsync();
-
-	                    groups.AddRange(sectionGroups);
-	                }
+	                groups.AddRange(sectionGroups);
 	            }
 	        }
+	    }
 	
-	        var userProjects = user.Projects
-            .Where(p =>
-                !p.Archived &&
-                p.Status != ProjectStatusEnum.Hold &&
-                p.Status != ProjectStatusEnum.Closed
-            )
-            .ToList();
+	    var userProjects = user.Projects
+        .Where(p =>
+            !p.Archived &&
+            p.Status != ProjectStatusEnum.Hold &&
+            p.Status != ProjectStatusEnum.Closed
+        )
+        .ToList();
 
         var userProjectIds = userProjects.Select(p => p.Id).ToList();
 
@@ -602,7 +602,7 @@ public class ProjectService : IProjectService
         IQueryable<Models.Task> baseTaskQuery = _context.Tasks
             .Where(t =>
                 !t.Archived &&
-                 t.GroupId == user.GroupId &&
+                    t.GroupId == user.GroupId &&
                 t.LearningObjective != null &&
                 t.LearningObjective.Lesson != null &&
                 t.LearningObjective.Lesson.Unit != null &&
