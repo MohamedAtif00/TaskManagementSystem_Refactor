@@ -5,45 +5,128 @@ import { url } from "../../lib/API";
 import { toast } from "react-toastify";
 import Link from "next/link";
 
-// Toast components
-const NewLeaveRequestToast = ({ closeToast, leaveRequestId }: { closeToast: () => void, leaveRequestId: number }) => {
-    const href = `/calendar/vacancy/${leaveRequestId}`;
-    return (
-        <Link 
-            href={href}
-            onClick={closeToast}
-            style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit', display: 'block', padding: '8px' }}
-        >
-            There is a new Leave Request! Click to view.
-        </Link>
-    );
-};
+		// Toast components
+		const NewLeaveRequestToast = ({ closeToast, leaveRequestId }: { closeToast: () => void; leaveRequestId: number }) => {
+		    const href = `/calendar/vacancy/${leaveRequestId}`;
+		    return (
+		        <Link
+		            href={href}
+		            onClick={closeToast}
+		            style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block", padding: "8px" }}
+		        >
+		            There is a new Leave Request! Click to view.
+		        </Link>
+		    );
+		};
+		
+		const NewPermissionRequestToast = ({ closeToast, permissionId }: { closeToast: () => void; permissionId: number }) => {
+		    const href = `/calendar/permission/${permissionId}`;
+		    return (
+		        <Link
+		            href={href}
+		            onClick={closeToast}
+		            style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block", padding: "8px" }}
+		        >
+		            There is a new Permission Request! Click to view.
+		        </Link>
+		    );
+		};
+		
+		const NewWorkFromHomeRequestToast = ({ closeToast, workFromHomeId }: { closeToast: () => void; workFromHomeId: number }) => {
+		    const href = `/calendar/workFromHome/${workFromHomeId}`;
+		    return (
+		        <Link
+		            href={href}
+		            onClick={closeToast}
+		            style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block", padding: "8px" }}
+		        >
+		            There is a new Work From Home Request! Click to view.
+		        </Link>
+		    );
+		};
 
-const NewPermissionRequestToast = ({ closeToast, permissionId }: { closeToast: () => void, permissionId: number }) => {
-    const href = `/calendar/permission/${permissionId}`;
-    return (
-        <Link 
-            href={href}
-            onClick={closeToast}
-            style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit', display: 'block', padding: '8px' }}
-        >
-            There is a new Permission Request! Click to view.
-        </Link>
-    );
-};
+		const TaskAssignedToast = ({ closeToast, taskId, projectId, taskName, projectName }: { closeToast: () => void; taskId: number; projectId: number; taskName: string; projectName: string }) => {
+		    const href = `/tasks/${projectId}/board?taskId=${taskId}`;
+		    return (
+		        <Link
+		            href={href}
+		            onClick={closeToast}
+		            style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block", padding: "8px" }}
+		        >
+		            New task assigned to you: <strong>{taskName}</strong> ({projectName}). Click to view.
+		        </Link>
+		    );
+		};
 
-const NewWorkFromHomeRequestToast = ({ closeToast, workFromHomeId }: { closeToast: () => void, workFromHomeId: number }) => {
-    const href = `/calendar/workFromHome/${workFromHomeId}`;
-    return (
-        <Link 
-            href={href}
-            onClick={closeToast}
-            style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit', display: 'block', padding: '8px' }}
-        >
-            There is a new Work From Home Request! Click to view.
-        </Link>
-    );
-};
+		const ProjectCompletedToast = ({
+		    closeToast,
+		    projectId,
+		    projectName,
+		    totalTasks,
+		    completedTasks,
+		    remainingTasks,
+		}: {
+		    closeToast: () => void;
+		    projectId: number;
+		    projectName: string;
+		    totalTasks?: number;
+		    completedTasks?: number;
+		    remainingTasks?: number;
+		}) => {
+		    const href = `/projects/${projectId}`;
+		    return (
+		        <Link
+		            href={href}
+		            onClick={closeToast}
+		            style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block", padding: "8px" }}
+		        >
+		            <div>
+		                <div>
+		                    Project <strong>{projectName}</strong> has been completed.
+		                </div>
+		                {typeof totalTasks === "number" && typeof completedTasks === "number" && (
+		                    <div>
+		                        Tasks: {completedTasks}/{totalTasks}
+		                        {typeof remainingTasks === "number" && remainingTasks > 0 ? ` (${remainingTasks} remaining)` : ""}.
+		                    </div>
+		                )}
+		                <div>Click to view project details.</div>
+		            </div>
+		        </Link>
+		    );
+		};
+
+		const ProjectClosedToast = ({
+		    closeToast,
+		    projectId,
+		    projectName,
+		    closedManually,
+		    yearName,
+		}: {
+		    closeToast: () => void;
+		    projectId: number;
+		    projectName: string;
+		    closedManually?: boolean;
+		    yearName?: string;
+		}) => {
+		    const href = `/projects/${projectId}`;
+		    const closedText = closedManually ? "has been closed manually." : "has been closed.";
+		    return (
+		        <Link
+		            href={href}
+		            onClick={closeToast}
+		            style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block", padding: "8px" }}
+		        >
+		            <div>
+		                <div>
+		                    Project <strong>{projectName}</strong> {closedText}
+		                </div>
+		                {yearName && <div>Year: {yearName}</div>}
+		                <div>Click to view project details.</div>
+		            </div>
+		        </Link>
+		    );
+		};
 
 export interface SignalRContextType {
     connection: signalR.HubConnection | null;
@@ -63,7 +146,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
     const [connectionState, setConnectionState] = useState<"connected" | "connecting" | "disconnected">("disconnected");
     const [pendingNumber, setPendingNumber] = useState(0);
 
-    useEffect(() => {
+		    useEffect(() => {
         let isMounted = true;
 
         if (!auth.isAuth) {
@@ -123,7 +206,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
         };
     }, [auth.isAuth]);
 
-    useEffect(() => {
+		    useEffect(() => {
         const connection = connectionRef.current;
         if (!connection || connectionState !== "connected") return;
 
@@ -151,7 +234,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
             }
         };
 
-        const onUpdatePendings = (data: any) => {
+	        const onUpdatePendings = (data: any) => {
             // console.log("UpdatePendings received:", data);
             if (data.pendings !== undefined) {
                 setPendingNumber(data.pendings);
@@ -182,25 +265,84 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
             }
         };
 
-        const onReceiveError = (data: any) => {
+	        const onReceiveError = (data: any) => {
             // console.log("ReceiveError received:", data);
             toast.error(data.message);
         };
 
-        // Register all handlers
-        connection.on("LeaveRequestOpinion", (data) => onRequestOpinion(data, 'leave'));
-        connection.on("PermissionRequestOpinion", (data) => onRequestOpinion(data, 'permission'));
-        connection.on("WorkFromHomeOpinion", (data) => onRequestOpinion(data, 'workFromHome')); // Added listener for WFH opinions
-        connection.on("UpdatePendings", onUpdatePendings);
-        connection.on("ReceiveError", onReceiveError);
+	        const onTaskAssigned = (data: any) => {
+	            if (!data) return;
+	            const { taskId, projectId, taskName, projectName } = data;
+	            if (!taskId || !projectId) return;
+	            toast.info(
+	                ({ closeToast }) => (
+	                    <TaskAssignedToast
+	                        closeToast={closeToast}
+	                        taskId={taskId}
+	                        projectId={projectId}
+	                        taskName={taskName}
+	                        projectName={projectName}
+	                    />
+	                ),
+	                { autoClose: false, closeOnClick: false }
+	            );
+	        };
 
-        return () => {
-            connection.off("LeaveRequestOpinion");
-            connection.off("PermissionRequestOpinion");
-            connection.off("WorkFromHomeOpinion"); // Unregister WFH opinion listener
-            connection.off("UpdatePendings");
-            connection.off("ReceiveError");
-        };
+	        const onProjectCompleted = (data: any) => {
+	            if (!data || !data.projectId) return;
+	            const { projectId, projectName, totalTasks, completedTasks, remainingTasks } = data;
+	            toast.info(
+	                ({ closeToast }) => (
+	                    <ProjectCompletedToast
+	                        closeToast={closeToast}
+	                        projectId={projectId}
+	                        projectName={projectName}
+	                        totalTasks={totalTasks}
+	                        completedTasks={completedTasks}
+	                        remainingTasks={remainingTasks}
+	                    />
+	                ),
+	                { autoClose: false, closeOnClick: false }
+	            );
+	        };
+
+	        const onProjectClosed = (data: any) => {
+	            if (!data || !data.projectId) return;
+	            const { projectId, projectName, closedManually, yearName } = data;
+	            toast.info(
+	                ({ closeToast }) => (
+	                    <ProjectClosedToast
+	                        closeToast={closeToast}
+	                        projectId={projectId}
+	                        projectName={projectName}
+	                        closedManually={closedManually}
+	                        yearName={yearName}
+	                    />
+	                ),
+	                { autoClose: false, closeOnClick: false }
+	            );
+	        };
+
+	        // Register all handlers
+		        connection.on("LeaveRequestOpinion", (data) => onRequestOpinion(data, 'leave'));
+		        connection.on("PermissionRequestOpinion", (data) => onRequestOpinion(data, 'permission'));
+		        connection.on("WorkFromHomeOpinion", (data) => onRequestOpinion(data, 'workFromHome')); // Added listener for WFH opinions
+		        connection.on("UpdatePendings", onUpdatePendings);
+		        connection.on("ReceiveError", onReceiveError);
+		        connection.on("TaskAssigned", onTaskAssigned);
+		        connection.on("ProjectCompleted", onProjectCompleted);
+		        connection.on("ProjectClosed", onProjectClosed);
+		
+		        return () => {
+		            connection.off("LeaveRequestOpinion");
+		            connection.off("PermissionRequestOpinion");
+		            connection.off("WorkFromHomeOpinion"); // Unregister WFH opinion listener
+		            connection.off("UpdatePendings");
+		            connection.off("ReceiveError");
+		            connection.off("TaskAssigned");
+		            connection.off("ProjectCompleted");
+		            connection.off("ProjectClosed");
+		        };
     }, [connectionState]);
 
     return (

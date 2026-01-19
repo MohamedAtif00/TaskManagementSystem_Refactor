@@ -13,9 +13,11 @@ using AutomatedTaskSystem.Models.Enums.TaskDurationEndReason;
 using AutomatedTaskSystem.Models.Enums.TaskPriority;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Services.AuthService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.RollbackService;
+using AutomatedTaskSystem.Services.Notification;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using System.Data;
@@ -33,6 +35,7 @@ public class TaskService : ITaskService
     private readonly DataContext _context;
     private readonly IAuthService _authService;
     private readonly IRollbackService _rollbackService;
+	    private readonly INotificationService _notificationService;
 
 	private sealed class SprintTaskRow
 	{
@@ -68,15 +71,16 @@ public class TaskService : ITaskService
 	    public double Duration { get; set; }
 	}
 
-    public TaskService(DataContext context, IAuthService authService, IRollbackService rollbackService)
-    {
-        _context = context;
-        _authService = authService;
-        _rollbackService = rollbackService;
-    }
+	    public TaskService(DataContext context, IAuthService authService, IRollbackService rollbackService, INotificationService notificationService)
+	    {
+	        _context = context;
+	        _authService = authService;
+	        _rollbackService = rollbackService;
+	        _notificationService = notificationService;
+	    }
 
-    public async Task<ActionResult<BaseResponseService>> AssignUser(int id, int uid)
-    {
+	    public async Task<ActionResult<BaseResponseService>> AssignUser(int id, int uid)
+	    {
         var authedUser = await _authService.GetAuthedUser();
         if (authedUser is null)
             return new NotFoundObjectResult(
@@ -88,7 +92,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Unauthorized" }
             );
 
-        var task = await _context.Tasks.Where(t => !t.Archived && t.Id == id).FirstOrDefaultAsync();
+	        var task = await _context.Tasks.Where(t => !t.Archived && t.Id == id).FirstOrDefaultAsync();
         if (task is null)
             return new NotFoundObjectResult(
                 new BaseResponseService { Error = true, Message = "Task is not found" }
@@ -99,7 +103,9 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Task is inoperable" }
             );
 
-        if (uid != 0 && uid != task.UserId)
+	        int? newlyAssignedUserId = null;
+
+	        if (uid != 0 && uid != task.UserId)
         {
             var user = await _context.Users
                 .Where(u => !u.Archived && u.Id == uid)
@@ -136,7 +142,7 @@ public class TaskService : ITaskService
 
             task.Status = TaskStatusEnum.ToDo;
 
-            var newActivity = new TaskActivity
+	            var newActivity = new TaskActivity
             {
                 Task = task,
                 TaskId = task.Id,
@@ -151,7 +157,8 @@ public class TaskService : ITaskService
                 AdditionalInfo = null
             };
 
-            _context.TaskActivities.Add(newActivity);
+	            _context.TaskActivities.Add(newActivity);
+	            newlyAssignedUserId = user.Id;
         }
         else if (uid == 0)
         {
@@ -181,9 +188,14 @@ public class TaskService : ITaskService
             _context.TaskActivities.Add(newActivity);
         }
 
-        await _context.SaveChangesAsync();
+	        await _context.SaveChangesAsync();
 
-        return new BaseResponseService { Error = false, Message = "User assigned" };
+	        if (newlyAssignedUserId.HasValue)
+	        {
+	            await _notificationService.NotifyUserOfTaskAssignment(newlyAssignedUserId.Value, task.Id, authedUser.Id);
+	        }
+
+	        return new BaseResponseService { Error = false, Message = "User assigned" };
     }
 
     public async Task<Models.Task> CreateTask(TaskBank taskBank, LearningObjective lo) =>
@@ -1626,11 +1638,11 @@ public class TaskService : ITaskService
 
     private async Task<Models.Task> createTask(TaskBank taskBank, LearningObjective learningObjective) => await createTask(taskBank, learningObjective, null);
 
-    private async Task<Models.Task> createTask(TaskBank taskBank, LearningObjective learningObjective, User? user, int? sprintId = null)
-    {
-        var authedUser = await _authService.GetAuthedUser();
+	    private async Task<Models.Task> createTask(TaskBank taskBank, LearningObjective learningObjective, User? user, int? sprintId = null)
+	    {
+	        var authedUser = await _authService.GetAuthedUser();
 
-        var newTask = new Models.Task
+	        var newTask = new Models.Task
         {
             Step = null,
             StepId = null,
@@ -1672,11 +1684,16 @@ public class TaskService : ITaskService
             Type = TaskActivityTypeEnum.Created,
         };
 
-        _context.Tasks.Add(newTask);
-        _context.TaskActivities.Add(createdAct);
-        await _context.SaveChangesAsync();
+	        _context.Tasks.Add(newTask);
+	        _context.TaskActivities.Add(createdAct);
+	        await _context.SaveChangesAsync();
 
-        return newTask;
+	        if (user is not null)
+	        {
+	            await _notificationService.NotifyUserOfTaskAssignment(user.Id, newTask.Id, authedUser?.Id);
+	        }
+
+	        return newTask;
     }
 
     private async Task<Models.Task> createTask(Step step, LearningObjective learningObjective, Models.Task? from)
@@ -2293,10 +2310,51 @@ public class TaskService : ITaskService
         await CreateNext(task);
 
         task.From = null;
-
-        await _context.SaveChangesAsync();
-        return await GetTaskDetails(task.Id);
+	
+	        await _context.SaveChangesAsync();
+	
+	        // After the task is completed and changes are saved, check if this was the last
+	        // remaining task in the associated project. If so, automatically mark the project
+	        // as closed and notify the owner that the project has been completed.
+	        await TryAutoCompleteProject(task.Id);
+	
+	        return await GetTaskDetails(task.Id);
     }
+
+	    private async System.Threading.Tasks.Task TryAutoCompleteProject(int completedTaskId)
+	    {
+	        // Find the project this task belongs to via navigation properties
+	        var projectId = await _context.Tasks
+	            .Where(t => !t.Archived && t.Id == completedTaskId)
+	            .Select(t => (int?)t.LearningObjective.Lesson.Unit.ProjectId)
+	            .FirstOrDefaultAsync();
+	
+	        if (!projectId.HasValue)
+	            return;
+	
+	        // Count remaining non-archived tasks in the project that are not Done
+	        var remainingTasks = await _context.Tasks
+	            .Where(t => !t.Archived
+	                        && t.LearningObjective.Lesson.Unit.ProjectId == projectId.Value
+	                        && t.Status != TaskStatusEnum.Done)
+	            .CountAsync();
+	
+	        if (remainingTasks > 0)
+	            return;
+	
+	        // All tasks are done for this project — mark the project as Closed if not already
+	        var project = await _context.Projects
+	            .Where(p => !p.Archived && p.Id == projectId.Value)
+	            .FirstOrDefaultAsync();
+	
+	        if (project is null || project.Status == ProjectStatusEnum.Closed)
+	            return;
+	
+	        project.Status = ProjectStatusEnum.Closed;
+	        await _context.SaveChangesAsync();
+	
+	        await _notificationService.NotifyOwnerOfProjectCompleted(projectId.Value);
+	    }
 
     public async Task<bool> CreateNext(int taskId)
     {
@@ -3651,8 +3709,9 @@ public class TaskService : ITaskService
             }
         }
 
-        // Handle non-ProjectManager roles and add the user's own group
-        if (user.Role != UserRoleEnum.ProjectManger)
+        // Handle roles that must be tied to a specific group
+        // Project managers and owners are global roles and are not required to have a group
+        if (user.Role != UserRoleEnum.ProjectManger && user.Role != UserRoleEnum.Owner)
         {
             var group = await _context.Groups
                 .Where(s => s.Id == user.GroupId)

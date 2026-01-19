@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
+	using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.LearningObjectiveService;
 using AutomatedTaskSystem.Services.ProjectAssignmentService;
 using AutomatedTaskSystem.Services.ResponseService;
@@ -21,14 +22,16 @@ public class ProjectService : IProjectService
     private readonly IUnitService _unitService;
     private readonly ILearningObjectiveService _learningObjectiveService;
     private readonly ITokenService _tokenService;
+	    private readonly INotificationService _notificationService;
 
-    public ProjectService(DataContext context, IProjectAssignmentService projectAssignmentService, IUnitService unitService, ILearningObjectiveService learningObjectiveService, ITokenService tokenService)
+	    public ProjectService(DataContext context, IProjectAssignmentService projectAssignmentService, IUnitService unitService, ILearningObjectiveService learningObjectiveService, ITokenService tokenService, INotificationService notificationService)
     {
         _context = context;
         _projectAssignmentService = projectAssignmentService;
         _unitService = unitService;
         _learningObjectiveService = learningObjectiveService;
         _tokenService = tokenService;
+	        _notificationService = notificationService;
     }
 
     public async Task<ActionResult<ResponseService<ProjectUnitDTO>>> AddUnit(int Id, string Name)
@@ -730,6 +733,9 @@ public class ProjectService : IProjectService
                 );
 
             project.Status = ProjectStatusEnum.Closed;
+	
+	            // Notify the owner when a project is manually closed via the project management interface
+	            _ = await _notificationService.NotifyOwnerOfProjectClosed(project.Id, true);
         }
 
         await _context.SaveChangesAsync();

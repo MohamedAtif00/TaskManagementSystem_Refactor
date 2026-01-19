@@ -16,10 +16,7 @@ public class ReportService : IReportService
         _context = context;
     }
 
-    public async Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllProjectsReports(
-        DateTime? start,
-        DateTime? end
-    )
+    public async Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllProjectsReports(DateTime? start, DateTime? end)
     {
         var projects = await _context.Projects
             .Where(
@@ -187,12 +184,7 @@ public class ReportService : IReportService
             report.DoneLearningObjectives++;
     }
 
-    private void handleStartAndEndDate(
-        GetReportDto report,
-        LearningObjective lo,
-        DateTime start,
-        DateTime end
-    )
+    private void handleStartAndEndDate(GetReportDto report, LearningObjective lo, DateTime start, DateTime end)
     {
         if (lo.CreateAt < start)
             return;
