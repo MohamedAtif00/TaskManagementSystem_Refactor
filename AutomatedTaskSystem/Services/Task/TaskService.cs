@@ -3652,7 +3652,7 @@ public class TaskService : ITaskService
         }
 
         // Handle non-ProjectManager roles and add the user's own group
-        if (user.Role != UserRoleEnum.ProjectManger)
+        if (user.Role != UserRoleEnum.ProjectManger && user.Role != UserRoleEnum.Owner)
         {
             var group = await _context.Groups
                 .Where(s => s.Id == user.GroupId)
