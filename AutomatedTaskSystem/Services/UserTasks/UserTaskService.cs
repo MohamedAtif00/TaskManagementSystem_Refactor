@@ -215,7 +215,17 @@ public class UserTaskService : IUserTaskService
             };
         }
 
-        throw new NotImplementedException();
+        // Member role does not have permission to view other users' tasks
+        return new ObjectResult(
+            new BaseResponseService
+            {
+                Error = true,
+                Message = "Access denied. This endpoint is only available for supervisory roles (Project Manager, Owner, Section Head, Team Leader)."
+            }
+        )
+        {
+            StatusCode = 403
+        };
     }
 
     //public async Task<ActionResult<ResponseService<List<UserTaskDto>>>> GetAvailableUsersTasks()

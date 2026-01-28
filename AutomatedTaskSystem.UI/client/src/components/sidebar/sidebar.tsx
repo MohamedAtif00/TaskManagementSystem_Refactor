@@ -159,6 +159,12 @@ const Sidebar = () => {
                     icon="Task"
                     text="Tasks"
                 />
+	                {/* <Navlink
+	                    activeCondition={path === "/notifications" || path.startsWith("/notifications/")}
+	                    to="/notifications"
+	                    icon="Notification"
+	                    text="Notifications"
+	                /> */}
                 {(auth.role < 3 || auth.role === 4) && (<Navlink
                             activeCondition={path.includes("/user-tasks")}
                             to="/user-tasks"
@@ -191,7 +197,12 @@ const Sidebar = () => {
                         {leavesNavItems} 
                     </NavList>
                 )}
-
+                 <Navlink
+	                    activeCondition={path === "/notifications" || path.startsWith("/notifications/")}
+	                    to="/notifications"
+	                    icon="Notification"
+	                    text="Notifications"
+	                />
 
                 
 

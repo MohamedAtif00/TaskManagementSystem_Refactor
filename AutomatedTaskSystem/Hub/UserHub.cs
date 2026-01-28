@@ -1,6 +1,7 @@
 ﻿
 using System.Security.Claims;
 using AutomatedTaskSystem.Data;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services;
 using Microsoft.AspNetCore.SignalR;
 
@@ -19,7 +20,7 @@ namespace AutomatedTaskSystem.Hub
 
         public override async Task OnConnectedAsync()
         {
-            var userId = Context.User?.FindFirst("id")?.Value;
+            var userId = Context.User?.FindFirst(ClaimTypes.NameIdentifier.ToString())?.Value;
 
             if (!string.IsNullOrEmpty(userId))
             {
@@ -30,7 +31,7 @@ namespace AutomatedTaskSystem.Hub
                 {
                     _connectionManager.SetUserConnected(userId);
 
-                    if (user.Role == Models.Enums.UserRole.UserRoleEnum.Owner)
+                    if (user.Role == UserRoleEnum.Owner)
                     {
                         await Clients.User(userId).SendAsync("OnConnectedMessage", new
                         {
@@ -40,7 +41,7 @@ namespace AutomatedTaskSystem.Hub
                         });
                     }// ... (your existing code before this section)
 
-                    else if (user.Role == Models.Enums.UserRole.UserRoleEnum.SectionHead)
+                    else if (user.Role == UserRoleEnum.SectionHead)
                     {
                         // Find IDs of users whose group belongs to a section headed by the current projectManager
                         var userIdsManagedByThisProjectManager = await _dataContext.Users
@@ -84,7 +85,7 @@ namespace AutomatedTaskSystem.Hub
                         });
                     }
                     // ... (rest of your hub code)
-                    else if (user.Role == Models.Enums.UserRole.UserRoleEnum.TeamLeader)
+                    else if (user.Role == UserRoleEnum.TeamLeader)
                     {
                         await Clients.User(userId).SendAsync("OnConnectedMessage", new
                         {

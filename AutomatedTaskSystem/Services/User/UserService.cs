@@ -77,7 +77,7 @@ public class UserService : IUserService
                 new BaseResponseService
                 {
                     Error = true,
-                    Message = $"Group of id:{req.GroupId} is not found"
+                    Message = $"{req.Email} is already exist"
                 }
             );
 
@@ -568,7 +568,7 @@ public class UserService : IUserService
         return code;
     }
 
-    private async Task<bool> CheckEmailExist(string email) => await _context.Users.AnyAsync(x => x.Email == email);
+    private async Task<bool> CheckEmailExist(string email) => await _context.Users.AnyAsync(x => x.Email == email && !x.Archived);
 
 
 

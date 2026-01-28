@@ -19,7 +19,7 @@ const Home: NextPage = () => {
             </Head>
             {role === 0 || role === 4? (
                 <ProjectManagerDashboard />
-            ) : role === 2 ? (
+            ) : role === 2? (
                 <TeamLeaderDashboard />
             ) : (
                 ""

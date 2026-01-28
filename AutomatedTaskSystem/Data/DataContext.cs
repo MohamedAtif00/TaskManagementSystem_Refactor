@@ -196,6 +196,30 @@ public class DataContext : DbContext
             .WithMany(x => x.Opinions)
             .OnDelete(DeleteBehavior.NoAction);
 
+	        modelBuilder
+	            .Entity<Notification>()
+	            .Property(n => n.Category)
+	            .HasConversion<string>();
+
+	        modelBuilder
+	            .Entity<Notification>()
+	            .Property(n => n.Type)
+	            .HasConversion<string>();
+
+	        modelBuilder
+	            .Entity<Notification>()
+	            .Property(n => n.Status)
+	            .HasConversion<string>();
+
+	        modelBuilder
+	            .Entity<Notification>()
+	            .Property(n => n.IsRead)
+	            .HasDefaultValue(false);
+
+	        modelBuilder
+	            .Entity<Notification>()
+	            .Property(n => n.HasActions)
+	            .HasDefaultValue(false);
     }
 
     public DbSet<Team> Teams => Set<Team>();
@@ -227,4 +251,5 @@ public class DataContext : DbContext
     public DbSet<UserChanges> UserChanges => Set<UserChanges>();
     public DbSet<Opinion> Opinions => Set<Opinion>();
     public DbSet<SprintLearningObjective> SprintLearningObjectives => Set<SprintLearningObjective>();
+	    public DbSet<Notification> Notifications => Set<Notification>();
 }

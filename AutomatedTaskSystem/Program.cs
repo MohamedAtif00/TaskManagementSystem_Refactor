@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using AutomatedTaskSystem.Builder.DependancyInjections;
 using System.Text;
-using Microsoft.OpenApi.Models;
+//using Microsoft.OpenApi.Model;
 using AutomatedTaskSystem.Hub;
 using System.Security.Claims;
 using AutomatedTaskSystem.Services;
@@ -14,6 +14,7 @@ using AutomatedTaskSystem.Seeding;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Converters;
 using AutomatedTaskSystem.Services.Email;
+using Microsoft.OpenApi;
 
 try
 {

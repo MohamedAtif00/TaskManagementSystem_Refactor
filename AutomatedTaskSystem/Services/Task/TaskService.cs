@@ -71,16 +71,16 @@ public class TaskService : ITaskService
 	    public double Duration { get; set; }
 	}
 
-	    public TaskService(DataContext context, IAuthService authService, IRollbackService rollbackService, INotificationService notificationService)
-	    {
-	        _context = context;
-	        _authService = authService;
-	        _rollbackService = rollbackService;
-	        _notificationService = notificationService;
-	    }
+	public TaskService(DataContext context, IAuthService authService, IRollbackService rollbackService, INotificationService notificationService)
+	{
+	    _context = context;
+	    _authService = authService;
+	    _rollbackService = rollbackService;
+	    _notificationService = notificationService;
+	}
 
-	    public async Task<ActionResult<BaseResponseService>> AssignUser(int id, int uid)
-	    {
+	public async Task<ActionResult<BaseResponseService>> AssignUser(int id, int uid)
+	{
         var authedUser = await _authService.GetAuthedUser();
         if (authedUser is null)
             return new NotFoundObjectResult(
@@ -105,7 +105,7 @@ public class TaskService : ITaskService
 
 	        int? newlyAssignedUserId = null;
 
-	        if (uid != 0 && uid != task.UserId)
+	    if (uid != 0 && uid != task.UserId)
         {
             var user = await _context.Users
                 .Where(u => !u.Archived && u.Id == uid)
@@ -142,7 +142,7 @@ public class TaskService : ITaskService
 
             task.Status = TaskStatusEnum.ToDo;
 
-	            var newActivity = new TaskActivity
+	        var newActivity = new TaskActivity
             {
                 Task = task,
                 TaskId = task.Id,
@@ -157,8 +157,8 @@ public class TaskService : ITaskService
                 AdditionalInfo = null
             };
 
-	            _context.TaskActivities.Add(newActivity);
-	            newlyAssignedUserId = user.Id;
+	        _context.TaskActivities.Add(newActivity);
+	        newlyAssignedUserId = user.Id;
         }
         else if (uid == 0)
         {
@@ -188,14 +188,14 @@ public class TaskService : ITaskService
             _context.TaskActivities.Add(newActivity);
         }
 
-	        await _context.SaveChangesAsync();
+	    await _context.SaveChangesAsync();
 
-	        if (newlyAssignedUserId.HasValue)
-	        {
-	            await _notificationService.NotifyUserOfTaskAssignment(newlyAssignedUserId.Value, task.Id, authedUser.Id);
-	        }
+	    if (newlyAssignedUserId.HasValue)
+	    {
+	        await _notificationService.NotifyUserOfTaskAssignment(newlyAssignedUserId.Value, task.Id, authedUser.Id);
+	    }
 
-	        return new BaseResponseService { Error = false, Message = "User assigned" };
+	    return new BaseResponseService { Error = false, Message = "User assigned" };
     }
 
     public async Task<Models.Task> CreateTask(TaskBank taskBank, LearningObjective lo) =>
@@ -949,7 +949,7 @@ public class TaskService : ITaskService
     //        Message = "Public list of tasks in sprint"
     //    };
     //}
-	    public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid)
+	public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid)
 	    {
 	        var user = await _authService.GetAuthedUser();
 	        if (user is null)
@@ -1638,7 +1638,7 @@ public class TaskService : ITaskService
 
     private async Task<Models.Task> createTask(TaskBank taskBank, LearningObjective learningObjective) => await createTask(taskBank, learningObjective, null);
 
-	    private async Task<Models.Task> createTask(TaskBank taskBank, LearningObjective learningObjective, User? user, int? sprintId = null)
+	private async Task<Models.Task> createTask(TaskBank taskBank, LearningObjective learningObjective, User? user, int? sprintId = null)
 	    {
 	        var authedUser = await _authService.GetAuthedUser();
 
@@ -1742,6 +1742,18 @@ public class TaskService : ITaskService
         _context.Tasks.Add(newTask);
         _context.TaskActivities.Add(createdAct);
         await _context.SaveChangesAsync();
+
+        var teamleader = await _context.Users
+            .FirstOrDefaultAsync(x =>
+                x.GroupId == step.TaskBank.GroupId &&
+                x.Role == UserRoleEnum.TeamLeader &&
+                _context.Users.Any(j => j.TeamleaderId == x.Id)); // Use .Any() without await here
+
+        if (teamleader != null)
+        {
+            var result = await _notificationService.NotifyUserOfTaskAssignment(teamleader.Id, newTask.Id);
+            // You can use 'result' here if needed
+        }
 
         return newTask;
     }

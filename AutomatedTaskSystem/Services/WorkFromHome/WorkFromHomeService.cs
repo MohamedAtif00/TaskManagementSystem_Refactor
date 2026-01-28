@@ -3,6 +3,9 @@ using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Hub;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Models;
+	using AutomatedTaskSystem.Models.Enums.NotificationCategory;
+	using AutomatedTaskSystem.Models.Enums.NotificationStatus;
+	using AutomatedTaskSystem.Models.Enums.NotificationType;
 using AutomatedTaskSystem.Services.Email;
 using AutomatedTaskSystem.Services.Log;
 using AutomatedTaskSystem.Services.Notification;
@@ -170,6 +173,19 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                         isApproved = true,
                         message = "Your work from home request has been automatically approved."
                     });
+	
+	                    // Persistent notification for Owner auto-approval
+	                    var autoApproveTitle = "Work From Home Request Automatically Approved";
+	                    var autoApproveMessage = $"Your work from home request for {workFromHomeRequest.Date:yyyy-MM-dd} has been automatically approved.";
+	                    await _notificationService.CreateNotification(
+	                        user.Id,
+	                        autoApproveTitle,
+	                        autoApproveMessage,
+	                        NotificationCategoryEnum.Leaves,
+	                        NotificationTypeEnum.Leave,
+	                        relatedEntityId: workFromHomeRequest.Id,
+	                        hasActions: false,
+	                        status: NotificationStatusEnum.Accepted);
                 }
                 else // For other roles, send notifications to relevant managers
                 {
@@ -184,6 +200,73 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                     {
                         await _workFromHomeHelper.SendSectionHeadPendingUpdates(workFromHomeRequest.SectionheadId.Value, workFromHomeRequest.Id);
                     }
+	
+	                    // Persistent notifications for non-owner submitter and approvers
+	                    var submitTitle = "Work From Home Request Submitted";
+	                    var submitMessage = $"Your work from home request for {workFromHomeRequest.Date:yyyy-MM-dd} has been submitted and is pending review.";
+	
+	                    await _notificationService.CreateNotification(
+	                        user.Id,
+	                        submitTitle,
+	                        submitMessage,
+	                        NotificationCategoryEnum.Leaves,
+	                        NotificationTypeEnum.Leave,
+	                        relatedEntityId: workFromHomeRequest.Id,
+	                        hasActions: false,
+	                        status: NotificationStatusEnum.Pending);
+	
+	                    var approverIds = new List<int>();
+	
+	                    // Owner
+	                    var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
+	                    if (owner != null && owner.Id != user.Id)
+	                    {
+	                        approverIds.Add(owner.Id);
+	                    }
+	
+	                    // Project managers / section heads related to the user's group
+	                    if (user.GroupId.HasValue)
+	                    {
+	                        var projectManagers = await _dataContext.SectionGroups
+	                            .Where(sg => sg.GroupId == user.GroupId.Value)
+	                            .Select(sg => sg.Section.Head)
+	                            .Distinct()
+	                            .ToListAsync();
+	
+	                        approverIds.AddRange(projectManagers
+	                            .Where(pm => pm != null && pm.Id != user.Id)
+	                            .Select(pm => pm.Id));
+	                    }
+	
+	                    // Team leader (if any)
+	                    if (user.TeamleaderId.HasValue && user.TeamleaderId.Value != user.Id)
+	                    {
+	                        approverIds.Add(user.TeamleaderId.Value);
+	                    }
+	
+	                    // Section head for this WFH request (if any)
+	                    if (workFromHomeRequest.SectionheadId.HasValue && workFromHomeRequest.SectionheadId.Value != user.Id)
+	                    {
+	                        approverIds.Add(workFromHomeRequest.SectionheadId.Value);
+	                    }
+	
+	                    approverIds = approverIds.Distinct().ToList();
+	
+	                    var approverTitle = "New Work From Home Request Pending Review";
+	                    var approverMessage = $"{user.Name} submitted a work from home request for {workFromHomeRequest.Date:yyyy-MM-dd}.";
+	
+	                    foreach (var approverId in approverIds)
+	                    {
+	                        await _notificationService.CreateNotification(
+	                            approverId,
+	                            approverTitle,
+	                            approverMessage,
+	                            NotificationCategoryEnum.Leaves,
+	                            NotificationTypeEnum.Leave,
+	                            relatedEntityId: workFromHomeRequest.Id,
+	                            hasActions: true,
+	                            status: NotificationStatusEnum.Pending);
+	                    }
                 }
 
                 response.Data = true;
@@ -293,6 +376,19 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                             });
 
                             workFromHomeRequest.User.WorkFromHome += 1;
+	
+	                            // Persistent notification for requester when Owner approves
+	                            var approveTitle = "Work From Home Request Approved";
+	                            var approveMessage = $"Your work from home request for {workFromHomeRequest.Date:yyyy-MM-dd} has been approved.";
+	                            await _notificationService.CreateNotification(
+	                                workFromHomeRequest.UserId,
+	                                approveTitle,
+	                                approveMessage,
+	                                NotificationCategoryEnum.Leaves,
+	                                NotificationTypeEnum.Leave,
+	                                relatedEntityId: workFromHomeRequest.Id,
+	                                hasActions: false,
+	                                status: NotificationStatusEnum.Accepted);
                         }
                         else // Owner rejects
                         {
@@ -302,6 +398,19 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                                 isApproved = false,
                                 message = "Your work from home request has been rejected."
                             });
+	
+	                            // Persistent notification for requester when Owner rejects
+	                            var rejectTitle = "Work From Home Request Rejected";
+	                            var rejectMessage = $"Your work from home request for {workFromHomeRequest.Date:yyyy-MM-dd} has been rejected.";
+	                            await _notificationService.CreateNotification(
+	                                workFromHomeRequest.UserId,
+	                                rejectTitle,
+	                                rejectMessage,
+	                                NotificationCategoryEnum.Leaves,
+	                                NotificationTypeEnum.Leave,
+	                                relatedEntityId: workFromHomeRequest.Id,
+	                                hasActions: false,
+	                                status: NotificationStatusEnum.Declined);
                         }
                         break;
 
@@ -804,9 +913,22 @@ namespace AutomatedTaskSystem.Services.WorkFromHome
                         senderUser.WorkFromHome -=1; // Decrement the user's work from home count
                     }
 
-                    await _dataContext.SaveChangesAsync();
-
-                    // Send SignalR updates to relevant parties
+	                    await _dataContext.SaveChangesAsync();
+	
+	                    // Persistent notification for requester when WFH is cancelled
+	                    var cancelTitle = "Work From Home Request Cancelled";
+	                    var cancelMessage = $"Your work from home request for {workFromHomeRequest.Date:yyyy-MM-dd} has been cancelled.";
+	                    await _notificationService.CreateNotification(
+	                        workFromHomeRequest.UserId,
+	                        cancelTitle,
+	                        cancelMessage,
+	                        NotificationCategoryEnum.Leaves,
+	                        NotificationTypeEnum.Leave,
+	                        relatedEntityId: workFromHomeRequest.Id,
+	                        hasActions: false,
+	                        status: null);
+	
+	                    // Send SignalR updates to relevant parties
                     if (senderUser.Role != UserRoleEnum.Owner)
                     {
                         await _workFromHomeHelper.SendOwnerPendingUpdate();

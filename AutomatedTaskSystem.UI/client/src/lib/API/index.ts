@@ -7,6 +7,7 @@ import SPRINTS from "./sprints";
 import LEAVE from "./Leave";
 import PERMISSION from "./Permission";
 import WORK_FROM_HOME from "./workFromHome";
+import NOTIFICATIONS from "./Notifications";
 
 
 // export const url = "/api";
@@ -36,7 +37,8 @@ const API = {
     SPRINTS,
     LEAVE,
     PERMISSION,
-    WORK_FROM_HOME
+	    WORK_FROM_HOME,
+	    NOTIFICATIONS
 };
 
 export default API;

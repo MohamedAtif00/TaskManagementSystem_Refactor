@@ -31,7 +31,7 @@ public class TokenService : ITokenService
             new Claim(ClaimTypes.Role, user.Role.ToString()),
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
         };
-        var creds = new SigningCredentials(_key, SecurityAlgorithms.HmacSha512Signature);
+        var creds = new SigningCredentials(_key, SecurityAlgorithms.HmacSha256Signature);
 
         var token = new JwtSecurityToken(
             claims: claims,

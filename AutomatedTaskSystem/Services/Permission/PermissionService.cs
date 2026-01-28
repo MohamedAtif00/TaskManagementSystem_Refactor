@@ -8,7 +8,11 @@ using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Hub;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.UserRole;
+using AutomatedTaskSystem.Models.Enums.NotificationCategory;
+using AutomatedTaskSystem.Models.Enums.NotificationStatus;
+using AutomatedTaskSystem.Models.Enums.NotificationType;
 using AutomatedTaskSystem.Services.Email;
+using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using Microsoft.AspNetCore.Mvc;
@@ -30,7 +34,8 @@ namespace AutomatedTaskSystem.Services.Permission
         private readonly IHubContext<UserHub> _hubContext;
         private readonly PermissionRequestHelper _permissionRequestHelper;
         private readonly EmailRecipientSettings _emailRecipients;
-        public PermissionService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IHubContext<UserHub> hubContext, PermissionRequestHelper permissionRequestHelper, IOptions<EmailRecipientSettings> emailRecipientsOptions)
+	        private readonly INotificationService _notificationService;
+	        public PermissionService(DataContext dataContext, ITokenService tokenService, IEmailService emailService, IHubContext<UserHub> hubContext, PermissionRequestHelper permissionRequestHelper, IOptions<EmailRecipientSettings> emailRecipientsOptions, INotificationService notificationService)
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
@@ -38,6 +43,7 @@ namespace AutomatedTaskSystem.Services.Permission
             _hubContext = hubContext;
             _permissionRequestHelper = permissionRequestHelper;
             _emailRecipients = emailRecipientsOptions.Value;
+	            _notificationService = notificationService;
         }
 
         // Create a new permission request
@@ -124,77 +130,157 @@ namespace AutomatedTaskSystem.Services.Permission
                 _dataContext.Permissions.Add(permission);
                 await _dataContext.SaveChangesAsync();
 
-                // --- Start: Refactored SignalR Notification Logic (similar to CreateLeaveRequest) ---
-
-                // If the user is an Owner, auto-approve and notify them
-                if (user.Role == UserRoleEnum.Owner)
-                {
-                    // Update user's permission balance (assuming 1 permission per request)
-                    user.Permission += 1;
-                    _dataContext.Users.Update(user);
-                    await _dataContext.SaveChangesAsync();
-
-                    // Notify the owner via SignalR that their request is approved
-                    await _hubContext.Clients.User(user.Id.ToString()).SendAsync("PermissionRequestOpinion", new
-                    {
-                        isApproved = true,
-                        message = "Your permission request has been automatically approved."
-                    });
-
-                    // Send email to CEO and Section Head
-                    var emailMessage = new EmailMessage
-                    {
-                        Subject = $"Permission Request - {user.Name} ({user.HR_code})",
-                        Body = EmailTemplate.CreatePermissionTemplate(
-                                                            permission.User.Name,
-                                                            permission.User.Email,
-                                                            permission.PermissionDate.ToString("yyyy-MM-dd"),
-                                                            permission.FromTime.ToString("hh:mm tt"),
-                                                            permission.ToTime.ToString("hh:mm tt"),
-                                                            permission.Type,
-                                                            permission.User.HR_code),
-                        IsHtml = true,
-                        CcEmails = new List<string> { _emailRecipients.CEO } // Send to configured emails
-                    };
-
-                    var emailResult = await _emailService.SendEmailAsync(emailMessage);
-
-                }
-                else if (user.Role == UserRoleEnum.ProjectManger)
-                {
-                    await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
-                }
-                else if (user.Role == UserRoleEnum.TeamLeader)
-                {
-                    await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
-                    await _permissionRequestHelper.SendProjectManagersPendingUpdate(permission.Id);
-                }
-                else 
-                {
-                    await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
-                    await _permissionRequestHelper.SendProjectManagersPendingUpdate(permission.Id);
-
-                    if (user.TeamleaderId.HasValue)
-                    {
-                        // Fetch the Team Leader's user object and send update
-                        var teamLeader = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
-
-                        if (teamLeader != null)
-                        {
-                            await _permissionRequestHelper.SendTeamLeaderPendingUpdates(teamLeader.Id, newPermissionId:permission.Id);
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id}.");
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId.");
-                    }
-                }
-
-                // --- End: Refactored SignalR Notification Logic ---
+	                // --- Start: SignalR + Persistent Notification Logic ---
+	
+	                // If the user is an Owner, auto-approve and notify them
+	                if (user.Role == UserRoleEnum.Owner)
+	                {
+	                    // Update user's permission balance (assuming 1 permission per request)
+	                    user.Permission += 1;
+	                    _dataContext.Users.Update(user);
+	                    await _dataContext.SaveChangesAsync();
+	
+	                    // Notify the owner via SignalR that their request is approved
+	                    await _hubContext.Clients.User(user.Id.ToString()).SendAsync("PermissionRequestOpinion", new
+	                    {
+	                        isApproved = true,
+	                        message = "Your permission request has been automatically approved."
+	                    });
+	
+	                    // Persistent notification for Owner auto-approval
+	                    var autoApproveTitle = "Permission Request Automatically Approved";
+	                    var autoApproveMessage =
+	                        $"Your permission request on {permission.PermissionDate:yyyy-MM-dd} " +
+	                        $"from {permission.FromTime:hh\\:mm} to {permission.ToTime:hh\\:mm} has been automatically approved.";
+	
+	                    await _notificationService.CreateNotification(
+	                        user.Id,
+	                        autoApproveTitle,
+	                        autoApproveMessage,
+	                        NotificationCategoryEnum.General,
+	                        NotificationTypeEnum.System,
+	                        relatedEntityId: permission.Id,
+	                        hasActions: false,
+	                        status: NotificationStatusEnum.Accepted);
+	
+	                    // Send email to CEO
+	                    var emailMessage = new EmailMessage
+	                    {
+	                        Subject = $"Permission Request - {user.Name} ({user.HR_code})",
+	                        Body = EmailTemplate.CreatePermissionTemplate(
+	                                                            permission.User.Name,
+	                                                            permission.User.Email,
+	                                                            permission.PermissionDate.ToString("yyyy-MM-dd"),
+	                                                            permission.FromTime.ToString("hh:mm tt"),
+	                                                            permission.ToTime.ToString("hh:mm tt"),
+	                                                            permission.Type,
+	                                                            permission.User.HR_code),
+	                        IsHtml = true,
+	                        CcEmails = new List<string> { _emailRecipients.CEO }
+	                    };
+	
+	                    var emailResult = await _emailService.SendEmailAsync(emailMessage);
+	                }
+	                else if (user.Role == UserRoleEnum.ProjectManger)
+	                {
+	                    await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
+	                }
+	                else if (user.Role == UserRoleEnum.TeamLeader)
+	                {
+	                    await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
+	                    await _permissionRequestHelper.SendProjectManagersPendingUpdate(permission.Id);
+	                }
+	                else
+	                {
+	                    await _permissionRequestHelper.SendOwnerPendingUpdate(permission.Id);
+	                    await _permissionRequestHelper.SendProjectManagersPendingUpdate(permission.Id);
+	
+	                    if (user.TeamleaderId.HasValue)
+	                    {
+	                        // Fetch the Team Leader's user object and send update
+	                        var teamLeader = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
+	
+	                        if (teamLeader != null)
+	                        {
+	                            await _permissionRequestHelper.SendTeamLeaderPendingUpdates(teamLeader.Id, newPermissionId: permission.Id);
+	                        }
+	                        else
+	                        {
+	                            Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id}.");
+	                        }
+	                    }
+	                    else
+	                    {
+	                        Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId.");
+	                    }
+	
+	                    // Persistent notifications for non-owner submitter and approvers
+	                    var submitTitle = "Permission Request Submitted";
+	                    var submitMessage =
+	                        $"Your permission request on {permission.PermissionDate:yyyy-MM-dd} " +
+	                        $"from {permission.FromTime:hh\\:mm} to {permission.ToTime:hh\\:mm} has been submitted and is pending review.";
+	
+	                    await _notificationService.CreateNotification(
+	                        user.Id,
+	                        submitTitle,
+	                        submitMessage,
+	                        NotificationCategoryEnum.General,
+	                        NotificationTypeEnum.System,
+	                        relatedEntityId: permission.Id,
+	                        hasActions: false,
+	                        status: NotificationStatusEnum.Pending);
+	
+	                    var approverIds = new List<int>();
+	
+	                    // Owner approver
+	                    var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
+	                    if (owner != null && owner.Id != user.Id)
+	                    {
+	                        approverIds.Add(owner.Id);
+	                    }
+	
+	                    // Project managers / section heads related to the user's group
+	                    if (user.GroupId.HasValue)
+	                    {
+	                        var projectManagers = await _dataContext.SectionGroups
+	                            .Where(sg => sg.GroupId == user.GroupId.Value)
+	                            .Select(sg => sg.Section.Head)
+	                            .Distinct()
+	                            .ToListAsync();
+	
+	                        approverIds.AddRange(projectManagers
+	                            .Where(pm => pm != null && pm.Id != user.Id)
+	                            .Select(pm => pm.Id));
+	                    }
+	
+	                    // Team leader (if any)
+	                    if (user.TeamleaderId.HasValue && user.TeamleaderId.Value != user.Id)
+	                    {
+	                        approverIds.Add(user.TeamleaderId.Value);
+	                    }
+	
+	                    approverIds = approverIds.Distinct().ToList();
+	
+	                    var approverTitle = "New Permission Request Pending Review";
+	                    var approverMessage =
+	                        $"{user.Name} submitted a permission request on {permission.PermissionDate:yyyy-MM-dd} " +
+	                        $"from {permission.FromTime:hh\\:mm} to {permission.ToTime:hh\\:mm}.";
+	
+	                    foreach (var approverId in approverIds)
+	                    {
+	                        await _notificationService.CreateNotification(
+	                            approverId,
+	                            approverTitle,
+	                            approverMessage,
+	                            NotificationCategoryEnum.General,
+	                            NotificationTypeEnum.System,
+	                            relatedEntityId: permission.Id,
+	                            hasActions: true,
+	                            status: NotificationStatusEnum.Pending);
+	                    }
+	                }
+	
+	                // --- End: SignalR + Persistent Notification Logic ---
 
                 response.Data = true;
                 response.Message = "Permission request created successfully." + (user.Role == UserRoleEnum.Owner ? " It has been automatically approved." : "");
@@ -830,14 +916,30 @@ namespace AutomatedTaskSystem.Services.Permission
                         permission.Status = PermissionStatusEnum.Cancelled;
                         permission.UpdatedAt = DateTime.UtcNow;
 
-                        await _dataContext.SaveChangesAsync();
-
-                        return new ResponseService<bool>
-                        {
-                            Error = false,
-                            Message = "Pending permission cancelled (date already passed).",
-                            Data = true
-                        };
+	                        await _dataContext.SaveChangesAsync();
+	
+	                        // Persistent notification for requester when past pending permission is cancelled
+	                        var cancelPastTitle = "Permission Request Cancelled";
+	                        var cancelPastMessage =
+	                            $"Your permission request on {permission.PermissionDate:yyyy-MM-dd} " +
+	                            $"from {permission.FromTime:hh\\:mm} to {permission.ToTime:hh\\:mm} has been cancelled.";
+	
+	                        await _notificationService.CreateNotification(
+	                            permission.UserId,
+	                            cancelPastTitle,
+	                            cancelPastMessage,
+	                            NotificationCategoryEnum.General,
+	                            NotificationTypeEnum.System,
+	                            relatedEntityId: permission.Id,
+	                            hasActions: false,
+	                            status: null);
+	
+	                        return new ResponseService<bool>
+	                        {
+	                            Error = false,
+	                            Message = "Pending permission cancelled (date already passed).",
+	                            Data = true
+	                        };
                     }
                 }
                 else // Future or today's date
@@ -905,11 +1007,27 @@ namespace AutomatedTaskSystem.Services.Permission
                             permission.User.Permission -= 1;
                         }
 
-                        // Set status to Cancelled and update timestamp
+	                        // Set status to Cancelled and update timestamp
                         permission.Status = PermissionStatusEnum.Cancelled;
                         permission.UpdatedAt = DateTime.UtcNow;
 
-                        await _dataContext.SaveChangesAsync();
+	                        await _dataContext.SaveChangesAsync();
+	
+	                        // Persistent notification for requester when future/today permission is cancelled
+	                        var cancelTitle = "Permission Request Cancelled";
+	                        var cancelMessage =
+	                            $"Your permission request on {permission.PermissionDate:yyyy-MM-dd} " +
+	                            $"from {permission.FromTime:hh\\:mm} to {permission.ToTime:hh\\:mm} has been cancelled.";
+	
+	                        await _notificationService.CreateNotification(
+	                            permission.UserId,
+	                            cancelTitle,
+	                            cancelMessage,
+	                            NotificationCategoryEnum.General,
+	                            NotificationTypeEnum.System,
+	                            relatedEntityId: permission.Id,
+	                            hasActions: false,
+	                            status: null);
 
                         if (permission.User.Role != UserRoleEnum.Owner)
                         {
@@ -1067,6 +1185,22 @@ namespace AutomatedTaskSystem.Services.Permission
                             isApproved = isApproved,
                             message = isApproved ? "Your permission request has been approved." : "Your permission request has been rejected."
                         });
+	
+	                    // Persistent notification for requester when Owner approves/rejects
+	                    var title = isApproved ? "Permission Request Approved" : "Permission Request Rejected";
+	                    var messageText = isApproved
+	                        ? $"Your permission request on {permission.PermissionDate:yyyy-MM-dd} from {permission.FromTime:hh\\:mm} to {permission.ToTime:hh\\:mm} has been approved."
+	                        : $"Your permission request on {permission.PermissionDate:yyyy-MM-dd} from {permission.FromTime:hh\\:mm} to {permission.ToTime:hh\\:mm} has been rejected.";
+	
+	                    await _notificationService.CreateNotification(
+	                        permission.UserId,
+	                        title,
+	                        messageText,
+	                        NotificationCategoryEnum.General,
+	                        NotificationTypeEnum.System,
+	                        relatedEntityId: permission.Id,
+	                        hasActions: false,
+	                        status: isApproved ? NotificationStatusEnum.Accepted : NotificationStatusEnum.Declined);
 
                         break;
 
@@ -1081,7 +1215,7 @@ namespace AutomatedTaskSystem.Services.Permission
                         return OperationResult.Failed("You are not authorized to approve or reject permissions.");
                 }
 
-                await _dataContext.SaveChangesAsync(); 
+	                await _dataContext.SaveChangesAsync(); 
 
                 // --- Centralized Pending Notification Logic ---
                 await _permissionRequestHelper.SendPendingUpdatesAfterOpinion(user, permission);

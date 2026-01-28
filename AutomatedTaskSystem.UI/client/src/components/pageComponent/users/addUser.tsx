@@ -122,7 +122,7 @@ const AddUser = () => {
     }, [formState.group]);
     
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        debugger
+        
         e.preventDefault();
          e.stopPropagation(); // Add this to prevent event bubbling
         setError("");
@@ -207,7 +207,7 @@ const AddUser = () => {
     };
 
     const handleChange = (field: keyof typeof formState) => (value: any) => {
-        debugger
+        
         if (field === 'role') {
             // Clear teamleader when changing to higher role
             const newTeamleader = (value === 0 || value === 1 || value === 2) ? null : formState.teamleader;

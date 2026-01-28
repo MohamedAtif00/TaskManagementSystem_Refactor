@@ -58,6 +58,21 @@ import Link from "next/link";
 		    );
 		};
 
+		const ProjectAssignedToast = ({ closeToast, projectId, projectName}: 
+			{ closeToast: () => void; projectId: number; projectName: string }) => {
+			const href = `/tasks/${projectId}`;
+
+		    return (
+		        <Link
+				href={href}
+		            onClick={closeToast}
+		            style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block", padding: "8px" }}
+		        >
+		            You have been assigned to project: ({projectName}). Click to view.
+		        </Link>
+		    );
+		};
+
 		const ProjectCompletedToast = ({
 		    closeToast,
 		    projectId,
@@ -236,6 +251,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 
 	        const onUpdatePendings = (data: any) => {
             // console.log("UpdatePendings received:", data);
+			console.log("UpdatePendings received:", data);
             if (data.pendings !== undefined) {
                 setPendingNumber(data.pendings);
             }
@@ -270,18 +286,37 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
             toast.error(data.message);
         };
 
-	        const onTaskAssigned = (data: any) => {
-	            if (!data) return;
-	            const { taskId, projectId, taskName, projectName } = data;
-	            if (!taskId || !projectId) return;
+		const onTaskAssigned = (data: any) => {
+		
+			if (!data) return;
+			console.log("TaskAssigned received:", data);
+			const { taskId, projectId, taskName, projectName } = data;
+			if (!taskId || !projectId) return;
+			toast.info(
+				({ closeToast }) => (
+					<TaskAssignedToast
+						closeToast={closeToast}
+						taskId={taskId}
+						projectId={projectId}
+						taskName={taskName}
+						projectName={projectName}
+					/>
+				),
+				{ autoClose: false, closeOnClick: false }
+			);
+		};
+
+		const onProjectAssignedd = (data: any) => {
+	            if (!data || !data.projectId) return;
+				console.log("ProjectAssigned received:", data);
+	            const { projectId, projectName, description, assignedByUserId, assignedByUserName } = data;
 	            toast.info(
 	                ({ closeToast }) => (
-	                    <TaskAssignedToast
+	                    <ProjectAssignedToast
 	                        closeToast={closeToast}
-	                        taskId={taskId}
 	                        projectId={projectId}
-	                        taskName={taskName}
 	                        projectName={projectName}
+
 	                    />
 	                ),
 	                { autoClose: false, closeOnClick: false }
@@ -290,6 +325,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 
 	        const onProjectCompleted = (data: any) => {
 	            if (!data || !data.projectId) return;
+				console.log("ProjectCompleted received:", data);
 	            const { projectId, projectName, totalTasks, completedTasks, remainingTasks } = data;
 	            toast.info(
 	                ({ closeToast }) => (
@@ -306,8 +342,11 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 	            );
 	        };
 
+			 
+
 	        const onProjectClosed = (data: any) => {
 	            if (!data || !data.projectId) return;
+				console.log("ProjectClosed received:", data);
 	            const { projectId, projectName, closedManually, yearName } = data;
 	            toast.info(
 	                ({ closeToast }) => (
@@ -324,25 +363,26 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 	        };
 
 	        // Register all handlers
-		        connection.on("LeaveRequestOpinion", (data) => onRequestOpinion(data, 'leave'));
-		        connection.on("PermissionRequestOpinion", (data) => onRequestOpinion(data, 'permission'));
-		        connection.on("WorkFromHomeOpinion", (data) => onRequestOpinion(data, 'workFromHome')); // Added listener for WFH opinions
-		        connection.on("UpdatePendings", onUpdatePendings);
-		        connection.on("ReceiveError", onReceiveError);
-		        connection.on("TaskAssigned", onTaskAssigned);
-		        connection.on("ProjectCompleted", onProjectCompleted);
-		        connection.on("ProjectClosed", onProjectClosed);
-		
-		        return () => {
-		            connection.off("LeaveRequestOpinion");
-		            connection.off("PermissionRequestOpinion");
-		            connection.off("WorkFromHomeOpinion"); // Unregister WFH opinion listener
-		            connection.off("UpdatePendings");
-		            connection.off("ReceiveError");
-		            connection.off("TaskAssigned");
-		            connection.off("ProjectCompleted");
-		            connection.off("ProjectClosed");
-		        };
+			connection.on("LeaveRequestOpinion", (data) => onRequestOpinion(data, 'leave'));
+			connection.on("PermissionRequestOpinion", (data) => onRequestOpinion(data, 'permission'));
+			connection.on("WorkFromHomeOpinion", (data) => onRequestOpinion(data, 'workFromHome')); // Added listener for WFH opinions
+			connection.on("UpdatePendings",(data)=> onUpdatePendings(data));
+			connection.on("ReceiveError", onReceiveError);
+			connection.on("TaskAssigned",(data)=> onTaskAssigned(data));
+			connection.on("ProjectAssigned",(data)=> onProjectAssignedd(data));
+			connection.on("ProjectCompleted", onProjectCompleted);
+			connection.on("ProjectClosed", onProjectClosed);
+	
+			return () => {
+				connection.off("LeaveRequestOpinion");
+				connection.off("PermissionRequestOpinion");
+				connection.off("WorkFromHomeOpinion"); // Unregister WFH opinion listener
+				connection.off("UpdatePendings");
+				connection.off("ReceiveError");
+				connection.off("TaskAssigned");
+				connection.off("ProjectCompleted");
+				connection.off("ProjectClosed");
+			};
     }, [connectionState]);
 
     return (
