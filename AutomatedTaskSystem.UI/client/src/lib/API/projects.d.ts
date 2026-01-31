@@ -39,11 +39,11 @@ interface Report {
     totalLearningObjectives: number;
 }
 
-interface ResponseService {
-    error: boolean;
-    message: string;
-}
+// interface ResponseService {
+//     error: boolean;
+//     message: string;
+// }
 
-interface ResponseService<T> extends ResponseService {
-    data: T;
-}
+// interface ResponseService<T> extends ResponseService {
+//     data: T;
+// }

@@ -1,39 +1,39 @@
 import { format } from "date-fns";
 import { url } from ".";
 import authService from "../Auth";
-
-// Assuming these are defined elsewhere, e.g., in a global types file or ResponseService.ts
-declare interface ResponseService<T> {
-    data?: T;
-    error?: boolean;
-    message?: string;
-}
+import { BaseOpinion, PageList, ResponseService } from "../../../app";
 
 
-declare interface ResponseServiceWithData<T> extends ResponseService<T> {
-    data: T;
-}
-
-declare interface PageList<T>
-{
-    items:T;
-    page:number;
-    pageSize:number;
-    totalPages:number;
-    totalCount:number;
-    hasNextPage:boolean;
-    hasPreviousPage:boolean;
-}
 
 declare type UserRole = number; // Assuming UserRole is a number type
 
-interface ILeave {
+interface ILeave { //this model is used as a base model for other models
     startDate: string;
     endDate: string;
     reason?: string;
-    noteToManager?: string
+    noteForManager?: string | null;
     type: LeaveRequestType;
 }
+
+enum LeaveRequestType {
+    Annual = "Annual",
+    Sick = "Sick",
+    Emergency = "Emergency",
+}
+
+enum LeaveRequestStatus {
+    Pending = "Pending",
+    Approved = "Approved",
+    Rejected = "Rejected",
+    Cancelled = "Cancelled",
+}
+
+
+/*
+    shared props
+
+
+*/
 
 interface ICreateLeave extends ILeave {
     userId?: number;
@@ -48,21 +48,20 @@ interface IGetAllLeavesApiResponse {
     totalPages: number;
 }
 
-
-interface IGetAllLeavesRequest {
+// We Omit everything except 'page' and 'pageSize'
+export interface IGetAllLeavesRequest extends Omit<PageList<any>, 
+    "items" | "totalPages" | "totalCount" | "hasNextPage" | "hasPreviousPage"> 
+{
     userId?: number;
     role?: number;
-    page?: number;
-    pageSize?: number;
     searchTerm?: string;
     fromDate?: string;
     toDate?: string;
     status?: LeaveRequestStatus | "all";
-    type?: LeaveRequestType | "all";
-    // Add an index signature here:
-    [key: string]: string | number | boolean | undefined; // This line is the addition
+    type?: LeaveRequestType | "all";  
+    // Index signature preserved
+    [key: string]: string | number | boolean | undefined;
 }
-
 
 interface IGetLeaveRequest extends ILeave {
     id: number;
@@ -72,25 +71,13 @@ interface IGetLeaveRequest extends ILeave {
     dateCreated:string
 }
 
- enum LeaveRequestType {
-    Annual = "Annual",
-    Sick = "Sick",
-    Emergency = "Emergency",
-}
-
- enum LeaveRequestStatus {
-    Pending = "Pending",
-    Approved = "Approved",
-    Rejected = "Rejected",
-    Cancelled = "Cancelled",
-}
-
 // Specific opinion types
 interface LeaveOpinion extends BaseOpinion {
   type: 'leave';
   leaveRequestId: number;
   status: LeaveRequestStatus;
 }
+
 interface IBulkUpdateStatusRequest {
     ids: number[];
     status: LeaveRequestStatus;

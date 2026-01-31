@@ -8,6 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useAppSelector } from "../../app/hooks";
 import { LeaveRequestStatus } from "../../lib/API/Leave";
 import { toast } from "react-toastify";
+import { PermissionOpinion } from "../../lib/API/Permission";
 
 // --- Types ---
 
@@ -345,22 +346,7 @@ const NotificationsPage: NextPage = () => {
 			const isWorkFromHome = notification.message.toLowerCase().includes("work from home") ||
 									notification.title.toLowerCase().includes("work from home");
 
-			if (isWorkFromHome && notification.relatedEntityId) {
-				// Handle Work From Home permission
-				const permissionOpinion: IPermissionOpinion = {
-				permissionRequestId: notification.relatedEntityId,
-				comment: action === "accept" ? "Approved" : "Rejected",
-				status: status,
-				isApproved: action === "accept",
-				user: {
-					id: auth.id,
-					name: auth.name,
-					role: auth.role
-				}
-				};
-
-				res = await API.PERMISSION.CREATE_OPINION(permissionOpinion);
-			} else if (notification.relatedEntityId) {
+			if (notification.relatedEntityId) {
 				// Handle regular leave request
 				const leaveOpinion: IOpinion = {
 				leaveRequestId: notification.relatedEntityId,
@@ -554,17 +540,13 @@ const NotificationsPage: NextPage = () => {
 															!!actionLoading[n.id] ||
 															n.status !== "pending"
 														}
-														className={`px-4 py-1.5 text-sm font-semibold rounded-full border transition-colors ${
-															n.status === "declined"
-															? "bg-red-100 text-red-600 border-red-300 cursor-not-allowed"
-															: n.status !== "pending"
-															? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
-															: actionLoading[n.id]
+														className={`px-4 py-1.5 text-sm font-semibold rounded-full border transition-colors ${							
+															 actionLoading[n.id]
 															? "bg-red-50 text-red-500 border-red-200 opacity-60 cursor-not-allowed"
 															: "bg-red-50 text-red-500 border-red-200 hover:bg-red-100"
 														}`}
 														>
-														{actionLoading[n.id] ? "Processing..." : n.status === "declined" ? "Declined" : "Decline"}
+														{actionLoading[n.id] ? "Processing..." :"Decline"}
 														</button>
 														<button
 														onClick={(e) => {

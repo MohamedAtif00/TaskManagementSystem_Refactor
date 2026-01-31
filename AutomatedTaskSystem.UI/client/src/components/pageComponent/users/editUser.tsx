@@ -9,7 +9,7 @@ import { motion } from "framer-motion";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
 import * as z from 'zod';
 
-type UserRole = 0 | 1 | 2 | 3;
+// type UserRole = 0 | 1 | 2 | 3;
 type AccountType = 0 | 1;
 
 const phoneSchema = z.object({

@@ -10,7 +10,7 @@ import { ReactElement, useContext, useEffect } from "react";
 import { SignalRContext } from "../connection/connectionProvider";
 
 // Define UserRole explicitly if it's not already defined elsewhere
-type UserRole = 0 | 1 | 2 | 3 | 4;
+// type UserRole = 0 | 1 | 2 | 3 | 4;
 
 const Sidebar = () => {
     const dispatch = useAppDispatch();
