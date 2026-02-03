@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { url } from ".";
 import authService from "../Auth";
+import { IDNameWithRole } from "./workFromHome";
 
 // Assuming these are defined elsewhere, e.g., in a global types file or ResponseService.ts
 declare interface ResponseService<T> {
@@ -24,8 +25,6 @@ declare interface PageList<T>
     hasNextPage:boolean;
     hasPreviousPage:boolean;
 }
-
-declare type UserRole = number; // Assuming UserRole is a number type
 
 interface ILeave {
     startDate: string;
@@ -60,7 +59,7 @@ interface IGetAllLeavesRequest {
     status?: LeaveRequestStatus | "all";
     type?: LeaveRequestType | "all";
     // Add an index signature here:
-    [key: string]: string | number | boolean | undefined; // This line is the addition
+    [key: string]: string | number | boolean | undefined | Date; // This line is the addition
 }
 
 
@@ -120,6 +119,16 @@ interface IGetLeaveRequestForDetails extends ILeave {
     user: IUser,
     opinions: IGetOpinion[]
 
+}
+
+// Base opinion interface for retrieved opinions
+interface IOpinion {
+    leaveRequestId?: number;
+    permissionId?: number;
+    workFromHomeRequestId?: number;
+    comment?: string;
+    isApproved: boolean;
+    user: IDNameWithRole;
 }
 
 interface IGetOpinion extends IOpinion {
@@ -317,7 +326,7 @@ const LEAVE = {
         return data;
    
     },
-    CREATE_OPINION: async (opinion: IOpinion): Promise<ResponseService< IGetOpinion>> => { // Changed return type
+    CREATE_OPINION: async (opinion: LeaveOpinion): Promise<ResponseService< IGetOpinion>> => { // Changed return type
 
         const auth = authService.authHeader();
         const res = await fetch(`${url}/Leave/CreateOpinion`, {
@@ -432,7 +441,7 @@ export type {
     IGetLeaveRequestForCalander,
     IGetLeaveRequestForDetails,
     IGetAllLeavesRequest,
-    IOpinion,
+    LeaveOpinion,
     IGetOpinion,
     IGetAllLeavesRequestNoPagination,
     IBulkUpdateStatusRequest

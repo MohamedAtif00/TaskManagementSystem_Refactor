@@ -1,7 +1,8 @@
-import React, { ReactNode, useEffect, useRef, useState, createContext } from "react";
+import React, { ReactNode, useEffect, useRef, useState, createContext, useCallback } from "react";
 import * as signalR from "@microsoft/signalr";
 import { useAppSelector } from "../../app/hooks";
 import { url } from "../../lib/API";
+import API from "../../lib/API";
 import { ToastContainer, ToastContentProps, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './toastify-custom.css';
@@ -202,12 +203,16 @@ export interface SignalRContextType {
     connection: signalR.HubConnection | null;
     connectionState: "connected" | "connecting" | "disconnected";
     pendingNumber: number;
+    unreadNotificationCount: number;
+    refreshUnreadNotificationCount: () => Promise<void>;
 }
 
 export const SignalRContext = createContext<SignalRContextType>({
     connection: null,
     connectionState: "disconnected",
     pendingNumber: 0,
+    unreadNotificationCount: 0,
+    refreshUnreadNotificationCount: async () => {},
 });
 
 const SignalRProvider = ({ children }: { children: ReactNode }) => {
@@ -215,6 +220,24 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
     const connectionRef = useRef<signalR.HubConnection | null>(null);
     const [connectionState, setConnectionState] = useState<"connected" | "connecting" | "disconnected">("disconnected");
     const [pendingNumber, setPendingNumber] = useState(0);
+    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+
+    // Function to fetch unread notification count from API
+    const refreshUnreadNotificationCount = useCallback(async () => {
+        try {
+            const res = await API.NOTIFICATIONS.GET_MY_NOTIFICATIONS({
+                isRead: false,
+                page: 1,
+                pageSize: 1, // We only need the count, not the items
+            });
+
+            if (!res.error && res.data) {
+                setUnreadNotificationCount(res.data.totalCount);
+            }
+        } catch (error) {
+            console.error("Failed to fetch unread notification count:", error);
+        }
+    }, []);
 
 		    useEffect(() => {
         let isMounted = true;
@@ -482,12 +505,21 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 			};
     }, [connectionState]);
 
+    // Fetch unread notification count when connection is established and when auth changes
+    useEffect(() => {
+        if (auth.isAuth && connectionState === "connected") {
+            refreshUnreadNotificationCount();
+        }
+    }, [auth.isAuth, connectionState, refreshUnreadNotificationCount]);
+
     return (
         <SignalRContext.Provider
             value={{
                 connection: connectionRef.current,
                 connectionState,
                 pendingNumber,
+                unreadNotificationCount,
+                refreshUnreadNotificationCount,
             }}
         >
             {children}

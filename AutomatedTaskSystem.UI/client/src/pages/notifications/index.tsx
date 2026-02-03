@@ -1,17 +1,19 @@
 import { NextPage } from "next";
 import Head from "next/head";
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import NotificationIcon from "../../assets/Icons/Notification";
 import API from "../../lib/API";
 import { formatDistanceToNow } from "date-fns";
 import { useAppSelector } from "../../app/hooks";
-import { LeaveRequestStatus } from "../../lib/API/Leave";
+import { LeaveRequestStatus, LeaveOpinion } from "../../lib/API/Leave";
+import { PermissionOpinion, PermissionRequestStatus } from "../../lib/API/Permission";
 import { toast } from "react-toastify";
+import { SignalRContext } from "../../components/connection/connectionProvider";
 
 // --- Types ---
 
-type NotificationCategory = "All" | "Unread" | "Leaves" | "Work Updates";
+type NotificationCategory = "All" | "Unread" | "Leaves" | "Work Updates" | "Rollbacks";
 
 type NotificationType = "project" | "sprint" | "leave" |"Task" |"system";
 
@@ -42,13 +44,15 @@ const mapCategoryToApi = (category: NotificationCategory): string | undefined =>
             return "WorkUpdates";
         case "Unread":
             return "Unread";
+        case "Rollbacks":
+            // Rollback notifications are stored under WorkUpdates category with Task type
+            // We'll filter client-side by checking additionalData for rollback-specific fields
+            return "WorkUpdates";
         case "All":
         default:
             return undefined;
     }
 };
-
-let mapIsReadToApi = null;
 
 const mapTimeFilterToApi = (filter: TimeFilterKey): string => {
     switch (filter) {
@@ -128,12 +132,14 @@ const NotificationsPage: NextPage = () => {
 	const [actionLoading, setActionLoading] = useState<Record<number, boolean>>({});
 	const auth = useAppSelector((s) => s.authSlice);
 	const router = useRouter();
+	const { refreshUnreadNotificationCount } = useContext(SignalRContext);
 
 	const categories: NotificationCategory[] = [
 		"All",
 		"Unread",
 		"Leaves",
 		"Work Updates",
+		"Rollbacks",
 	];
 
 	const getNotificationTarget = (n: NotificationItem): string | null => {
@@ -197,7 +203,7 @@ const NotificationsPage: NextPage = () => {
 
 	const handleMarkAsRead = async (id: number,accepted?:boolean) => {
 		try {
-			
+
 			const res = await API.NOTIFICATIONS.MARK_AS_READ(id,accepted);
 
 			if (!res) {
@@ -212,6 +218,9 @@ const NotificationsPage: NextPage = () => {
 			setNotifications((prev) =>
 				prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
 			);
+
+			// Refresh the unread notification count in the sidebar
+			refreshUnreadNotificationCount();
 		} catch (err: any) {
 			setActionError(
 				err?.message ||
@@ -220,7 +229,7 @@ const NotificationsPage: NextPage = () => {
 		} finally {
 			setActionLoading((prev) => ({ ...prev, [id]: false }));
 		}
-	};	
+	};
 
     useEffect(() => {
         let isMounted = true;
@@ -286,21 +295,89 @@ const NotificationsPage: NextPage = () => {
         };
     }, [activeCategory, activeTimeFilter]);
 
-   const visibleNotifications = useMemo(() => {
-    let data = [...notifications];
+	/**
+	 * Helper function to check if a notification is a rollback notification.
+	 * Rollback notifications are identified by:
+	 * - Type is "Task"
+	 * - additionalData contains rollback-specific fields (critical, rollbackCount) OR
+	 * - Title contains "Rolled Back"
+	 */
+	const isRollbackNotification = (n: NotificationItem): boolean => {
+		// Check by type first - rollback notifications are Task type
+		if (n.type !== "Task") return false;
 
-    // Handle "Unread" separately since it's based on isRead property, not category
-    if (activeCategory === "Unread") {
-        data = data.filter((n) => !n.isRead);
-    } else if (activeCategory !== "All") {
-        data = data.filter((n) => n.category === activeCategory);
-    }
+		// Check if title indicates a rollback
+		if (n.title.toLowerCase().includes("rolled back")) return true;
 
-    return data.map((n) => ({
-        ...n,
-        status: actionState[n.id] ?? n.status ?? "pending",
-    }));
-}, [activeCategory, actionState, notifications]);
+		// Check additionalData for rollback-specific fields
+		if (n.additionalData) {
+			try {
+				const additionalData = JSON.parse(n.additionalData);
+				// Rollback notifications have 'critical' field (boolean) or 'rollbackCount' field
+				if (additionalData.critical !== undefined || additionalData.rollbackCount !== undefined) {
+					return true;
+				}
+			} catch (e) {
+				// Ignore parse errors
+			}
+		}
+
+		return false;
+	};
+
+	const visibleNotifications = useMemo(() => {
+		let data = [...notifications];
+
+		// Handle "Unread" separately since it's based on isRead property, not category
+		if (activeCategory === "Unread") {
+			data = data.filter((n) => !n.isRead);
+		} else if (activeCategory === "Rollbacks") {
+			// Filter for rollback notifications
+			data = data.filter((n) => isRollbackNotification(n));
+		} else if (activeCategory === "Work Updates") {
+			// Filter for Work Updates but EXCLUDE rollback notifications
+			// Rollback notifications should only appear in the "Rollbacks" tab
+			data = data.filter((n) => n.category === "Work Updates" && !isRollbackNotification(n));
+		} else if (activeCategory !== "All") {
+			data = data.filter((n) => n.category === activeCategory);
+		}
+
+		return data.map((n) => ({
+			...n,
+			status: actionState[n.id] ?? n.status ?? "pending",
+		}));
+	}, [activeCategory, actionState, notifications]);
+
+	/**
+	 * Calculate unread counts for each category to display as badges.
+	 * This updates dynamically as notifications are marked as read.
+	 */
+	const unreadCounts = useMemo(() => {
+		const counts: Record<NotificationCategory, number> = {
+			"All": 0,
+			"Unread": 0,
+			"Leaves": 0,
+			"Work Updates": 0,
+			"Rollbacks": 0,
+		};
+
+		notifications.forEach((n) => {
+			if (!n.isRead) {
+				counts["All"]++;
+				counts["Unread"]++;
+
+				if (isRollbackNotification(n)) {
+					counts["Rollbacks"]++;
+				} else if (n.category === "Leaves") {
+					counts["Leaves"]++;
+				} else if (n.category === "Work Updates") {
+					counts["Work Updates"]++;
+				}
+			}
+		});
+
+		return counts;
+	}, [notifications]);
 
 	    const handleNotificationAction = async (
 		id: number,
@@ -333,9 +410,13 @@ const NotificationsPage: NextPage = () => {
 			}
 
 			// Determine the status based on action
-			const status = action === "accept" 
-			? LeaveRequestStatus.Approved 
+			const leaveStatus = action === "accept"
+			? LeaveRequestStatus.Approved
 			: LeaveRequestStatus.Rejected;
+
+			const permissionStatus = action === "accept"
+			? PermissionRequestStatus.Approved
+			: PermissionRequestStatus.Rejected;
 
 			let res;
 
@@ -347,10 +428,11 @@ const NotificationsPage: NextPage = () => {
 
 			if (isWorkFromHome && notification.relatedEntityId) {
 				// Handle Work From Home permission
-				const permissionOpinion: IPermissionOpinion = {
-				permissionRequestId: notification.relatedEntityId,
+				const permissionOpinion: PermissionOpinion = {
+				type: 'permission',
+				permissionId: notification.relatedEntityId,
 				comment: action === "accept" ? "Approved" : "Rejected",
-				status: status,
+				status: permissionStatus,
 				isApproved: action === "accept",
 				user: {
 					id: auth.id,
@@ -362,10 +444,11 @@ const NotificationsPage: NextPage = () => {
 				res = await API.PERMISSION.CREATE_OPINION(permissionOpinion);
 			} else if (notification.relatedEntityId) {
 				// Handle regular leave request
-				const leaveOpinion: IOpinion = {
+				const leaveOpinion: LeaveOpinion = {
+				type: 'leave',
 				leaveRequestId: notification.relatedEntityId,
 				comment: action === "accept" ? "Approved" : "Rejected",
-				status: status,
+				status: leaveStatus,
 				isApproved: action === "accept",
 				user: {
 					id: auth.id,
@@ -460,13 +543,22 @@ const NotificationsPage: NextPage = () => {
                             <button
                                 key={cat}
                                 onClick={() => setActiveCategory(cat)}
-                                className={`pb-1 border-b-2 transition-colors ${
+                                className={`pb-1 border-b-2 transition-colors flex items-center gap-1.5 ${
                                     activeCategory === cat
                                         ? "border-blue-500 text-blue-600"
                                         : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                                 }`}
                             >
                                 {cat}
+                                {unreadCounts[cat] > 0 && (
+                                    <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 text-xs font-semibold rounded-full ${
+                                        activeCategory === cat
+                                            ? "bg-blue-500 text-white"
+                                            : "bg-gray-200 text-gray-600"
+                                    }`}>
+                                        {unreadCounts[cat]}
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
@@ -512,9 +604,7 @@ const NotificationsPage: NextPage = () => {
 	                    ) : (
 	                        <div className="space-y-3">
                             {visibleNotifications.map((n) => {
-                                const isLeave = n.type === "leave";
                                 // const isProjectOrSprint = n.type === "project" || n.type === "sprint";
-
                                 // const isSeen = n.isRead;
 
                                 let bgClass = !n.isRead
@@ -527,23 +617,35 @@ const NotificationsPage: NextPage = () => {
 
                                 const messageClass = !n.isRead ? "text-gray-900":"text-slate-300"
 								
-                                // Check if this is a critical rollback notification
+                                // Check if this is a rollback notification and determine if it's critical
+                                // Backend uses 'critical' field (not 'isCritical') in additionalData
+                                let isRollback = false;
                                 let isCriticalRollback = false;
                                 if (n.additionalData) {
                                     try {
-										console.log(n.additionalData);
                                         const additionalData = JSON.parse(n.additionalData);
 
-										if(additionalData.isCritical != undefined && additionalData.isCritical != null)
-										{
-											isCriticalRollback = additionalData.isCritical === true;
-											// Add a space at the start of both strings to be safe
-											bgClass += isCriticalRollback ? " bg-[#FEF6E7]" : " bg-[#FCEAEA]";
-
-										}
+                                        // Check if this is a rollback notification by looking for rollback-specific fields
+                                        // Rollback notifications have 'critical' (boolean) or 'rollbackCount' fields
+                                        if (additionalData.critical !== undefined || additionalData.rollbackCount !== undefined) {
+                                            isRollback = true;
+                                            isCriticalRollback = additionalData.critical === true;
+                                            // Apply distinct background colors:
+                                            // - Critical rollbacks: light yellow/amber bg-[#FEF6E7]
+                                            // - Normal rollbacks: light red/pink bg-[#FCEAEA]
+                                            bgClass = !isCriticalRollback ? "bg-[#FEF6E7]" : "bg-[#FCEAEA]";
+                                        }
                                     } catch (e) {
                                         // Ignore parse errors
                                     }
+                                }
+
+                                // Also check by title if additionalData parsing didn't identify it as rollback
+                                if (!isRollback && n.type === "Task" && n.title.toLowerCase().includes("rolled back")) {
+                                    isRollback = true;
+                                    // If identified by title, check if "critically" is in the title
+                                    isCriticalRollback = n.title.toLowerCase().includes("critically");
+                                    bgClass = isCriticalRollback ? "bg-[#FEF6E7]" : "bg-[#FCEAEA]";
                                 }
 
 		                                return (
@@ -569,49 +671,35 @@ const NotificationsPage: NextPage = () => {
                                                     {n.message}
                                                 </div>
 
-		                                        {n.hasActions && n.status == "pending" && auth.role !== 3 && (
+		                                        {n.hasActions && n.status === "pending" && auth.role !== 3 && (
 													<div className="mt-3 flex justify-end gap-3">
 														<button
 														onClick={(e) => {
 															e.stopPropagation();
 															handleNotificationAction(n.id, "reject");
 														}}
-														disabled={
-															!!actionLoading[n.id] ||
-															n.status !== "pending"
-														}
+														disabled={!!actionLoading[n.id]}
 														className={`px-4 py-1.5 text-sm font-semibold rounded-full border transition-colors ${
-															n.status === "declined"
-															? "bg-red-100 text-red-600 border-red-300 cursor-not-allowed"
-															: n.status !== "pending"
-															? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
-															: actionLoading[n.id]
+															actionLoading[n.id]
 															? "bg-red-50 text-red-500 border-red-200 opacity-60 cursor-not-allowed"
 															: "bg-red-50 text-red-500 border-red-200 hover:bg-red-100"
 														}`}
 														>
-														{actionLoading[n.id] ? "Processing..." : n.status === "declined" ? "Declined" : "Decline"}
+														{actionLoading[n.id] ? "Processing..." : "Decline"}
 														</button>
 														<button
 														onClick={(e) => {
 															e.stopPropagation();
 															handleNotificationAction(n.id, "accept");
 														}}
-														disabled={
-															!!actionLoading[n.id] ||
-															n.status !== "pending"
-														}
+														disabled={!!actionLoading[n.id]}
 														className={`px-4 py-1.5 text-sm font-semibold rounded-full border transition-colors ${
-															n.status === "accepted"
-															? "bg-green-100 text-green-600 border-green-300 cursor-not-allowed"
-															: n.status !== "pending"
-															? "bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed"
-															: actionLoading[n.id]
+															actionLoading[n.id]
 															? "bg-blue-500 text-white border-blue-500 opacity-60 cursor-not-allowed"
 															: "bg-blue-500 text-white border-blue-500 hover:bg-blue-600"
 														}`}
 														>
-														{actionLoading[n.id] ? "Processing..." : n.status === "accepted" ? "Accepted" : "Accept"}
+														{actionLoading[n.id] ? "Processing..." : "Accept"}
 														</button>
 													</div>
 													)}
