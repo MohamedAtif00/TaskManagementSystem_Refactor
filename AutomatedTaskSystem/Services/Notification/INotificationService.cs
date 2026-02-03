@@ -1,4 +1,5 @@
-﻿using AutomatedTaskSystem.Models.Enums.NotificationCategory;
+﻿using AutomatedTaskSystem.Dtos.NotificationDtos;
+using AutomatedTaskSystem.Models.Enums.NotificationCategory;
 using AutomatedTaskSystem.Models.Enums.NotificationStatus;
 using AutomatedTaskSystem.Models.Enums.NotificationType;
 using NotificationModel = AutomatedTaskSystem.Models.Notification;
@@ -41,5 +42,6 @@ namespace AutomatedTaskSystem.Services.Notification
 
 		Task<bool> MarkAsRead(int notificationId, int userId, bool? accepted = null);
 		Task<bool> UpdateNotificationStatus(int notificationId, NotificationStatusEnum status);
-	}
+        Task<bool> NotifyMemberOfRollBack(RollBackNotificationDto rollBackNotificationDto, bool critical = false);
+    }
 }

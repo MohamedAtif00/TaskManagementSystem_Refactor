@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.Dtos.Tasks;
+using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,7 +11,7 @@ public interface IRollbackService
     Task<BaseResponseService> CreateRollback(
         int FromTaskId,
         int ToTaskId,
-        int UserId,
+        User user,
         string? Clarification,
         List<RollbackLogDto> logs
     );

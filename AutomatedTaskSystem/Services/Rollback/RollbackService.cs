@@ -1,35 +1,37 @@
 using AutomatedTaskSystem.Data;
-using AutomatedTaskSystem.Dtos.Tasks;
-using AutomatedTaskSystem.Services.ResponseService;
-using AutomatedTaskSystem.Services.AuthService;
-using AutomatedTaskSystem.Models;
-using Microsoft.AspNetCore.Mvc;
 using AutomatedTaskSystem.Dtos.Common;
+using AutomatedTaskSystem.Dtos.NotificationDtos;
+using AutomatedTaskSystem.Dtos.Tasks;
+using AutomatedTaskSystem.Migrations;
+using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Services.AuthService;
+using AutomatedTaskSystem.Services.Notification;
+using AutomatedTaskSystem.Services.ResponseService;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Services.RollbackService;
 
 public class RollbackService : IRollbackService
 {
     private readonly DataContext _context;
-    private readonly IAuthService _authService; 
+    private readonly IAuthService _authService;
+    private readonly INotificationService _notificationService;
 
-    public RollbackService(DataContext context, IAuthService authService)
+    public RollbackService(DataContext context, IAuthService authService, INotificationService notificationService)
     {
         _context = context;
         _authService = authService;
+        _notificationService = notificationService;
     }
 
     public async Task<BaseResponseService> CreateRollback(
         int FromTaskId,
         int ToTaskId,
-        int UserId,
+        User user,
         string? Clarification,
         List<RollbackLogDto> logs
     )
     {
-        var user = await _authService.GetAuthedUser();
-        if (user is null)
-            return new BaseResponseService { Error = true, Message = "Unauthorized" };
 
         var fromTask = await _context.Tasks
             .Where(t => !t.Archived && t.Id == FromTaskId)
@@ -37,7 +39,7 @@ public class RollbackService : IRollbackService
         if (fromTask is null)
             return new BaseResponseService { Error = true, Message = "From task is not found" };
 
-        var toTask = await _context.Tasks
+        var toTask = await _context.Tasks.Include(x => x.User)
             .Where(t => !t.Archived && t.Id == ToTaskId)
             .FirstOrDefaultAsync();
         if (toTask is null)

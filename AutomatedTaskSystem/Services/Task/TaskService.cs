@@ -3,6 +3,7 @@ using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Dtos.LearningObjective;
 using AutomatedTaskSystem.Dtos.Lessons;
+using AutomatedTaskSystem.Dtos.NotificationDtos;
 using AutomatedTaskSystem.Dtos.Projects;
 using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Dtos.Unit;
@@ -1206,6 +1207,13 @@ public class TaskService : ITaskService
 
         var task = await _context.Tasks
             .Include(t => t.LearningObjective)
+                .ThenInclude(lo => lo.Lesson)
+                    .ThenInclude(l => l.Unit)
+                        .ThenInclude(u => u.Project)
+            .Include(t => t.LearningObjective)
+                .ThenInclude(lo => lo.SprintLearningObjectives)
+                    .ThenInclude(slo => slo.Sprint)
+            .Include(t => t.User)
             .Where(t => t.Id == taskId && !t.Archived)
             .FirstOrDefaultAsync();
 
@@ -1255,6 +1263,7 @@ public class TaskService : ITaskService
             return new BadRequestObjectResult(new Responses.BadRequestsDTO("Step is not found."));
 
         var foundTask = await _context.Tasks
+            .Include(t => t.User)
             .Where(
                 t =>
                     t.StepId == rollbackStep.Id
@@ -1263,8 +1272,13 @@ public class TaskService : ITaskService
             )
             .OrderBy(t => t.Id)
             .LastOrDefaultAsync();
+
+        // Track target task info for notification
+        Models.Task targetTask;
+
         if (foundTask is not null)
         {
+            targetTask = foundTask;
             foundTask.From = task;
             foundTask.FromId = task.FromId;
             foundTask.RollbackCount++;
@@ -1304,7 +1318,7 @@ public class TaskService : ITaskService
             var RollbackLog = await _rollbackService.CreateRollback(
                 FromTaskId: task.Id,
                 ToTaskId: foundTask.Id,
-                UserId: user.Id,
+                user: user,
                 Clarification: clarification,
                 logs: logs
             );
@@ -1340,6 +1354,7 @@ public class TaskService : ITaskService
                 RollbackCount = 1,
                 Status = rollbackStep.TaskBank.TL ? TaskStatusEnum.ToDo : TaskStatusEnum.Backlog,
             };
+            targetTask = newTask;
             _context.Tasks.Add(newTask);
 
             var newActivity = new TaskActivity
@@ -1375,7 +1390,7 @@ public class TaskService : ITaskService
             var RollbackLog = await _rollbackService.CreateRollback(
                 FromTaskId: task.Id,
                 ToTaskId: newTask.Id,
-                UserId: user.Id,
+                user: user,
                 Clarification: null,
                 logs: logs
             );
@@ -1388,6 +1403,29 @@ public class TaskService : ITaskService
         }
 
         await _context.SaveChangesAsync();
+
+        // Send rollback notification
+        var project = task.LearningObjective.Lesson.Unit.Project;
+        var rollbackNotification = new RollBackNotificationDto
+        {
+            FromUserId = user.Id,
+            FromUserName = user.Name,
+            ToUserId = targetTask.UserId ?? 0,
+            ToUserName = targetTask.User?.Name ?? "Unassigned",
+            TeamLeaderId = foundTask.User?.TeamleaderId ?? 0,
+            FromTaskId = task.Id,
+            FromTaskName = task.Name,
+            ToTaskId = targetTask.Id,
+            ToTaskName = targetTask.Name,
+            LoName = task.LearningObjective.Name,
+            ProjectId = project.Id,
+            ProjectName = project.Name,
+            SprintName = task.LearningObjective.SprintLearningObjectives?.FirstOrDefault()?.Sprint?.Name ?? "",
+            RollbackCount = foundTask.RollbackCount
+        };
+
+        // Fire and forget - don't block the response on notification
+        _ = await _notificationService.NotifyMemberOfRollBack(rollbackNotification, critical: foundTask.RollbackCount > 1);
 
         return await GetTaskDetails(task.Id);
     }
