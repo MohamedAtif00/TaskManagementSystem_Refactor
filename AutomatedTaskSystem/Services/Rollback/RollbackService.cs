@@ -14,14 +14,10 @@ namespace AutomatedTaskSystem.Services.RollbackService;
 public class RollbackService : IRollbackService
 {
     private readonly DataContext _context;
-    private readonly IAuthService _authService;
-    private readonly INotificationService _notificationService;
 
-    public RollbackService(DataContext context, IAuthService authService, INotificationService notificationService)
+    public RollbackService(DataContext context )
     {
         _context = context;
-        _authService = authService;
-        _notificationService = notificationService;
     }
 
     public async Task<BaseResponseService> CreateRollback(

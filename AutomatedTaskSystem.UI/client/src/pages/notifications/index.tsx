@@ -488,7 +488,7 @@ const NotificationsPage: NextPage = () => {
                             </select>
                             <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-gray-400">
                                 <svg width="11" height="5" viewBox="0 0 11 5" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M0.119628 0.174623C0.16238 0.124741 0.214543 0.0837735 0.273135 0.0540611C0.331727 0.0243486 0.395601 0.00647388 0.461105 0.00145893C0.526608 -0.00355601 0.592459 0.00438726 0.654891 0.0248341C0.717324 0.045281 0.775115 0.0778305 0.824962 0.120623L5.1663 3.84129L9.50763 0.120623C9.60884 0.0393757 9.73769 0.000671316 9.86693 0.0126919C9.99616 0.0247126 10.1157 0.0865161 10.2002 0.185037C10.2846 0.283559 10.3275 0.411077 10.3197 0.540634C10.3119 0.670191 10.254 0.791634 10.1583 0.87929L5.49163 4.87929C5.40102 4.95693 5.28562 4.99961 5.1663 4.99961C5.04697 4.99961 4.93157 4.95693 4.84096 4.87929L0.174295 0.87929C0.0737515 0.792967 0.0115881 0.670261 0.00146281 0.538132C-0.00866252 0.406003 0.0340785 0.275258 0.120295 0.174623" fill="#3B82F6"/>
+                                    <path fillRule="evenodd" clipRule="evenodd" d="M0.119628 0.174623C0.16238 0.124741 0.214543 0.0837735 0.273135 0.0540611C0.331727 0.0243486 0.395601 0.00647388 0.461105 0.00145893C0.526608 -0.00355601 0.592459 0.00438726 0.654891 0.0248341C0.717324 0.045281 0.775115 0.0778305 0.824962 0.120623L5.1663 3.84129L9.50763 0.120623C9.60884 0.0393757 9.73769 0.000671316 9.86693 0.0126919C9.99616 0.0247126 10.1157 0.0865161 10.2002 0.185037C10.2846 0.283559 10.3275 0.411077 10.3197 0.540634C10.3119 0.670191 10.254 0.791634 10.1583 0.87929L5.49163 4.87929C5.40102 4.95693 5.28562 4.99961 5.1663 4.99961C5.04697 4.99961 4.93157 4.95693 4.84096 4.87929L0.174295 0.87929C0.0737515 0.792967 0.0115881 0.670261 0.00146281 0.538132C-0.00866252 0.406003 0.0340785 0.275258 0.120295 0.174623" fill="#3B82F6"/>
                                 </svg>
                             </span>
                         </div>
@@ -517,13 +517,34 @@ const NotificationsPage: NextPage = () => {
 
                                 // const isSeen = n.isRead;
 
-                                const bgClass = !n.isRead
+                                let bgClass = !n.isRead
                                     ? "bg-white":"bg-slate-50 text-gray-100"
+
+								
 
                                 const textClass = !n.isRead
                                     ? "text-gray-900":"text-slate-300"
 
                                 const messageClass = !n.isRead ? "text-gray-900":"text-slate-300"
+								
+                                // Check if this is a critical rollback notification
+                                let isCriticalRollback = false;
+                                if (n.additionalData) {
+                                    try {
+										console.log(n.additionalData);
+                                        const additionalData = JSON.parse(n.additionalData);
+
+										if(additionalData.isCritical != undefined && additionalData.isCritical != null)
+										{
+											isCriticalRollback = additionalData.isCritical === true;
+											// Add a space at the start of both strings to be safe
+											bgClass += isCriticalRollback ? " bg-[#FEF6E7]" : " bg-[#FCEAEA]";
+
+										}
+                                    } catch (e) {
+                                        // Ignore parse errors
+                                    }
+                                }
 
 		                                return (
 		                                    <div
@@ -534,7 +555,12 @@ const NotificationsPage: NextPage = () => {
 		                                        }`}
 		                                    >
                                                 <div className={`flex items-center justify-between text-xs ${textClass}`} >
-                                                    <span className={`font-medium ${textClass}`}>
+                                                    <span className={`font-medium ${textClass} flex items-center gap-2`}>
+                                                        {isCriticalRollback && (
+                                                            <svg width="13" height="12" viewBox="0 0 13 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                <path d="M6.30407 8.22394H6.30941M6.30407 4.22394V6.22394M5.35407 1.03527L0.648739 8.8906C0.551792 9.05863 0.500514 9.2491 0.500004 9.44309C0.499494 9.63707 0.54977 9.82781 0.645832 9.99635C0.741895 10.1649 0.880398 10.3053 1.04757 10.4037C1.21475 10.5021 1.40477 10.5551 1.59874 10.5573H11.0094C11.2035 10.5553 11.3936 10.5025 11.5609 10.4041C11.7282 10.3057 11.8668 10.1653 11.9629 9.99667C12.059 9.82807 12.1092 9.63724 12.1086 9.44317C12.108 9.24911 12.0566 9.05859 11.9594 8.8906L7.25474 1.03527C7.15578 0.87189 7.01636 0.736792 6.84995 0.643027C6.68353 0.549262 6.49575 0.5 6.30474 0.5C6.11373 0.5 5.92594 0.549262 5.75953 0.643027C5.59312 0.736792 5.4537 0.87189 5.35474 1.03527" stroke="#DC2626" strokeMiterlimit="10" strokeLinecap="round" strokeLinejoin="round"/>
+                                                            </svg>
+                                                        )}
                                                         {n.title}
                                                     </span>
                                                     <span>{n.createdAt}</span>

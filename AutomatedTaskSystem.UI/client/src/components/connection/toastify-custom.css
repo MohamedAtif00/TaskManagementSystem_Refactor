@@ -1,0 +1,63 @@
+/* Custom Toastify Styles */
+.rollback-icon{
+    padding: 15px;
+    width: 56px;
+    height: 56px;
+    background-color: rgb(255, 255, 255);
+    border-radius: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+/* The main container for the toast */
+.Toastify__toast-theme--light {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+}
+
+.Toastify__toast {
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    width: 413px ;
+    height: 72px
+}
+
+/* Style specifically by type */
+.Toastify__toast--warning {
+    background: #FEF6E7; /* Light yellow background */
+    /* border-left: 5px solid #f59e0b;  */
+}
+
+/* The body wrapper inside the toast */
+    .Toastify__toast-body {
+        padding: 12px 5px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Optional: Customizing the progress bar */
+.Toastify__progress-bar--warning {
+    background: #FEF6E7;
+}
+
+/* Custom styles for rollback toast */
+.rollback-toast {
+    background: #FEF6E7 !important; /* Light yellow background */
+    /* border-left: 5px solid #f59e0b !important; Amber accent border */
+}
+
+/* Custom styles for rollback toast body */
+.rollback-toast .Toastify__toast-body {
+    padding: 0 !important; /* Remove padding since Link has its own padding */
+    margin: 0 !important;
+    display: block !important;
+    color: #040303 !important; /* Dark amber text */
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+}
+
