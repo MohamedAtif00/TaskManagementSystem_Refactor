@@ -199,6 +199,91 @@ import Link from "next/link";
 		    );
 		};
 
+		// Toast for team leaders when a task is added to backlog (unassigned)
+		const TaskAddedToBacklogToast = ({
+			closeToast,
+			taskId,
+			taskName,
+			projectId,
+			projectName,
+			groupName,
+			reason
+		}: {
+			closeToast: () => void;
+			taskId: number;
+			taskName: string;
+			projectId: number;
+			projectName: string;
+			groupName?: string;
+			reason?: string;
+		}) => {
+			const href = `/tasks/${projectId}/board?taskId=${taskId}`;
+			return (
+				<Link
+					href={href}
+					onClick={closeToast}
+					style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block", padding: "8px" }}
+					data-toaster="added-to-backlog"
+				>
+					<div>
+						<div>
+							Task <strong>{taskName}</strong> has been added to backlog and needs assignment.
+						</div>
+						<div style={{ fontSize: "0.9em", marginTop: "4px" }}>
+							Project: {projectName}{groupName ? ` | Group: ${groupName}` : ""}
+						</div>
+						{reason && (
+							<div style={{ fontSize: "0.85em", marginTop: "4px", color: "#666" }}>
+								Reason: {reason}
+							</div>
+						)}
+						<div style={{ fontSize: "0.85em", marginTop: "4px" }}>Click to view and assign.</div>
+					</div>
+				</Link>
+			);
+		};
+
+		// Toast for assigned users when their task is moved to backlog
+		const TaskMovedToBacklogToast = ({
+			closeToast,
+			taskId,
+			taskName,
+			projectId,
+			projectName,
+			reason
+		}: {
+			closeToast: () => void;
+			taskId: number;
+			taskName: string;
+			projectId: number;
+			projectName: string;
+			reason?: string;
+		}) => {
+			const href = `/tasks/${projectId}/board?taskId=${taskId}`;
+			return (
+				<Link
+					href={href}
+					onClick={closeToast}
+					style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block", padding: "8px" }}
+				>
+					<div>
+						<div>
+							Your task <strong>{taskName}</strong> has been moved to backlog status.
+						</div>
+						<div style={{ fontSize: "0.9em", marginTop: "4px" }}>
+							Project: {projectName}
+						</div>
+						{reason && (
+							<div style={{ fontSize: "0.85em", marginTop: "4px", color: "#666" }}>
+								Reason: {reason}
+							</div>
+						)}
+						<div style={{ fontSize: "0.85em", marginTop: "4px" }}>Click to view task details.</div>
+					</div>
+				</Link>
+			);
+		};
+
 export interface SignalRContextType {
     connection: signalR.HubConnection | null;
     connectionState: "connected" | "connecting" | "disconnected";
@@ -239,7 +324,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
         }
     }, []);
 
-		    useEffect(() => {
+	useEffect(() => {
         let isMounted = true;
 
         if (!auth.isAuth) {
@@ -479,7 +564,48 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 			);
 		};
 
-		
+		// Handler for team leaders when a task is added to backlog (unassigned)
+		const onTaskAddedToBacklog = (data: any) => {
+			if (!data) return;
+			console.log("TaskAddedToBacklog received:", data);
+			const { taskId, taskName, projectId, projectName, groupName, reason } = data;
+			if (!taskId || !projectId) return;
+			toast.info(
+				({ closeToast }) => (
+					<TaskAddedToBacklogToast
+						closeToast={closeToast}
+						taskId={taskId}
+						taskName={taskName || "Unknown task"}
+						projectId={projectId}
+						projectName={projectName || "Unknown project"}
+						groupName={groupName}
+						reason={reason}
+					/>
+				),
+				{ autoClose: false, closeOnClick: false }
+			);
+		};
+
+		// Handler for assigned users when their task is moved to backlog
+		const onTaskMovedToBacklog = (data: any) => {
+			if (!data) return;
+			console.log("TaskMovedToBacklog received:", data);
+			const { taskId, taskName, projectId, projectName, reason } = data;
+			if (!taskId || !projectId) return;
+			toast.warning(
+				({ closeToast }) => (
+					<TaskMovedToBacklogToast
+						closeToast={closeToast}
+						taskId={taskId}
+						taskName={taskName || "Unknown task"}
+						projectId={projectId}
+						projectName={projectName || "Unknown project"}
+						reason={reason}
+					/>
+				),
+				{ autoClose: false, closeOnClick: false }
+			);
+		};
 
 	        // Register all handlers
 			connection.on("LeaveRequestOpinion", (data) => onRequestOpinion(data, 'leave'));
@@ -492,6 +618,8 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 			connection.on("ProjectCompleted", onProjectCompleted);
 			connection.on("ProjectClosed", onProjectClosed);
 			connection.on("NormalRollback",(data)=> onNormalRollback(data));
+			connection.on("TaskAddedToBacklog", (data) => onTaskAddedToBacklog(data));
+			connection.on("TaskMovedToBacklog", (data) => onTaskMovedToBacklog(data));
 			return () => {
 				connection.off("LeaveRequestOpinion");
 				connection.off("PermissionRequestOpinion");
@@ -502,6 +630,8 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 				connection.off("ProjectCompleted");
 				connection.off("ProjectClosed");
 				connection.off("NormalRollback");
+				connection.off("TaskAddedToBacklog");
+				connection.off("TaskMovedToBacklog");
 			};
     }, [connectionState]);
 

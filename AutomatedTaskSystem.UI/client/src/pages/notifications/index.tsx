@@ -363,7 +363,7 @@ const NotificationsPage: NextPage = () => {
 
 		notifications.forEach((n) => {
 			if (!n.isRead) {
-				counts["All"]++;
+				// counts["All"]++;
 				counts["Unread"]++;
 
 				if (isRollbackNotification(n)) {

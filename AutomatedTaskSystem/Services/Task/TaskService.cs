@@ -36,7 +36,7 @@ public class TaskService : ITaskService
     private readonly DataContext _context;
     private readonly IAuthService _authService;
     private readonly IRollbackService _rollbackService;
-	    private readonly INotificationService _notificationService;
+	private readonly INotificationService _notificationService;
 
 	private sealed class SprintTaskRow
 	{
@@ -194,6 +194,12 @@ public class TaskService : ITaskService
 	    if (newlyAssignedUserId.HasValue)
 	    {
 	        await _notificationService.NotifyUserOfTaskAssignment(newlyAssignedUserId.Value, task.Id, authedUser.Id);
+	    }
+
+	    // Notify team leader when task is unassigned and moved to backlog (non-TL tasks only)
+	    if (uid == 0 && task.Status == TaskStatusEnum.Backlog)
+	    {
+	        await _notificationService.NotifyTeamLeaderOfBacklogTask(task.Id, task.GroupId, "Task unassigned");
 	    }
 
 	    return new BaseResponseService { Error = false, Message = "User assigned" };
@@ -1730,6 +1736,11 @@ public class TaskService : ITaskService
 	        {
 	            await _notificationService.NotifyUserOfTaskAssignment(user.Id, newTask.Id, authedUser?.Id);
 	        }
+	        else if (newTask.Status == TaskStatusEnum.Backlog)
+	        {
+	            // Notify team leader when task is created in backlog status without an assigned user
+	            await _notificationService.NotifyTeamLeaderOfBacklogTask(newTask.Id, newTask.GroupId, "New task created");
+	        }
 
 	        return newTask;
     }
@@ -1781,16 +1792,10 @@ public class TaskService : ITaskService
         _context.TaskActivities.Add(createdAct);
         await _context.SaveChangesAsync();
 
-        var teamleader = await _context.Users
-            .FirstOrDefaultAsync(x =>
-                x.GroupId == step.TaskBank.GroupId &&
-                x.Role == UserRoleEnum.TeamLeader &&
-                _context.Users.Any(j => j.TeamleaderId == x.Id)); // Use .Any() without await here
-
-        if (teamleader != null)
+        // Notify team leader when task is created in backlog status (unassigned, non-TL tasks)
+        if (newTask.Status == TaskStatusEnum.Backlog)
         {
-            var result = await _notificationService.NotifyUserOfTaskAssignment(teamleader.Id, newTask.Id);
-            // You can use 'result' here if needed
+            await _notificationService.NotifyTeamLeaderOfBacklogTask(newTask.Id, newTask.GroupId, "New workflow task created");
         }
 
         return newTask;
@@ -2371,7 +2376,7 @@ public class TaskService : ITaskService
 	        return await GetTaskDetails(task.Id);
     }
 
-	    private async System.Threading.Tasks.Task TryAutoCompleteProject(int completedTaskId)
+	private async System.Threading.Tasks.Task TryAutoCompleteProject(int completedTaskId)
 	    {
 	        // Find the project this task belongs to via navigation properties
 	        var projectId = await _context.Tasks
@@ -2637,10 +2642,22 @@ public class TaskService : ITaskService
                         .ToListAsync();
 
                     if (foundTasks.Count > 0)
-                        foundTasks.ForEach(t =>
+                    {
+                        foreach (var t in foundTasks)
                         {
                             t.Status = TaskStatusEnum.Backlog;
-                        });
+
+                            // Notify based on whether task has an assigned user
+                            if (t.UserId.HasValue)
+                            {
+                                await _notificationService.NotifyUserOfBacklogTask(t.UserId.Value, t.Id, "Workflow progression - task reactivated");
+                            }
+                            else
+                            {
+                                await _notificationService.NotifyTeamLeaderOfBacklogTask(t.Id, t.GroupId, "Workflow progression - task reactivated");
+                            }
+                        }
+                    }
                     else
                     {
                         await createTask(step: firstStep, learningObjective: lo, null);
@@ -2821,7 +2838,6 @@ public class TaskService : ITaskService
             }
         };
     }
-
 
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> SkipTask(int id)
     {
@@ -3111,6 +3127,9 @@ public class TaskService : ITaskService
             }
         }
 
+        // Collect tasks created with Backlog status for notifications
+        var backlogTasksToNotify = new List<Models.Task>();
+
         while (stepsToCreate.Count > 0)
         {
             var step = stepsToCreate.Pop();
@@ -3130,7 +3149,12 @@ public class TaskService : ITaskService
                     if (t.UserId is not null)
                         t.Status = TaskStatusEnum.ToDo;
                     else
+                    {
                         t.Status = TaskStatusEnum.Backlog;
+
+                        // Notify team leader when task is reactivated to backlog (unassigned)
+                        await _notificationService.NotifyTeamLeaderOfBacklogTask(t.Id, t.GroupId, "Task reactivated via jump");
+                    }
 
                     var newTaskAct2 = new TaskActivity
                     {
@@ -3246,10 +3270,23 @@ public class TaskService : ITaskService
                 _context.TaskActivities.Add(newTaskAct);
 
                 _context.Tasks.Add(newTask);
+
+                // Collect backlog tasks for notification after save
+                if (newTask.Status == TaskStatusEnum.Backlog)
+                {
+                    backlogTasksToNotify.Add(newTask);
+                }
             }
         }
 
         await _context.SaveChangesAsync();
+
+        // Send notifications for tasks created with Backlog status
+        foreach (var backlogTask in backlogTasksToNotify)
+        {
+            // Since these are newly created tasks without assigned users, notify team leader
+            await _notificationService.NotifyTeamLeaderOfBacklogTask(backlogTask.Id, backlogTask.GroupId, "New workflow step task created");
+        }
 
         return await getTaskDetails(task.Id);
     }
@@ -3632,6 +3669,9 @@ public class TaskService : ITaskService
             }
         }
 
+        // Collect tasks created with Backlog status for notifications
+        var backlogTasksToNotify = new List<Models.Task>();
+
         while (stepsToCreate.Count > 0)
         {
             var step = stepsToCreate.Pop();
@@ -3703,9 +3743,22 @@ public class TaskService : ITaskService
             _context.TaskActivities.Add(newTaskAct);
 
             _context.Tasks.Add(newTask);
+
+            // Collect backlog tasks for notification after save
+            if (newTask.Status == TaskStatusEnum.Backlog)
+            {
+                backlogTasksToNotify.Add(newTask);
+            }
         }
 
         await _context.SaveChangesAsync();
+
+        // Send notifications for tasks created with Backlog status
+        foreach (var backlogTask in backlogTasksToNotify)
+        {
+            // Since these are newly created tasks without assigned users, notify team leader
+            await _notificationService.NotifyTeamLeaderOfBacklogTask(backlogTask.Id, backlogTask.GroupId, "New workflow process task created");
+        }
 
         return new BaseResponseService { Message = "Process Created", Error = false };
     }
@@ -3870,7 +3923,6 @@ public class TaskService : ITaskService
             Message = "Project Sheet"
         };
     }
-
 
     public void PauseAllTasksForUser(int userId)
     {

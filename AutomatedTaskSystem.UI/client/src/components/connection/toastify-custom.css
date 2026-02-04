@@ -29,6 +29,11 @@
     /* border-left: 5px solid #f59e0b;  */
 }
 
+.Toastify__toast--info:has([data-toaster="added-to-backlog"]) {
+    background: #ffffff !important; /* Light blue background */
+    height: auto !important;
+}
+
 /* The body wrapper inside the toast */
     .Toastify__toast-body {
         padding: 12px 5px;

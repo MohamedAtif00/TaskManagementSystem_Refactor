@@ -591,5 +591,152 @@ using Microsoft.AspNetCore.SignalR;
 		            await _dataContext.SaveChangesAsync();
 	            return true;
 	        }
+
+        public async Task<bool> NotifyTeamLeaderOfBacklogTask(int taskId, int groupId, string reason)
+        {
+            try
+            {
+                var task = await _dataContext.Tasks
+                    .Where(t => !t.Archived && t.Id == taskId)
+                    .Include(t => t.Group)
+                    .Include(t => t.LearningObjective)
+                        .ThenInclude(lo => lo.Lesson)
+                            .ThenInclude(l => l.Unit)
+                                .ThenInclude(u => u.Project)
+                    .FirstOrDefaultAsync();
+
+                if (task is null)
+                {
+                    Console.WriteLine($"Warning: Task with id {taskId} not found when trying to notify team leaders about backlog status.");
+                    return false;
+                }
+
+                // Find all team leaders for the task's group
+                var teamLeaders = await _dataContext.Users
+                    .Where(u => u.Role == UserRoleEnum.TeamLeader && !u.Archived && u.GroupId == groupId)
+                    .ToListAsync();
+
+                if (!teamLeaders.Any())
+                {
+                    Console.WriteLine($"Warning: No team leaders found for group {groupId} to notify about backlog task {taskId}.");
+                    return false;
+                }
+
+                var project = task.LearningObjective.Lesson.Unit.Project;
+                var title = "Task Added to Backlog";
+                var message = $"Task '{task.Name}' in project '{project.Name}' has been added to backlog.";
+
+                // Create additional data JSON with projectId for proper routing
+                var additionalData = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    projectId = project.Id,
+                    groupId = groupId,
+                    reason = reason
+                });
+
+                // Send SignalR notification to all team leaders
+                var teamLeaderIds = teamLeaders.Select(tl => tl.Id.ToString()).ToList();
+                var clients = _hubContext.Clients.Users(teamLeaderIds);
+
+                await clients.SendAsync("TaskAddedToBacklog", new
+                {
+                    taskId = task.Id,
+                    taskName = task.Name,
+                    projectId = project.Id,
+                    projectName = project.Name,
+                    groupId = groupId,
+                    groupName = task.Group?.Name ?? "Unknown",
+                    learningObjectiveId = task.LearningObjective.Id,
+                    learningObjectiveName = task.LearningObjective.Name,
+                    reason = reason
+                });
+
+                // Create persistent notifications for all team leaders
+                foreach (var teamLeader in teamLeaders)
+                {
+                    await CreateNotification(
+                        teamLeader.Id,
+                        title,
+                        message,
+                        NotificationCategoryEnum.WorkUpdates,
+                        NotificationTypeEnum.Task,
+                        relatedEntityId: task.Id,
+                        hasActions: false,
+                        status: null,
+                        additionalData: additionalData);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending backlog notification for task {taskId} to team leaders of group {groupId}: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> NotifyUserOfBacklogTask(int userId, int taskId, string reason)
+        {
+            try
+            {
+                var task = await _dataContext.Tasks
+                    .Where(t => !t.Archived && t.Id == taskId)
+                    .Include(t => t.LearningObjective)
+                        .ThenInclude(lo => lo.Lesson)
+                            .ThenInclude(l => l.Unit)
+                                .ThenInclude(u => u.Project)
+                    .FirstOrDefaultAsync();
+
+                if (task is null)
+                {
+                    Console.WriteLine($"Warning: Task with id {taskId} not found when trying to notify user {userId} about backlog status.");
+                    return false;
+                }
+
+                var project = task.LearningObjective.Lesson.Unit.Project;
+                var title = "Task Moved to Backlog";
+                var message = $"Task '{task.Name}' in project '{project.Name}' has been moved to backlog.";
+
+                // Create additional data JSON with projectId for proper routing
+                var additionalData = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    projectId = project.Id,
+                    reason = reason
+                });
+
+                // Send SignalR notification to the user
+                var client = _hubContext.Clients.User(userId.ToString());
+
+                await client.SendAsync("TaskMovedToBacklog", new
+                {
+                    taskId = task.Id,
+                    taskName = task.Name,
+                    projectId = project.Id,
+                    projectName = project.Name,
+                    learningObjectiveId = task.LearningObjective.Id,
+                    learningObjectiveName = task.LearningObjective.Name,
+                    reason = reason
+                });
+
+                // Create persistent notification
+                await CreateNotification(
+                    userId,
+                    title,
+                    message,
+                    NotificationCategoryEnum.WorkUpdates,
+                    NotificationTypeEnum.Task,
+                    relatedEntityId: task.Id,
+                    hasActions: false,
+                    status: null,
+                    additionalData: additionalData);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending backlog notification for task {taskId} to user {userId}: {ex.Message}");
+                return false;
+            }
+        }
 	    }
 	}
