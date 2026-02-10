@@ -196,6 +196,8 @@ interface ISprint{
     startDate:string,
     endDate:string,
     isArchived:boolean,
+    loNumber:number,
+    completePercintag:number,
     learningObjects:IDName[]
 }
 

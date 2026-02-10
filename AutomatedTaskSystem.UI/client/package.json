@@ -16,6 +16,7 @@
 		"@heroicons/react": "^2.0.18",
 		"@microsoft/signalr": "^8.0.7",
 		"@mui/material": "^5.13.6",
+		"@mui/x-charts": "^8.2.0",
 		"@mui/x-data-grid": "^6.4.0",
 		"@mui/x-date-pickers": "^8.2.0",
 		"@reduxjs/toolkit": "^1.8.3",
@@ -36,6 +37,7 @@
 		"react-redux": "^8.0.2",
 		"react-toastify": "^11.0.5",
 		"react-use-measure": "^2.1.1",
+		"recharts": "^3.7.0",
 		"sass": "^1.54.0"
 	},
 	"devDependencies": {

@@ -10,6 +10,8 @@ namespace AutomatedTaskSystem.Dtos.SprintDtos
         public DateTime StartDate { get; set; }
         public DateTime  EndDate { get; set; }
         public bool IsArchived { get; set; }
+        public int LoNumber { get; set; }
+        public double CompletePercintag { get; set; }
         public List<Responses.IDName> learningObjects { get; set; }
     }
 }

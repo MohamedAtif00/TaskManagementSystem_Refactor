@@ -8,21 +8,23 @@ import Loader from "../../components/loader";
 import { useRouter } from "next/router";
 
 const projectColumns: GridColDef[] = [
-    { field: "col0", headerName: "ID", width: 70 },
+    { field: "col0", headerName: "ID", width: 70,description: 'Unique identifier for the project' },
     {
         field: "col1",
         headerName: "Name",
+        hideable:false,
         width: 300,
+        description: 'Name of the project',
         sortComparator: (A, B) => {
             const a = A.toLowerCase(),
                 b = B.toLowerCase();
             return a > b ? 1 : b > a ? -1 : 0;
         },
     },
-    { field: "col2", headerName: "Description", width: 300 },
-    { field: "col3", headerName: "Year", width: 100 },
-    { field: "col4", headerName: "Term", width: 100 },
-    { field: "col5", headerName: "Tasks Num", width: 100 }, // New column for task count
+    { field: "col2", headerName: "Description",description: 'Description of the project', width: 300 },
+    { field: "col3", headerName: "Year",description: 'Year of the project', width: 100 },
+    { field: "col4", headerName: "Term", description: 'Term of the project', width: 100 },
+    { field: "col5", headerName: "Tasks Num", description: 'Number of tasks in the project', width: 100 }, // New column for task count
 ];
 
 const sprintColumns: GridColDef[] = [
@@ -35,7 +37,7 @@ const sprintColumns: GridColDef[] = [
 
 const Projects = () => {
     const router = useRouter();
-    const [view, setView] = useState<"projects" | "sprints">("projects");
+    // const [view, setView] = useState<"projects">("projects");
     const [projects, setProjects] = useState<IProject[]>();
     const [sprints, setSprints] = useState<any[]>();
 
@@ -45,14 +47,14 @@ const Projects = () => {
         });
     }, []);
 
-    // Fetch sprints when switching to sprints view (only non-archived sprints)
-    useEffect(() => {
-        if (view === "sprints" && !sprints) {
-            API.SPRINTS.GET_ALL_SPRINTS(false).then((res: any) => {
-                if (res && !res.error) setSprints(res.data);
-            });
-        }
-    }, [view, sprints]);
+    // // Fetch sprints when switching to sprints view (only non-archived sprints)
+    // useEffect(() => {
+    //     if (view === "sprints" && !sprints) {
+    //         API.SPRINTS.GET_ALL_SPRINTS(false).then((res: any) => {
+    //             if (res && !res.error) setSprints(res.data);
+    //         });
+    //     }
+    // }, [view, sprints]);
 
     const renderLoading = () => (
         <div className="flex items-center justify-center mx-auto h-full">
@@ -63,7 +65,7 @@ const Projects = () => {
         </div>
     );
 
-    if (view === "projects" && projects === undefined) {
+    if (projects === undefined) {
         return renderLoading();
     }
 
@@ -71,7 +73,7 @@ const Projects = () => {
         <>
             <Head>
                 <title>
-                    ATS - {view === "projects" ? "Projects" : "Sprints"}
+                    ATS - Projects
                 </title>
             </Head>
             <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
@@ -79,10 +81,10 @@ const Projects = () => {
                     <div className="flex gap-2 items-center">
                         <TaskIcon className="stroke-black" />
                         <h1 className="font-bold text-2xl ">
-                            {view === "projects" ? "Projects" : "Sprints"}
+                            Projects
                         </h1>
                     </div>
-                    <div className="flex gap-4">
+                    {/* <div className="flex gap-4">
                         <button
                             onClick={() => setView("projects")}
                             className={`px-4 py-2 rounded-md font-semibold transition-colors ${
@@ -93,7 +95,7 @@ const Projects = () => {
                         >
                             Projects
                         </button>
-                        <button
+                        { <button
                             onClick={() => setView("sprints")}
                             className={`px-4 py-2 rounded-md font-semibold transition-colors ${
                                 view === "sprints"
@@ -102,10 +104,10 @@ const Projects = () => {
                             }`}
                         >
                             Sprints
-                        </button>
-                    </div>
+                        </button> }
+                    </div> */}
                 </div>
-                {view === "projects" && projects && (
+                {projects && (
                     <div className="pb-4 mt-4">
                         <DataGrid
                             className="bg-white relative h-full"
@@ -192,11 +194,12 @@ const Projects = () => {
                             })}
                             columns={projectColumns}
                             autoHeight
+                            
                         />
                     </div>
                 )}
 
-                {view === "sprints" && (
+                {/* {view === "sprints" && (
                     <div className="pb-4 mt-4">
                         {sprints === undefined ? (
                             renderLoading()
@@ -229,8 +232,8 @@ const Projects = () => {
                                 />
                             </>
                         )}
-                    </div>
-                )}
+                    </div> }
+                )*/}
             </div>
         </>
     );

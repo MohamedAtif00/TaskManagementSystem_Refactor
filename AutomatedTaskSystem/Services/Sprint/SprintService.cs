@@ -30,12 +30,24 @@ namespace AutomatedTaskSystem.Services.Sprint
                     query = query.Where(s => s.IsArchived == archived.Value);
                 }
 
+                // Capture the result of the Include
+                query = query.Include(x => x.SprintLearningObjectives)
+                             .ThenInclude(x => x.LearningObjective)
+                             .ThenInclude(x => x.Tasks);
+
                 List<Models.Sprint> sprints = await query.ToListAsync();
                 List<SprintDTO> sprintDto = new();
 
                 foreach (var sprint in sprints)
                 {
-                    //if (sprint.IsArchived) continue;
+                    // 1. Flatten the tasks into a local list for this specific sprint
+                    var allTasks = sprint.SprintLearningObjectives
+                        .SelectMany(x => x.LearningObjective?.Tasks ?? new List<Models.Task>())
+                        .ToList();
+
+                    int totalTasks = allTasks.Count;
+                    int completedTasks = allTasks.Count(x => x.Status == Models.Enums.TaskStatus.TaskStatusEnum.Done);
+
                     sprintDto.Add(new SprintDTO
                     {
                         Id = sprint.Id,
@@ -43,7 +55,12 @@ namespace AutomatedTaskSystem.Services.Sprint
                         Description = sprint.Description,
                         StartDate = sprint.StartDate,
                         EndDate = sprint.EndDate,
-                        IsArchived = sprint.IsArchived
+                        IsArchived = sprint.IsArchived,
+                        LoNumber = sprint.SprintLearningObjectives.Count(),
+                        // 2. Perform safe math
+                        CompletePercintag = totalTasks > 0
+                            ? (double)completedTasks / totalTasks * 100
+                            : 0
                     });
                 }
 

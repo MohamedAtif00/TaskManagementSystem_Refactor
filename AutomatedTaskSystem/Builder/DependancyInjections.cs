@@ -56,6 +56,7 @@ public static class DependancyInjections
         builder.Services.AddScoped<IPermissionService, PermissionService>();
         builder.Services.AddScoped<IWorkFromHomeService, WorkFromHomeService>();
         builder.Services.AddScoped<ILessonService,LessonService>();
+        builder.Services.AddScoped<ISprintAnalyticsService, SprintAnalyticsService>();
 
 
         // seeder and email sender

@@ -48,4 +48,9 @@
     <Folder Include="wwwroot\" />
   </ItemGroup>
 
+  <!-- Pre-build event to stop any running instance (prevents MSB3027 file lock errors) -->
+  <Target Name="StopRunningInstance" BeforeTargets="Build">
+    <Exec Command="taskkill /F /IM AutomatedTaskSystem.exe 2>nul || exit /b 0" IgnoreExitCode="true" ContinueOnError="true" />
+  </Target>
+
 </Project>

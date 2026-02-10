@@ -1,10 +1,18 @@
 import { url } from ".";
 import authService from "../Auth";
-import { GetAllSprintsResponse } from './Sprints.d'
+import { GetAllSprintsResponse, SprintOverviewData, LearningObjectivesProgressData, LearningObjectivesTableData, TagData, TaskSummary, LearningObjectiveSummary, LearningObjectiveTableRow, CurrentPhase } from './Sprints.d'
 import {format} from 'date-fns'
 import { IDName } from "./workFromHome";
-import { ISprint } from "../../../app";
 
+// ResponseService type declaration (matches backend ResponseService<T>)
+declare interface ResponseService<T> {
+    data?: T;
+    error?: boolean;
+    message?: string;
+}
+
+// Re-export types for use in other files
+export type { TagData, SprintOverviewData, LearningObjectivesProgressData, LearningObjectivesTableData, LearningObjectiveTableRow, CurrentPhase, TaskSummary, LearningObjectiveSummary };
 
 const SPRINTS = {
     GET_ONE: async (id: string | string[]): Promise<ResponseService<ISprint>> => {
@@ -241,6 +249,106 @@ const SPRINTS = {
             return {
                 error: true,
                 message: 'An error occurred while archiving the sprint',
+                data: undefined
+            };
+        }
+    },
+
+    /**
+     * Get sprint overview analytics including task summary, tag distribution, and learning objectives summary
+     */
+    GET_SPRINT_OVERVIEW: async (sprintId: string | string[]): Promise<ResponseService<SprintOverviewData>> => {
+        try {
+            debugger
+            const authHeader = authService.authHeader();
+            const res = await fetch(`${url}/sprints/${sprintId}/analytics/overview`, {
+                headers: {
+                    ...authHeader,
+                },
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                return {
+                    error: true,
+                    message: errorData.message || 'Failed to fetch sprint overview',
+                    data: undefined
+                };
+            }
+
+            const data: ResponseService<SprintOverviewData> = await res.json();
+            return data;
+        } catch (err) {
+            console.error(err);
+            return {
+                error: true,
+                message: 'An error occurred while fetching sprint overview',
+                data: undefined
+            };
+        }
+    },
+
+    /**
+     * Get learning objectives progress data for the sprint
+     */
+    GET_SPRINT_LO_PROGRESS: async (sprintId: string | string[]): Promise<ResponseService<LearningObjectivesProgressData>> => {
+        try {
+            const authHeader = authService.authHeader();
+            const res = await fetch(`${url}/sprints/${sprintId}/analytics/learning-objectives-progress`, {
+                headers: {
+                    ...authHeader,
+                },
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                return {
+                    error: true,
+                    message: errorData.message || 'Failed to fetch learning objectives progress',
+                    data: undefined
+                };
+            }
+
+            const data: ResponseService<LearningObjectivesProgressData> = await res.json();
+            return data;
+        } catch (err) {
+            console.error(err);
+            return {
+                error: true,
+                message: 'An error occurred while fetching learning objectives progress',
+                data: undefined
+            };
+        }
+    },
+
+    /**
+     * Get learning objectives table data for the sprint
+     */
+    GET_SPRINT_LO_TABLE: async (sprintId: string | string[]): Promise<ResponseService<LearningObjectivesTableData>> => {
+        try {
+            const authHeader = authService.authHeader();
+            const res = await fetch(`${url}/sprints/${sprintId}/analytics/learning-objectives-table`, {
+                headers: {
+                    ...authHeader,
+                },
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                return {
+                    error: true,
+                    message: errorData.message || 'Failed to fetch learning objectives table',
+                    data: undefined
+                };
+            }
+
+            const data: ResponseService<LearningObjectivesTableData> = await res.json();
+            return data;
+        } catch (err) {
+            console.error(err);
+            return {
+                error: true,
+                message: 'An error occurred while fetching learning objectives table',
                 data: undefined
             };
         }

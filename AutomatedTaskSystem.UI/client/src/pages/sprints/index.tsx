@@ -10,10 +10,19 @@ import Head from "next/head";
 import Loader from "../../components/loader"; // Adjust path as needed
 import CreateSprint from "../../components/sprintComponents/createSprint"; // Adjust path as needed
 import { format } from "date-fns";
+import SprintEye from "../../assets/Icons/SprintEye";
+import SprintChart from "../../assets/Icons/SprintChart";
+import { PieChart } from '@mui/x-charts/PieChart';
+import { Box, Typography } from "@mui/material";
+import { useRouter } from "next/router";
+import { GetAllSprintsResponse } from "../../lib/API/Sprints.d";
+
+
 
 const Sprints = () => {
-    const [sprints, setSprints] = useState<ISprint[]>();
+    const [sprints, setSprints] = useState<GetAllSprintsResponse[]>();
     const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
+    const router = useRouter();
 
     // Fetch Sprints based on active tab
     const fetchSprints = (archived: boolean) => {
@@ -21,7 +30,7 @@ const Sprints = () => {
             if (res && !res.error && res.data) {
                 setSprints(res.data);
             } else {
-                console.error("Error fetching sprints:", res?.message || "Unknown error");
+                console.error("Error fetching sprints:", (res) ? res.message : "Unknown error");
                 setSprints([]); // Set to empty array on error to stop loading
             }
         });
@@ -47,16 +56,102 @@ const Sprints = () => {
         }
     };
 
+    const handleRoutingToSprintDetail = (sprintId: number) => {
+        window.location.href = `/sprints/${sprintId}`;
+    }
+
+    const handleRoutingToSprintCharts = (sprintChartId: number) => {
+        router.push(`/sprints/charts/${sprintChartId}`);
+    }
+
+
     // Columns for Sprints with Actions column
     const sprintColumns: GridColDef[] = [
         { field: "col0", headerName: "ID", width: 90 },
-        { field: "col1", headerName: "Sprint Name", width: 300 },
-        { field: "col2", headerName: "Start Date", width: 200 },
-        { field: "col3", headerName: "End Date", width: 200 },
+        { field: "col1", headerName: "Name", width: 300 },
+        { field: "col2", headerName: "Start Date", width: 100 },
+        { field: "col3", headerName: "End Date", width: 100 },
+        { field: "col4", headerName: "Number of LO", width: 120 },
+        {
+            field: "col5",
+            headerName: "Progress",
+            width: 100 ,
+            renderCell: (params: GridRenderCellParams) => {
+    const sprint = sprints?.find(s => s.id === params.row.id);
+    const percentage = sprint?.completePercintag || 0;
+
+    // Define colors based on your thresholds
+    const getStatusColor = (perc: number) => {
+        if (perc > 90) return '#22c55e'; // Green
+        if (perc > 70) return '#f59e0b'; // Amber
+        return '#ef4444';                // Red
+    };
+
+    const verticalCenter = '38%';
+
+    const progressData = [
+        { label: 'Done', value: percentage, color: getStatusColor(percentage) },
+        { label: 'Pending', value: 100 - percentage, color: '#e5e7eb' },
+    ];
+
+    return (
+        /* 1. Relative container limited to the chart's width/height */
+        <Box 
+            className="relative flex items-center justify-center" 
+            sx={{ width: 70, height: 70, margin: 'auto' }}
+        >
+            {/* 2. The Donut Chart */}
+            <PieChart
+                series={[
+                    {
+                        innerRadius: 12, // Adjusted for 70px scale
+                        outerRadius: 22,
+                        data: progressData,
+                        cx: '50%',
+                        cy: verticalCenter,
+                        // Using standard 0 to 360 for a clean circular fill
+                        startAngle: -130,
+                        endAngle: 230,
+                        paddingAngle: 0,
+                    },
+                ]}
+                hideLegend
+                width={70}
+                height={70}
+                slotProps={{ tooltip: { trigger: 'none' } }}
+                margin={{ top: 0, bottom: 0, left: 0, right: 0 }}
+            />
+
+            {/* 3. The Centered Text Overlay */}
+            <Box
+                className="absolute inset-0 flex items-center justify-center"
+                sx={{ 
+                    pointerEvents: 'none',
+                    left: '50%',
+                    top: verticalCenter, // Match the chart's cy
+                    transform: 'translate(-50%, -50%)', // Keeps it perfectly centered on the point
+                    width: '100%',
+                }}
+            >
+                <Typography 
+                    sx={{ 
+                        fontSize: '10px', 
+                        fontWeight: 'bold',
+                        lineHeight: 1 
+                    }}
+                >
+                    {/* Using toFixed(0) to show 98% instead of 98.34... */}
+                    {percentage.toFixed(0)}%
+                </Typography>
+            </Box>
+        </Box>
+    );
+},
+        },
         {
             field: "actions",
             headerName: "Actions",
-            width: 100,
+            width: 150,
             sortable: false,
             renderCell: (params: GridRenderCellParams) => {
                 const sprint = sprints?.find(s => s.id === params.row.id);
@@ -64,6 +159,28 @@ const Sprints = () => {
 
                 return (
                     <div className="flex items-center justify-center h-full">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleRoutingToSprintDetail(params.row.id);
+                            }}
+                            className="p-2 rounded-md hover:bg-gray-100 transition-colors group/btn"
+                            title={activeTab === 'archived' ? 'Unarchive Sprint' : 'Archive Sprint'}
+                        >
+
+                            <SprintEye  />
+                            
+                        </button>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleRoutingToSprintCharts(params.row.id);
+                            }}
+                            className="p-2 rounded-md hover:bg-gray-100 transition-colors group/btn"
+                            title={activeTab === 'archived' ? 'Unarchive Sprint' : 'Archive Sprint'}
+                        >
+                            <SprintChart></SprintChart>
+                        </button>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -158,6 +275,8 @@ const Sprints = () => {
                                 col1: s.name,
                                 col2: format(new Date(s.startDate), 'yyyy-MM-dd'),
                                 col3: format(new Date(s.endDate), 'yyyy-MM-dd'),
+                                col4: s.loNumber,
+                                col5: s.completePercintag,
                                 actions: s.id, // Pass the id for the actions column
                             };
                         })}

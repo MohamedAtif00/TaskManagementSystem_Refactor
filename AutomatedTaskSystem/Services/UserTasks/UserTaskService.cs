@@ -35,10 +35,10 @@ public class UserTaskService : IUserTaskService
                 .Where(u => !u.Archived && u.Role != UserRoleEnum.ProjectManger && u.Role != UserRoleEnum.Owner)
                 .Include(u => u.Group)
                 .Include(u => u.Tasks)
-                .ThenInclude(t => t.LearningObjective)
-                .ThenInclude(t => t.Lesson)
-                .ThenInclude(t => t.Unit)
-                .ThenInclude(t => t.Project)
+                    .ThenInclude(t => t.LearningObjective)
+                    .ThenInclude(t => t.Lesson)
+                    .ThenInclude(t => t.Unit)
+                    .ThenInclude(t => t.Project)
                 .ToListAsync();
 
             var res = new List<UserTaskDto> { };
@@ -104,10 +104,10 @@ public class UserTaskService : IUserTaskService
                 .Where(u => sectionGroupIds.Contains(u.GroupId ?? 0))
                 .Include(u => u.Group)
                 .Include(u => u.Tasks)
-                .ThenInclude(t => t.LearningObjective)
-                .ThenInclude(t => t.Lesson)
-                .ThenInclude(t => t.Unit)
-                .ThenInclude(t => t.Project)
+                    .ThenInclude(t => t.LearningObjective)
+                    .ThenInclude(t => t.Lesson)
+                    .ThenInclude(t => t.Unit)
+                    .ThenInclude(t => t.Project)
                 .ToListAsync();
 
             var res = new List<UserTaskDto> { };
