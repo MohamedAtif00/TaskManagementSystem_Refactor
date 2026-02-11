@@ -105,7 +105,7 @@ const ProjectStatusChart: React.FC<ProjectStatusChartProps> = ({
           data={dataWithRemaining}
           barCategoryGap="1%"
           margin={{ top: 0, right: 30, left: 100, bottom: 0 }}
-        >
+        > 
           <CartesianGrid 
             strokeDasharray="3 3" 
             horizontal={false}
@@ -125,22 +125,19 @@ const ProjectStatusChart: React.FC<ProjectStatusChartProps> = ({
             axisLine={false}
             tickLine={false}
           />
-          <Tooltip content={<CustomTooltip />} />
+          {/* <Tooltip content={<CustomTooltip />} /> */}
           
-          {/* Foreground bar (progress) - Rendered SECOND so it's on top */}
+          {/* Progress bar with background */}
           <Bar
             dataKey="value"
-            stackId="a"
             name="Progress"
-            barSize={5}
-            // background={fill}
+            barSize={6}
+            background={{ fill: '#E7EFFF' }}
           >
             {dataWithRemaining.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
                 fill={getBarColor(entry.status)}
-                stroke={getBarColor(entry.status)}
-                // strokeWidth={1}
               />
             ))}
             {/* Add value labels at the end of each bar */}
@@ -149,19 +146,8 @@ const ProjectStatusChart: React.FC<ProjectStatusChartProps> = ({
               position="right"
               offset={10}
               style={{ fill: '#374151', fontSize: 12, fontWeight: 'bold' }}
-              // formatter={(value: number) => `${value}%`}
             />
           </Bar>
-          {/* Background bar (remaining space) - Rendered FIRST so it's behind */}
-          <Bar
-            dataKey="remaining"
-            stackId="a"
-            barSize={5}
-            fill="#E7EFFF"
-            stroke="#e2e8f0"
-            // strokeWidth={1}
-            isAnimationActive={false}
-          />
           
         </BarChart>
       </ResponsiveContainer>

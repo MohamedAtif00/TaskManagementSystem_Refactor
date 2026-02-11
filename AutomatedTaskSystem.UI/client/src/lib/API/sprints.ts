@@ -256,12 +256,21 @@ const SPRINTS = {
 
     /**
      * Get sprint overview analytics including task summary, tag distribution, and learning objectives summary
+     * @param sprintId - The ID of the sprint
+     * @param timePeriod - Optional time period filter: 1=Today, 2=Last Week, 3=Last Month, 4=All Time (default)
      */
-    GET_SPRINT_OVERVIEW: async (sprintId: string | string[]): Promise<ResponseService<SprintOverviewData>> => {
+    GET_SPRINT_OVERVIEW: async (sprintId: string | string[], timePeriod?: number): Promise<ResponseService<SprintOverviewData>> => {
         try {
             debugger
             const authHeader = authService.authHeader();
-            const res = await fetch(`${url}/sprints/${sprintId}/analytics/overview`, {
+
+            // Build URL with optional timePeriod query parameter
+            let apiUrl = `${url}/sprints/${sprintId}/analytics/overview`;
+            if (timePeriod !== undefined && timePeriod !== null) {
+                apiUrl += `?timePeriod=${timePeriod}`;
+            }
+
+            const res = await fetch(apiUrl, {
                 headers: {
                     ...authHeader,
                 },

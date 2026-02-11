@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import API from "../../../../lib/API";
 import Loader from "../../../../components/loader";
@@ -6,6 +6,8 @@ import { PieChart } from '@mui/x-charts/PieChart';
 import { Box, Typography } from "@mui/material";
 import { TagData, SprintOverviewData } from "../../../../lib/API/Sprints.d";
 import ProjectStatusChart, { ProjectStatusData } from "../../../../components/charts/ProjectStatusChart";
+import { LightDropdown } from "../../../../components/formComponents/LightDropdown";
+
 
 // Individual Tag/Pill Component
 const ProjectTag = ({ label, value, color, isFilled = false }: TagData) => {
@@ -70,11 +72,25 @@ const EmptyState = ({ message }: { message: string }) => {
   );
 };
 
+// Time period options for filtering
+const timePeriodOptions = [
+  { id: 1, name: 'Today' },
+  { id: 2, name: 'Last Week' },
+  { id: 3, name: 'Last Month' },
+  { id: 4, name: 'All Time' }
+];
+
 // Tags Section Component
-const TagsSection = ({ tags }: { tags: TagData[] }) => {
+interface TagsSectionProps {
+  tags: TagData[];
+  selectedTimePeriod: { id: number; name: string };
+  onTimePeriodChange: (value: { id: number; name: string }) => void;
+}
+
+const TagsSection = ({ tags, selectedTimePeriod, onTimePeriodChange }: TagsSectionProps) => {
   const containerStyle = {
     display: 'flex',
-    width:'100%',
+    width:'83%',
     flexWrap: 'wrap' as const,
     gap: '10px',
     padding: '',
@@ -87,16 +103,23 @@ const TagsSection = ({ tags }: { tags: TagData[] }) => {
       {tags.length === 0 ? (
         <EmptyState message="No learning objectives available" />
       ) : (
-        <div style={containerStyle}>
-          {tags.map((tag, index) => (
-            <ProjectTag
-              key={index}
-              label={tag.label}
-              value={tag.value}
-              color={tag.color}
-              isFilled={tag.isFilled}
-            />
-          ))}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
+          <div style={containerStyle}>
+            {tags.map((tag, index) => (
+              <ProjectTag
+                key={index}
+                label={tag.label}
+                value={tag.value}
+                color={tag.color}
+                isFilled={tag.isFilled}
+              />
+            ))}
+          </div>
+          <LightDropdown
+            value={selectedTimePeriod}
+            options={timePeriodOptions}
+            onChange={onTimePeriodChange}
+          />
         </div>
       )}
     </div>
@@ -203,9 +226,10 @@ const SprintOverview = () => {
   const [overviewData, setOverviewData] = useState<SprintOverviewData | null>(null);
   const [loProgressData, setLoProgressData] = useState<ProjectStatusData[]>([]);
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+  const [selectedTimePeriod, setSelectedTimePeriod] = useState<{ id: number; name: string }>(timePeriodOptions[3]);
 
   useEffect(() => {
-    
+
     if (!router.isReady) return;
 
     if (!sprintChartId) {
@@ -219,7 +243,8 @@ const SprintOverview = () => {
 
         // Fetch pre-calculated analytics from the backend
         // All data analysis and calculations are performed by the backend API
-        const overviewResponse = await API.SPRINTS.GET_SPRINT_OVERVIEW(sprintChartId);
+        // Pass the selected time period ID to filter the data
+        const overviewResponse = await API.SPRINTS.GET_SPRINT_OVERVIEW(sprintChartId, selectedTimePeriod.id);
 
         if (overviewResponse && !overviewResponse.error && overviewResponse.data) {
           setOverviewData(overviewResponse.data);
@@ -273,7 +298,7 @@ const SprintOverview = () => {
     };
 
     fetchSprintData();
-  }, [router.isReady, sprintChartId]);
+  }, [router.isReady, sprintChartId, selectedTimePeriod]);
 
   // Fetch learning objectives progress data for the progress chart
   useEffect(() => {
@@ -383,7 +408,11 @@ const SprintOverview = () => {
 
       {/* Tags Section - Data comes from backend API */}
       <div className="mb-6">
-        <TagsSection tags={overviewData.tags} />
+        <TagsSection
+          tags={overviewData.tags}
+          selectedTimePeriod={selectedTimePeriod}
+          onTimePeriodChange={setSelectedTimePeriod}
+        />
       </div>
 
       {/* Learning Objectives Progress Chart */}

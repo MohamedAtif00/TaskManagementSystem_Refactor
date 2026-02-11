@@ -138,9 +138,7 @@ namespace AutomatedTaskSystem.Helper
         /// <summary>
         /// Sends SignalR update to the teamleader with pending requests.
         /// </summary>
-        public async System.Threading.Tasks.Task SendTeamLeaderPendingUpdates(
-                int teamLeaderUserId,
-                int? newLeaveRequestId = null)
+        public async System.Threading.Tasks.Task SendTeamLeaderPendingUpdates(int teamLeaderUserId, int? newLeaveRequestId = null)
         {
             // Initialize leaveRequest to null
             LeaveRequest? leaveRequest = null;

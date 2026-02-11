@@ -15,12 +15,39 @@ namespace AutomatedTaskSystem.Services.Sprint
             _dataContext = dataContext;
         }
 
-        public async Task<ResponseService<SprintOverviewDto>> GetSprintOverviewAsync(int sprintId)
+        /// <summary>
+        /// Calculate the date range based on the time period filter
+        /// </summary>
+        /// <param name="timePeriod">The time period filter</param>
+        /// <returns>A tuple containing the start date and end date for filtering</returns>
+        private static (DateTime? startDate, DateTime? endDate) GetDateRangeFromTimePeriod(TimePeriodFilter? timePeriod)
+        {
+            if (timePeriod == null || timePeriod == TimePeriodFilter.AllTime)
+            {
+                return (null, null); // No date filtering
+            }
+
+            var now = DateTime.Now;
+            var today = now.Date;
+
+            return timePeriod switch
+            {
+                TimePeriodFilter.Today => (today, today.AddDays(1).AddTicks(-1)),
+                TimePeriodFilter.LastWeek => (today.AddDays(-7), now),
+                TimePeriodFilter.LastMonth => (today.AddMonths(-1), now),
+                _ => (null, null)
+            };
+        }
+
+        public async Task<ResponseService<SprintOverviewDto>> GetSprintOverviewAsync(int sprintId, TimePeriodFilter? timePeriod = null)
         {
             var response = new ResponseService<SprintOverviewDto>();
 
             try
             {
+                // Calculate date range based on time period
+                var (startDate, endDate) = GetDateRangeFromTimePeriod(timePeriod);
+
                 // Verify sprint exists
                 var sprint = await _dataContext.Sprints
                     .Include(s => s.SprintLearningObjectives.Where(slo => slo.LearningObjective != null && !slo.LearningObjective.Archived))
@@ -37,10 +64,17 @@ namespace AutomatedTaskSystem.Services.Sprint
                 }
 
                 // Get all tasks for this sprint (excluding archived tasks)
-                var allTasks = sprint.SprintLearningObjectives
+                var allTasksQuery = sprint.SprintLearningObjectives
                     .SelectMany(slo => slo.LearningObjective?.Tasks ?? new List<Models.Task>())
-                    .Where(t => !t.Archived)
-                    .ToList();
+                    .Where(t => !t.Archived);
+
+                // Apply date filtering if specified
+                if (startDate.HasValue && endDate.HasValue)
+                {
+                    allTasksQuery = allTasksQuery.Where(t => t.CreatedAt >= startDate.Value && t.CreatedAt <= endDate.Value);
+                }
+
+                var allTasks = allTasksQuery.ToList();
 
                 // Calculate task summary
                 var taskSummary = new TaskSummaryDto
@@ -69,24 +103,36 @@ namespace AutomatedTaskSystem.Services.Sprint
 
                 // Calculate learning objectives summary with mutually exclusive categorization
                 // All LOs must be categorized: Completed + NotStarted + InProcess = Total
+                // Apply date filtering to tasks when calculating LO status
+
+                // Helper function to filter tasks by date range
+                Func<IEnumerable<Models.Task>, IEnumerable<Models.Task>> filterTasksByDate = (tasks) =>
+                {
+                    var filtered = tasks.Where(t => !t.Archived);
+                    if (startDate.HasValue && endDate.HasValue)
+                    {
+                        filtered = filtered.Where(t => t.CreatedAt >= startDate.Value && t.CreatedAt <= endDate.Value);
+                    }
+                    return filtered;
+                };
 
                 var totalLOs = sprint.SprintLearningObjectives.Count;
 
-                // Completed: All non-archived tasks are Done (must have at least one non-archived task)
+                // Completed: All filtered non-archived tasks are Done (must have at least one filtered task)
                 var completedLOs = sprint.SprintLearningObjectives
                     .Count(slo => slo.LearningObjective != null &&
                                   slo.LearningObjective.Tasks != null &&
-                                  slo.LearningObjective.Tasks.Any(t => !t.Archived) &&
-                                  slo.LearningObjective.Tasks.Where(t => !t.Archived).All(t => t.Status == TaskStatusEnum.Done));
+                                  filterTasksByDate(slo.LearningObjective.Tasks).Any() &&
+                                  filterTasksByDate(slo.LearningObjective.Tasks).All(t => t.Status == TaskStatusEnum.Done));
 
-                // Not Started: All non-archived tasks are Backlog (must have at least one non-archived task)
+                // Not Started: All filtered non-archived tasks are Backlog (must have at least one filtered task)
                 var notStartedLOs = sprint.SprintLearningObjectives
                     .Count(slo => slo.LearningObjective != null &&
                                   slo.LearningObjective.Tasks != null &&
-                                  slo.LearningObjective.Tasks.Any(t => !t.Archived) &&
-                                  slo.LearningObjective.Tasks.Where(t => !t.Archived).All(t => t.Status == TaskStatusEnum.Backlog));
+                                  filterTasksByDate(slo.LearningObjective.Tasks).Any() &&
+                                  filterTasksByDate(slo.LearningObjective.Tasks).All(t => t.Status == TaskStatusEnum.Backlog));
 
-                // In Process: Everything else (LOs with no tasks, mixed statuses, or any ToDo/Doing tasks)
+                // In Process: Everything else (LOs with no filtered tasks, mixed statuses, or any ToDo/Doing tasks)
                 // This ensures completedLOs + notStartedLOs + inProcessLOs = totalLOs
                 var inProcessLOs = totalLOs - completedLOs - notStartedLOs;
 
@@ -244,7 +290,7 @@ namespace AutomatedTaskSystem.Services.Sprint
 
                         // Get current phases (unique groups of active tasks)
                         var currentPhases = tasks
-                            .Where(t => t.Status == TaskStatusEnum.ToDo || t.Status == TaskStatusEnum.Doing)
+                            .Where(t => t.Status == TaskStatusEnum.ToDo || t.Status == TaskStatusEnum.Doing || t.Status == TaskStatusEnum.Backlog)
                             .Where(t => t.Group != null)
                             .Select(t => new CurrentPhaseDto
                             {
@@ -255,7 +301,17 @@ namespace AutomatedTaskSystem.Services.Sprint
                             .ToList();
 
                         // Get subject from lesson's unit name
-                        var subject = lo.Lesson?.Unit?.Name ?? "";
+                        var subject = (lo.Name ?? "") switch
+                        {
+                            var s when s.Contains("mth", StringComparison.OrdinalIgnoreCase) => "math",
+                            var s when s.Contains("sci", StringComparison.OrdinalIgnoreCase) => "science",
+                            var s when s.Contains("eng", StringComparison.OrdinalIgnoreCase) => "english",
+                            var s when s.Contains("ara", StringComparison.OrdinalIgnoreCase) => "arabic",
+                            var s when s.Contains("soc", StringComparison.OrdinalIgnoreCase) => "social study",
+                            var s when s.Contains("mul", StringComparison.OrdinalIgnoreCase) => "multimedia",
+                            var s when s.Contains("rel", StringComparison.OrdinalIgnoreCase) => "religion",
+                            _ => "unknown" // The default case
+                        };
 
                         // Format start date
                         var startDate = lo.StartedAt?.ToString("d/M/yyyy") ?? "";

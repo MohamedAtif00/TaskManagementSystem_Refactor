@@ -19,13 +19,21 @@ namespace AutomatedTaskSystem.Controllers
         /// Get sprint overview analytics including task summary, tag distribution, and learning objectives summary
         /// </summary>
         /// <param name="sprintId">The ID of the sprint</param>
+        /// <param name="timePeriod">Optional time period filter: 1=Today, 2=Last Week, 3=Last Month, 4=All Time (default)</param>
         /// <returns>Sprint overview analytics data</returns>
         [HttpGet("overview")]
-        public async Task<IActionResult> GetSprintOverview(int sprintId)
+        public async Task<IActionResult> GetSprintOverview(int sprintId, [FromQuery] int? timePeriod = null)
         {
             try
             {
-                var result = await _sprintAnalyticsService.GetSprintOverviewAsync(sprintId);
+                // Convert int to TimePeriodFilter enum, defaulting to AllTime if invalid or null
+                TimePeriodFilter? filter = null;
+                if (timePeriod.HasValue && Enum.IsDefined(typeof(TimePeriodFilter), timePeriod.Value))
+                {
+                    filter = (TimePeriodFilter)timePeriod.Value;
+                }
+
+                var result = await _sprintAnalyticsService.GetSprintOverviewAsync(sprintId, filter);
 
                 if (result.Error)
                 {
@@ -43,10 +51,10 @@ namespace AutomatedTaskSystem.Controllers
                 Console.WriteLine($"Error in GetSprintOverview controller: {ex.Message}");
                 Console.WriteLine(ex.StackTrace);
 
-                return StatusCode(500, new BaseResponseService 
-                { 
-                    Error = true, 
-                    Message = $"An unexpected server error occurred: {ex.Message}" 
+                return StatusCode(500, new BaseResponseService
+                {
+                    Error = true,
+                    Message = $"An unexpected server error occurred: {ex.Message}"
                 });
             }
         }

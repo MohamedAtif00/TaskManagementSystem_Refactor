@@ -1,15 +1,33 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, CSSProperties } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import SprintOverview from './overview';
-import Tab from '../../../../components/Tab/Tab';
 import API from '../../../../lib/API';
 import { LearningObjectiveTableRow } from '../../../../lib/API/sprints';
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { Box } from "@mui/material";
+import { LightDropdown } from "../../../../components/formComponents/LightDropdown";
 
 type ChartView = 'overview' | 'progress';
+
+// Local Tab component with the same design
+const Tab = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        relative px-4 py-2 text-sm font-medium transition-colors
+        ${active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}
+      `}
+    >
+      {label}
+      {active && (
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
+      )}
+    </button>
+  );
+};
 
 // Status badge component for the table
 const StatusBadge = ({ status }: { status: string }) => {
@@ -35,19 +53,21 @@ const ProgressDonut = ({ percentage }: { percentage: number }) => {
     if (perc >= 50) return '#fbbf24';
     return '#ef4444';
   };
+
   const progressData = [
     { label: 'Done', value: percentage, color: getStatusColor(percentage) },
     { label: 'Pending', value: 100 - percentage, color: '#e5e7eb' },
   ];
+
   return (
     <Box className="relative flex items-center justify-center" sx={{ width: 50, height: 50 }}>
       <PieChart
         series={[{ innerRadius: 10, outerRadius: 18, data: progressData, cx: '50%', cy: '50%', startAngle: -130, endAngle: 230, paddingAngle: 0 }]}
         width={50} height={50}
-        // slotProps={}
         margin={{ top: 0, bottom: 0, left: 0, right: 0 }}
+        hideLegend= {true}
       />
-      <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '10px', fontWeight: 'bold', color: getStatusColor(percentage) }}>
+      <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '10px', fontWeight: 'bold' }}>
         {percentage}%
       </Box>
     </Box>
@@ -101,6 +121,68 @@ const SprintChartsPage = () => {
     fetchLOTable();
   }, [activeTab, sprintChartId]);
 
+  const buttonStyle:CSSProperties = {
+    backgroundColor: '',
+    height:'32px',
+    fontSize:'14px'
+  };
+
+  const [phaseFilter, setPhaseFilter] = useState<{ id: number; name: string }>({ id: 0, name: 'All' });
+  const [statusFilter, setStatusFilter] = useState<{ id: number; name: string }>({ id: 0, name: 'All' });
+
+  // Status options for the dropdown
+  const statusOptions = [
+    { id: 0, name: 'All' },
+    { id: 1, name: 'On Track' },
+    { id: 2, name: 'At Risk' },
+    { id: 3, name: 'Delayed' }
+  ];
+
+  // Derive unique phase options from the loaded data
+  const phaseOptions = (() => {
+    const phases = new Set<string>();
+    loTableData.forEach(row => {
+      row.currentPhases?.forEach(phase => {
+        if (phase.groupName) {
+          phases.add(phase.groupName);
+        }
+      });
+    });
+    const options = [{ id: 0, name: 'All' }];
+    Array.from(phases).forEach((phaseName, index) => {
+      options.push({ id: index + 1, name: phaseName });
+    });
+    return options;
+  })();
+
+  const handlePhaseFilterChange = (value: { id: number; name: string }) => {
+    setPhaseFilter(value);
+  };
+
+  const handleStatusFilterChange = (value: { id: number; name: string }) => {
+    setStatusFilter(value);
+  };
+
+  // Apply filters to the table data
+  const filteredLoTableData = loTableData.filter(row => {
+    // Filter by status
+    if (statusFilter.name !== 'All' && row.status !== statusFilter.name) {
+      return false;
+    }
+    // Filter by phase (check if any of the row's currentPhases match the selected phase)
+    if (phaseFilter.name !== 'All') {
+      const hasMatchingPhase = row.currentPhases?.some(phase => phase.groupName === phaseFilter.name);
+      if (!hasMatchingPhase) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  
+
+
+
   const loTableColumns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 80 },
     { field: 'name', headerName: 'Learning Objectives', flex: 1, minWidth: 180 },
@@ -125,21 +207,34 @@ const SprintChartsPage = () => {
           </div>
           <button onClick={() => router.push('/sprints')} className="px-4 py-1 rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">Back to Sprints</button>
         </div>
-        <div className="flex gap-2 items-end h-9 mt-4 px-1">
-          <Tab label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
-          <Tab label="Learning Objectives" active={activeTab === 'progress'} onClick={() => setActiveTab('progress')} />
+        <div className="flex justify-between items-end h-20 ">
+          <div className="flex gap-2 items-end h-11 mt-4 px-1">
+            <Tab label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+            <Tab label="Learning Objectives" active={activeTab === 'progress'} onClick={() => setActiveTab('progress')} />
+          </div>
+          {
+            activeTab === 'progress' && (
+              <div className="flex items-end justify-end h-full gap-5">
+                <LightDropdown value={phaseFilter} options={phaseOptions} onChange={handlePhaseFilterChange} buttonStyle={buttonStyle} />
+                <LightDropdown value={statusFilter} options={statusOptions} onChange={handleStatusFilterChange} buttonStyle={buttonStyle}/>
+              </div>
+            )
+          }
         </div>
         <div className="mt-4">
           {activeTab === 'overview' && <SprintOverview />}
           {activeTab === 'progress' && (
             <div className="bg-white p-6 rounded-lg shadow-sm">
               <h2 className="text-xl font-bold mb-4">Learning Objectives</h2>
+              
               {isLoadingTable ? (
                 <div className="flex items-center justify-center h-64"><div className="text-gray-500">Loading data...</div></div>
-              ) : loTableData.length > 0 ? (
-                <DataGrid rows={loTableData} columns={loTableColumns} pageSizeOptions={[10, 25, 50]} initialState={{ pagination: { paginationModel: { pageSize: 10 } } }} autoHeight disableRowSelectionOnClick getRowHeight={() => 'auto'} sx={{ '& .MuiDataGrid-cell': { display: 'flex', alignItems: 'center' } }} />
+              ) : filteredLoTableData.length > 0 ? (
+                <>
+                  <DataGrid rows={filteredLoTableData} columns={loTableColumns} pageSizeOptions={[10, 25, 50]} initialState={{ pagination: { paginationModel: { pageSize: 10 } } }} autoHeight disableRowSelectionOnClick getRowHeight={() => 'auto'} sx={{ '& .MuiDataGrid-cell': { display: 'flex', alignItems: 'center' } }} />
+                </>
               ) : (
-                <div className="flex items-center justify-center h-64"><div className="text-gray-500">No learning objectives data available</div></div>
+                <div className="flex items-center justify-center h-64"><div className="text-gray-500">{loTableData.length > 0 ? 'No learning objectives match the selected filters' : 'No learning objectives data available'}</div></div>
               )}
             </div>
           )}
@@ -150,4 +245,3 @@ const SprintChartsPage = () => {
 };
 
 export default SprintChartsPage;
-

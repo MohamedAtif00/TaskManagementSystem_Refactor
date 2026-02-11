@@ -16,6 +16,7 @@ import { PieChart } from '@mui/x-charts/PieChart';
 import { Box, Typography } from "@mui/material";
 import { useRouter } from "next/router";
 import { GetAllSprintsResponse } from "../../lib/API/Sprints.d";
+import { useAppSelector } from "../../app/hooks";
 
 
 
@@ -23,6 +24,7 @@ const Sprints = () => {
     const [sprints, setSprints] = useState<GetAllSprintsResponse[]>();
     const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
     const router = useRouter();
+    const { role } = useAppSelector((s) => s.authSlice);
 
     // Fetch Sprints based on active tab
     const fetchSprints = (archived: boolean) => {
@@ -57,7 +59,13 @@ const Sprints = () => {
     };
 
     const handleRoutingToSprintDetail = (sprintId: number) => {
-        window.location.href = `/sprints/${sprintId}`;
+        // For Member (role 3) and Team Leader (role 2), go directly to task board
+        if (role === 2 || role === 3) {
+            router.push(`/tasks/sprint/${sprintId}/board`);
+        } else {
+            // For other roles (Owner, PM, Section Head), go to sprint detail page
+            window.location.href = `/sprints/${sprintId}`;
+        }
     }
 
     const handleRoutingToSprintCharts = (sprintChartId: number) => {
@@ -95,58 +103,58 @@ const Sprints = () => {
     ];
 
     return (
-        /* 1. Relative container limited to the chart's width/height */
-        <Box 
-            className="relative flex items-center justify-center" 
-            sx={{ width: 70, height: 70, margin: 'auto' }}
-        >
-            {/* 2. The Donut Chart */}
-            <PieChart
-                series={[
-                    {
-                        innerRadius: 12, // Adjusted for 70px scale
-                        outerRadius: 22,
-                        data: progressData,
-                        cx: '50%',
-                        cy: verticalCenter,
-                        // Using standard 0 to 360 for a clean circular fill
-                        startAngle: -130,
-                        endAngle: 230,
-                        paddingAngle: 0,
-                    },
-                ]}
-                hideLegend
-                width={70}
-                height={70}
-                slotProps={{ tooltip: { trigger: 'none' } }}
-                margin={{ top: 0, bottom: 0, left: 0, right: 0 }}
-            />
-
-            {/* 3. The Centered Text Overlay */}
-            <Box
-                className="absolute inset-0 flex items-center justify-center"
-                sx={{ 
-                    pointerEvents: 'none',
-                    left: '50%',
-                    top: verticalCenter, // Match the chart's cy
-                    transform: 'translate(-50%, -50%)', // Keeps it perfectly centered on the point
-                    width: '100%',
-                }}
+            /* 1. Relative container limited to the chart's width/height */
+            <Box 
+                className="relative flex items-center justify-center" 
+                sx={{ width: 70, height: 70, margin: 'auto' }}
             >
-                <Typography 
+                {/* 2. The Donut Chart */}
+                <PieChart
+                    series={[
+                        {
+                            innerRadius: 12, // Adjusted for 70px scale
+                            outerRadius: 22,
+                            data: progressData,
+                            cx: '50%',
+                            cy: verticalCenter,
+                            // Using standard 0 to 360 for a clean circular fill
+                            startAngle: -130,
+                            endAngle: 230,
+                            paddingAngle: 0,
+                        },
+                    ]}
+                    hideLegend
+                    width={70}
+                    height={70}
+                    slotProps={{ tooltip: { trigger: 'none' } }}
+                    margin={{ top: 0, bottom: 0, left: 0, right: 0 }}
+                />
+
+                {/* 3. The Centered Text Overlay */}
+                <Box
+                    className="absolute inset-0 flex items-center justify-center"
                     sx={{ 
-                        fontSize: '10px', 
-                        fontWeight: 'bold',
-                        lineHeight: 1 
+                        pointerEvents: 'none',
+                        left: '50%',
+                        top: verticalCenter, // Match the chart's cy
+                        transform: 'translate(-50%, -50%)', // Keeps it perfectly centered on the point
+                        width: '100%',
                     }}
                 >
-                    {/* Using toFixed(0) to show 98% instead of 98.34... */}
-                    {percentage.toFixed(0)}%
-                </Typography>
+                    <Typography 
+                        sx={{ 
+                            fontSize: '10px', 
+                            fontWeight: 'bold',
+                            lineHeight: 1 
+                        }}
+                    >
+                        {/* Using toFixed(0) to show 98% instead of 98.34... */}
+                        {percentage.toFixed(0)}%
+                    </Typography>
+                </Box>
             </Box>
-        </Box>
-    );
-},
+        );
+    },
         },
         {
             field: "actions",
@@ -159,18 +167,25 @@ const Sprints = () => {
 
                 return (
                     <div className="flex items-center justify-center h-full">
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleRoutingToSprintDetail(params.row.id);
-                            }}
-                            className="p-2 rounded-md hover:bg-gray-100 transition-colors group/btn"
-                            title={activeTab === 'archived' ? 'Unarchive Sprint' : 'Archive Sprint'}
-                        >
+                        {
+                            !isArchived && (
+                                <>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRoutingToSprintDetail(params.row.id);
+                                        }}
+                                        className="p-2 rounded-md hover:bg-gray-100 transition-colors group/btn"
+                                        title={activeTab === 'archived' ? 'Unarchive Sprint' : 'Archive Sprint'}
+                                    >
 
-                            <SprintEye  />
-                            
-                        </button>
+                                        <SprintEye  />
+                                        
+                                    </button>
+
+                                </>
+                            )
+                        }
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -282,8 +297,9 @@ const Sprints = () => {
                         })}
                         columns={sprintColumns}
                         onRowClick={(params) => {
-                            // Navigate to sprint detail page when clicking on the row (but not the actions button)
-                            window.location.href = `/sprints/${params.id}`;
+                            // For Member (role 3) and Team Leader (role 2), go directly to task board
+                            // For other roles, go to sprint detail page
+                            handleRoutingToSprintDetail(params.id as number);
                         }}
                         sx={{
                             '& .MuiDataGrid-row': {
