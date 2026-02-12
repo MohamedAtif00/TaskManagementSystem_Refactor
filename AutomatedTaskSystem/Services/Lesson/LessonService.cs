@@ -18,9 +18,7 @@ namespace AutomatedTaskSystem.Services.Lesson
         }
 
 
-        public async Task<Models.LearningObjective> CreateLO(
-            int lessonId,
-            Requests.LearningObjectiveDTO req)
+        public async Task<Models.LearningObjective> CreateLO(int lessonId, Requests.LearningObjectiveDTO req)
         {
             var lesson = await _context.Lessons.Where(l => l.Id == lessonId).FirstOrDefaultAsync();
 

@@ -165,202 +165,202 @@ namespace AutomatedTaskSystem.Services.Leave
                     leaveRequest.SectionheadId = section.HeadId;
             }
 
-		        	try
+		    try
+		    {
+		        _dataContext.LeaveRequests.Add(leaveRequest);
+		        await _dataContext.SaveChangesAsync();
+		        	
+		        if (request.type == LeaveRequestType.Sick && request.MedicalCertificate != null)
+		        {
+		        	// Use helper to save medical certificate
+		        	var medicalCertPath = await _leaveRequestHelper.SaveMedicalCertificate(request.MedicalCertificate, leaveRequest.Id, _webHostEnvironment);
+		        	leaveRequest.MedicalCertificatePath = medicalCertPath;
+		        	leaveRequest.MedicalCertificateFileName = request.MedicalCertificate.FileName;
+		        	
+		        	_dataContext.LeaveRequests.Update(leaveRequest);
+		        	await _dataContext.SaveChangesAsync();
+		        }
+		        	
+		        // --- Auto-approval and email for Owner ---
+		        if (user.Role == UserRoleEnum.Owner)
+		        {
+		        	int approvedDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
+		        	
+		        	switch (leaveRequest.Type)
 		        	{
-		        	    _dataContext.LeaveRequests.Add(leaveRequest);
-		        	    await _dataContext.SaveChangesAsync();
+		        	    case LeaveRequestType.Annual:
+		        	        user.Annual_leave += approvedDays;
+		        	        break;
+		        	    case LeaveRequestType.Emergency:
+		        	        user.Emergency_leave += approvedDays;
+		        	        break;
+		        	    case LeaveRequestType.Sick:
+		        	        user.Sick_leave += approvedDays;
+		        	        break;
+		        	}
+		        	_dataContext.Users.Update(user);
+		        	await _dataContext.SaveChangesAsync();
 		        	
-		        	    if (request.type == LeaveRequestType.Sick && request.MedicalCertificate != null)
+		        	var message = new EmailMessage
+		        	{
+		        	    Subject = "طلب أجازة ",
+		        	    Body = EmailTemplate.CreateTemplate(user.Name,
+		        	                                    user.Email,
+		        	                                    leaveRequest.StartDate.ToString("yyyy-MM-dd"),
+		        	                                    leaveRequest.EndDate.ToString("yyyy-MM-dd"),
+		        	                                    _leaveRequestHelper.CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
+		        	                                    leaveRequest.Type,
+		        	                                    leaveRequest.User.HR_code),
+		        	    IsHtml = true,
+		        	    CcEmails = new List<string> {_emailRecipients.CEO ,user.Email }
+		        	};
+		        	
+		        	if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
+		        	{
+		        	    var fullFilePath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
+		        	    if (File.Exists(fullFilePath))
 		        	    {
-		        	        // Use helper to save medical certificate
-		        	        var medicalCertPath = await _leaveRequestHelper.SaveMedicalCertificate(request.MedicalCertificate, leaveRequest.Id, _webHostEnvironment);
-		        	        leaveRequest.MedicalCertificatePath = medicalCertPath;
-		        	        leaveRequest.MedicalCertificateFileName = request.MedicalCertificate.FileName;
-		        	
-		        	        _dataContext.LeaveRequests.Update(leaveRequest);
-		        	        await _dataContext.SaveChangesAsync();
+		        	        var attachment = new System.Net.Mail.Attachment(fullFilePath);
+		        	        attachment.Name = leaveRequest.MedicalCertificateFileName;
+		        	        message.Attachments.Add(attachment);
 		        	    }
+		        	}
 		        	
-		        	    // --- Auto-approval and email for Owner ---
-		        	    if (user.Role == UserRoleEnum.Owner)
+		        	var emailResult = await _emailService.SendEmailAsync(message);
+		        	
+		        	if (!emailResult.Success)
+		        	{
+		        	    Console.WriteLine($"Error sending auto-approval email for Owner's LeaveRequest {leaveRequest.Id}: {emailResult.Message}");
+		        	}
+		        	
+		        	await _hubContext.Clients.User(user.Id.ToString()).SendAsync("LeaveRequestOpinion", new
+		        	{
+		        	    isApproved = true,
+		        	    message = "Your leave request has been automatically approved."
+		        	});
+		        	
+		        	// Persistent notification for Owner auto-approval
+		        	var autoApproveTitle = "Leave Request Automatically Approved";
+		        	var autoApproveMessage = $"{leaveRequest.Type} leave from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} has been automatically approved.";
+		        	await _notificationService.CreateNotification(
+		        	    user.Id,
+		        	    autoApproveTitle,
+		        	    autoApproveMessage,
+		        	    NotificationCategoryEnum.Leaves,
+		        	    NotificationTypeEnum.Leave,
+		        	    relatedEntityId: leaveRequest.Id,
+		        	    hasActions: false,
+		        	    status: NotificationStatusEnum.Accepted);
+		        }
+		        else
+		        {
+		        	// Non-owner flows: keep existing SignalR pending updates
+		        	if (user.Role == UserRoleEnum.ProjectManger)
+		        	{
+		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(leaveRequest.Id);
+		        	}
+		        	else if (user.Role == UserRoleEnum.TeamLeader)
+		        	{
+		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(leaveRequest.Id);
+		        	    await _leaveRequestHelper.SendProjectManagersPendingUpdate(leaveRequest.Id);
+		        	}
+		        	else // Normal flow for non-Owner/PM/TL roles: Notify Owner/Admin and Team Leader about new pending request
+		        	{
+		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(leaveRequest.Id);
+		        	    await _leaveRequestHelper.SendProjectManagersPendingUpdate(leaveRequest.Id);
+		        	
+		        	    if (user.TeamleaderId.HasValue)
 		        	    {
-		        	        int approvedDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
+		        	        // Fetch the Team Leader's user object
+		        	        var teamLeader = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
 		        	
-		        	        switch (leaveRequest.Type)
+		        	        if (teamLeader != null)
 		        	        {
-		        	            case LeaveRequestType.Annual:
-		        	                user.Annual_leave += approvedDays;
-		        	                break;
-		        	            case LeaveRequestType.Emergency:
-		        	                user.Emergency_leave += approvedDays;
-		        	                break;
-		        	            case LeaveRequestType.Sick:
-		        	                user.Sick_leave += approvedDays;
-		        	                break;
+		        	            await _leaveRequestHelper.SendTeamLeaderPendingUpdates(teamLeader.Id, leaveRequest.Id);
 		        	        }
-		        	        _dataContext.Users.Update(user);
-		        	        await _dataContext.SaveChangesAsync();
-		        	
-		        	        var message = new EmailMessage
+		        	        else
 		        	        {
-		        	            Subject = "طلب أجازة ",
-		        	            Body = EmailTemplate.CreateTemplate(user.Name,
-		        	                                            user.Email,
-		        	                                            leaveRequest.StartDate.ToString("yyyy-MM-dd"),
-		        	                                            leaveRequest.EndDate.ToString("yyyy-MM-dd"),
-		        	                                            _leaveRequestHelper.CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
-		        	                                            leaveRequest.Type,
-		        	                                            leaveRequest.User.HR_code),
-		        	            IsHtml = true,
-		        	            CcEmails = new List<string> {_emailRecipients.CEO ,user.Email }
-		        	        };
-		        	
-		        	        if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
-		        	        {
-		        	            var fullFilePath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
-		        	            if (File.Exists(fullFilePath))
-		        	            {
-		        	                var attachment = new System.Net.Mail.Attachment(fullFilePath);
-		        	                attachment.Name = leaveRequest.MedicalCertificateFileName;
-		        	                message.Attachments.Add(attachment);
-		        	            }
+		        	            Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id}.");
 		        	        }
-		        	
-		        	        var emailResult = await _emailService.SendEmailAsync(message);
-		        	
-		        	        if (!emailResult.Success)
-		        	        {
-		        	            Console.WriteLine($"Error sending auto-approval email for Owner's LeaveRequest {leaveRequest.Id}: {emailResult.Message}");
-		        	        }
-		        	
-		        	        await _hubContext.Clients.User(user.Id.ToString()).SendAsync("LeaveRequestOpinion", new
-		        	        {
-		        	            isApproved = true,
-		        	            message = "Your leave request has been automatically approved."
-		        	        });
-		        	
-		        	        // Persistent notification for Owner auto-approval
-		        	        var autoApproveTitle = "Leave Request Automatically Approved";
-		        	        var autoApproveMessage = $"{leaveRequest.Type} leave from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} has been automatically approved.";
-		        	        await _notificationService.CreateNotification(
-		        	            user.Id,
-		        	            autoApproveTitle,
-		        	            autoApproveMessage,
-		        	            NotificationCategoryEnum.Leaves,
-		        	            NotificationTypeEnum.Leave,
-		        	            relatedEntityId: leaveRequest.Id,
-		        	            hasActions: false,
-		        	            status: NotificationStatusEnum.Accepted);
 		        	    }
 		        	    else
 		        	    {
-		        	        // Non-owner flows: keep existing SignalR pending updates
-		        	        if (user.Role == UserRoleEnum.ProjectManger)
-		        	        {
-		        	            await _leaveRequestHelper.SendOwnerPendingUpdate(leaveRequest.Id);
-		        	        }
-		        	        else if (user.Role == UserRoleEnum.TeamLeader)
-		        	        {
-		        	            await _leaveRequestHelper.SendOwnerPendingUpdate(leaveRequest.Id);
-		        	            await _leaveRequestHelper.SendProjectManagersPendingUpdate(leaveRequest.Id);
-		        	        }
-		        	        else // Normal flow for non-Owner/PM/TL roles: Notify Owner/Admin and Team Leader about new pending request
-		        	        {
-		        	            await _leaveRequestHelper.SendOwnerPendingUpdate(leaveRequest.Id);
-		        	            await _leaveRequestHelper.SendProjectManagersPendingUpdate(leaveRequest.Id);
-		        	
-		        	            if (user.TeamleaderId.HasValue)
-		        	            {
-		        	                // Fetch the Team Leader's user object
-		        	                var teamLeader = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
-		        	
-		        	                if (teamLeader != null)
-		        	                {
-		        	                    await _leaveRequestHelper.SendTeamLeaderPendingUpdates(teamLeader.Id, leaveRequest.Id);
-		        	                }
-		        	                else
-		        	                {
-		        	                    Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id}.");
-		        	                }
-		        	            }
-		        	            else
-		        	            {
-		        	                Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId.");
-		        	            }
-		        	        }
-		        	
-		        	        // Persistent notifications for non-owner submitter and approvers
-		        	        var workingDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
-		        	        var submitTitle = "Leave Request Submitted";
-		        	        var submitMessage = $"{leaveRequest.Type} leave from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} ({workingDays} working days) has been submitted and is pending review.";
-		        	
-		        	        await _notificationService.CreateNotification(
-		        	            user.Id,
-		        	            submitTitle,
-		        	            submitMessage,
-		        	            NotificationCategoryEnum.Leaves,
-		        	            NotificationTypeEnum.Leave,
-		        	            relatedEntityId: leaveRequest.Id,
-		        	            hasActions: false,
-		        	            status: NotificationStatusEnum.Pending);
-		        	
-		        	        var approvers = new List<Models.User>();
-		        	
-		        	        // Owner
-		        	        var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
-		        	        if (owner != null && owner.Id != user.Id)
-		        	        {
-		        	            approvers.Add(owner);
-		        	        }
-		        	
-		        	        // Project managers / section heads related to the user's group
-		        	        if (user.GroupId.HasValue)
-		        	        {
-		        	            var projectManagers = await _dataContext.SectionGroups
-		        	                .Where(sg => sg.GroupId == user.GroupId.Value)
-		        	                .Select(sg => sg.Section.Head)
-		        	                .Distinct()
-		        	                .ToListAsync();
-		        	
-		        	            approvers.AddRange(projectManagers.Where(pm => pm != null && pm.Id != user.Id));
-		        	        }
-		        	
-		        	        // Team leader (if any)
-		        	        if (user.TeamleaderId.HasValue && user.TeamleaderId.Value != user.Id)
-		        	        {
-		        	            var teamLeaderUser = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
-		        	            if (teamLeaderUser != null)
-		        	            {
-		        	                approvers.Add(teamLeaderUser);
-		        	            }
-		        	        }
-		        	
-		        	        var approverIds = approvers
-		        	            .Where(a => a != null)
-		        	            .Select(a => a.Id)
-		        	            .Distinct()
-		        	            .ToList();
-		        	
-		        	        var approverTitle = "New Leave Request Pending Review";
-		        	        var approverMessage = $"{user.Name} submitted a {leaveRequest.Type} leave request from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} ({workingDays} working days).";
-		        	
-		        	        foreach (var approverId in approverIds)
-		        	        {
-		        	            await _notificationService.CreateNotification(
-		        	                approverId,
-		        	                approverTitle,
-		        	                approverMessage,
-		        	                NotificationCategoryEnum.Leaves,
-		        	                NotificationTypeEnum.Leave,
-		        	                relatedEntityId: leaveRequest.Id,
-		        	                hasActions: true,
-		        	                status: NotificationStatusEnum.Pending);
-		        	        }
+		        	        Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId.");
 		        	    }
-		        
-		        	    response.Data = true;
-		        	    response.Message = "Leave request created successfully." + (user.Role == UserRoleEnum.Owner ? " It has been automatically approved." : "");
 		        	}
+		        	
+		        	// Persistent notifications for non-owner submitter and approvers
+		        	var workingDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
+		        	var submitTitle = "Leave Request Submitted";
+		        	var submitMessage = $"{leaveRequest.Type} leave from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} ({workingDays} working days) has been submitted and is pending review.";
+		        	
+		        	await _notificationService.CreateNotification(
+		        	    user.Id,
+		        	    submitTitle,
+		        	    submitMessage,
+		        	    NotificationCategoryEnum.Leaves,
+		        	    NotificationTypeEnum.Leave,
+		        	    relatedEntityId: leaveRequest.Id,
+		        	    hasActions: false,
+		        	    status: NotificationStatusEnum.Pending);
+		        	
+		        	var approvers = new List<Models.User>();
+		        	
+		        	// Owner
+		        	var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
+		        	if (owner != null && owner.Id != user.Id)
+		        	{
+		        	    approvers.Add(owner);
+		        	}
+		        	
+		        	// Project managers / section heads related to the user's group
+		        	if (user.GroupId.HasValue)
+		        	{
+		        	    var projectManagers = await _dataContext.SectionGroups
+		        	        .Where(sg => sg.GroupId == user.GroupId.Value)
+		        	        .Select(sg => sg.Section.Head)
+		        	        .Distinct()
+		        	        .ToListAsync();
+		        	
+		        	    approvers.AddRange(projectManagers.Where(pm => pm != null && pm.Id != user.Id));
+		        	}
+		        	
+		        	// Team leader (if any)
+		        	if (user.TeamleaderId.HasValue && user.TeamleaderId.Value != user.Id)
+		        	{
+		        	    var teamLeaderUser = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
+		        	    if (teamLeaderUser != null)
+		        	    {
+		        	        approvers.Add(teamLeaderUser);
+		        	    }
+		        	}
+		        	
+		        	var approverIds = approvers
+		        	    .Where(a => a != null)
+		        	    .Select(a => a.Id)
+		        	    .Distinct()
+		        	    .ToList();
+		        	
+		        	var approverTitle = "New Leave Request Pending Review";
+		        	var approverMessage = $"{user.Name} submitted a {leaveRequest.Type} leave request from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} ({workingDays} working days).";
+		        	
+		        	foreach (var approverId in approverIds)
+		        	{
+		        	    await _notificationService.CreateNotification(
+		        	        approverId,
+		        	        approverTitle,
+		        	        approverMessage,
+		        	        NotificationCategoryEnum.Leaves,
+		        	        NotificationTypeEnum.Leave,
+		        	        relatedEntityId: leaveRequest.Id,
+		        	        hasActions: true,
+		        	        status: NotificationStatusEnum.Pending);
+		        	}
+		        }
+		        
+		        response.Data = true;
+		        response.Message = "Leave request created successfully." + (user.Role == UserRoleEnum.Owner ? " It has been automatically approved." : "");
+		    }
             catch (Exception ex)
             {
                 response.Error = true;

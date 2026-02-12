@@ -19,11 +19,7 @@ public class SchemaService : ISchemaService
         _context = context;
     }
 
-    public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> CreateSchema(
-        string Name,
-        string Description,
-        int? TypeId
-    )
+    public async Task<ActionResult<ResponseService<Responses.SchemaDTO>>> CreateSchema(string Name, string Description, int? TypeId)
     {
         var doesExists = await CheckIfExists(Name);
 
