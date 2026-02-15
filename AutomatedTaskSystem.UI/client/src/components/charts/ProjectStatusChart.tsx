@@ -8,8 +8,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
-  Legend,
-  LabelList
+  LabelList,
+  Legend
 } from 'recharts';
 
 // Type definitions
@@ -68,6 +68,37 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+// Custom legend component
+const CustomLegend = () => {
+  const legendItems = [
+    { status: 'On Track', color: '#4ade80' },
+    { status: 'At Risk', color: '#fbbf24' },
+    { status: 'Delayed', color: '#f87171' }
+  ];
+
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      gap: '20px',
+      marginTop: '10px',
+      marginBottom: '10px'
+    }}>
+      {legendItems.map((item) => (
+        <div key={item.status} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{
+            width: '12px',
+            height: '12px',
+            backgroundColor: item.color,
+            borderRadius: '2px'
+          }} />
+          <span style={{ fontSize: '12px', color: '#374151' }}>{item.status}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 // Default data for demonstration purposes
 const defaultData: ProjectStatusData[] = [
   { name: 'Loly Adventure', value: 47, status: 'On Track' },
@@ -88,7 +119,7 @@ const ProjectStatusChart: React.FC<ProjectStatusChartProps> = ({
   padding = '2px'
 }) => {
   // Calculate height: each bar needs ~15-20px for tighter spacing
-  const calculatedHeight = data.length * 28;
+  const calculatedHeight = data.length * 28 ; // 28px per bar + extra for margins and labels
   const chartHeight = calculatedHeight;
   
   // Prepare data with remaining percentage for background
@@ -98,59 +129,61 @@ const ProjectStatusChart: React.FC<ProjectStatusChartProps> = ({
   }));
 
   return (
-    <div style={{ width: '100%', height: chartHeight, backgroundColor, padding }}>
-      <ResponsiveContainer>
-        <BarChart
-          layout="vertical"
-          data={dataWithRemaining}
-          barCategoryGap="1%"
-          margin={{ top: 0, right: 30, left: 100, bottom: 0 }}
-        > 
-          <CartesianGrid 
-            strokeDasharray="3 3" 
-            horizontal={false}
-            stroke="#e5e7eb"
-          />
-          <XAxis 
-            type="number" 
-            domain={[0, 100]} 
-            hide 
-          />
-          <Legend />
-          <YAxis 
-            dataKey="name" 
-            type="category" 
-            width={100}
-            tick={{ fontSize: 12, fill: '#374151' }}
-            axisLine={false}
-            tickLine={false}
-          />
-          {/* <Tooltip content={<CustomTooltip />} /> */}
-          
-          {/* Progress bar with background */}
-          <Bar
-            dataKey="value"
-            name="Progress"
-            barSize={6}
-            background={{ fill: '#E7EFFF' }}
+    <div style={{ width: '100%', backgroundColor, padding }}>
+      
+      <div style={{ width: '100%', height: chartHeight }}>
+        <ResponsiveContainer>
+          <BarChart
+            layout="vertical"
+            data={dataWithRemaining}
+            barCategoryGap={'100px'}
+            margin={{ top: 0, right: 30, left: 100, bottom: 0 }}
           >
-            {dataWithRemaining.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={getBarColor(entry.status)}
-              />
-            ))}
-            {/* Add value labels at the end of each bar */}
-            <LabelList
-              dataKey="value"
-              position="right"
-              offset={10}
-              style={{ fill: '#374151', fontSize: 12, fontWeight: 'bold' }}
+            <CartesianGrid
+              strokeDasharray="3 3"
+              horizontal={false}
+              stroke="#e5e7eb"
             />
-          </Bar>
-          
-        </BarChart>
-      </ResponsiveContainer>
+            <XAxis
+              type="number"
+              domain={[0, 100]}
+              hide
+            />
+            <YAxis
+              dataKey="name"
+              type="category"
+              width={100}
+              tick={{ fontSize: 12, fill: '#374151' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip content={<CustomTooltip />} />
+
+            {/* Single progress bar with status-based coloring */}
+            <Bar
+              dataKey="value"
+              barSize={8}
+              background={{ fill: '#E7EFFF' }}
+            >
+              {dataWithRemaining.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={getBarColor(entry.status)}
+                />
+              ))}
+              {/* Add value labels at the end of each bar */}
+              <LabelList
+                dataKey="value"
+                position="right"
+                offset={10}
+                style={{ fill: '#374151', fontSize: 12, fontWeight: 'bold' }}
+              />
+            </Bar>
+
+          </BarChart>
+        </ResponsiveContainer>
+        <CustomLegend />
+      </div>
     </div>
   );
 };

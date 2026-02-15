@@ -28,11 +28,11 @@ namespace AutomatedTaskSystem.Services.Lesson
             var schema = await _context.Schemas
                 .Where(s => s.Id == req.SchemaId)
                 .Include(s => s.Nodes)
-                .ThenInclude(n => n.Steps)
-                .ThenInclude(s => s.TaskBank)
-                .ThenInclude(tb => tb.Group)
+                    .ThenInclude(n => n.Steps)
+                        .ThenInclude(s => s.TaskBank)
+                            .ThenInclude(tb => tb.Group)
                 .Include(s => s.Nodes)
-                .ThenInclude(n => n.Next)
+                    .ThenInclude(n => n.Next)
                 .FirstOrDefaultAsync();
 
             //if (schema == null)

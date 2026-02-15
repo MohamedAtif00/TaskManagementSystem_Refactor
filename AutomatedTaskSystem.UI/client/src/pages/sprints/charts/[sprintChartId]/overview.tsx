@@ -392,7 +392,7 @@ const SprintOverview = () => {
           subTitle="Total LOs"
           showEmptyState={overviewData.loSummary.total === 0}
           emptyStateMessage="No learning objectives in this sprint"
-          topPosition={'33%'}
+          topPosition={'35%'}
 
         />
 
@@ -402,7 +402,7 @@ const SprintOverview = () => {
           total={overviewData.taskSummary.total}
           title="Tasks Summary"
           subTitle="Total Tasks"
-          topPosition={'33%'}
+          topPosition={'31%'}
         />
       </div>
 

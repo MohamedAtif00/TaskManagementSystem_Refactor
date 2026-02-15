@@ -79,7 +79,7 @@ namespace AutomatedTaskSystem.Services.Email
                 using var smtpClient = new SmtpClient("smtp-mail.outlook.com")
                 {
                     Port = _emailSettings.SmtpPort,
-                    Credentials = new NetworkCredential("digital.leave@selaheltelmeez.com", "drlc7n_Z-dud72!O*lko69ke+"),
+                    Credentials = new NetworkCredential("digital.leave@selaheltelmeez.com", _smtpPassword),
                     EnableSsl = true,
                     DeliveryMethod = SmtpDeliveryMethod.Network,
                     Timeout = 30000 // 30 seconds

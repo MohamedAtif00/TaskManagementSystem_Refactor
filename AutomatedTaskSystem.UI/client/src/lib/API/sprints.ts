@@ -261,7 +261,6 @@ const SPRINTS = {
      */
     GET_SPRINT_OVERVIEW: async (sprintId: string | string[], timePeriod?: number): Promise<ResponseService<SprintOverviewData>> => {
         try {
-            debugger
             const authHeader = authService.authHeader();
 
             // Build URL with optional timePeriod query parameter
