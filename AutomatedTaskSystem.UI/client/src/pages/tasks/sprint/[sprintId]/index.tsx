@@ -10,8 +10,7 @@ import { useRouter } from "next/router";
  */
 const SprintRedirectPage = () => {
     const router = useRouter();
-    const { sprintId } = router.query;
-
+    const { sprintId, loid } = router.query;
     useEffect(() => {
         // The router is not ready on the first render, so we wait.
         // sprintId will be undefined until the router is ready.
@@ -27,7 +26,7 @@ const SprintRedirectPage = () => {
         }
 
         const preferredView = localStorage.getItem("tasks:view");
-
+            const query = loid ? { loid } : {};
         if (preferredView === "sheet") {
             router.replace(`/tasks/sprint/${sprintId}/sheet`);
         } else {

@@ -298,11 +298,16 @@ const SPRINTS = {
 
     /**
      * Get learning objectives progress data for the sprint
+     * @param sprintId The ID of the sprint
+     * @param timePeriod Optional time period filter (1=Today, 2=Last Week, 3=Last Month, 4=All Time)
+     * @param group Optional group filter (1=All, 2=Grouped)
      */
-    GET_SPRINT_LO_PROGRESS: async (sprintId: string | string[]): Promise<ResponseService<LearningObjectivesProgressData>> => {
+    GET_SPRINT_LO_PROGRESS: async (sprintId: string | string[], timePeriod?: number,group?:number): Promise<ResponseService<LearningObjectivesProgressData>> => {
         try {
             const authHeader = authService.authHeader();
-            const res = await fetch(`${url}/sprints/${sprintId}/analytics/learning-objectives-progress`, {
+            const queryParams = timePeriod ? `?timePeriod=${timePeriod}` : '';
+            const groupParam = group !== undefined && group !== null ? `${queryParams ? '&' : '?'}group=${group}` : '';
+            const res = await fetch(`${url}/sprints/${sprintId}/analytics/learning-objectives-progress${queryParams}${groupParam}`, {
                 headers: {
                     ...authHeader,
                 },

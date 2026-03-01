@@ -19,6 +19,7 @@ interface IDName {
 
 // Sprint Analytics Types
 export interface TagData {
+    groupId: number;
     label: string;
     value: number;
     color: string;
@@ -50,9 +51,11 @@ export interface SprintOverviewData {
 }
 
 export interface LearningObjectiveProgress {
+    id: number;
     name: string;
     value: number;
     status: 'On Track' | 'At Risk' | 'Delayed';
+    currentPhases: CurrentPhase[];
 }
 
 export interface LearningObjectivesProgressData {
@@ -77,6 +80,7 @@ export interface LearningObjectiveTableRow {
 }
 
 export interface LearningObjectivesTableData {
+    sprintName:string
     data: LearningObjectiveTableRow[];
 }
 

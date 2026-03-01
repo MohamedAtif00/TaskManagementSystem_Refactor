@@ -10,38 +10,48 @@ import { LightDropdown } from "../../../../components/formComponents/LightDropdo
 
 
 // Individual Tag/Pill Component
-const ProjectTag = ({ label, value, color, isFilled = false }: TagData) => {
+const ProjectTag = ({ label, value, color, groupId, onClick, isFilled = false }: TagData & { onClick?: (tag: TagData) => void }) => {
+  
+  const [isHover, setIsHover] = useState(false);
+  const effectiveFilled = isFilled || isHover;
   const pillStyle = {
     display: 'inline-flex',
     alignItems: 'center',
     padding: '6px 14px',
     borderRadius: '20px',
     border: `1px solid ${color}`,
-    backgroundColor: isFilled ? color : '#ffffff',
-    color: isFilled ? '#ffffff' : '#333333',
+    backgroundColor: effectiveFilled ? color : '#ffffff',
+    color: effectiveFilled ? '#ffffff' : '#333333',
     fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
     fontSize: '14px',
     fontWeight: '500',
-    minWidth: 'fit-content'
+    minWidth: 'fit-content',
+    cursor: 'pointer',
+    opacity: effectiveFilled ? 1 : 0.9,
   };
 
   const dotStyle = {
     width: '10px',
     height: '10px',
     borderRadius: '50%',
-    backgroundColor: isFilled ? '#ffffff' : color,
+    backgroundColor: effectiveFilled ? '#ffffff' : color,
     marginRight: '8px'
   };
 
   const valueStyle = {
     marginLeft: '10px',
-    color: isFilled ? '#ffffff' : color,
-    opacity: isFilled ? 1 : 0.6,
+    color: effectiveFilled ? '#ffffff' : color,
+    opacity: effectiveFilled ? 1 : 0.6,
     fontWeight: '600'
   };
 
   return (
-    <div style={pillStyle}>
+    <div 
+      style={pillStyle} 
+      onMouseEnter={() => setIsHover(true)}
+      onMouseLeave={() => setIsHover(false)}
+      onClick={()=> onClick && onClick({label,value,color,groupId,isFilled})}
+      >
       <div style={dotStyle} />
       <span>{label}</span>
       <span style={valueStyle}>{value}</span>
@@ -83,11 +93,13 @@ const timePeriodOptions = [
 // Tags Section Component
 interface TagsSectionProps {
   tags: TagData[];
+  selectedGroup?: number;
   selectedTimePeriod: { id: number; name: string };
   onTimePeriodChange: (value: { id: number; name: string }) => void;
+  onClick?: (tag: TagData) => void;
 }
 
-const TagsSection = ({ tags, selectedTimePeriod, onTimePeriodChange }: TagsSectionProps) => {
+const TagsSection = ({ tags, selectedGroup, selectedTimePeriod, onTimePeriodChange, onClick }: TagsSectionProps) => {
   const containerStyle = {
     display: 'flex',
     width:'83%',
@@ -100,28 +112,32 @@ const TagsSection = ({ tags, selectedTimePeriod, onTimePeriodChange }: TagsSecti
 
   return (
     <div className="">
-      {tags.length === 0 ? (
-        <EmptyState message="No learning objectives available" />
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px' }}>
+        {tags.length === 0 ? (
+          <div style={containerStyle}>
+            <EmptyState message="No learning objectives available for this time period" />
+          </div>
+        ) : (
           <div style={containerStyle}>
             {tags.map((tag, index) => (
               <ProjectTag
                 key={index}
                 label={tag.label}
+                groupId={tag.groupId}
                 value={tag.value}
                 color={tag.color}
-                isFilled={tag.isFilled}
+                isFilled={selectedGroup !== undefined ? tag.groupId === selectedGroup : !!tag.isFilled}
+                onClick={()=>onClick && onClick(tag)}
               />
             ))}
           </div>
-          <LightDropdown
-            value={selectedTimePeriod}
-            options={timePeriodOptions}
-            onChange={onTimePeriodChange}
-          />
-        </div>
-      )}
+        )}
+        <LightDropdown
+          value={selectedTimePeriod}
+          options={timePeriodOptions}
+          onChange={onTimePeriodChange}
+        />
+      </div>
     </div>
   );
 };
@@ -225,6 +241,7 @@ const SprintOverview = () => {
   const [loading, setLoading] = useState(true);
   const [overviewData, setOverviewData] = useState<SprintOverviewData | null>(null);
   const [loProgressData, setLoProgressData] = useState<ProjectStatusData[]>([]);
+  const [selectedGroup, setSelectGroup] = useState<number>(); // 'sprint' or 'lo'
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
   const [selectedTimePeriod, setSelectedTimePeriod] = useState<{ id: number; name: string }>(timePeriodOptions[3]);
 
@@ -301,6 +318,7 @@ const SprintOverview = () => {
   }, [router.isReady, sprintChartId, selectedTimePeriod]);
 
   // Fetch learning objectives progress data for the progress chart
+  // This data is filtered by the selected time period
   useEffect(() => {
     if (!router.isReady || !sprintChartId) return;
 
@@ -308,7 +326,8 @@ const SprintOverview = () => {
       try {
         setIsLoadingProgress(true);
         // Fetch pre-calculated LO progress analytics from the backend
-        const response = await API.SPRINTS.GET_SPRINT_LO_PROGRESS(sprintChartId);
+        // Pass the selected time period to filter the progress data
+        const response = await API.SPRINTS.GET_SPRINT_LO_PROGRESS(sprintChartId, selectedTimePeriod.id,selectedGroup);
 
         if (response && !response.error && response.data) {
           // Backend returns LearningObjectivesProgressData with 'data' property containing the chart data
@@ -325,7 +344,7 @@ const SprintOverview = () => {
     };
 
     fetchLOProgress();
-  }, [router.isReady, sprintChartId]);
+  }, [router.isReady, sprintChartId, selectedTimePeriod,selectedGroup]);
 
   if (loading) {
     return (
@@ -370,6 +389,24 @@ const SprintOverview = () => {
     { label: 'Not Started', value: overviewData.loSummary.notStarted, color: '#9ca3af' },
   ].filter(item => item.value > 0);
 
+  // Handle learning objective bar click to navigate to backlog
+  const handleLOClick = (item: ProjectStatusData) => {
+    if (item.id && sprintChartId) {
+      router.push({
+        pathname: `/tasks/sprint/${sprintChartId}/board`,
+        query: { loid: item.id, loName: item.name }
+      });
+    }
+  };
+
+  const handleTagClick = (tag: TagData) => {
+    if(selectedGroup === tag.groupId){
+      setSelectGroup(undefined); // Deselect if same tag is clicked
+    } else {
+      setSelectGroup(tag.groupId);
+    }
+  };
+
   return (
     <div>
       {/* Charts Section - All data comes from backend API */}
@@ -410,8 +447,10 @@ const SprintOverview = () => {
       <div className="mb-6">
         <TagsSection
           tags={overviewData.tags}
+          selectedGroup={selectedGroup}
           selectedTimePeriod={selectedTimePeriod}
           onTimePeriodChange={setSelectedTimePeriod}
+          onClick={handleTagClick}
         />
       </div>
 
@@ -424,7 +463,7 @@ const SprintOverview = () => {
               <div className="text-gray-500">Loading progress data...</div>
             </div>
           ) : loProgressData.length > 0 ? (
-            <ProjectStatusChart data={loProgressData} />
+            <ProjectStatusChart data={loProgressData} onBarClick={handleLOClick} />
           ) : (
             <div className="flex items-center justify-center h-64">
               <div className="text-gray-500">No learning objectives progress data available</div>

@@ -2323,14 +2323,14 @@ public class TaskService : ITaskService
 
         task.From = null;
 	
-	        await _context.SaveChangesAsync();
+	    await _context.SaveChangesAsync();
 	
-	        // After the task is completed and changes are saved, check if this was the last
-	        // remaining task in the associated project. If so, automatically mark the project
-	        // as closed and notify the owner that the project has been completed.
-	        await TryAutoCompleteProject(task.Id);
+	    // After the task is completed and changes are saved, check if this was the last
+	    // remaining task in the associated project. If so, automatically mark the project
+	    // as closed and notify the owner that the project has been completed.
+	    await TryAutoCompleteProject(task.Id);
 	
-	        return await GetTaskDetails(task.Id);
+	    return await GetTaskDetails(task.Id);
     }
 
 	    private async System.Threading.Tasks.Task TryAutoCompleteProject(int completedTaskId)
@@ -2440,10 +2440,10 @@ public class TaskService : ITaskService
             var currentNode = await _context.Nodes
                 .Where(n => n.Id == task.Step.NodeId && !n.Archived)
                 .Include(n => n.Next)
-                .ThenInclude(n => n.Steps)
+                    .ThenInclude(n => n.Steps)
                 .Include(n => n.Next)
-                .ThenInclude(n => n.Previous)
-                .ThenInclude(n => n.Steps)
+                    .ThenInclude(n => n.Previous)
+                        .ThenInclude(n => n.Steps)
                 .FirstOrDefaultAsync();
 
             if (currentNode is null)

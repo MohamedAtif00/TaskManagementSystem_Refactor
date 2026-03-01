@@ -23,6 +23,7 @@ const TaskBoard = () => {
     const [query, setQuery] = useState('');
 	    const [searchType, setSearchType] = useState<'lo' | 'task'>('lo');
 	    const latestRequestId = useRef(0);
+     const { loid, loName } = router.query;
 
     useEffect(() => {
         const id = router.query.sprintId;
@@ -32,47 +33,78 @@ const TaskBoard = () => {
             );
     }, [router.query.sprintId]);
 
-	    const loadTasks = async (id: string | string[]) => {
-	        const currentRequestId = ++latestRequestId.current;
-	        try {
-	            const allTasks = await API.SPRINTS.GET_ALL_CARDS_STREAM(
-	                id,
-	                (streamedTasks, totalCount) => {
-	                    // Ignore stale responses from earlier requests
-	                    if (currentRequestId !== latestRequestId.current) return;
-	                    // Progressive UI updates as tasks are accumulated
-	                    setTasks([...streamedTasks]);
-	                }
-	            );
-	
-	            if (currentRequestId !== latestRequestId.current) return;
-	            setTasks(allTasks);
-	        } catch (error) {
-	            console.error('Error loading tasks:', error);
-	            if (currentRequestId !== latestRequestId.current) return;
-	
-	            // Fallback to non-streaming endpoint if streaming fails
-	            const res = await API.SPRINTS.GET_ALL_CARDS(id);
-	            if (res && !res.error) {
-	                setTasks(res.data);
-	            }
-	        }
-	    };
+     // After tasks load, apply the loid filter if present
+    useEffect(() => {
+        if (!tasks) return;
 
-	    useEffect(() => {
-	        if (sprint) {
-	            loadTasks(sprint.id.toString());
-	        }
-	    }, [sprint]);
+        if (loid) {
+            const loId = Number(loid);
+            const matchingLo = tasks.map(t => t.learningObjective).find(lo => lo.id === loId);
+            if (matchingLo) {
+                setSelected(matchingLo);
+                setSearchType('lo');
+            }
+            return;
+        }
 
-	    useEffect(() => {
-	        if (sprint) {
-	            const refreshInterval = setInterval(() => {
-	                loadTasks(sprint.id.toString());
-	            }, 30000);
-	            return () => clearInterval(refreshInterval);
-	        }
-	    }, [sprint]);
+        if (loName) {
+            const loNameStr = Array.isArray(loName) ? loName[0] : loName;
+            const target = String(loNameStr ?? '').trim().toLowerCase();
+            if (!target) return;
+
+            const matchingLo = tasks
+                .map(t => t.learningObjective)
+                .find(lo => lo?.name?.trim().toLowerCase() === target);
+
+            if (matchingLo) {
+                setSelected(matchingLo);
+                setSearchType('lo');
+            }
+        }
+    }, [loid, loName, tasks]);
+
+
+    const loadTasks = async (id: string | string[]) => {
+        const currentRequestId = ++latestRequestId.current;
+        try {
+            const allTasks = await API.SPRINTS.GET_ALL_CARDS_STREAM(
+                id,
+                (streamedTasks, totalCount) => {
+                    // Ignore stale responses from earlier requests
+                    if (currentRequestId !== latestRequestId.current) return;
+                    // Progressive UI updates as tasks are accumulated
+                    setTasks([...streamedTasks]);
+                }
+            );
+
+            if (currentRequestId !== latestRequestId.current) return;
+            setTasks(allTasks);
+        } catch (error) {
+            console.error('Error loading tasks:', error);
+            if (currentRequestId !== latestRequestId.current) return;
+
+            // Fallback to non-streaming endpoint if streaming fails
+            const res = await API.SPRINTS.GET_ALL_CARDS(id);
+            if (res && !res.error) {
+                setTasks(res.data);
+            }
+        }
+    };
+
+    useEffect(() => {
+        if (sprint) {
+            loadTasks(sprint.id.toString());
+        }
+    }, [sprint]);
+
+    useEffect(() => {
+        if (sprint) {
+            const refreshInterval = setInterval(() => {
+                loadTasks(sprint.id.toString());
+            }, 30000);
+            return () => clearInterval(refreshInterval);
+        }
+    }, [sprint]);
 
     if (tasks === undefined)
         return (

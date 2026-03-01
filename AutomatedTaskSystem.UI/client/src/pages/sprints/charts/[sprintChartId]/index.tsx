@@ -8,6 +8,7 @@ import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { Box } from "@mui/material";
 import { LightDropdown } from "../../../../components/formComponents/LightDropdown";
+import { ProjectStatusData } from "../../../../components/charts/ProjectStatusChart";
 
 type ChartView = 'overview' | 'progress';
 
@@ -95,6 +96,24 @@ const SprintChartsPage = () => {
   const [activeTab, setActiveTab] = useState<ChartView>('overview');
   const [loTableData, setLoTableData] = useState<LearningObjectiveTableRow[]>([]);
   const [isLoadingTable, setIsLoadingTable] = useState(false);
+  const [sprintName, setSprintName] = useState('');
+
+  // Fetch sprint name on initial load
+  useEffect(() => {
+    const fetchSprintName = async () => {
+      if (sprintChartId && !sprintName) {
+        try {
+          const response = await API.SPRINTS.GET_SPRINT_LO_TABLE(sprintChartId);
+          if (response && !response.error && response.data) {
+            setSprintName(response.data.sprintName || '');
+          }
+        } catch (error) {
+          console.error("Error fetching sprint name:", error);
+        }
+      }
+    };
+    fetchSprintName();
+  }, [sprintChartId]);
 
   useEffect(() => {
     const fetchLOTable = async () => {
@@ -104,6 +123,7 @@ const SprintChartsPage = () => {
           const response = await API.SPRINTS.GET_SPRINT_LO_TABLE(sprintChartId);
           if (response && !response.error && response.data) {
             setLoTableData(response.data.data);
+            setSprintName(response.data.sprintName || '');
           } else {
             setLoTableData([]);
           }
@@ -179,13 +199,46 @@ const SprintChartsPage = () => {
     return true;
   });
 
-  
+  const handleLOClick = (item: ProjectStatusData) => {
+      if (item.id && sprintChartId) {
+        router.push({
+          pathname: `/tasks/sprint/${sprintChartId}/board`,
+          query: { loid: item.id, loName: item.name }
+        });
+      }
+    };
 
 
 
   const loTableColumns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 80 },
-    { field: 'name', headerName: 'Learning Objectives', flex: 1, minWidth: 180 },
+    { 
+  field: 'name', 
+  headerName: 'Learning Objectives', 
+  flex: 1, 
+  minWidth: 180,
+  renderCell: (params: GridRenderCellParams) => (
+    <div
+      onClick={(e) => {
+        e.stopPropagation(); // Prevents triggering row-level clicks
+        console.log("Clicked ID:", params.row.id);
+        handleLOClick(params.row);
+        // Add your navigation or modal logic here:
+        // navigate(`/lo/${params.row.id}`);
+      }}
+      style={{ 
+        // color: '#2563eb', 
+        cursor: 'pointer',
+        fontWeight: 500,
+        textDecoration: 'none',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.color = '#2563eb')}
+      onMouseLeave={(e) => (e.currentTarget.style.color = '')}
+    >
+      {params.value}
+    </div>
+  )
+},
     { field: 'subject', headerName: 'Subject', width: 120 },
     { field: 'startDate', headerName: 'Start Date', width: 110 },
     { field: 'activeTasks', headerName: 'Active Tasks', width: 100, align: 'center', headerAlign: 'center' },
@@ -200,12 +253,20 @@ const SprintChartsPage = () => {
       <div className="mx-10 w-full relative max-h-screen overflow-y-auto pr-4">
         <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
           <div className="flex gap-2 items-center">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            <h1 className="font-bold text-2xl">Sprint Charts</h1>
+            </svg> */}
+            <button onClick={() => router.push('/sprints')}>
+
+              <svg width="10" height="17" viewBox="0 0 10 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M2.41379 8.485L9.48479 15.556L8.07079 16.97L0.292786 9.192C0.105315 9.00447 0 8.75016 0 8.485C0 8.21984 0.105315 7.96553 0.292786 7.778L8.07079 0L9.48479 1.414L2.41379 8.485Z" fill="black"/>
+              </svg>
+            </button>
+
+            {/* <h1 className="font-bold text-2xl">Sprint Charts</h1> */}
+            <h1 className="font-bold text-2xl">{sprintName}</h1>
           </div>
-          <button onClick={() => router.push('/sprints')} className="px-4 py-1 rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">Back to Sprints</button>
+          {/* <button onClick={() => router.push('/sprints')} className="px-4 py-1 rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">Back to Sprints</button> */}
         </div>
         <div className="flex justify-between items-end h-20 ">
           <div className="flex gap-2 items-end h-11 mt-4 px-1">

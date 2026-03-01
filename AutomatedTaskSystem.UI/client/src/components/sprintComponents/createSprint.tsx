@@ -170,12 +170,19 @@ const CreateSprint = () => {
             <motion.div
                 initial={{ opacity: 0.1 }}
                 animate={{ opacity: 1 }}
-                className="bg-white p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-lg shadow space-y-6"
+                className="bg-white w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-lg shadow relative flex flex-col"
 >
 
-                <h2 className="text-2xl font-semibold text-center">Create New Sprint</h2>
-                {formError && <div className="text-red-500 text-center mb-4 p-2 bg-red-100 border border-red-400 rounded">{formError}</div>}
-
+                <div className="sticky top-0 z-10 bg-white px-6 pt-6 pb-2 rounded-t-lg">
+                    <h2 className="text-2xl font-semibold text-center">Create New Sprint</h2>
+                    {formError && (
+                        <div className="mt-3 text-red-600 text-center text-sm p-2 bg-red-50 border border-red-300 rounded-lg flex items-center gap-2 justify-center">
+                            <span className="text-red-500">⚠</span>
+                            {formError}
+                        </div>
+                    )}
+                </div>
+                <div className="px-6 pb-6 overflow-y-auto flex-1">
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="block text-gray-700 font-medium mb-1">Sprint Name</label>
@@ -323,6 +330,7 @@ const CreateSprint = () => {
                         </div>
                     </div>
                 </form>
+                </div>
             </motion.div>
         </motion.div>
     );

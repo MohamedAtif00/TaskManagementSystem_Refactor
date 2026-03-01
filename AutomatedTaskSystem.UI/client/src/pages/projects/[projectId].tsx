@@ -276,10 +276,11 @@ const Project = () => {
 
     const handlers = {
         project: {
-            assign: (userIds: number[]) => {
+            assign: (userIds: number[], groupIds?: number[]) => {
                 API.PROJECTS.ASSIGN({
                     projectId: router.query.projectId!,
                     userIds,
+                    groupIds
                 }).then(() => {
                     router.push(`/projects/${router.query.projectId}`);
                 });

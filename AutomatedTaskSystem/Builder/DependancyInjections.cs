@@ -33,6 +33,7 @@ public static class DependancyInjections
 {
     public static void Inject(WebApplicationBuilder builder)
     {
+        builder.Services.AddMemoryCache();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<IUserTaskService, UserTaskService>();
         builder.Services.AddScoped<IRollbackService, RollbackService>();

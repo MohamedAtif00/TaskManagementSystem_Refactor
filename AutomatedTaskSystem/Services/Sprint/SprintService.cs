@@ -1,54 +1,148 @@
-﻿using AutomatedTaskSystem.Data;
-
+﻿using System.Data;
+using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.SprintDtos;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Services.ResponseService;
+using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace AutomatedTaskSystem.Services.Sprint
 {
     public class SprintService : ISprintService
     {
-
         private readonly DataContext dataContext;
-        public SprintService(DataContext dataContext)
+        private readonly IMemoryCache _cache;
+
+        // Cache configuration
+        private const int CacheExpirationMinutes = 2; // Cache expires after 2 minutes
+        private const string AllSprintsCacheKeyPrefix = "AllSprints_";
+
+        public SprintService(DataContext dataContext, IMemoryCache cache)
         {
             this.dataContext = dataContext;
+            _cache = cache;
         }
 
+        /// <summary>
+        /// Generates a cache key for all sprints based on archived filter
+        /// </summary>
+        private static string GetAllSprintsCacheKey(bool? archived)
+        {
+            if (archived == null) return $"{AllSprintsCacheKeyPrefix}All";
+            return archived.Value ? $"{AllSprintsCacheKeyPrefix}Archived" : $"{AllSprintsCacheKeyPrefix}Active";
+        }
+
+        /// <summary>
+        /// Optimized version using Dapper for improved performance with caching.
+        /// Replaces EF Core with direct SQL queries to minimize database round trips.
+        /// Results are cached for improved performance on subsequent calls.
+        /// </summary>
         public async Task<ResponseService<List<SprintDTO>>> GetAllSprints(bool? archived = null)
         {
             try
             {
-                IQueryable<Models.Sprint> query = dataContext.Sprints;
-
-                // Filter by archived status if specified
-                if (archived.HasValue)
+                // Try to get from cache first
+                var cacheKey = GetAllSprintsCacheKey(archived);
+                if (_cache.TryGetValue(cacheKey, out List<SprintDTO>? cachedData) && cachedData != null)
                 {
-                    query = query.Where(s => s.IsArchived == archived.Value);
+                    return new ResponseService<List<SprintDTO>>() { Data = cachedData };
                 }
 
-                // Capture the result of the Include
-                query = query.Include(x => x.SprintLearningObjectives)
-                             .ThenInclude(x => x.LearningObjective)
-                             .ThenInclude(x => x.Tasks);
-
-                List<Models.Sprint> sprints = await query.ToListAsync();
-                List<SprintDTO> sprintDto = new();
-
-                foreach (var sprint in sprints)
+                var connection = dataContext.Database.GetDbConnection();
+                if (connection.State != ConnectionState.Open)
                 {
-                    // 1. Flatten the tasks into a local list for this specific sprint
-                    var allTasks = sprint.SprintLearningObjectives
-                        .SelectMany(x => x.LearningObjective?.Tasks ?? new List<Models.Task>())
-                        .ToList();
+                    await connection.OpenAsync();
+                }
 
-                    int totalTasks = allTasks.Count;
-                    int completedTasks = allTasks.Count(x => x.Status == Models.Enums.TaskStatus.TaskStatusEnum.Done);
+                // Query 1: Get all sprints with basic info and LO count
+                var sprintsSql = @"
+                    SELECT
+                        s.Id,
+                        s.Name,
+                        s.Description,
+                        s.StartDate,
+                        s.EndDate,
+                        s.IsArchived,
+                        (SELECT COUNT(*)
+                         FROM SprintLearningObjectives slo
+                         INNER JOIN LearningObjectives lo ON slo.LearningObjectiveId = lo.Id
+                         WHERE slo.SprintId = s.Id AND lo.Archived = 0) AS LoNumber
+                    FROM Sprints s";
 
-                    sprintDto.Add(new SprintDTO
+                if (archived.HasValue)
+                {
+                    sprintsSql += " WHERE s.IsArchived = @Archived";
+                }
+
+                var sprintRows = (await connection.QueryAsync<SprintBasicRow>(
+                    sprintsSql,
+                    new { Archived = archived ?? false })).ToList();
+
+                if (sprintRows.Count == 0)
+                {
+                    var emptyResult = new List<SprintDTO>();
+
+                    // Cache the empty result
+                    var emptyCacheOptions = new MemoryCacheEntryOptions()
+                        .SetAbsoluteExpiration(TimeSpan.FromMinutes(CacheExpirationMinutes));
+                    _cache.Set(cacheKey, emptyResult, emptyCacheOptions);
+
+                    return new ResponseService<List<SprintDTO>>() { Data = emptyResult };
+                }
+
+                var sprintIds = sprintRows.Select(s => s.Id).ToList();
+
+                // Query 2: Get total expected tasks (schema steps) per sprint
+                const string expectedTasksSql = @"
+                    SELECT
+                        slo.SprintId,
+                        COUNT(st.Id) AS TotalExpectedTasks
+                    FROM SprintLearningObjectives slo
+                    INNER JOIN LearningObjectives lo ON slo.LearningObjectiveId = lo.Id
+                    INNER JOIN Schemas sch ON lo.SchemaId = sch.Id
+                    INNER JOIN Nodes n ON n.SchemaId = sch.Id
+                    INNER JOIN Steps st ON st.NodeId = n.Id
+                    WHERE slo.SprintId IN @SprintIds
+                      AND lo.Archived = 0
+                      AND n.Archived = 0
+                      AND st.Archived = 0
+                    GROUP BY slo.SprintId";
+
+                var expectedTasksDict = (await connection.QueryAsync<SprintExpectedTasksRow>(
+                    expectedTasksSql,
+                    new { SprintIds = sprintIds }))
+                    .ToDictionary(x => x.SprintId, x => x.TotalExpectedTasks);
+
+                // Query 3: Get completed task count per sprint
+                const string completedTasksSql = @"
+                    SELECT
+                        slo.SprintId,
+                        COUNT(t.Id) AS CompletedCount
+                    FROM SprintLearningObjectives slo
+                    INNER JOIN LearningObjectives lo ON slo.LearningObjectiveId = lo.Id
+                    INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id
+                    WHERE slo.SprintId IN @SprintIds
+                      AND lo.Archived = 0
+                      AND t.Archived = 0
+                      AND t.Status = 3  -- TaskStatusEnum.Done = 3
+                    GROUP BY slo.SprintId";
+
+                var completedTasksDict = (await connection.QueryAsync<SprintCompletedTasksRow>(
+                    completedTasksSql,
+                    new { SprintIds = sprintIds }))
+                    .ToDictionary(x => x.SprintId, x => x.CompletedCount);
+
+                // Build the result list
+                var sprintDtos = sprintRows.Select(sprint =>
+                {
+                    var totalExpectedTasks = expectedTasksDict.TryGetValue(sprint.Id, out var expected) ? expected : 0;
+                    var completedCount = completedTasksDict.TryGetValue(sprint.Id, out var completed) ? completed : 0;
+
+                    return new SprintDTO
                     {
                         Id = sprint.Id,
                         Name = sprint.Name,
@@ -56,20 +150,50 @@ namespace AutomatedTaskSystem.Services.Sprint
                         StartDate = sprint.StartDate,
                         EndDate = sprint.EndDate,
                         IsArchived = sprint.IsArchived,
-                        LoNumber = sprint.SprintLearningObjectives.Count(),
-                        // 2. Perform safe math
-                        CompletePercintag = totalTasks > 0
-                            ? (double)completedTasks / totalTasks * 100
+                        LoNumber = sprint.LoNumber,
+                        CompletePercintag = totalExpectedTasks > 0
+                            ? Math.Round((double)completedCount / totalExpectedTasks * 100, 2)
                             : 0
-                    });
-                }
+                    };
+                }).ToList();
 
-                return new ResponseService<List<SprintDTO>>() { Data = sprintDto };
+                // Cache the result
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(CacheExpirationMinutes));
+                _cache.Set(cacheKey, sprintDtos, cacheEntryOptions);
+
+                return new ResponseService<List<SprintDTO>>() { Data = sprintDtos };
             }
             catch (Exception ex)
             {
-                return new ResponseService<List<SprintDTO>>() { Error = true, Message = "Unexcepected error" };
+                Console.WriteLine($"Error in GetAllSprints: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                return new ResponseService<List<SprintDTO>>() { Error = true, Message = "Unexpected error" };
             }
+        }
+
+        // Helper DTOs for Dapper query results
+        private class SprintBasicRow
+        {
+            public int Id { get; set; }
+            public string Name { get; set; } = "";
+            public string Description { get; set; } = "";
+            public DateTime StartDate { get; set; }
+            public DateTime EndDate { get; set; }
+            public bool IsArchived { get; set; }
+            public int LoNumber { get; set; }
+        }
+
+        private class SprintExpectedTasksRow
+        {
+            public int SprintId { get; set; }
+            public int TotalExpectedTasks { get; set; }
+        }
+
+        private class SprintCompletedTasksRow
+        {
+            public int SprintId { get; set; }
+            public int CompletedCount { get; set; }
         }
 
         public async Task<ResponseService<SprintDTO>> GetSingleSprintAsync(int id)

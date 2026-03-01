@@ -49,7 +49,8 @@ namespace AutomatedTaskSystem.Services.Lesson
                 Tag = req.Tag,
                 Template = req.Template,
                 Tasks = new List<Models.Task> { },
-                Archived = false
+                Archived = false,
+                CreateAt = DateTime.Now
             };
 
             schema.LearningObjectives.Add(newLO);

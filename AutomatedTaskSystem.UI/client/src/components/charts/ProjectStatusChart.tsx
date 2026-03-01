@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   BarChart,
   Bar,
@@ -14,6 +14,7 @@ import {
 
 // Type definitions
 export interface ProjectStatusData {
+  id?: number;
   name: string;
   value: number;
   status: 'On Track' | 'At Risk' | 'Delayed';
@@ -28,6 +29,7 @@ interface ProjectStatusChartProps {
   height?: number;
   backgroundColor?: string;
   padding?: string;
+  onBarClick?: (item: ProjectStatusData) => void;
 }
 
 // Helper to get color based on status
@@ -100,33 +102,91 @@ const CustomLegend = () => {
 };
 
 // Default data for demonstration purposes
-const defaultData: ProjectStatusData[] = [
-  { name: 'Loly Adventure', value: 47, status: 'On Track' },
-  { name: 'Chummy Yummy', value: 58, status: 'On Track' },
-  { name: 'Alpha tics', value: 75, status: 'On Track' },
-  { name: 'Colors', value: 60, status: 'Delayed' },
-  { name: 'Racing', value: 65, status: 'At Risk' },
-  { name: 'Habits', value: 73, status: 'Delayed' },
-  { name: 'Finance', value: 82, status: 'On Track' },
-  { name: 'Education', value: 45, status: 'At Risk' },
-  { name: 'Health', value: 68, status: 'On Track' },
-  { name: 'Travel', value: 55, status: 'Delayed' },
-];
+// const defaultData: ProjectStatusData[] = [
+//   { name: 'Loly Adventure', value: 47, status: 'On Track' },
+//   { name: 'Chummy Yummy', value: 58, status: 'On Track' },
+//   { name: 'Alpha tics', value: 75, status: 'On Track' },
+//   { name: 'Colors', value: 60, status: 'Delayed' },
+//   { name: 'Racing', value: 65, status: 'At Risk' },
+//   { name: 'Habits', value: 73, status: 'Delayed' },
+//   { name: 'Finance', value: 82, status: 'On Track' },
+//   { name: 'Education', value: 45, status: 'At Risk' },
+//   { name: 'Health', value: 68, status: 'On Track' },
+//   { name: 'Travel', value: 55, status: 'Delayed' },
+// ];
 
 const ProjectStatusChart: React.FC<ProjectStatusChartProps> = ({
-  data = defaultData,
+  data = [],
   backgroundColor = '#f8fafc',
-  padding = '2px'
+  padding = '2px',
+  onBarClick
 }) => {
-  // Calculate height: each bar needs ~15-20px for tighter spacing
-  const calculatedHeight = data.length * 28 ; // 28px per bar + extra for margins and labels
+  // Calculate height: each bar needs ~18–22px for tighter spacing
+  const calculatedHeight = data.length * 30;
+  // const calculatedHeight =  690;
   const chartHeight = calculatedHeight;
-  
+
   // Prepare data with remaining percentage for background
   const dataWithRemaining: ProjectStatusDataWithRemaining[] = data.map(item => ({
     ...item,
     remaining: 100 - item.value
   }));
+
+  // Handle bar click
+  const handleBarClick = (data: any) => {
+    if (onBarClick && data) {
+      onBarClick(data);
+    }
+  };
+
+  const YAxisTick = ({ x, y, payload }: any) => {
+    const [isHovered, setIsHovered] = useState(false);
+    const label = String(payload?.value ?? '');
+    const matchingItem = dataWithRemaining.find(d => d.name === label);
+    const clickable = Boolean(onBarClick && matchingItem);
+
+    return (
+      <g
+    transform={`translate(${x},${y})`}
+    style={{ cursor: clickable ? 'pointer' : 'default' }}
+    // Trigger state changes
+    onMouseEnter={() => setIsHovered(true)}
+    onMouseLeave={() => setIsHovered(false)}
+    onClick={(e) => {
+      e.stopPropagation();
+      if (clickable && matchingItem) onBarClick?.(matchingItem);
+    }}
+  >
+    <text
+      x={0}
+      y={0}
+      dx={-4}
+      dy={4}
+      textAnchor="end"
+      // Change fill color based on state
+      fill={isHovered ? "#2563eb" : "#374151"}
+      // Change font weight based on state
+      fontWeight={isHovered ? "bold" : "normal"}
+      fontSize={12}
+      style={{ transition: 'all 0.2s ease' }}
+    >
+      {label}
+    </text>
+    
+    {/* Detailed Example: Showing an extra background rect only on hover */}
+    {isHovered && (
+      <rect 
+        x={-label.length * 8} 
+        y={-10} 
+        width={label.length * 8} 
+        height={20} 
+        fill="rgba(0,0,0,0.05)" 
+        rx={4}
+      />
+    )}
+  </g>
+    );
+  };
 
   return (
     <div style={{ width: '100%', backgroundColor, padding }}>
@@ -136,7 +196,7 @@ const ProjectStatusChart: React.FC<ProjectStatusChartProps> = ({
           <BarChart
             layout="vertical"
             data={dataWithRemaining}
-            barCategoryGap={'100px'}
+            barCategoryGap={'10%'}
             margin={{ top: 0, right: 30, left: 100, bottom: 0 }}
           >
             <CartesianGrid
@@ -153,9 +213,10 @@ const ProjectStatusChart: React.FC<ProjectStatusChartProps> = ({
               dataKey="name"
               type="category"
               width={100}
-              tick={{ fontSize: 12, fill: '#374151' }}
+              tick={<YAxisTick />}
               axisLine={false}
               tickLine={false}
+
             />
             <Tooltip content={<CustomTooltip />} />
 
@@ -164,6 +225,8 @@ const ProjectStatusChart: React.FC<ProjectStatusChartProps> = ({
               dataKey="value"
               barSize={8}
               background={{ fill: '#E7EFFF' }}
+              onClick={handleBarClick}
+              cursor={onBarClick ? 'pointer' : 'default'}
             >
               {dataWithRemaining.map((entry, index) => (
                 <Cell
@@ -177,6 +240,7 @@ const ProjectStatusChart: React.FC<ProjectStatusChartProps> = ({
                 position="right"
                 offset={10}
                 style={{ fill: '#374151', fontSize: 12, fontWeight: 'bold' }}
+                
               />
             </Bar>
 

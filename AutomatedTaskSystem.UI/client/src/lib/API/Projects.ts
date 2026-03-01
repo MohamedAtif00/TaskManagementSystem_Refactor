@@ -73,9 +73,11 @@ const PROJECTS = {
     ASSIGN: async ({
         projectId,
         userIds,
+        groupIds,
     }: {
         projectId: string | string[];
-        userIds: number[];
+        userIds: number[] | undefined;
+        groupIds: number[] | undefined;
     }) => {
         try {
             const res = await fetch(`${url}/projects/${projectId}/assign`, {

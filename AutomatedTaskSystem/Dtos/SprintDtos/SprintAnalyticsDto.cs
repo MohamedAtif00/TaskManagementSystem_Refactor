@@ -5,6 +5,7 @@ namespace AutomatedTaskSystem.Dtos.SprintDtos
     /// </summary>
     public class TagDataDto
     {
+        public int GroupId { get; set; }
         public string Label { get; set; } = "";
         public int Value { get; set; }
         public string Color { get; set; } = "";
@@ -51,9 +52,11 @@ namespace AutomatedTaskSystem.Dtos.SprintDtos
     /// </summary>
     public class LearningObjectiveProgressDto
     {
+        public int Id { get; set; }
         public string Name { get; set; } = "";
         public int Value { get; set; }
         public string Status { get; set; } = "On Track"; // "On Track" | "At Risk" | "Delayed"
+        public List<CurrentPhaseDto> CurrentPhases { get; set; } = new();
     }
 
     /// <summary>
@@ -93,6 +96,7 @@ namespace AutomatedTaskSystem.Dtos.SprintDtos
     /// </summary>
     public class SprintLearningObjectivesTableDto
     {
+        public string SprintName { get; set; } = string.Empty; // Sprint name
         public List<LearningObjectiveTableRowDto> Data { get; set; } = new();
     }
 }

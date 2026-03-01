@@ -107,7 +107,12 @@ const SingleSprintPage = () => {
             <div className="mx-auto relative max-h-screen overflow-y-auto pr-4 w-11/12">
                 <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
                     <div className="flex gap-2 items-center">
-                        <TaskIcon className="stroke-black" />
+                        {/* <TaskIcon className="stroke-black" /> */}
+                        <Link href="/sprints">
+                            <svg width="10" height="17" viewBox="0 0 10 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M2.41379 8.485L9.48479 15.556L8.07079 16.97L0.292786 9.192C0.105315 9.00447 0 8.75016 0 8.485C0 8.21984 0.105315 7.96553 0.292786 7.778L8.07079 0L9.48479 1.414L2.41379 8.485Z" fill="black"/>
+                            </svg>
+                        </Link>
                         <h1 className="font-bold text-2xl">Sprint: {sprint.name}</h1>
                     </div>
                     <div className="flex items-center gap-4">
@@ -118,11 +123,11 @@ const SingleSprintPage = () => {
                                 </button>
                             </Link>
                         )}
-                        <Link href="/sprints">
+                        {/* <Link href="/sprints">
                             <button className="px-4 py-1 rounded bg-gray-600 text-white hover:bg-gray-700 transition-colors">
                                 Back to Sprints
                             </button>
-                        </Link>
+                        </Link> */}
                     </div>
                 </div>
 

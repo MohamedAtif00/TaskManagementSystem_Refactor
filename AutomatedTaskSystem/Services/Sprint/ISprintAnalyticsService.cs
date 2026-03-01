@@ -22,7 +22,14 @@ namespace AutomatedTaskSystem.Services.Sprint
         /// <param name="sprintId">The ID of the sprint</param>
         /// <param name="timePeriod">Optional time period filter (1=Today, 2=Last Week, 3=Last Month, 4=All Time). Defaults to All Time.</param>
         Task<ResponseService<SprintOverviewDto>> GetSprintOverviewAsync(int sprintId, TimePeriodFilter? timePeriod = null);
-        Task<ResponseService<SprintLearningObjectivesProgressDto>> GetSprintLearningObjectivesProgressAsync(int sprintId);
+
+        /// <summary>
+        /// Get learning objectives progress chart data with optional time period and group filtering
+        /// </summary>
+        /// <param name="sprintId">The ID of the sprint</param>
+        /// <param name="timePeriod">Optional time period filter (1=Today, 2=Last Week, 3=Last Month, 4=All Time). Defaults to All Time.</param>
+        /// <param name="groupId">Optional group (tag) ID filter. When specified, only LOs with tasks assigned to this group are returned, and progress is calculated using only those tasks.</param>
+        Task<ResponseService<SprintLearningObjectivesProgressDto>> GetSprintLearningObjectivesProgressAsync(int sprintId, TimePeriodFilter? timePeriod = null, int? groupId = null);
         Task<ResponseService<SprintLearningObjectivesTableDto>> GetSprintLearningObjectivesTableAsync(int sprintId);
     }
 }

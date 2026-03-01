@@ -63,13 +63,22 @@ namespace AutomatedTaskSystem.Controllers
         /// Get learning objectives progress data for the sprint
         /// </summary>
         /// <param name="sprintId">The ID of the sprint</param>
+        /// <param name="timePeriod">Optional time period filter: 1=Today, 2=Last Week, 3=Last Month, 4=All Time (default)</param>
+        /// <param name="group">Optional group (tag) ID filter. When specified, only LOs with tasks assigned to this group are returned.</param>
         /// <returns>Learning objectives progress data</returns>
         [HttpGet("learning-objectives-progress")]
-        public async Task<IActionResult> GetLearningObjectivesProgress(int sprintId)
+        public async Task<IActionResult> GetLearningObjectivesProgress(int sprintId, [FromQuery] int? timePeriod = null, [FromQuery] int? group = null)
         {
             try
             {
-                var result = await _sprintAnalyticsService.GetSprintLearningObjectivesProgressAsync(sprintId);
+                // Convert int to TimePeriodFilter enum, defaulting to AllTime if invalid or null
+                TimePeriodFilter? filter = null;
+                if (timePeriod.HasValue && Enum.IsDefined(typeof(TimePeriodFilter), timePeriod.Value))
+                {
+                    filter = (TimePeriodFilter)timePeriod.Value;
+                }
+
+                var result = await _sprintAnalyticsService.GetSprintLearningObjectivesProgressAsync(sprintId, filter,group);
 
                 if (result.Error)
                 {

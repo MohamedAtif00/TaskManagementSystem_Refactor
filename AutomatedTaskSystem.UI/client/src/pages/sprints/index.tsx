@@ -25,6 +25,12 @@ const Sprints = () => {
     const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
     const router = useRouter();
     const { role } = useAppSelector((s) => s.authSlice);
+    // Add this state near your other useState declarations:
+    const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    sprintId: number | null;
+    isArchived: boolean;
+    } >({ open: false, sprintId: null, isArchived: false });
 
     // Fetch Sprints based on active tab
     const fetchSprints = (archived: boolean) => {
@@ -44,13 +50,31 @@ const Sprints = () => {
         fetchSprints(activeTab === 'archived');
     }, [activeTab]);
 
-    // Handle archive/unarchive action
-    const handleArchiveToggle = async (sprintId: number, currentlyArchived: boolean) => {
-        const newArchivedState = !currentlyArchived;
-        const result = await API.SPRINTS.ARCHIVE_SPRINT(sprintId, newArchivedState);
+    // // Handle archive/unarchive action
+    // const handleArchiveToggle = async (sprintId: number, currentlyArchived: boolean) => {
+    //     const newArchivedState = !currentlyArchived;
+    //     const result = await API.SPRINTS.ARCHIVE_SPRINT(sprintId, newArchivedState);
 
+    //     if (result && !result.error) {
+    //         // Refresh the sprint list
+    //         fetchSprints(activeTab === 'archived');
+    //     } else {
+    //         console.error("Error archiving sprint:", result?.message || "Unknown error");
+    //         alert(`Failed to ${newArchivedState ? 'archive' : 'unarchive'} sprint`);
+    //     }
+    // };
+
+    // Replace handleArchiveToggle with this:
+    const handleArchiveToggle = (sprintId: number, currentlyArchived: boolean) => {
+        setConfirmModal({ open: true, sprintId, isArchived: currentlyArchived });
+    };
+
+    const confirmArchiveToggle = async () => {
+        if (confirmModal.sprintId === null) return;
+        const newArchivedState = !confirmModal.isArchived;
+        const result = await API.SPRINTS.ARCHIVE_SPRINT(confirmModal.sprintId, newArchivedState);
+        setConfirmModal({ open: false, sprintId: null, isArchived: false });
         if (result && !result.error) {
-            // Refresh the sprint list
             fetchSprints(activeTab === 'archived');
         } else {
             console.error("Error archiving sprint:", result?.message || "Unknown error");
@@ -59,13 +83,11 @@ const Sprints = () => {
     };
 
     const handleRoutingToSprintDetail = (sprintId: number) => {
-        // For Member (role 3) and Team Leader (role 2), go directly to task board
-        if (role === 2 || role === 3) {
-            router.push(`/tasks/sprint/${sprintId}/board`);
-        } else {
-            // For other roles (Owner, PM, Section Head), go to sprint detail page
-            window.location.href = `/sprints/${sprintId}`;
-        }
+        router.push(`/sprints/${sprintId}`);
+    }
+
+    const handleRouteToSprintTask = (sprintId: number) => {
+        router.push(`/tasks/sprint/${sprintId}/board`);
     }
 
     const handleRoutingToSprintCharts = (sprintChartId: number) => {
@@ -173,7 +195,7 @@ const Sprints = () => {
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            handleRoutingToSprintDetail(params.row.id);
+                                            handleRouteToSprintTask(params.row.id);
                                         }}
                                         className="p-2 rounded-md hover:bg-gray-100 transition-colors group/btn"
                                         title={activeTab === 'archived' ? 'Unarchive Sprint' : 'Archive Sprint'}
@@ -196,20 +218,23 @@ const Sprints = () => {
                         >
                             <SprintChart></SprintChart>
                         </button>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleArchiveToggle(params.row.id, isArchived);
-                            }}
-                            className="p-2 rounded-md hover:bg-gray-100 transition-colors group/btn"
-                            title={activeTab === 'archived' ? 'Unarchive Sprint' : 'Archive Sprint'}
-                        >
-                            {activeTab === 'archived' ? (
-                                <RotatingArrowsIcon className="w-5 h-5 fill-green-600 group-hover/btn:fill-green-700" />
-                            ) : (
-                                <TrashIcon className="w-5 h-5 fill-red-600 group-hover/btn:fill-red-700" />
-                            )}
-                        </button>
+                        {(role == 0 || role == 4) && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleArchiveToggle(params.row.id, isArchived);
+                                }}
+                                className="p-2 rounded-md hover:bg-gray-100 transition-colors group/btn"
+                                title={activeTab === 'archived' ? 'Unarchive Sprint' : 'Archive Sprint'}
+                            >
+                                {activeTab === 'archived' ? (
+                                    <RotatingArrowsIcon className="w-5 h-5 fill-green-600 group-hover/btn:fill-green-700" />
+                                ) : (
+                                    <TrashIcon className="w-5 h-5 fill-red-600 group-hover/btn:fill-red-700" />
+                                )}
+                            </button>
+
+                        )}
                     </div>
                 );
             },
@@ -219,6 +244,8 @@ const Sprints = () => {
     if (sprints === undefined)
         return (
             <div className="flex items-center justify-center mx-auto h-full">
+
+
                 <Head>
                     <title>ATS - Loading</title>
                 </Head>
@@ -238,22 +265,26 @@ const Sprints = () => {
                         <h1 className="font-bold text-2xl">Sprints</h1>
                     </div>
                     {/* Fixed: Link wrapping a button for navigation */}
-                    <Link
-                        href={{
-                            pathname: "/sprints",
-                            query: {
-                                form: "create-sprint",
-                            },
-                        }}
-                    >
-                        <button className="px-4 py-1 rounded bg-blue-600 text-white">
-                            Add Sprint
-                        </button>
-                    </Link>
+                    {(role === 0 || role === 4) &&
+                        <Link
+                            href={{
+                                pathname: "/sprints",
+                                query: {
+                                    form: "create-sprint",
+                                },
+                            }}
+                        >
+                            <button className="px-4 py-1 rounded bg-blue-600 text-white">
+                                Add Sprint
+                            </button>
+                        </Link>
+
+                    }
                 </div>
 
                 {/* Tabs for Active and Archived Sprints */}
                 <div className="flex gap-4 mt-4 mb-2 px-1">
+                    {(role == 0 || role == 4) && (
                     <button
                         onClick={() => setActiveTab('active')}
                         className={`px-6 py-2 rounded-md font-semibold transition-colors ${
@@ -264,16 +295,20 @@ const Sprints = () => {
                     >
                         Active Sprints
                     </button>
-                    <button
-                        onClick={() => setActiveTab('archived')}
-                        className={`px-6 py-2 rounded-md font-semibold transition-colors ${
-                            activeTab === 'archived'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                    >
-                        Archived Sprints
-                    </button>
+                    )}
+                    {(role == 0 || role == 4) && (
+                        <button
+                            onClick={() => setActiveTab('archived')}
+                            className={`px-6 py-2 rounded-md font-semibold transition-colors ${
+                                activeTab === 'archived'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                        >
+                            Archived Sprints
+                        </button>
+
+                    )}
                 </div>
                 <div className="pb-4 mt-4">
                     <DataGrid
@@ -299,6 +334,7 @@ const Sprints = () => {
                         onRowClick={(params) => {
                             // For Member (role 3) and Team Leader (role 2), go directly to task board
                             // For other roles, go to sprint detail page
+                            if(role === 0 || role === 4)
                             handleRoutingToSprintDetail(params.id as number);
                         }}
                         sx={{
@@ -313,6 +349,47 @@ const Sprints = () => {
                 </div>
                 <CreateSprint />
             </div>
+
+
+            {/* Confirmation Modal */}
+            {confirmModal.open && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full mx-4 flex flex-col items-center gap-4">
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center ${confirmModal.isArchived ? 'bg-blue-100' : 'bg-amber-100'}`}>
+                    {confirmModal.isArchived
+                    ? <RotatingArrowsIcon className="w-7 h-7 text-blue-600" />
+                    : <ArchiveIcon className="w-7 h-7 text-amber-600" />
+                    }
+                </div>
+                <h2 className="text-lg font-bold text-gray-800">
+                    {confirmModal.isArchived ? 'Restore Sprint?' : 'Archive Sprint?'}
+                </h2>
+                <p className="text-sm text-gray-500 text-center">
+                    {confirmModal.isArchived
+                    ? 'This sprint will be moved back to active sprints and become editable again.'
+                    : 'This sprint will be archived and hidden from the active list. You can restore it later.'}
+                </p>
+                <div className="flex gap-3 w-full mt-2">
+                    <button
+                    onClick={() => setConfirmModal({ open: false, sprintId: null, isArchived: false })}
+                    className="flex-1 px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                    >
+                    Cancel
+                    </button>
+                    <button
+                    onClick={confirmArchiveToggle}
+                    className={`flex-1 px-4 py-2 rounded-lg font-medium text-white transition-colors ${
+                        confirmModal.isArchived
+                        ? 'bg-blue-600 hover:bg-blue-700'
+                        : 'bg-amber-500 hover:bg-amber-600'
+                    }`}
+                    >
+                    {confirmModal.isArchived ? 'Restore' : 'Archive'}
+                    </button>
+                </div>
+                </div>
+            </div>
+            )}
         </>
     );
 };
