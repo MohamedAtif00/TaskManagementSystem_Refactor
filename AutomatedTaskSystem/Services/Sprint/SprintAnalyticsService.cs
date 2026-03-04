@@ -120,6 +120,22 @@ namespace AutomatedTaskSystem.Services.Sprint
 
                 // Calculate tag distribution (FILTERED by time period)
                 // Only count tasks with status Backlog, ToDo, or Doing (exclude Done and Rollback)
+                List<string> preferredGroupSteps = new List<string>
+                {
+                    "ID",
+                    "id reviewer",
+                    "SME",
+                    "Proofreading",
+                    "VO",
+                    "GD",
+                    "Motion",
+                    "Animation",
+                    "developers",
+                    "Native developer",
+                    "data allocation",
+                    "tester",
+                    "qc"
+                };
                 var tagData = allTasks
                     .Where(t => t.Group != null &&
                            (t.Status == TaskStatusEnum.Backlog ||
@@ -135,6 +151,11 @@ namespace AutomatedTaskSystem.Services.Sprint
                         IsFilled = false
                     })
                     .Where(tag => tag.Value > 0) // Only include groups with tasks
+                    .OrderBy(tag => {
+                        int index = preferredGroupSteps.FindIndex(s => s.Equals(tag.Label,StringComparison.OrdinalIgnoreCase));
+
+                        return index == -1 ? short.MaxValue: index;
+                    })
                     .ToList();
                     
                 // Calculate learning objectives summary with mutually exclusive categorization

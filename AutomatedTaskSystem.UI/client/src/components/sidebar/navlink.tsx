@@ -5,9 +5,10 @@ import SchemaIcon from "../../assets/Icons/Schema";
 import Link from "next/link";
 import ProjectIcon from "../../assets/Icons/Project";
 import TaskIcon from "../../assets/Icons/Task";
-import { ReactNode, useState } from "react";
+import { ReactNode, useContext, useState } from "react";
 import SprintIcon from "../../assets/Icons/Sprint";
 import NotificationIcon from "../../assets/Icons/Notification";
+import { useInsideNavList } from "./navlist";
 
 const Navlink = ({
     icon,
@@ -22,36 +23,44 @@ const Navlink = ({
 }) => {
     const [hover, setHover] = useState(false);
     const color = hover || activeCondition ? "#fff" : "#97a6ba";
-    return (
-        <Link href={to}>
+    const isChild = useInsideNavList();
+    return (    
+        <Link href={to} className="s p-0 w-full relative">
+            {activeCondition && (
+                <div
+                    className={`absolute transition-all pl-2 ${ isChild ? "w-10 transform -translate-x-full" : "w-2"}   bg-cyan-400 h-12 rounded-r`}
+                ></div>
+                ) 
+            }
             <div
             className={[
                 styles.navlink,
                 activeCondition ? styles.active : "",
-            ].join(" ")}
+            ].join(" ") + ''}
             onMouseEnter={() => setHover(true)}
             onMouseLeave={() => setHover(false)}
-        >
-            <div className="flex h-5 w-5">
-                {icon === "Home" ? (
-                    <HomeIcon color={color} />
-                ) : icon === "Resources" ? (
-                    <ResourcesIcon color={color} />
-                ) : icon === "Schema" ? (
-                    <SchemaIcon color={color} />
-                ) : icon === "Project" ? (
-                    <ProjectIcon color={color} />
-                ) : icon === "Task" ? (
-                    <TaskIcon color={color} />
-                ) : icon === "Sprint" ? (
-                    <SprintIcon width="100" height="20" />
-	                ) : icon === "Notification" ? (
-	                    <NotificationIcon color={color} />
-	                ) :(
-                    <></>
-                )}
-            </div>
-            <div>{text}</div>
+            >
+
+                <div className="flex h-5 w-5">
+                    {icon === "Home" ? (
+                        <HomeIcon color={color} />
+                    ) : icon === "Resources" ? (
+                        <ResourcesIcon color={color} />
+                    ) : icon === "Schema" ? (
+                        <SchemaIcon color={color} />
+                    ) : icon === "Project" ? (
+                        <ProjectIcon color={color} />
+                    ) : icon === "Task" ? (
+                        <TaskIcon color={color} />
+                    ) : icon === "Sprint" ? (
+                        <SprintIcon width="100" height="20" />
+                        ) : icon === "Notification" ? (
+                            <NotificationIcon color={color} />
+                        ) :(
+                        <></>
+                    )}
+                </div>
+                <div>{text}</div>
             </div>
         </Link>
     );

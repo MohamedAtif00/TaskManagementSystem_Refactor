@@ -302,7 +302,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 						projectName={projectName}
 					/>
 				),
-				{ autoClose: false, closeOnClick: false }
+				{ autoClose: 4000, closeOnClick: false }
 			);
 		};
 
@@ -319,7 +319,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 
 	                    />
 	                ),
-	                { autoClose: false, closeOnClick: false }
+	                { autoClose: 4000, closeOnClick: false }
 	            );
 	        };
 

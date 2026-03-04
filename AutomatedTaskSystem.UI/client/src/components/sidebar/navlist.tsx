@@ -1,4 +1,4 @@
-import { ReactNode,useContext,useState } from "react";
+import { createContext, ReactNode,useContext,useState } from "react";
 
 
 
@@ -7,6 +7,9 @@ interface Props {
     icon?: ({ className }: { className?: string }) => JSX.Element;
     label: string | ReactNode;
 }
+
+const NavListContext = createContext(false)
+export const useInsideNavList=()=> useContext(NavListContext)
 
 const NavList: React.FC<Props> = ({ children, icon: Icon, label }) => {
     const [toggle, setToggle] = useState(false);
@@ -30,12 +33,10 @@ const NavList: React.FC<Props> = ({ children, icon: Icon, label }) => {
         >
             <div
                 className="cursor-pointer group h-12 flex gap-4"
-                onClick={handleToggle}
+                onClick={_=>setToggle(toggle => !toggle)}
             >
                 <div
-                    className={`transition-all pl-2 ${
-                        toggle ? "bg-cyan-400" : ""
-                    } h-12 rounded-r`}
+                    className={`transition-all pl-2  h-12 rounded-r`}
                 ></div>
                 <div className="grow pr-6 flex justify-between items-center text-slate-400 group-hover:text-white">
                     <div className="flex gap-3 items-center">
@@ -67,7 +68,9 @@ const NavList: React.FC<Props> = ({ children, icon: Icon, label }) => {
                     </div>
                 </div>
             </div>
-            <div className="pl-2">{children}</div>
+            <NavListContext.Provider value={true}>
+             <div className="pl-2">{children}</div>
+            </NavListContext.Provider>
         </div>
     );
 };

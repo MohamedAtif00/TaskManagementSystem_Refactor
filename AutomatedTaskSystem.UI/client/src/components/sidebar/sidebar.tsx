@@ -149,13 +149,13 @@ const Sidebar = () => {
                 ) : null}
                  <Navlink
                             // Modified activeCondition for Sprints
-                            activeCondition={path === "/sprints" || path.startsWith("/sprints/")}
+                            activeCondition={path === "/sprints" || path.startsWith("/sprints/") || path.includes("/tasks/sprint/")}
                             to="/sprints"
                             icon="Sprint"
                             text="Sprints"
                         />
                 <Navlink
-                    activeCondition={path.includes("/tasks")}
+                    activeCondition={path.includes("/tasks") && !path.includes("/tasks/sprint/")}
                     to="/tasks"
                     icon="Task"
                     text="Tasks"
