@@ -124,6 +124,11 @@ const GroupRow = ({
 				background: "#fff",
 				marginBottom: 10,
 			}}
+			onClick={(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					onToggleOpen(group.id);
+				}}
 		>
 			{/* Header */}
 			<div
@@ -134,11 +139,16 @@ const GroupRow = ({
 					gap: 12,
 					background: "#fff",
 				}}
+				
 			>
 				{/* Checkbox */}
 				<button
 					type="button"
-					onClick={() => onToggleGroup(group.id)}
+					onClick={(e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						onToggleGroup(group.id);
+					}}
 					style={{
 						width: 20,
 						height: 20,
@@ -186,7 +196,11 @@ const GroupRow = ({
 				{/* Expand/collapse */}
 				<button
 					type="button"
-					onClick={() => onToggleOpen(group.id)}
+					onClick={(e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						onToggleOpen(group.id);
+					}}
 					style={{ width: 28, height: 28, borderRadius: 6, border: "1.5px solid #E2E8F0", background: "#F8FAFC", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, padding: 0, marginLeft: 4 }}
 					aria-label={group.isOpen ? "Collapse" : "Expand"}
 				>
@@ -289,42 +303,56 @@ const ProjectUnassign = ({ handler }: Props) => {
 				style={{
 					background: "#F1F5F9",
 					borderRadius: 18,
-					padding: 24,
 					width: 560,
 					maxHeight: "80vh",
-					overflowY: "auto",
+					display: "flex",
+					flexDirection: "column",
 					boxShadow: "0 8px 40px rgba(15,23,42,0.10)",
 					fontFamily: "'DM Sans', sans-serif",
+					overflow: "hidden",
 				}}
 			>
 				<style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
 
-				<h2 style={{ fontWeight: 700, fontSize: 20, color: "#0F172A", marginBottom: 6, marginTop: 0 }}>
-					Unassign Users from Project
-				</h2>
+				{/* Scrollable content */}
+				<div style={{ overflowY: "auto", padding: 24, flex: 1 }}>
+					<h2 style={{ fontWeight: 700, fontSize: 20, color: "#0F172A", marginBottom: 6, marginTop: 0 }}>
+						Unassign Users from Project
+					</h2>
 
-				<p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#64748B", marginBottom: 16, marginTop: 0 }}>
-					Click a user to mark them for removal. Selected users stay on the project.
-				</p>
+					<p style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#64748B", marginBottom: 16, marginTop: 0 }}>
+						Click a user to mark them for removal. Selected users stay on the project.
+					</p>
 
-				<form onSubmit={handleSubmit}>
-					{groups.map((group) => (
-						<GroupRow
-							key={group.id}
-							group={group}
-							users={users.filter((u) => u.group.id === group.id)}
-							selectedIds={selectedIds}
-							onToggleGroup={toggleGroup}
-							onToggleUser={toggleUser}
-							onToggleOpen={toggleOpen}
-						/>
-					))}
+					<form id="unassign-form" onSubmit={handleSubmit}>
+						{groups.map((group) => (
+							<GroupRow
+								key={group.id}
+								group={group}
+								users={users.filter((u) => u.group.id === group.id)}
+								selectedIds={selectedIds}
+								onToggleGroup={toggleGroup}
+								onToggleUser={toggleUser}
+								onToggleOpen={toggleOpen}
+							/>
+						))}
+					</form>
+				</div>
 
+				{/* Fixed footer */}
+				<div
+					style={{
+						padding: "14px 24px",
+						borderTop: "1.5px solid #E2E8F0",
+						background: "#F1F5F9",
+						borderRadius: "0 0 18px 18px",
+					}}
+				>
 					<button
 						type="submit"
+						form="unassign-form"
 						disabled={totalRemoved === 0}
 						style={{
-							marginTop: 8,
 							width: "100%",
 							padding: "12px 0",
 							background: totalRemoved === 0 ? "#CBD5E1" : "#EF4444",
@@ -345,7 +373,7 @@ const ProjectUnassign = ({ handler }: Props) => {
 							? "No users selected for removal"
 							: `Remove ${totalRemoved} user${totalRemoved > 1 ? "s" : ""}`}
 					</button>
-				</form>
+				</div>
 			</div>
 		</Backdrop>
 	);

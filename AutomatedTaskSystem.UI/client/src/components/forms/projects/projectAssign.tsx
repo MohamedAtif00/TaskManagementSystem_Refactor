@@ -14,6 +14,8 @@ interface loUser {
   role: string;
 }
 
+
+
 interface GroupAccordion {
   id: number;
   name: string;
@@ -29,7 +31,15 @@ const UserCard = ({
   user: loUser;
   selected: boolean;
   onClick: () => void;
-}) => (
+}) => {
+	const roleMap = {
+		0: "Project Manager",
+		1: "Section Head",
+		2: "Team Leader",
+		3: "Member",
+		4: "Owner",
+	};
+	return (
   <button
     type="button"
     onClick={onClick}
@@ -70,10 +80,12 @@ const UserCard = ({
         marginTop: 2,
       }}
     >
-      {user.role}
+      {
+		roleMap[user.role] || "Unknown"
+	}
     </span>
   </button>
-);
+)};
 
 // ── GroupRow ─────────────────────────────────────────────────────────────────
 const GroupRow = ({
@@ -115,11 +127,18 @@ const GroupRow = ({
           gap: 12,
           background: "#fff",
         }}
+          onClick={() => onToggleOpen(group.id)}
+
+		
       >
         {/* Checkbox */}
         <button
           type="button"
-          onClick={() => onToggleGroup(group.id)}
+          	  onClick={(e) => {
+          		e.preventDefault();
+				e.stopPropagation();
+          		onToggleGroup(group.id);
+          	}}
           style={{
             width: 20,
             height: 20,
@@ -200,7 +219,11 @@ const GroupRow = ({
         {/* Expand/collapse */}
         <button
           type="button"
-          onClick={() => onToggleOpen(group.id)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleOpen(group.id);
+          }}
           style={{
             width: 28,
             height: 28,
@@ -333,43 +356,58 @@ const ProjectAssign = ({ handler }: Props) => {
         style={{
           background: "#F1F5F9",
           borderRadius: 18,
-          padding: 24,
           width: 560,
           maxHeight: "80vh",
-          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
           boxShadow: "0 8px 40px rgba(15,23,42,0.10)",
           fontFamily: "'DM Sans', sans-serif",
+          overflow: "hidden",
         }}
       >
         <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
-        <h2
+
+        {/* Scrollable content */}
+        <div style={{ overflowY: "auto", padding: 24, flex: 1 }}>
+          <h2
+            style={{
+              fontWeight: 700,
+              fontSize: 20,
+              color: "#0F172A",
+              marginBottom: 18,
+              marginTop: 0,
+            }}
+          >
+            Assign Users to Project
+          </h2>
+          <form id="assign-form" onSubmit={handleSubmit}>
+            {groups.map((group) => (
+              <GroupRow
+                key={group.id}
+                group={group}
+                users={users.filter((u) => u.group.id === group.id)}
+                selectedIds={selectedIds}
+                onToggleGroup={toggleGroup}
+                onToggleUser={toggleUser}
+                onToggleOpen={toggleOpen}
+              />
+            ))}
+          </form>
+        </div>
+
+        {/* Fixed footer */}
+        <div
           style={{
-            fontWeight: 700,
-            fontSize: 20,
-            color: "#0F172A",
-            marginBottom: 18,
-            marginTop: 0,
+            padding: "14px 24px",
+            borderTop: "1.5px solid #E2E8F0",
+            background: "#F1F5F9",
+            borderRadius: "0 0 18px 18px",
           }}
         >
-          Assign Users to Project
-        </h2>
-        <form onSubmit={handleSubmit}>
-          {groups.map((group) => (
-            <GroupRow
-              key={group.id}
-              group={group}
-              users={users.filter((u) => u.group.id === group.id)}
-              selectedIds={selectedIds}
-              onToggleGroup={toggleGroup}
-              onToggleUser={toggleUser}
-              onToggleOpen={toggleOpen}
-            />
-          ))}
-
           <button
             type="submit"
+            form="assign-form"
             style={{
-              marginTop: 8,
               width: "100%",
               padding: "12px 0",
               background: "#2563EB",
@@ -388,7 +426,7 @@ const ProjectAssign = ({ handler }: Props) => {
           >
             Save
           </button>
-        </form>
+        </div>
       </div>
     </Backdrop>
   );
