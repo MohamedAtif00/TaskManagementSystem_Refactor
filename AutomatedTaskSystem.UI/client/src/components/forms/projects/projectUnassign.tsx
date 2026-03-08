@@ -29,10 +29,17 @@ const UserCard = ({
 	user: loUser;
 	selected: boolean;
 	onClick: () => void;
-}) => (
+}) =>{
+
+	const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+        e.preventDefault();    // Prevents default browser behavior (e.g., form submission)
+        e.stopPropagation();   // Stops the click from firing on parent containers
+        onClick();             // Executes your passed-in logic
+    };
+	return (
 	<button
 		type="button"
-		onClick={onClick}
+		onClick={handleClick}
 		style={{
 			display: "flex",
 			flexDirection: "column",
@@ -93,7 +100,7 @@ const UserCard = ({
 		</span>
 	</button>
 );
-
+};
 // ── GroupRow ─────────────────────────────────────────────────────────────────
 const GroupRow = ({
 	group,
@@ -216,7 +223,7 @@ const GroupRow = ({
 			{group.isOpen && (
 				<div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, padding: "0 16px 16px" }}>
 					{users.map((user) => (
-						<UserCard key={user.id} user={user} selected={selectedIds.includes(user.id)} onClick={() => onToggleUser(user.id)} />
+						<UserCard key={user.id} user={user} selected={selectedIds.includes(user.id)} onClick={(e) => onToggleUser(user.id)} />
 					))}
 				</div>
 			)}
@@ -266,6 +273,7 @@ const ProjectUnassign = ({ handler }: Props) => {
 	}, [router]);
 
 	const toggleUser = (userId: number) => {
+
 		setSelectedIds((prev) =>
 			prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
 		);

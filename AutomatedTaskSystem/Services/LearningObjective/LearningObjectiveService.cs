@@ -21,7 +21,7 @@ public class LearningObjectiveService : ILearningObjectiveService
             .Where(p => !p.Archived && p.Id == Pid)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
-            .ThenInclude(l => l.LearningObjectives.Where(x => x.DoneAt == null))
+            .ThenInclude(l => l.LearningObjectives.Where(x => x.DoneAt == null && !x.Archived))
             .FirstOrDefaultAsync();
 
         if (project is null)

@@ -44,7 +44,7 @@ namespace AutomatedTaskSystem.Controllers
                 return NotFound(result.Value);
             return Ok(result.Value);
         }
-
+            
         // 🔹 UPDATE
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateVacation(int id, [FromBody] UpdateLeaveRequestDto request)

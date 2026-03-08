@@ -10,8 +10,8 @@ import WORK_FROM_HOME from "./workFromHome";
 import NOTIFICATIONS from "./Notifications";
 
 
-export const url = "/api";
-// export const url = "http://localhost:5238";
+// export const url = "/api";
+export const url = "http://localhost:5238";
 
 export interface BasicInfo {
     id: number;
