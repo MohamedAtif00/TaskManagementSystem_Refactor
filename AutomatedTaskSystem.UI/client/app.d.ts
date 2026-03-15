@@ -271,6 +271,10 @@ type TaskInfo = {
     baseDuration:number;
     priority: 0 | 1 | 2 | 3;
     paused: boolean;
+    // Date fields for export filtering
+    createdAt: string;
+    startedAt: string | null;
+    doneAt: string | null;
 };
 
 type TaskBankType = 0 | 1;

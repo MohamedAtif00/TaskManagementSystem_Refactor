@@ -15,6 +15,7 @@ namespace AutomatedTaskSystem.Hub
         public UserHub(UserConnectionService connectionManager, DataContext dataContext)
         {
             _connectionManager = connectionManager;
+
             _dataContext = dataContext;
         }
 

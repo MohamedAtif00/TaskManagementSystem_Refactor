@@ -268,12 +268,12 @@ namespace AutomatedTaskSystem.Services.Sprint
                     return response;
                 }
 
-                if (await IsOverlappingAsync(startDateOnly, endDateOnly))
-                {
-                    response.Error = true;
-                    response.Message = "There is another sprint within this date range.";
-                    return response;
-                }
+                //if (await IsOverlappingAsync(startDateOnly, endDateOnly))
+                //{
+                //    response.Error = true;
+                //    response.Message = "There is another sprint within this date range.";
+                //    return response;
+                //}
 
                 // Create the new Sprint model
                 var sprint = new Models.Sprint // Assuming Models.Sprint is your EF Core entity

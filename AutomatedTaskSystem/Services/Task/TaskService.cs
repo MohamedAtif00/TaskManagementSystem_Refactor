@@ -979,6 +979,34 @@ public class TaskService : ITaskService
                     new BaseResponseService { Error = true, Message = "Project is not found" }
                 );
 
+            // Collect all task IDs first
+            var allTaskIds = p.Units
+                .Where(u => !u.Archived)
+                .SelectMany(u => u.Lessons.Where(l => !l.Archived))
+                .SelectMany(l => l.LearningObjectives.Where(lo => !lo.Archived))
+                .SelectMany(lo => lo.Tasks.Where(t => !t.Archived))
+                .Select(t => t.Id)
+                .ToList();
+
+            // Fetch activity dates for all tasks in one query
+            var activityDates = await _context.TaskActivities
+                .Where(a => allTaskIds.Contains(a.TaskId) &&
+                    (a.Type == TaskActivityTypeEnum.Status_Doing || a.Type == TaskActivityTypeEnum.Status_Done))
+                .GroupBy(a => a.TaskId)
+                .Select(g => new
+                {
+                    TaskId = g.Key,
+                    StartedAt = g.Where(a => a.Type == TaskActivityTypeEnum.Status_Doing)
+                                 .OrderBy(a => a.TimeStamp)
+                                 .Select(a => (DateTime?)a.TimeStamp)
+                                 .FirstOrDefault(),
+                    DoneAt = g.Where(a => a.Type == TaskActivityTypeEnum.Status_Done)
+                              .OrderByDescending(a => a.TimeStamp)
+                              .Select(a => (DateTime?)a.TimeStamp)
+                              .FirstOrDefault()
+                })
+                .ToDictionaryAsync(x => x.TaskId, x => new { x.StartedAt, x.DoneAt });
+
             var tasks = new List<GetTaskCardDto>();
             foreach (var unit in p.Units)
             {
@@ -999,6 +1027,7 @@ public class TaskService : ITaskService
                         {
                             if (!task.Archived)
                             {
+                                activityDates.TryGetValue(task.Id, out var dates);
                                 tasks.Add(new GetTaskCardDto
                                 {
                                     Paused = task.Pause,
@@ -1027,7 +1056,10 @@ public class TaskService : ITaskService
                                     baseDuration = task.Duration,
                                     duration = (decimal?)_context.TaskWorkTimes
                                                     .Where(q => q.TaskId == task.Id)
-                                                    .Sum(q => q.Duration) / 60000
+                                                    .Sum(q => q.Duration) / 60000,
+                                    CreatedAt = task.CreatedAt,
+                                    StartedAt = dates?.StartedAt,
+                                    DoneAt = dates?.DoneAt
                                 });
                             }
                         }
@@ -1123,37 +1155,63 @@ public class TaskService : ITaskService
             .Include(t => t.From)
             .ToListAsync();
 
+        // Fetch activity dates for filtered tasks
+        var taskIds = _tasks.Select(t => t.Id).ToList();
+        var activityDatesForUser = await _context.TaskActivities
+            .Where(a => taskIds.Contains(a.TaskId) &&
+                (a.Type == TaskActivityTypeEnum.Status_Doing || a.Type == TaskActivityTypeEnum.Status_Done))
+            .GroupBy(a => a.TaskId)
+            .Select(g => new
+            {
+                TaskId = g.Key,
+                StartedAt = g.Where(a => a.Type == TaskActivityTypeEnum.Status_Doing)
+                             .OrderBy(a => a.TimeStamp)
+                             .Select(a => (DateTime?)a.TimeStamp)
+                             .FirstOrDefault(),
+                DoneAt = g.Where(a => a.Type == TaskActivityTypeEnum.Status_Done)
+                          .OrderByDescending(a => a.TimeStamp)
+                          .Select(a => (DateTime?)a.TimeStamp)
+                          .FirstOrDefault()
+            })
+            .ToDictionaryAsync(x => x.TaskId, x => new { x.StartedAt, x.DoneAt });
+
         return new ResponseService<List<GetTaskCardDto>>
         {
-            Data = _tasks.Select(t => new GetTaskCardDto
-            {
-                Paused = t.Pause,
-                Attention = t.Attention,
-                Flagged = t.Flagged,
-                From = t.From is null ? "" : t.From.Name,
-                Id = t.Id,
-                IsReview = t.IsReview,
-                IsRollback = t.IsRollback,
-                LearningObjective = new BasicInfoDto
+            Data = _tasks.Select(t => {
+                activityDatesForUser.TryGetValue(t.Id, out var dates);
+                return new GetTaskCardDto
                 {
-                    Id = t.LearningObjective.Id,
-                    Name = t.LearningObjective.Name
-                },
-                Name = t.Name,
-                Priority = t.Priority,
-                RollbackCount = t.RollbackCount,
-                Status = t.Status,
-                User = t.User is null
-                    ? null
-                    : new BasicInfoDto
+                    Paused = t.Pause,
+                    Attention = t.Attention,
+                    Flagged = t.Flagged,
+                    From = t.From is null ? "" : t.From.Name,
+                    Id = t.Id,
+                    IsReview = t.IsReview,
+                    IsRollback = t.IsRollback,
+                    LearningObjective = new BasicInfoDto
                     {
-                        Name = t.User.Name,
-                        Id = t.User.Id
+                        Id = t.LearningObjective.Id,
+                        Name = t.LearningObjective.Name
                     },
-                baseDuration = t.Duration,
-                duration = (decimal?)_context.TaskWorkTimes
-                    .Where(q => q.TaskId == t.Id)
-                    .Sum(q => q.Duration) / 60000
+                    Name = t.Name,
+                    Priority = t.Priority,
+                    RollbackCount = t.RollbackCount,
+                    Status = t.Status,
+                    User = t.User is null
+                        ? null
+                        : new BasicInfoDto
+                        {
+                            Name = t.User.Name,
+                            Id = t.User.Id
+                        },
+                    baseDuration = t.Duration,
+                    duration = (decimal?)_context.TaskWorkTimes
+                        .Where(q => q.TaskId == t.Id)
+                        .Sum(q => q.Duration) / 60000,
+                    CreatedAt = t.CreatedAt,
+                    StartedAt = dates?.StartedAt,
+                    DoneAt = dates?.DoneAt
+                };
             }).ToList(),
             Error = false,
             Message = "List of available tasks"

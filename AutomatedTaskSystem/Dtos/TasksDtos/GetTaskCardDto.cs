@@ -23,4 +23,9 @@ public class GetTaskCardDto
     public DateTime? AdjustedStartDate { get; set; }
     public DateTime? AdjustedEndDate { get; set; }
     public TaskPriorityEnum Priority { get; set; } = TaskPriorityEnum.None;
+
+    // Date fields for export filtering
+    public DateTime CreatedAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public DateTime? DoneAt { get; set; }
 }

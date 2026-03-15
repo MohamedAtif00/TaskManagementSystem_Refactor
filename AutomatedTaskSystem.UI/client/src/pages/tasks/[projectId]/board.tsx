@@ -12,6 +12,20 @@ import TaskIcon from "../../../assets/Icons/Task";
 import Link from "next/link";
 import { Combobox, Transition } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/24/solid";
+import ExportTasksModal from "../../../components/pageComponent/tasks/ExportTasksModal";
+
+type DateFieldKey = "doneAt" | "startedAt" | "createdAt";
+
+interface ExportFilters {
+    taskName: string;
+    loName: string;
+    status: number;
+    dateFrom: string;
+    dateTo: string;
+    dateField: DateFieldKey;
+    includeRollback: boolean;
+    includeCompleteDone: boolean;
+}
 
 const TaskBoard = () => {
     const [tasks, setTasks] = useState<TaskInfo[]>();
@@ -22,6 +36,8 @@ const TaskBoard = () => {
     const [selectedLo, setSelected] = useState<BasicInfo>({ id: 0, name: "None" });
     const [query, setQuery] = useState('');
     const [searchType, setSearchType] = useState<'lo' | 'task'>('lo');
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportFilters, setExportFilters] = useState<ExportFilters | null>(null);
 
     useEffect(() => {
         const id = router.query.projectId;
@@ -34,10 +50,7 @@ const TaskBoard = () => {
     useEffect(() => {
         project &&
             API.TASKS.GET_ALL_CARDS(project.id.toString()).then(
-                (res) => { if (res && !res.error) { setTasks(res.data);
-                    // console.log(res.data);
-                    
-                 }}
+                (res) => { if (res && !res.error) { setTasks(res.data); } }
             );
     }, [project]);
 
@@ -45,8 +58,7 @@ const TaskBoard = () => {
         if (project) {
             const refreshInterval = setInterval(() => {
                 API.TASKS.GET_ALL_CARDS(project.id.toString()).then(
-                    (res) => { if (res && !res.error) { setTasks(res.data); };
-                    }
+                    (res) => { if (res && !res.error) { setTasks(res.data); } }
                 );
             }, 30000);
             return () => clearInterval(refreshInterval);
@@ -67,10 +79,7 @@ const TaskBoard = () => {
         const projectId = router.query.projectId;
         if (projectId)
             API.TASKS.GET_ALL_CARDS(projectId).then(
-                (res) => {
-                    if (res && !res.error)
-                        setTasks(res.data)
-                }
+                (res) => { if (res && !res.error) setTasks(res.data); }
             );
     };
 
@@ -78,8 +87,7 @@ const TaskBoard = () => {
 
     const los = tasks.map(t => t.learningObjective).filter((lo, idx, self) => {
         const element = self.find(_ => _.id == lo.id);
-        if (element === undefined)
-            return false;
+        if (element === undefined) return false;
         const elementId = self.indexOf(element);
         return elementId === idx;
     });
@@ -91,10 +99,8 @@ const TaskBoard = () => {
                 task.name
                     .toLowerCase()
                     .replaceAll(/\s+/g, '')
-                    .includes(
-                        query.toLowerCase()
-                            .replaceAll(/\s+/g, '')
-                    ))
+                    .includes(query.toLowerCase().replaceAll(/\s+/g, ''))
+              )
             : tasks;
 
     const filteredLos = query === ''
@@ -109,21 +115,79 @@ const TaskBoard = () => {
                     query.toLowerCase()
                         .replaceAll("0", "")
                         .replaceAll("_", "")
-                        .replaceAll(/\s+/g, ''))
-        );
+                        .replaceAll(/\s+/g, '')
+                )
+          );
 
-    const selection = searchType === 'lo' 
+    // Start with LO/task-name search selection
+    let selection = searchType === 'lo'
         ? (selectedLo.id !== 0 ? tasks.filter(t => t.learningObjective.id === selectedLo.id) : tasks)
         : filteredTasks;
 
+    // Apply export modal filters on top of the board selection
+    if (exportFilters) {
+        selection = selection.filter(task => {
+            // Task name filter
+            if (exportFilters.taskName.trim()) {
+                const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+                if (!norm(task.name).includes(norm(exportFilters.taskName))) return false;
+            }
+
+            // LO name filter
+            if (exportFilters.loName.trim()) {
+                const norm = (s: string) => s.toLowerCase().replace(/\s+/g, "");
+                if (!norm(task.learningObjective.name).includes(norm(exportFilters.loName))) return false;
+            }
+
+            // Status filter
+            if (exportFilters.status !== -1) {
+                if (exportFilters.status === 3) {
+                    // Only allow Done / Rollback statuses
+                    if (!(task.status === 3 || task.status === 4)) return false;
+
+                    // Sub-type filter within Done, based strictly on status:
+                    // - status 3 => Completed Done
+                    // - status 4 => Rollback
+                    if (!exportFilters.includeCompleteDone && task.status === 3) return false;
+                    if (!exportFilters.includeRollback && task.status === 4) return false;
+                } else {
+                    if (task.status !== exportFilters.status) return false;
+                }
+            }
+
+            // Date filter
+            if (exportFilters.dateFrom || exportFilters.dateTo) {
+                const rawDate = (task as any)[exportFilters.dateField ?? "doneAt"];
+                if (!rawDate) return false;
+
+                const taskDate = new Date(rawDate);
+                if (exportFilters.dateFrom && taskDate < new Date(exportFilters.dateFrom)) return false;
+                if (exportFilters.dateTo) {
+                    const toEnd = new Date(exportFilters.dateTo);
+                    toEnd.setHours(23, 59, 59, 999);
+                    if (taskDate > toEnd) return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
     const view = {
         backlog: selection.filter((t) => t.status === 0),
-        todo: selection.filter((t) => t.status === 1),
-        doing: selection.filter((t) => t.status === 2),
-        done: selection.filter(
-            (t) => t.status === 3 || t.status === 4
-        ),
+        todo:    selection.filter((t) => t.status === 1),
+        doing:   selection.filter((t) => t.status === 2),
+        done:    selection.filter((t) => t.status === 3 || t.status === 4),
     };
+
+    // Show a badge when export filters are active so the user knows the board is filtered
+    const hasActiveExportFilters = exportFilters && (
+        exportFilters.taskName ||
+        exportFilters.loName ||
+        exportFilters.status !== -1 ||
+        exportFilters.dateFrom ||
+        exportFilters.dateTo
+    );
 
     return (
         <>
@@ -138,6 +202,29 @@ const TaskBoard = () => {
                             <span className="text-2xl font-bold">{project.name}</span>
                         </div>
                         <div className="flex gap-4 items-center">
+                            <div className="relative">
+                                <button
+                                    onClick={() => setIsExportModalOpen(true)}
+                                    className="px-4 py-1 bg-slate-50 rounded-md text-black border border-solid border-black text-sm hover:border-blue-600 hover:text-blue-600 transition ease-in"
+                                >
+                                    Export / Filter
+                                </button>
+                                {/* Active filter indicator badge */}
+                                {hasActiveExportFilters && (
+                                    <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] text-white font-bold pointer-events-none">
+                                        ✓
+                                    </span>
+                                )}
+                            </div>
+                            {/* Clear board filters shortcut */}
+                            {hasActiveExportFilters && (
+                                <button
+                                    onClick={() => setExportFilters(null)}
+                                    className="text-xs text-slate-400 hover:text-rose-500 transition-colors underline"
+                                >
+                                    Clear filters
+                                </button>
+                            )}
                             <div>
                                 <Link href={{
                                     pathname: `/tasks/${project.id}/sheet`,
@@ -151,18 +238,17 @@ const TaskBoard = () => {
                                 {auth.role !== 3 &&
                                     <Link href={{
                                         pathname: pathHandler(),
-                                        query: {
-                                            form: "new-task",
-                                        },
+                                        query: { form: "new-task" },
                                     }}>
                                         <button className="px-4 py-1 bg-slate-50 rounded-md text-black border border-solid border-black text-sm hover:border-green-600 hover:text-green-600 transition ease-in">New Task</button>
-                                    </Link>}
+                                    </Link>
+                                }
                             </div>
                             <div>
                                 <form className="flex gap-4 items-end" onSubmit={e => { e.preventDefault(); }}>
                                     <label className="relative block">
                                         <div className="text-xs mb-1">Search type:</div>
-                                        <select 
+                                        <select
                                             className="w-32 border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 focus:ring-0 rounded-lg bg-white shadow-md"
                                             value={searchType}
                                             onChange={(e) => setSearchType(e.target.value as 'lo' | 'task')}
@@ -183,10 +269,7 @@ const TaskBoard = () => {
                                                             onChange={(event) => setQuery(event.target.value)}
                                                         />
                                                         <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-2">
-                                                            <ChevronUpDownIcon
-                                                                className="h-5 w-5 text-gray-400"
-                                                                aria-hidden="true"
-                                                            />
+                                                            <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
                                                         </Combobox.Button>
                                                     </div>
                                                     <Transition
@@ -206,27 +289,20 @@ const TaskBoard = () => {
                                                                     <Combobox.Option
                                                                         key={item.id}
                                                                         className={({ active }) =>
-                                                                            `relative cursor-default select-none py-2 pl-10 pr-4 ${active ? 'bg-blue-600 text-white' : 'text-gray-900'
-                                                                            }`
+                                                                            `relative cursor-default select-none py-2 pl-10 pr-4 ${active ? 'bg-blue-600 text-white' : 'text-gray-900'}`
                                                                         }
                                                                         value={item}
                                                                     >
                                                                         {({ selected, active }) => (
                                                                             <>
-                                                                                <span
-                                                                                    className={`block truncate ${selected ? 'font-medium' : 'font-normal'
-                                                                                        }`}
-                                                                                >
+                                                                                <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
                                                                                     {item.name}
                                                                                 </span>
-                                                                                {selected ? (
-                                                                                    <span
-                                                                                        className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? 'text-white' : 'text-blue-600'
-                                                                                            }`}
-                                                                                    >
+                                                                                {selected && (
+                                                                                    <span className={`absolute inset-y-0 left-0 flex items-center pl-3 ${active ? 'text-white' : 'text-blue-600'}`}>
                                                                                         <CheckIcon className="h-5 w-5" aria-hidden="true" />
                                                                                     </span>
-                                                                                ) : null}
+                                                                                )}
                                                                             </>
                                                                         )}
                                                                     </Combobox.Option>
@@ -256,20 +332,28 @@ const TaskBoard = () => {
                 </div>
                 <div className="px-8 overflow-x-auto flex grow">
                     <div className="flex gap-1 bg-slate-50">
-                        <TaskCol label="Backlog" items={view.backlog}  type={"tasks"}/>
-                        <TaskCol label="To Do" items={view.todo} type={"tasks"}/>
-                        <TaskCol label="Doing" items={view.doing} type={"tasks"}/>
-                        <TaskCol label="Done" items={view.done} type={"tasks"}/>
+                        <TaskCol label="Backlog" items={view.backlog} type={"tasks"} />
+                        <TaskCol label="To Do"   items={view.todo}    type={"tasks"} />
+                        <TaskCol label="Doing"   items={view.doing}   type={"tasks"} />
+                        <TaskCol label="Done"    items={view.done}    type={"tasks"} />
                     </div>
                 </div>
-                <TaskDetails
-                    refreshTasks={refreshTasks}
-                    type="tasks"
-                />
+                <TaskDetails refreshTasks={refreshTasks} type="tasks" />
                 <CreateStandAloneTaskForm
                     refreshTasks={refreshTasks}
                     projectId={project.id}
                     type="tasks"
+                />
+                <ExportTasksModal
+                    isOpen={isExportModalOpen}
+                    onClose={() => setIsExportModalOpen(false)}
+                    tasks={tasks || []}
+                    projectName={project.name}
+                    initialFilters={exportFilters || undefined}
+                    onApplyFilters={(filters) => {
+                        setExportFilters(filters);
+                        setIsExportModalOpen(false);
+                    }}
                 />
             </div>
         </>
@@ -277,4 +361,3 @@ const TaskBoard = () => {
 };
 
 export default TaskBoard;
-
