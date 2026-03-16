@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace AutomatedTaskSystem.Models
 {
@@ -21,8 +21,10 @@ namespace AutomatedTaskSystem.Models
         public string? MedicalCertificateFileName { get; set; }
         public LeaveRequestType Type { get; set; } = LeaveRequestType.Annual;
         public LeaveRequestStatusEnum Status { get; set; } = LeaveRequestStatusEnum.Pending;
+        /// <summary>When set, this many days of an Annual request were taken from next balance (for cap enforcement).</summary>
+ 
         public List<Opinion> Opinions { get; set; } = new();
-    }
+    }   
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum LeaveRequestStatusEnum
@@ -36,6 +38,8 @@ namespace AutomatedTaskSystem.Models
     public enum LeaveRequestType { 
         Annual,
         Sick,
-        Emergency
+        Emergency,
+        UnpaidLeave,
+        FromNextBalance
     }
 }

@@ -1,4 +1,4 @@
-﻿using AutomatedTaskSystem.Dtos.LeaveDtos;
+using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
@@ -23,5 +23,6 @@ namespace AutomatedTaskSystem.Services.Leave
         Task<ResponseService<PageList<GetLeaveRequestDto>>> GetLeaveRequestsByUserId(int userId, int page, int pageSize, string? searchTerm, string? fromDate, string? toDate, string? status, string? type, bool disablePagination);
         Task<LeaveRequestService.OperationResult> GiveOpinion(CreateOpinionDto request);
         Task<LeaveRequestService.OperationResult> GiveBulkOpinion(CreateBulkOpinionDto request);
+        Task<ResponseService<LeavePreviewDto>> PreviewAnnualLeave(int userId, string startDate, string endDate);
     }
 }

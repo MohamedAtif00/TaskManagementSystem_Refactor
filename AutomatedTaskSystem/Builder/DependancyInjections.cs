@@ -26,6 +26,7 @@ using AutomatedTaskSystem.Services.Log;
 using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Services.Lesson;
 using AutomatedTaskSystem.Services.WorkFromHome;
+using AutomatedTaskSystem.Services.Leave.BackgroundService;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -54,6 +55,10 @@ public static class DependancyInjections
         builder.Services.AddScoped<IYearService, YearService>();
         builder.Services.AddScoped<ISprintService, SprintService>();
         builder.Services.AddScoped<ILeaveRequestService, LeaveRequestService>();
+        builder.Services.AddScoped<ILeaveResetService, LeaveResetService>();
+        builder.Services.AddHostedService<LeaveResetBackgroundService>();
+        builder.Services.AddScoped<IRemoveOldAnnualLeaveService, RemoveOldAnnualLeaveService>();
+        builder.Services.AddHostedService<RemoveOldAnnualLeaveServiceBackgroundService>();
         builder.Services.AddScoped<IPermissionService, PermissionService>();
         builder.Services.AddScoped<IWorkFromHomeService, WorkFromHomeService>();
         builder.Services.AddScoped<ILessonService,LessonService>();

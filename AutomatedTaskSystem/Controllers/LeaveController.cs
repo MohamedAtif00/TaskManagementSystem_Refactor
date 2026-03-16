@@ -1,11 +1,13 @@
-﻿using System.Threading.Tasks;
+using System.Threading.Tasks;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Configs;
 using AutomatedTaskSystem.Services.Leave;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
@@ -19,12 +21,71 @@ namespace AutomatedTaskSystem.Controllers
         private readonly ILeaveRequestService _leaveRequestService;
         private readonly DataContext _dataContext;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly LeaveSettings _leaveSettings;
 
-        public LeaveController(ILeaveRequestService leaveRequestService, DataContext dataContext, IWebHostEnvironment webHostEnvironment)
+        public LeaveController(ILeaveRequestService leaveRequestService, DataContext dataContext, IWebHostEnvironment webHostEnvironment, IOptions<LeaveSettings> leaveSettings)
         {
             _leaveRequestService = leaveRequestService;
             _dataContext = dataContext;
             _webHostEnvironment = webHostEnvironment;
+            _leaveSettings = leaveSettings?.Value ?? new LeaveSettings();
+        }
+
+        [HttpGet("settings")]
+        public IActionResult GetLeaveSettings()
+        {
+            var today = DateTime.Today;
+            int year = today.Year;
+            var cutoff = LeaveSettings.ParseDateForYear(_leaveSettings.EmergencyBlackoutCutoffDate, year);
+            var resetDate = LeaveSettings.ParseDateForYear(_leaveSettings.ResetDate, year);
+            bool emergencyAllowed = (cutoff == null && resetDate == null) ||
+                (cutoff != null && today <= cutoff.Value) ||
+                (resetDate != null && today >= resetDate.Value);
+
+            var windowStart = LeaveSettings.ParseDateForYear(_leaveSettings.FromNextBalanceStartDate, year);
+            var windowEnd = LeaveSettings.ParseDateForYear(_leaveSettings.FromNextBalanceEndDate, year);
+            bool inFromNextWindow = windowStart != null && windowEnd != null && today >= windowStart.Value && today <= windowEnd.Value;
+            // After reset date, FromNextBalance must not be available (even if within window or 0 annual leave)
+            bool fromNextWindowActive = inFromNextWindow && (resetDate == null || today < resetDate.Value);
+
+            var dto = new LeaveSettingsDto
+            {
+                FromNextBalanceMaxDays = _leaveSettings.FromNextBalanceMaxDays,
+                FromNextBalanceStartDate = _leaveSettings.FromNextBalanceStartDate,
+                FromNextBalanceEndDate = _leaveSettings.FromNextBalanceEndDate,
+                EmergencyBlackoutCutoffDate = _leaveSettings.EmergencyBlackoutCutoffDate,
+                ResetDate = _leaveSettings.ResetDate,
+                EmergencyAllowed = emergencyAllowed,
+                FromNextBalanceWindowActive = fromNextWindowActive
+            };
+            return Ok(dto);
+        }
+
+        [HttpPost("preview")]
+        public async Task<IActionResult> PreviewAnnualLeave([FromBody] LeavePreviewRequestDto? request)
+        {
+            if (request == null)
+            {
+                return BadRequest(new ResponseService<LeavePreviewDto>
+                {
+                    Error = true,
+                    Message = "Request body is required. Send JSON: { userId, startDate, endDate }.",
+                    Data = new LeavePreviewDto { ErrorMessage = "Request body is required." }
+                });
+            }
+            if (request.UserId <= 0 || string.IsNullOrWhiteSpace(request.StartDate) || string.IsNullOrWhiteSpace(request.EndDate))
+            {
+                return BadRequest(new ResponseService<LeavePreviewDto>
+                {
+                    Error = true,
+                    Message = "UserId, StartDate and EndDate are required.",
+                    Data = new LeavePreviewDto { ErrorMessage = "UserId, StartDate and EndDate are required." }
+                });
+            }
+            var result = await _leaveRequestService.PreviewAnnualLeave(request.UserId, request.StartDate.Trim(), request.EndDate.Trim());
+            if (result.Error)
+                return BadRequest(result);
+            return Ok(result);
         }
 
         // GET: api/Leave

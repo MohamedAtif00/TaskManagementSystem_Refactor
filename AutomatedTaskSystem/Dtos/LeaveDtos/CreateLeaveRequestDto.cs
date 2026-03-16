@@ -1,4 +1,4 @@
-﻿using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models;
 
 namespace AutomatedTaskSystem.Dtos.LeaveDtos
 {
@@ -11,6 +11,8 @@ namespace AutomatedTaskSystem.Dtos.LeaveDtos
         public string? Reason { get; set; }
         public string? NoteForManager { get; set; }
         public IFormFile? MedicalCertificate { get; set; }
+        /// <summary>Set to true when the UI has confirmed using days from next balance for an annual request.</summary>
+        public bool ConfirmFromNextBalance { get; set; } = false;
         //public List<IFormFile>? SupportingDocuments { get; set; }
     }
 }

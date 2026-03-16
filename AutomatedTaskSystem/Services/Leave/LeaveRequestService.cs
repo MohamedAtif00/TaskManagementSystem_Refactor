@@ -1,4 +1,4 @@
-﻿using System.Net.Mail;
+using System.Net.Mail;
 using System.Net.NetworkInformation;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos;
@@ -7,9 +7,9 @@ using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Hub;
 using AutomatedTaskSystem.Migrations;
 using AutomatedTaskSystem.Models;
-	using AutomatedTaskSystem.Models.Enums.NotificationCategory;
-	using AutomatedTaskSystem.Models.Enums.NotificationStatus;
-	using AutomatedTaskSystem.Models.Enums.NotificationType;
+using AutomatedTaskSystem.Models.Enums.NotificationCategory;
+using AutomatedTaskSystem.Models.Enums.NotificationStatus;
+using AutomatedTaskSystem.Models.Enums.NotificationType;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.Email;
 using AutomatedTaskSystem.Services.Log;
@@ -17,6 +17,7 @@ using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using AutomatedTaskSystem.Services.YearService;
+using AutomatedTaskSystem.Models.Configs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -37,6 +38,8 @@ namespace AutomatedTaskSystem.Services.Leave
         private readonly ILogService _logService; // <--- ADD THIS
         private readonly LeaveRequestHelper _leaveRequestHelper;
         private readonly EmailRecipientSettings _emailRecipients;
+        private readonly LeaveSettings _leaveSettings;
+
         public LeaveRequestService(DataContext dataContext,
                                    ITokenService tokenService,
                                    IEmailService emailService,
@@ -45,7 +48,8 @@ namespace AutomatedTaskSystem.Services.Leave
                                    INotificationService notificationService,
                                    ILogService logger,
                                    LeaveRequestHelper leaveRequestHelper,
-                                   IOptions<EmailRecipientSettings> emailRecipientsOptions)
+                                   IOptions<EmailRecipientSettings> emailRecipientsOptions,
+                                   IOptions<LeaveSettings> leaveSettings)
         {
             _dataContext = dataContext;
             _tokenService = tokenService;
@@ -56,6 +60,7 @@ namespace AutomatedTaskSystem.Services.Leave
             _logService = logger;
             _leaveRequestHelper = leaveRequestHelper;
             _emailRecipients = emailRecipientsOptions.Value;
+            _leaveSettings = leaveSettings?.Value ?? new LeaveSettings();
         }
         // Enhanced service method
         public async Task<ResponseService<bool>> CreateLeaveRequest(CreateLeaveRequestDto request)
@@ -63,6 +68,7 @@ namespace AutomatedTaskSystem.Services.Leave
             var response = new ResponseService<bool>();
 
             var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
+            var alreadyUsedFromNext = user.FromNextBalanceDaysUsed;
             if (user == null)
             {
                 response.Error = true;
@@ -72,8 +78,7 @@ namespace AutomatedTaskSystem.Services.Leave
             }
 
             // Parse and validate dates
-            if (!DateTime.TryParse(request.StartDate, out var startDate) ||
-                !DateTime.TryParse(request.EndDate, out var endDate))
+            if (!DateTime.TryParse(request.StartDate, out var startDate) || !DateTime.TryParse(request.EndDate, out var endDate))
             {
                 response.Error = true;
                 response.Message = "Invalid start or end date.";
@@ -91,20 +96,81 @@ namespace AutomatedTaskSystem.Services.Leave
 
             // Use helper for calculation
             int requestedDays = _leaveRequestHelper.CalculateWorkingDays(startDate, endDate);
+            var today = DateTime.Today;
+            int currentYear = today.Year;
+
+            // --- Emergency blackout: after cutoff date, block emergency until reset date ---
+            if (request.type == LeaveRequestType.Emergency)
+            {
+                var cutoff = LeaveSettings.ParseDateForYear(_leaveSettings.EmergencyBlackoutCutoffDate, currentYear);
+                var resetDate = LeaveSettings.ParseDateForYear(_leaveSettings.ResetDate, currentYear);
+                bool emergencyAllowed = (cutoff == null && resetDate == null) ||
+                    (cutoff != null && today <= cutoff.Value) ||
+                    (resetDate != null && today >= resetDate.Value);
+                if (!emergencyAllowed)
+                {
+                    response.Error = true;
+                    response.Message = "Emergency leave requests are temporarily disabled until the annual leave reset. You can submit other leave types.";
+                    response.Data = false;
+                    return response;
+                }
+            }
 
             // --- Start of Revised Leave Type Specific Logic ---
+            int fromNextBalanceDaysToRecord = 0;
+            int pendingFromNextBalanceDays = 0;
+            if (request.type == LeaveRequestType.Annual || request.type == LeaveRequestType.FromNextBalance)
+                pendingFromNextBalanceDays = await _leaveRequestHelper.GetPendingWorkingDaysAsync(user.Id, LeaveRequestType.FromNextBalance);
 
+            // FromNextBalance (direct or via Annual confirmation) is not available after the reset date
+            if ((request.type == LeaveRequestType.FromNextBalance || request.ConfirmFromNextBalance) &&
+                LeaveSettings.ParseDateForYear(_leaveSettings.ResetDate, currentYear) is { } resetDateVal && today >= resetDateVal)
+            {
+                response.Error = true;
+                response.Message = "From next balance is not available after the annual leave reset.";
+                response.Data = false;
+                return response;
+            }
+
+            // Annual: always check balance; when request exceeds remaining, require confirmation and set fromNextBalanceDaysToRecord so we can split into two requests
             if (request.type == LeaveRequestType.Annual)
             {
                 var pendingAnnualLeaveDays = await _leaveRequestHelper.GetPendingLeaveDaysAsync(user.Id, LeaveRequestType.Annual);
                 int remainingAnnualLeave = user.Annual_leave_MAX - user.Annual_leave;
+                int neededFromNext = 0;
 
                 if ((pendingAnnualLeaveDays + requestedDays) > remainingAnnualLeave)
                 {
-                    response.Error = true;
-                    response.Message = $"Requested annual leave exceeds available annual leave balance. Remaining: {remainingAnnualLeave - pendingAnnualLeaveDays} days.";
-                    response.Data = false;
-                    return response;
+                    neededFromNext = (pendingAnnualLeaveDays + requestedDays) - remainingAnnualLeave;
+                    var windowStart = LeaveSettings.ParseDateForYear(_leaveSettings.FromNextBalanceStartDate, currentYear);
+                    var windowEnd = LeaveSettings.ParseDateForYear(_leaveSettings.FromNextBalanceEndDate, currentYear);
+                    bool inFromNextWindow = windowStart != null && windowEnd != null && today >= windowStart.Value && today <= windowEnd.Value;
+
+                    if (!inFromNextWindow)
+                    {
+                        response.Error = true;
+                        response.Message = $"Requested annual leave exceeds available balance. Remaining: {remainingAnnualLeave - pendingAnnualLeaveDays} days. Using next balance is only allowed between {_leaveSettings.FromNextBalanceStartDate} and {_leaveSettings.FromNextBalanceEndDate}.";
+                        response.Data = false;
+                        return response;
+                    }
+
+                    int totalFromNextAfterRequest = alreadyUsedFromNext + pendingFromNextBalanceDays + neededFromNext;
+                    if (neededFromNext > _leaveSettings.FromNextBalanceMaxDays || totalFromNextAfterRequest > _leaveSettings.FromNextBalanceMaxDays)
+                    {
+                        response.Error = true;
+                        response.Message = $"You can use at most {_leaveSettings.FromNextBalanceMaxDays} days from next balance (already used: {alreadyUsedFromNext}, pending: {pendingFromNextBalanceDays}). This request would need {neededFromNext} from next balance.";
+                        response.Data = false;
+                        return response;
+                    }
+
+                    if (request.ConfirmFromNextBalance != true)
+                    {
+                        response.Error = true;
+                        response.Message = "Please confirm that you accept using days from next year balance.";
+                        response.Data = false;
+                        return response;
+                    }
+                    fromNextBalanceDaysToRecord = neededFromNext;
                 }
             }
             else if (request.type == LeaveRequestType.Emergency)
@@ -116,6 +182,32 @@ namespace AutomatedTaskSystem.Services.Leave
                 {
                     response.Error = true;
                     response.Message = $"Requested emergency leave exceeds available emergency leave balance. Remaining: {remainingEmergencyLeave - pendingEmergencyLeaveDays} days.";
+                    response.Data = false;
+                    return response;
+                }
+            }
+            else if (request.type == LeaveRequestType.UnpaidLeave)
+            {
+                // No balance check for unpaid leave.
+            }
+            else if (request.type == LeaveRequestType.FromNextBalance)
+            {
+                var windowStart = LeaveSettings.ParseDateForYear(_leaveSettings.FromNextBalanceStartDate, currentYear);
+                var windowEnd = LeaveSettings.ParseDateForYear(_leaveSettings.FromNextBalanceEndDate, currentYear);
+                bool inWindow = windowStart != null && windowEnd != null && today >= windowStart.Value && today <= windowEnd.Value;
+                if (!inWindow)
+                {
+                    response.Error = true;
+                    response.Message = $"From next balance is only available between {_leaveSettings.FromNextBalanceStartDate} and {_leaveSettings.FromNextBalanceEndDate}.";
+                    response.Data = false;
+                    return response;
+                }
+                int totalFromNextAfterRequest = alreadyUsedFromNext + pendingFromNextBalanceDays + requestedDays;
+                if (requestedDays > _leaveSettings.FromNextBalanceMaxDays || totalFromNextAfterRequest > _leaveSettings.FromNextBalanceMaxDays)
+                {
+                    response.Error = true;
+                    int availableFromNext = Math.Max(0, _leaveSettings.FromNextBalanceMaxDays - alreadyUsedFromNext - pendingFromNextBalanceDays);
+                    response.Message = $"From next balance is limited to {_leaveSettings.FromNextBalanceMaxDays} days (already used: {alreadyUsedFromNext}, pending: {pendingFromNextBalanceDays}). You have {availableFromNext} days available. This request is for {requestedDays} days.";
                     response.Data = false;
                     return response;
                 }
@@ -141,225 +233,218 @@ namespace AutomatedTaskSystem.Services.Leave
             }
             // --- End of Revised Leave Type Specific Logic ---
 
-            var initialStatus = (user.Role == UserRoleEnum.Owner) ? LeaveRequestStatusEnum.Approved : LeaveRequestStatusEnum.Pending;
-
-            var leaveRequest = new LeaveRequest
+            // When user has partial annual balance and confirms from-next, split into two leave requests: Annual + FromNextBalance
+            var segments = new List<(DateTime Start, DateTime End, LeaveRequestType Type)>();
+            bool doSplit = request.type == LeaveRequestType.Annual && request.ConfirmFromNextBalance && fromNextBalanceDaysToRecord > 0;
+            if (doSplit)
             {
-                UserId = user.Id,
-                StartDate = startDate,
-                EndDate = endDate,
-                Reason = request.Reason,
-                Status = initialStatus,
-                Type = request.type,
-                NoteForManager = request.NoteForManager,
-                DateCreated = DateTime.Now
-            };
+                int annualDays = requestedDays - fromNextBalanceDaysToRecord;
+                if (annualDays > 0)
+                {
+                    var (s1, e1, s2, e2) = _leaveRequestHelper.SplitDateRangeByWorkingDays(startDate, endDate, annualDays);
+                    if (s1.HasValue && e1.HasValue) segments.Add((s1.Value, e1.Value, LeaveRequestType.Annual));
+                    if (s2.HasValue && e2.HasValue) segments.Add((s2.Value, e2.Value, LeaveRequestType.FromNextBalance));
+                }
+                else
+                    segments.Add((startDate, endDate, LeaveRequestType.FromNextBalance));
+            }
+            else
+                segments.Add((startDate, endDate, request.ConfirmFromNextBalance ? LeaveRequestType.FromNextBalance : request.type));
 
+            var initialStatus = (user.Role == UserRoleEnum.Owner) ? LeaveRequestStatusEnum.Approved : LeaveRequestStatusEnum.Pending;
+            var createdRequests = new List<LeaveRequest>();
+
+            int? sectionHeadId = null;
             if (user.Role == UserRoleEnum.TeamLeader)
             {
                 var section = await _dataContext.Sections
                     .Where(s => s.SectionGroups.Any(g => g.GroupId == user.GroupId))
                     .FirstOrDefaultAsync();
-
                 if (section != null)
-                    leaveRequest.SectionheadId = section.HeadId;
+                    sectionHeadId = section.HeadId;
+            }
+
+            foreach (var (segStart, segEnd, segType) in segments)
+            {
+                var leaveRequest = new LeaveRequest
+                {
+                    UserId = user.Id,
+                    StartDate = segStart,
+                    EndDate = segEnd,
+                    Reason = request.Reason,
+                    Status = initialStatus,
+                    Type = segType,
+                    NoteForManager = request.NoteForManager,
+                    DateCreated = DateTime.Now,
+                    SectionheadId = sectionHeadId
+                };
+                _dataContext.LeaveRequests.Add(leaveRequest);
+                createdRequests.Add(leaveRequest);
             }
 
 		    try
 		    {
-		        _dataContext.LeaveRequests.Add(leaveRequest);
 		        await _dataContext.SaveChangesAsync();
 		        	
-		        if (request.type == LeaveRequestType.Sick && request.MedicalCertificate != null)
+		        if (request.type == LeaveRequestType.Sick && request.MedicalCertificate != null && createdRequests.Count == 1)
 		        {
-		        	// Use helper to save medical certificate
+		        	var leaveRequest = createdRequests[0];
 		        	var medicalCertPath = await _leaveRequestHelper.SaveMedicalCertificate(request.MedicalCertificate, leaveRequest.Id, _webHostEnvironment);
 		        	leaveRequest.MedicalCertificatePath = medicalCertPath;
 		        	leaveRequest.MedicalCertificateFileName = request.MedicalCertificate.FileName;
-		        	
 		        	_dataContext.LeaveRequests.Update(leaveRequest);
 		        	await _dataContext.SaveChangesAsync();
 		        }
 		        	
-		        // --- Auto-approval and email for Owner ---
+		        // --- Auto-approval and email for Owner (each created request) ---
 		        if (user.Role == UserRoleEnum.Owner)
 		        {
-		        	int approvedDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
-		        	
-		        	switch (leaveRequest.Type)
+		        	foreach (var leaveRequest in createdRequests)
 		        	{
-		        	    case LeaveRequestType.Annual:
-		        	        user.Annual_leave += approvedDays;
-		        	        break;
-		        	    case LeaveRequestType.Emergency:
-		        	        user.Emergency_leave += approvedDays;
-		        	        break;
-		        	    case LeaveRequestType.Sick:
-		        	        user.Sick_leave += approvedDays;
-		        	        break;
+		        	    int approvedDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
+		        	    switch (leaveRequest.Type)
+		        	    {
+		        	        case LeaveRequestType.Annual:
+		        	            user.Annual_leave += approvedDays;
+		        	            break;
+		        	        case LeaveRequestType.Emergency:
+		        	            user.Emergency_leave += approvedDays;
+		        	            break;
+		        	        case LeaveRequestType.Sick:
+		        	            user.Sick_leave += approvedDays;
+		        	            break;
+		        	        case LeaveRequestType.UnpaidLeave:
+		        	            break;
+		        	        case LeaveRequestType.FromNextBalance:
+		        	            user.FromNextBalanceDaysUsed += approvedDays;
+		        	            var resetDateOwner = LeaveSettings.ParseDateForYear(_leaveSettings.ResetDate, DateTime.Today.Year);
+		        	            if (resetDateOwner != null && DateTime.Today >= resetDateOwner.Value)
+		        	                user.Annual_leave += approvedDays;
+		        	            break;
+		        	    }
 		        	}
 		        	_dataContext.Users.Update(user);
 		        	await _dataContext.SaveChangesAsync();
 		        	
-		        	var message = new EmailMessage
+		        	foreach (var leaveRequest in createdRequests)
 		        	{
-		        	    Subject = "طلب أجازة ",
-		        	    Body = EmailTemplate.CreateTemplate(user.Name,
-		        	                                    user.Email,
-		        	                                    leaveRequest.StartDate.ToString("yyyy-MM-dd"),
-		        	                                    leaveRequest.EndDate.ToString("yyyy-MM-dd"),
-		        	                                    _leaveRequestHelper.CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
-		        	                                    leaveRequest.Type,
-		        	                                    leaveRequest.User.HR_code),
-		        	    IsHtml = true,
-		        	    CcEmails = new List<string> {_emailRecipients.CEO ,user.Email }
-		        	};
-		        	
-		        	if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
-		        	{
-		        	    var fullFilePath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
-		        	    if (File.Exists(fullFilePath))
+		        	    var message = new EmailMessage
 		        	    {
-		        	        var attachment = new System.Net.Mail.Attachment(fullFilePath);
-		        	        attachment.Name = leaveRequest.MedicalCertificateFileName;
-		        	        message.Attachments.Add(attachment);
+		        	        Subject = "طلب أجازة ",
+		        	        Body = EmailTemplate.CreateTemplate(user.Name,
+		        	            user.Email,
+		        	            leaveRequest.StartDate.ToString("yyyy-MM-dd"),
+		        	            leaveRequest.EndDate.ToString("yyyy-MM-dd"),
+		        	            _leaveRequestHelper.CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
+		        	            leaveRequest.Type,
+		        	            user.HR_code),
+		        	        IsHtml = true,
+		        	        CcEmails = new List<string> { _emailRecipients.CEO, user.Email }
+		        	    };
+		        	    if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
+		        	    {
+		        	        var fullFilePath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
+		        	        if (File.Exists(fullFilePath))
+		        	        {
+		        	            var attachment = new System.Net.Mail.Attachment(fullFilePath);
+		        	            attachment.Name = leaveRequest.MedicalCertificateFileName;
+		        	            message.Attachments.Add(attachment);
+		        	        }
 		        	    }
-		        	}
+		        	    var emailResult = await _emailService.SendEmailAsync(message);
+		        	    if (!emailResult.Success)
+		        	        Console.WriteLine($"Error sending auto-approval email for Owner's LeaveRequest {leaveRequest.Id}: {emailResult.Message}");
 		        	
-		        	var emailResult = await _emailService.SendEmailAsync(message);
-		        	
-		        	if (!emailResult.Success)
-		        	{
-		        	    Console.WriteLine($"Error sending auto-approval email for Owner's LeaveRequest {leaveRequest.Id}: {emailResult.Message}");
+		        	    await _notificationService.CreateNotification(
+		        	        user.Id,
+		        	        "Leave Request Automatically Approved",
+		        	        $"{leaveRequest.Type} leave from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} has been automatically approved.",
+		        	        NotificationCategoryEnum.Leaves,
+		        	        NotificationTypeEnum.Leave,
+		        	        relatedEntityId: leaveRequest.Id,
+		        	        hasActions: false,
+		        	        status: NotificationStatusEnum.Accepted);
 		        	}
 		        	
 		        	await _hubContext.Clients.User(user.Id.ToString()).SendAsync("LeaveRequestOpinion", new
 		        	{
 		        	    isApproved = true,
-		        	    message = "Your leave request has been automatically approved."
+		        	    message = "Your leave request(s) have been automatically approved."
 		        	});
-		        	
-		        	// Persistent notification for Owner auto-approval
-		        	var autoApproveTitle = "Leave Request Automatically Approved";
-		        	var autoApproveMessage = $"{leaveRequest.Type} leave from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} has been automatically approved.";
-		        	await _notificationService.CreateNotification(
-		        	    user.Id,
-		        	    autoApproveTitle,
-		        	    autoApproveMessage,
-		        	    NotificationCategoryEnum.Leaves,
-		        	    NotificationTypeEnum.Leave,
-		        	    relatedEntityId: leaveRequest.Id,
-		        	    hasActions: false,
-		        	    status: NotificationStatusEnum.Accepted);
 		        }
 		        else
 		        {
-		        	// Non-owner flows: keep existing SignalR pending updates
+		        	var firstRequestId = createdRequests[0].Id;
 		        	if (user.Role == UserRoleEnum.ProjectManger)
-		        	{
-		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(leaveRequest.Id);
-		        	}
+		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(firstRequestId);
 		        	else if (user.Role == UserRoleEnum.TeamLeader)
 		        	{
-		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(leaveRequest.Id);
-		        	    await _leaveRequestHelper.SendProjectManagersPendingUpdate(leaveRequest.Id);
+		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(firstRequestId);
+		        	    await _leaveRequestHelper.SendProjectManagersPendingUpdate(firstRequestId);
 		        	}
-		        	else // Normal flow for non-Owner/PM/TL roles: Notify Owner/Admin and Team Leader about new pending request
+		        	else
 		        	{
-		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(leaveRequest.Id);
-		        	    await _leaveRequestHelper.SendProjectManagersPendingUpdate(leaveRequest.Id);
-		        	
+		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(firstRequestId);
+		        	    await _leaveRequestHelper.SendProjectManagersPendingUpdate(firstRequestId);
 		        	    if (user.TeamleaderId.HasValue)
 		        	    {
-		        	        // Fetch the Team Leader's user object
 		        	        var teamLeader = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
-		        	
 		        	        if (teamLeader != null)
-		        	        {
-		        	            await _leaveRequestHelper.SendTeamLeaderPendingUpdates(teamLeader.Id, leaveRequest.Id);
-		        	        }
+		        	            await _leaveRequestHelper.SendTeamLeaderPendingUpdates(teamLeader.Id, firstRequestId);
 		        	        else
-		        	        {
 		        	            Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id}.");
-		        	        }
 		        	    }
 		        	    else
-		        	    {
 		        	        Console.WriteLine($"Warning: User {user.Id} does not have a TeamleaderId.");
-		        	    }
 		        	}
 		        	
-		        	// Persistent notifications for non-owner submitter and approvers
-		        	var workingDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
-		        	var submitTitle = "Leave Request Submitted";
-		        	var submitMessage = $"{leaveRequest.Type} leave from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} ({workingDays} working days) has been submitted and is pending review.";
-		        	
-		        	await _notificationService.CreateNotification(
-		        	    user.Id,
-		        	    submitTitle,
-		        	    submitMessage,
-		        	    NotificationCategoryEnum.Leaves,
-		        	    NotificationTypeEnum.Leave,
-		        	    relatedEntityId: leaveRequest.Id,
-		        	    hasActions: false,
-		        	    status: NotificationStatusEnum.Pending);
-		        	
-		        	var approvers = new List<Models.User>();
-		        	
-		        	// Owner
-		        	var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
-		        	if (owner != null && owner.Id != user.Id)
+		        	foreach (var leaveRequest in createdRequests)
 		        	{
-		        	    approvers.Add(owner);
-		        	}
-		        	
-		        	// Project managers / section heads related to the user's group
-		        	if (user.GroupId.HasValue)
-		        	{
-		        	    var projectManagers = await _dataContext.SectionGroups
-		        	        .Where(sg => sg.GroupId == user.GroupId.Value)
-		        	        .Select(sg => sg.Section.Head)
-		        	        .Distinct()
-		        	        .ToListAsync();
-		        	
-		        	    approvers.AddRange(projectManagers.Where(pm => pm != null && pm.Id != user.Id));
-		        	}
-		        	
-		        	// Team leader (if any)
-		        	if (user.TeamleaderId.HasValue && user.TeamleaderId.Value != user.Id)
-		        	{
-		        	    var teamLeaderUser = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
-		        	    if (teamLeaderUser != null)
-		        	    {
-		        	        approvers.Add(teamLeaderUser);
-		        	    }
-		        	}
-		        	
-		        	var approverIds = approvers
-		        	    .Where(a => a != null)
-		        	    .Select(a => a.Id)
-		        	    .Distinct()
-		        	    .ToList();
-		        	
-		        	var approverTitle = "New Leave Request Pending Review";
-		        	var approverMessage = $"{user.Name} submitted a {leaveRequest.Type} leave request from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} ({workingDays} working days).";
-		        	
-		        	foreach (var approverId in approverIds)
-		        	{
+		        	    var workingDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
 		        	    await _notificationService.CreateNotification(
-		        	        approverId,
-		        	        approverTitle,
-		        	        approverMessage,
+		        	        user.Id,
+		        	        "Leave Request Submitted",
+		        	        $"{leaveRequest.Type} leave from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} ({workingDays} working days) has been submitted and is pending review.",
 		        	        NotificationCategoryEnum.Leaves,
 		        	        NotificationTypeEnum.Leave,
 		        	        relatedEntityId: leaveRequest.Id,
-		        	        hasActions: true,
+		        	        hasActions: false,
 		        	        status: NotificationStatusEnum.Pending);
+		        	
+		        	    var approvers = new List<Models.User>();
+		        	    var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
+		        	    if (owner != null && owner.Id != user.Id) approvers.Add(owner);
+		        	    if (user.GroupId.HasValue)
+		        	    {
+		        	        var projectManagers = await _dataContext.SectionGroups
+		        	            .Where(sg => sg.GroupId == user.GroupId.Value)
+		        	            .Select(sg => sg.Section.Head)
+		        	            .Distinct()
+		        	            .ToListAsync();
+		        	        approvers.AddRange(projectManagers.Where(pm => pm != null && pm.Id != user.Id));
+		        	    }
+		        	    if (user.TeamleaderId.HasValue && user.TeamleaderId.Value != user.Id)
+		        	    {
+		        	        var teamLeaderUser = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
+		        	        if (teamLeaderUser != null) approvers.Add(teamLeaderUser);
+		        	    }
+		        	    var approverIds = approvers.Where(a => a != null).Select(a => a.Id).Distinct().ToList();
+		        	    var approverMessage = $"{user.Name} submitted a {leaveRequest.Type} leave request from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} ({workingDays} working days).";
+		        	    foreach (var approverId in approverIds)
+		        	        await _notificationService.CreateNotification(
+		        	            approverId,
+		        	            "New Leave Request Pending Review",
+		        	            approverMessage,
+		        	            NotificationCategoryEnum.Leaves,
+		        	            NotificationTypeEnum.Leave,
+		        	            relatedEntityId: leaveRequest.Id,
+		        	            hasActions: true,
+		        	            status: NotificationStatusEnum.Pending);
 		        	}
 		        }
 		        
 		        response.Data = true;
-		        response.Message = "Leave request created successfully." + (user.Role == UserRoleEnum.Owner ? " It has been automatically approved." : "");
+		        response.Message = "Leave request created successfully." + (createdRequests.Count > 1 ? " Your request was split into " + createdRequests.Count + " entries (annual + from next balance)." : "") + (user.Role == UserRoleEnum.Owner ? " It has been automatically approved." : "");
 		    }
             catch (Exception ex)
             {
@@ -522,6 +607,15 @@ namespace AutomatedTaskSystem.Services.Leave
                                         }
                                         // --- END ADDED LOGIC ---
                                         senderUser.Sick_leave += approvedDays; // This line seems to be a duplicate. If it's intended to increase sick leave, you'd only need one. I'm leaving it as is in your original code.
+                                        break;
+                                    case LeaveRequestType.UnpaidLeave:
+                                        break;
+                                    case LeaveRequestType.FromNextBalance:
+                                        senderUser.FromNextBalanceDaysUsed += approvedDays;
+                                        // After reset: count FromNextBalance days as used annual leave for current year
+                                        var resetDateOpinion = LeaveSettings.ParseDateForYear(_leaveSettings.ResetDate, DateTime.Today.Year);
+                                        if (resetDateOpinion != null && DateTime.Today >= resetDateOpinion.Value)
+                                            senderUser.Annual_leave += approvedDays;
                                         break;
                                 }
 
@@ -1232,7 +1326,7 @@ namespace AutomatedTaskSystem.Services.Leave
                     {
                         var leaveDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
 
-                        // Refund leave days
+                        // Refund leave days (only the part that was deducted from current balance)
                         switch (leaveRequest.Type)
                         {
                             case LeaveRequestType.Annual:
@@ -1245,6 +1339,16 @@ namespace AutomatedTaskSystem.Services.Leave
 
                             case LeaveRequestType.Sick:
                                 senderUser.Sick_leave -= leaveDays;
+                                break;
+
+                            case LeaveRequestType.UnpaidLeave:
+                                break;
+                            case LeaveRequestType.FromNextBalance:
+                                senderUser.FromNextBalanceDaysUsed -= leaveDays;
+                                // If this leave was approved after reset (leave starts on or after reset date), we had added to Annual_leave; refund it on cancel
+                                var resetDateCancel = LeaveSettings.ParseDateForYear(_leaveSettings.ResetDate, leaveRequest.StartDate.Year);
+                                if (resetDateCancel != null && leaveRequest.StartDate >= resetDateCancel.Value)
+                                    senderUser.Annual_leave -= leaveDays;
                                 break;
                         }
 
@@ -1370,6 +1474,86 @@ namespace AutomatedTaskSystem.Services.Leave
                 .ToListAsync();
 
             return users;
+        }
+
+        public async Task<ResponseService<LeavePreviewDto>> PreviewAnnualLeave(int userId, string startDateStr, string endDateStr)
+        {
+            var response = new ResponseService<LeavePreviewDto>();
+            if (!DateTime.TryParse(startDateStr, out var startDate) || !DateTime.TryParse(endDateStr, out var endDate))
+            {
+                response.Error = true;
+                response.Message = "Invalid start or end date.";
+                response.Data = new LeavePreviewDto { ErrorMessage = "Invalid start or end date." };
+                return response;
+            }
+            if (endDate < startDate)
+            {
+                response.Error = true;
+                response.Message = "End date cannot be earlier than start date.";
+                response.Data = new LeavePreviewDto { ErrorMessage = response.Message };
+                return response;
+            }
+
+            var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            if (user == null)
+            {
+                response.Error = true;
+                response.Message = "User not found.";
+                response.Data = new LeavePreviewDto { ErrorMessage = response.Message };
+                return response;
+            }
+
+            int requestedDays = _leaveRequestHelper.CalculateWorkingDays(startDate, endDate);
+            var pendingAnnualLeaveDays = await _leaveRequestHelper.GetPendingLeaveDaysAsync(user.Id, LeaveRequestType.Annual);
+            int remainingAnnualLeave = user.Annual_leave_MAX - user.Annual_leave;
+            int availableAnnual = remainingAnnualLeave - pendingAnnualLeaveDays;
+            if (availableAnnual < 0) availableAnnual = 0;
+
+            int neededFromNext = 0;
+            bool needsConfirmation = false;
+            int alreadyUsedFromNext = user.FromNextBalanceDaysUsed;
+            int pendingFromNextBalanceDays = await _leaveRequestHelper.GetPendingWorkingDaysAsync(user.Id, LeaveRequestType.FromNextBalance);
+            var today = DateTime.Today;
+            int currentYear = today.Year;
+
+            if ((pendingAnnualLeaveDays + requestedDays) > remainingAnnualLeave)
+            {
+                neededFromNext = (pendingAnnualLeaveDays + requestedDays) - remainingAnnualLeave;
+                var windowStart = LeaveSettings.ParseDateForYear(_leaveSettings.FromNextBalanceStartDate, currentYear);
+                var windowEnd = LeaveSettings.ParseDateForYear(_leaveSettings.FromNextBalanceEndDate, currentYear);
+                bool inWindow = windowStart != null && windowEnd != null && today >= windowStart.Value && today <= windowEnd.Value;
+
+                if (!inWindow)
+                {
+                    response.Error = true;
+                    response.Message = $"Using next balance is only allowed between {_leaveSettings.FromNextBalanceStartDate} and {_leaveSettings.FromNextBalanceEndDate}.";
+                    response.Data = new LeavePreviewDto { ErrorMessage = response.Message, RequestedDays = requestedDays, AvailableAnnual = availableAnnual, NeededFromNext = neededFromNext, FromNextBalanceMaxDays = _leaveSettings.FromNextBalanceMaxDays, PendingFromNext = pendingFromNextBalanceDays };
+                    return response;
+                }
+
+                int totalFromNextAfterRequest = alreadyUsedFromNext + pendingFromNextBalanceDays + neededFromNext;
+                if (neededFromNext > _leaveSettings.FromNextBalanceMaxDays || totalFromNextAfterRequest > _leaveSettings.FromNextBalanceMaxDays)
+                {
+                    response.Error = true;
+                    response.Message = $"You can use at most {_leaveSettings.FromNextBalanceMaxDays} days from next balance (already used: {alreadyUsedFromNext}, pending: {pendingFromNextBalanceDays}).";
+                    response.Data = new LeavePreviewDto { ErrorMessage = response.Message, RequestedDays = requestedDays, AvailableAnnual = availableAnnual, NeededFromNext = neededFromNext, FromNextBalanceMaxDays = _leaveSettings.FromNextBalanceMaxDays, AlreadyUsedFromNext = alreadyUsedFromNext, PendingFromNext = pendingFromNextBalanceDays };
+                    return response;
+                }
+                needsConfirmation = true;
+            }
+
+            response.Data = new LeavePreviewDto
+            {
+                RequestedDays = requestedDays,
+                AvailableAnnual = availableAnnual,
+                NeededFromNext = neededFromNext,
+                FromNextBalanceMaxDays = _leaveSettings.FromNextBalanceMaxDays,
+                AlreadyUsedFromNext = alreadyUsedFromNext,
+                PendingFromNext = pendingFromNextBalanceDays,
+                NeedsConfirmation = needsConfirmation
+            };
+            response.Message = needsConfirmation ? "Part of this request would use next year balance. Please confirm." : "OK";
+            return response;
         }
 
         private static int CalculateWorkingDays(DateTime startDate, DateTime endDate)

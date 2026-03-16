@@ -4,7 +4,7 @@ import { format, isPast, parseISO } from "date-fns";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
-import LEAVE, { ICreateLeave, IGetLeaveRequest, LeaveRequestStatus, LeaveRequestType } from "../../lib/API/Leave";
+import LEAVE, { ICreateLeave, IGetLeaveRequest, LeaveRequestStatus, LeaveRequestType, ILeaveSettingsDto } from "../../lib/API/Leave";
 import Permission, { ICreatePermission, IPermission, PermissionRequestStatus, PermissionType } from "../../lib/API/Permission";
 import { FiX } from "react-icons/fi";
 import FileUpload from "../../components/pageComponent/leave/fileUpload";
@@ -162,7 +162,7 @@ const WorkFromHomeModal = ({
 };
 
 
-// --- Existing LeaveModal (no changes needed) ---
+// --- LeaveModal with settings, UnpaidLeave/FromNextBalance, and emergency blackout ---
 const LeaveModal = ({
     isOpen,
     onClose,
@@ -183,8 +183,20 @@ const LeaveModal = ({
     const [medicalCertificate, setMedicalCertificate] = useState<File | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [leaveSettings, setLeaveSettings] = useState<ILeaveSettingsDto | null>(null);
+    const [showFromNextConfirm, setShowFromNextConfirm] = useState(false);
+    const [pendingLeaveData, setPendingLeaveData] = useState<ICreateLeave | null>(null);
+    const [previewInfo, setPreviewInfo] = useState<{ neededFromNext: number; maxDays: number } | null>(null);
 
     const auth = useAppSelector((e) => e.authSlice);
+
+    useEffect(() => {
+        if (isOpen) {
+            LEAVE.GET_SETTINGS().then((res) => {
+                if (!res.error && res.data) setLeaveSettings(res.data);
+            });
+        }
+    }, [isOpen]);
 
     const handleMedicalCertificateChange = (file: File | null) => {
         setMedicalCertificate(file);
@@ -212,34 +224,71 @@ const LeaveModal = ({
         return true;
     };
 
+    const submitLeaveRequest = async (leaveData: ICreateLeave) => {
+        const response = await LEAVE.CREATE(leaveData);
+        if (response?.error) {
+            toast.error(response.message || 'حدث خطأ. يرجى المحاولة مرة أخرى.');
+            return false;
+        }
+        if (response?.data) {
+            toast.success('تم إنشاء طلب الإجازة بنجاح.');
+            onSuccess();
+            onClose();
+            resetForm();
+            setShowFromNextConfirm(false);
+            setPendingLeaveData(null);
+            setPreviewInfo(null);
+            return true;
+        }
+        toast.warning('فشل في إنشاء طلب الإجازة. يرجى المحاولة مرة أخرى.');
+        return false;
+    };
+
     const handleSubmit = async () => {
         if (!auth?.id || !validateForm()) return;
+        const leaveData: ICreateLeave = {
+            userId: auth.id,
+            type: formData.type,
+            startDate: formData.startDate,
+            endDate: formData.endDate,
+            reason: formData.reason,
+            noteToManager: formData.noteToManager,
+            medicalCertificate: medicalCertificate || undefined,
+        };
+
+        if (formData.type === LeaveRequestType.Annual) {
+            const preview = await LEAVE.PREVIEW_ANNUAL(auth.id, formData.startDate, formData.endDate);
+            if (preview?.error && preview?.data?.errorMessage) {
+                setError(preview.data.errorMessage);
+                toast.error(preview.message || preview.data.errorMessage);
+                return;
+            }
+            if (preview?.data?.needsConfirmation && preview.data.neededFromNext > 0) {
+                setPendingLeaveData(leaveData);
+                setPreviewInfo({ neededFromNext: preview.data.neededFromNext, maxDays: preview.data.fromNextBalanceMaxDays });
+                setShowFromNextConfirm(true);
+                return;
+            }
+        }
+
         setIsSubmitting(true);
         try {
-            const leaveData: ICreateLeave = {
-                userId: auth.id,
-                type: formData.type,
-                startDate: formData.startDate,
-                endDate: formData.endDate,
-                reason: formData.reason,
-                noteToManager: formData.noteToManager,
-                medicalCertificate: medicalCertificate || undefined,
-            };
-            const response = await LEAVE.CREATE(leaveData);
-            if (response?.error) {
-                toast.error(response.message || 'حدث خطأ. يرجى المحاولة مرة أخرى.');
-            } else if (response?.data) {
-                toast.success('تم إنشاء طلب الإجازة بنجاح.');
-                onSuccess();
-                onClose();
-                resetForm();
-            } else {
-                toast.warning('فشل في إنشاء طلب الإجازة. يرجى المحاولة مرة أخرى.');
-            }
+            await submitLeaveRequest(leaveData);
         } catch (err) {
             console.error('Error creating leave request:', err);
             toast.error('حدث خطأ. يرجى المحاولة مرة أخرى.');
         } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleConfirmFromNextBalance = async () => {
+        if (!pendingLeaveData || !auth?.id) return;
+        setIsSubmitting(true);
+        try {
+            const submitted = await submitLeaveRequest({ ...pendingLeaveData, confirmFromNextBalance: true });
+            if (!submitted) setIsSubmitting(false);
+        } catch (err) {
             setIsSubmitting(false);
         }
     };
@@ -288,8 +337,17 @@ const LeaveModal = ({
                             <option value="">اختر نوع الإجازة</option>
                             <option value={LeaveRequestType.Annual}>إجازة اعتيادي</option>
                             <option value={LeaveRequestType.Sick}>إجازة مرضي</option>
-                            <option value={LeaveRequestType.Emergency}>إجازة عارضه</option>
+                            <option value={LeaveRequestType.Emergency} disabled={leaveSettings ? !leaveSettings.emergencyAllowed : false}>
+                                إجازة عارضه {leaveSettings && !leaveSettings.emergencyAllowed ? '(معلقة حتى إعادة تعيين الرصيد)' : ''}
+                            </option>
+                            <option value={LeaveRequestType.UnpaidLeave}>إجازة بدون أجر</option>
+                            {leaveSettings?.fromNextBalanceWindowActive && (
+                                <option value={LeaveRequestType.FromNextBalance}>من رصيد السنة القادمة</option>
+                            )}
                         </select>
+                        {leaveSettings && !leaveSettings.emergencyAllowed && (
+                            <p className="text-xs text-amber-600 mt-1">طلبات الإجازة العارضة متوقفة مؤقتاً حتى إعادة تعيين الأرصدة.</p>
+                        )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -325,6 +383,21 @@ const LeaveModal = ({
                     </div>
                 </div>
             </div>
+
+            {showFromNextConfirm && previewInfo && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-[60] flex items-center justify-center">
+                    <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4" dir="rtl">
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">استخدام رصيد السنة القادمة</h3>
+                        <p className="text-sm text-gray-600 mb-4">
+                            رصيدك الحالي من الإجازة الاعتيادية لا يكفي لهذه الفترة. سيتم خصم {previewInfo.neededFromNext} يوم من رصيد السنة القادمة (الحد الأقصى المسموح: {previewInfo.maxDays} أيام). هل توافق؟
+                        </p>
+                        <div className="flex justify-end space-x-3">
+                            <button type="button" onClick={() => { setShowFromNextConfirm(false); setPendingLeaveData(null); setPreviewInfo(null); }} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50" disabled={isSubmitting}>إلغاء</button>
+                            <button type="button" onClick={handleConfirmFromNextBalance} className="px-4 py-2 bg-black text-white rounded-md text-sm font-medium hover:bg-gray-800 disabled:opacity-50" disabled={isSubmitting}>{isSubmitting ? 'جاري الإرسال...' : 'نعم، موافق'}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

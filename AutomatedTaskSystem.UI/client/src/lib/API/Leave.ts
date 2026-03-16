@@ -38,6 +38,27 @@ interface ILeave {
 interface ICreateLeave extends ILeave {
     userId?: number;
     medicalCertificate?: File | null;
+    confirmFromNextBalance?: boolean;
+}
+
+export interface ILeaveSettingsDto {
+    fromNextBalanceMaxDays: number;
+    fromNextBalanceStartDate: string | null;
+    fromNextBalanceEndDate: string | null;
+    emergencyBlackoutCutoffDate: string | null;
+    resetDate: string | null;
+    emergencyAllowed: boolean;
+    fromNextBalanceWindowActive: boolean;
+}
+
+export interface ILeavePreviewDto {
+    requestedDays: number;
+    availableAnnual: number;
+    neededFromNext: number;
+    fromNextBalanceMaxDays: number;
+    alreadyUsedFromNext: number;
+    needsConfirmation: boolean;
+    errorMessage?: string | null;
 }
 
 interface IGetAllLeavesApiResponse {
@@ -76,6 +97,8 @@ interface IGetLeaveRequest extends ILeave {
     Annual = "Annual",
     Sick = "Sick",
     Emergency = "Emergency",
+    UnpaidLeave = "UnpaidLeave",
+    FromNextBalance = "FromNextBalance",
 }
 
  enum LeaveRequestStatus {
@@ -220,6 +243,9 @@ const LEAVE = {
 
             if (leaveData.medicalCertificate) {
                 formData.append('MedicalCertificate', leaveData.medicalCertificate);
+            }
+            if (leaveData.confirmFromNextBalance === true) {
+                formData.append('ConfirmFromNextBalance', 'true');
             }
 
             const res = await fetch(`${url}/Leave`, {
@@ -403,6 +429,32 @@ const LEAVE = {
         } catch (error) {
             console.error("Error downloading medical certificate:", error);
             return false;
+        }
+    },
+    GET_SETTINGS: async (): Promise<ResponseService<ILeaveSettingsDto>> => {
+        try {
+            const res = await fetch(`${url}/Leave/settings`, {
+                headers: { "Content-Type": "application/json", ...authService.authHeader() },
+            });
+            const data: ResponseService<ILeaveSettingsDto> = await res.json();
+            return data;
+        } catch (error) {
+            console.error("Error fetching leave settings:", error);
+            return { error: true, message: "Failed to fetch leave settings", data: undefined as any };
+        }
+    },
+    PREVIEW_ANNUAL: async (userId: number, startDate: string, endDate: string): Promise<ResponseService<ILeavePreviewDto>> => {
+        try {
+            const res = await fetch(`${url}/Leave/preview`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...authService.authHeader() },
+                body: JSON.stringify({ userId, startDate, endDate }),
+            });
+            const data: ResponseService<ILeavePreviewDto> = await res.json();
+            return data;
+        } catch (error) {
+            console.error("Error previewing annual leave:", error);
+            return { error: true, message: "Failed to preview leave", data: undefined as any };
         }
     },
     CANCEL_LEAVE: async (leaveRequestId: number): Promise<ResponseService<boolean> | false> => {

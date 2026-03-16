@@ -63,7 +63,7 @@ namespace AutomatedTaskSystem.Services.Email
                             <span class='label'> مدة الأجازة:</span> {duration}
                         </div>
                         <div class='section'>
-                            <span class='label'>نوع الأجازة:</span> {(leaveType == LeaveRequestType.Sick?"مرضى":leaveType == LeaveRequestType.Emergency?"عارضة":"إعتيادي")}
+                            <span class='label'>نوع الأجازة:</span> {(leaveType == LeaveRequestType.Sick?"مرضى":leaveType == LeaveRequestType.Emergency?"عارضة":leaveType == LeaveRequestType.FromNextBalance?"من الرصيد القادم":"إعتيادي")}
                         </div>
                         <div class='section'>
                             <span class='label'>كود الموظف:</span>

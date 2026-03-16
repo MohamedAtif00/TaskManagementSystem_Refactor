@@ -1,4 +1,4 @@
-﻿global using Microsoft.EntityFrameworkCore;
+global using Microsoft.EntityFrameworkCore;
 using AutomatedTaskSystem.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -14,6 +14,8 @@ using AutomatedTaskSystem.Seeding;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Converters;
 using AutomatedTaskSystem.Services.Email;
+using AutomatedTaskSystem.Models.Configs;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
 try
@@ -36,6 +38,7 @@ try
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     builder.Services.Configure<EmailRecipientSettings>(
     builder.Configuration.GetSection("EmailRecipients"));
+    builder.Services.Configure<LeaveSettings>(builder.Configuration.GetSection(LeaveSettings.SectionName));
 
     DependancyInjections.Inject(builder);
 

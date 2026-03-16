@@ -1,4 +1,4 @@
-﻿using AutomatedTaskSystem.Models.Enums.UserRole;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Models;
 using Microsoft.AspNetCore.SignalR;
 using AutomatedTaskSystem.Data;
@@ -36,6 +36,36 @@ namespace AutomatedTaskSystem.Helper
         }
 
         /// <summary>
+        /// Returns working days between startDate and endDate (inclusive), in order. Uses same weekend as CalculateWorkingDays (Sat/Sun).
+        /// </summary>
+        public List<DateTime> GetWorkingDaysInRange(DateTime startDate, DateTime endDate)
+        {
+            var list = new List<DateTime>();
+            for (DateTime date = startDate.Date; date <= endDate.Date; date = date.AddDays(1))
+            {
+                if (date.DayOfWeek != DayOfWeek.Saturday && date.DayOfWeek != DayOfWeek.Sunday)
+                    list.Add(date);
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// Splits the date range into two segments by working days. First segment has firstCount working days, second has the rest.
+        /// Returns (start1, end1, start2, end2). If firstCount is 0, second segment is the full range; if firstCount >= total, first segment is the full range.
+        /// </summary>
+        public (DateTime? start1, DateTime? end1, DateTime? start2, DateTime? end2) SplitDateRangeByWorkingDays(DateTime startDate, DateTime endDate, int firstCount)
+        {
+            var workingDays = GetWorkingDaysInRange(startDate, endDate);
+            if (workingDays.Count == 0)
+                return (null, null, null, null);
+            if (firstCount <= 0)
+                return (null, null, workingDays[0], workingDays[workingDays.Count - 1]);
+            if (firstCount >= workingDays.Count)
+                return (workingDays[0], workingDays[workingDays.Count - 1], null, null);
+            return (workingDays[0], workingDays[firstCount - 1], workingDays[firstCount], workingDays[workingDays.Count - 1]);
+        }
+
+        /// <summary>
         /// Retrieves pending leave days for a specific user and leave type.
         /// </summary>
         public async Task<int> GetPendingLeaveDaysAsync(int userId, LeaveRequestType type)
@@ -46,6 +76,18 @@ namespace AutomatedTaskSystem.Helper
                              lr.Status == LeaveRequestStatusEnum.Pending)
                 .Select(lr => EF.Functions.DateDiffDay(lr.StartDate, lr.EndDate) + 1)
                 .SumAsync();
+        }
+
+        /// <summary>
+        /// Returns total pending working days for a user and leave type (same weekend logic as CalculateWorkingDays). Used for FromNextBalance limit checks.
+        /// </summary>
+        public async Task<int> GetPendingWorkingDaysAsync(int userId, LeaveRequestType type)
+        {
+            var pending = await _dataContext.LeaveRequests
+                .Where(lr => lr.UserId == userId && lr.Type == type && lr.Status == LeaveRequestStatusEnum.Pending)
+                .Select(lr => new { lr.StartDate, lr.EndDate })
+                .ToListAsync();
+            return pending.Sum(lr => CalculateWorkingDays(lr.StartDate, lr.EndDate));
         }
 
         /// <summary>
