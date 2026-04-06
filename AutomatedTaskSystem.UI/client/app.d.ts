@@ -186,6 +186,7 @@ interface IProject {
     term: boolean;
     status: ProjectStatus;
     count?:number;
+    progressPercent?: number;
 }
 
 

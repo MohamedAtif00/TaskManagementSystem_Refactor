@@ -24,7 +24,7 @@
         public int WorkFromHome_MAX { get; set; } = 0;
         public int FromNextBalanceDaysUsed { get; set; } = 0;
         public int OldAnnualBalance { get; set; } = 0;
-    public string HR_code { get; set; } = "";
+        public string HR_code { get; set; } = "";
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string? Title { get; set; } 

@@ -139,7 +139,7 @@ public class ProjectAssignmentService : IProjectAssignmentService
         };
     }
 
-    public async Task<ResponseService<List<Project>>> ProjectsAssignedToUser(int Uid)
+    public async Task<ResponseService<List<Models.Project>>> ProjectsAssignedToUser(int Uid)
     {
         var user = await _context.Users
             .Where(u => !u.Archived && u.Id == Uid)
@@ -147,13 +147,13 @@ public class ProjectAssignmentService : IProjectAssignmentService
             .FirstOrDefaultAsync();
 
         if (user is null)
-            return new ResponseService<List<Project>>
+            return new ResponseService<List<Models.Project>>
             {
                 Error = true,
                 Message = $"User of id:{Uid} is not found"
             };
 
-        return new ResponseService<List<Project>>
+        return new ResponseService<List<Models.Project>>
         {
             Data =
                 user.Role == UserRoleEnum.ProjectManger

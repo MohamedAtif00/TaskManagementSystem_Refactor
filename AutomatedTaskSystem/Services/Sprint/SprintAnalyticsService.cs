@@ -1,10 +1,13 @@
 using System.Linq.Expressions;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.SprintDtos;
+using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Services.ResponseService;
+using Dapper;
 using Microsoft.EntityFrameworkCore;
+using System.Data.Common;
 
 namespace AutomatedTaskSystem.Services.Sprint
 {
@@ -15,6 +18,13 @@ namespace AutomatedTaskSystem.Services.Sprint
         public SprintAnalyticsService(DataContext dataContext)
         {
             _dataContext = dataContext;
+        }
+
+        private async Task<DbConnection> GetOpenConnectionAsync()
+        {
+            var connection = _dataContext.Database.GetDbConnection();
+            await connection.EnsureOpenAsync();
+            return connection;
         }
 
         /// <summary>
@@ -47,73 +57,71 @@ namespace AutomatedTaskSystem.Services.Sprint
 
             try
             {
-                Expression<Func<SprintLearningObjective,bool>> expression = slo => slo.LearningObjective != null &&!slo.LearningObjective.Archived;
-                // Calculate date range based on time period
                 var (startDate, endDate) = GetDateRangeFromTimePeriod(timePeriod);
 
-                // Verify sprint exists
-                var sprint = await _dataContext.Sprints
-                    .Include(s => s.SprintLearningObjectives.AsQueryable().Where(expression))
-                        .ThenInclude(slo => slo.LearningObjective)
-                            .ThenInclude(lo => lo.Tasks)
-                                .ThenInclude(t => t.Group)
-                    .Include(s => s.SprintLearningObjectives.AsQueryable().Where(expression))
-                        .ThenInclude(slo => slo.LearningObjective)
-                            .ThenInclude(lo => lo.Schema)
-                                .ThenInclude(schema => schema.Nodes)
-                                    .ThenInclude(node => node.Steps)
-                                    .AsNoTracking()
-                    .FirstOrDefaultAsync(s => s.Id == sprintId);
+                var sprintExists = await _dataContext.Sprints
+                    .AsNoTracking()
+                    .AnyAsync(s => s.Id == sprintId);
 
-                if (sprint == null)
+                if (!sprintExists)
                 {
                     response.Error = true;
                     response.Message = "Sprint not found.";
                     return response;
                 }
 
-                // Get ALL tasks for this sprint (excluding archived tasks) - UNFILTERED by time period
-                // This is used for task summary pie charts which should always show complete data
-                var allTasksUnfiltered = sprint.SprintLearningObjectives
-                    .SelectMany(slo => slo.LearningObjective?.Tasks ?? new List<Models.Task>())
-                    .Where(t => !t.Archived)
-                    .ToList();
+                var connection = await GetOpenConnectionAsync();
 
-                // Get tasks filtered by time period for tags and learning objectives data
-                var allTasksFiltered = allTasksUnfiltered.AsEnumerable();
-                if (startDate.HasValue && endDate.HasValue)
-                {
-                    allTasksFiltered = allTasksFiltered.Where(t => t.CreatedAt >= startDate.Value && t.CreatedAt <= endDate.Value);
-                }
-                var allTasks = allTasksFiltered.ToList();
+                const string expectedTasksSql = """
+                    SELECT
+                        TotalExpectedTasks = COUNT(1)
+                    FROM SprintLearningObjectives slo
+                    INNER JOIN LearningObjectives lo ON lo.Id = slo.LearningObjectiveId AND lo.Archived = 0
+                    INNER JOIN Nodes n ON n.SchemaId = lo.SchemaId AND n.Archived = 0
+                    INNER JOIN Steps st ON st.NodeId = n.Id AND st.Archived = 0
+                    WHERE slo.SprintId = @sprintId;
+                    """;
 
+                var totalExpectedTasks = await connection.QuerySingleAsync<int>(
+                    expectedTasksSql,
+                    new { sprintId }
+                );
 
-                // 1. Calculate Total Expected Tasks from Schema (The "Source of Truth")
-                var totalExpectedTasks = sprint.SprintLearningObjectives
-                    .Where(slo => slo.LearningObjective != null && !slo.LearningObjective.Archived)
-                    .SelectMany(slo => slo.LearningObjective!.Schema?.Nodes?
-                        .Where(node => !node.Archived)
-                        .SelectMany(node => node.Steps ?? new List<Models.Step>())
-                        .Where(step => !step.Archived) ?? new List<Models.Step>())
-                    .Count();
+                const string taskSummarySql = """
+                        SELECT
+                            Completed = SUM(CASE WHEN t.Status = @done THEN 1 ELSE 0 END),
+                            Active = SUM(CASE WHEN t.Status IN (@todo, @doing) THEN 1 ELSE 0 END),
+                            Rollback = SUM(CASE WHEN t.IsRollback = 1 THEN 1 ELSE 0 END),
+                            Flagged = SUM(CASE WHEN t.Flagged = 1 THEN 1 ELSE 0 END)
+                        FROM Tasks t
+                        INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId AND lo.Archived = 0
+                        INNER JOIN SprintLearningObjectives slo ON slo.LearningObjectiveId = lo.Id AND slo.SprintId = @sprintId
+                        WHERE t.Archived = 0;
+                        """;
 
-                // 2. Get the physical tasks for task summary calculation (UNFILTERED - always show all tasks)
-                var completedCount = allTasksUnfiltered.Count(t => t.Status == TaskStatusEnum.Done);
-                var activeCount = allTasksUnfiltered.Count(t => t.Status == TaskStatusEnum.ToDo || t.Status == TaskStatusEnum.Doing);
+                var taskSummaryRow = await connection.QuerySingleAsync<SprintTaskSummaryRow>(
+                    taskSummarySql,
+                    new
+                    {
+                        sprintId,
+                        done = (int)TaskStatusEnum.Done,
+                        todo = (int)TaskStatusEnum.ToDo,
+                        doing = (int)TaskStatusEnum.Doing
+                    }
+                );
 
-                // 3. Calculate Not Started
-                // Logic: Total Schema Steps - (Any task that has actually been moved out of Backlog/Created)
-                // Or more simply: Total Expected - Completed - Active
+                var completedCount = taskSummaryRow.Completed;
+                var activeCount = taskSummaryRow.Active;
                 var notStartedCount = totalExpectedTasks - completedCount - activeCount;
 
                 // Calculate task summary (UNFILTERED - always shows complete task status distribution)
                 // Time period filter does NOT affect task summary pie charts
                 var taskSummary = new TaskSummaryDto
                 {
-                    Active = allTasksUnfiltered.Count(t => t.Status == TaskStatusEnum.ToDo || t.Status == TaskStatusEnum.Doing),
-                    Completed = allTasksUnfiltered.Count(t => t.Status == TaskStatusEnum.Done),
-                    Rollback = allTasksUnfiltered.Count(t => t.IsRollback),
-                    Flagged = allTasksUnfiltered.Count(t => t.Flagged),
+                    Active = activeCount,
+                    Completed = completedCount,
+                    Rollback = taskSummaryRow.Rollback,
+                    Flagged = taskSummaryRow.Flagged,
                     NotStarted = Math.Max(0, notStartedCount),
                     Total = totalExpectedTasks
                 };
@@ -136,25 +144,51 @@ namespace AutomatedTaskSystem.Services.Sprint
                     "tester",
                     "qc"
                 };
-                var tagData = allTasks
-                    .Where(t => t.Group != null &&
-                           (t.Status == TaskStatusEnum.Backlog ||
-                            t.Status == TaskStatusEnum.ToDo ||
-                            t.Status == TaskStatusEnum.Doing))
-                    .GroupBy(t => new { t.GroupId, t.Group.Name, t.Group.ColorCode })
-                    .Select(g => new TagDataDto
+
+                const string tagsSql = """
+                    SELECT
+                        t.GroupId AS GroupId,
+                        g.Name AS [Label],
+                        g.ColorCode AS ColorCode,
+                        COUNT(1) AS [Value]
+                    FROM Tasks t
+                    INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId AND lo.Archived = 0
+                    INNER JOIN SprintLearningObjectives slo ON slo.LearningObjectiveId = lo.Id AND slo.SprintId = @sprintId
+                    INNER JOIN Groups g ON g.Id = t.GroupId
+                    WHERE t.Archived = 0
+                      AND t.Status IN (@backlog, @todo, @doing)
+                      AND (@startDate IS NULL OR (t.CreatedAt >= @startDate AND t.CreatedAt <= @endDate))
+                    GROUP BY t.GroupId, g.Name, g.ColorCode;
+                    """;
+
+                var tagRows = (await connection.QueryAsync<SprintTagRow>(
+                        tagsSql,
+                        new
+                        {
+                            sprintId,
+                            backlog = (int)TaskStatusEnum.Backlog,
+                            todo = (int)TaskStatusEnum.ToDo,
+                            doing = (int)TaskStatusEnum.Doing,
+                            startDate,
+                            endDate
+                        }
+                    ))
+                    .ToList();
+
+                var tagData = tagRows
+                    .Where(r => r.Value > 0)
+                    .Select(r => new TagDataDto
                     {
-                        GroupId = g.Key.GroupId,
-                        Label = g.Key.Name,
-                        Value = g.Count(),
-                        Color = string.IsNullOrEmpty(g.Key.ColorCode) ? "#6b7280" : g.Key.ColorCode,
+                        GroupId = r.GroupId,
+                        Label = r.Label ?? "",
+                        Value = r.Value,
+                        Color = string.IsNullOrEmpty(r.ColorCode) ? "#6b7280" : r.ColorCode,
                         IsFilled = false
                     })
-                    .Where(tag => tag.Value > 0) // Only include groups with tasks
-                    .OrderBy(tag => {
-                        int index = preferredGroupSteps.FindIndex(s => s.Equals(tag.Label,StringComparison.OrdinalIgnoreCase));
-
-                        return index == -1 ? short.MaxValue: index;
+                    .OrderBy(tag =>
+                    {
+                        var index = preferredGroupSteps.FindIndex(s => s.Equals(tag.Label, StringComparison.OrdinalIgnoreCase));
+                        return index == -1 ? short.MaxValue : index;
                     })
                     .ToList();
                     
@@ -163,43 +197,57 @@ namespace AutomatedTaskSystem.Services.Sprint
                 // NOTE: LO Summary is UNFILTERED - always shows complete LO status distribution regardless of time period
                 // (Similar to Task Summary - time period filter does NOT affect this chart)
 
-                var totalLOs = sprint.SprintLearningObjectives.Count;
+                const string loSummarySql = """
+                WITH SprintLOs AS (
+                    SELECT lo.Id, lo.SchemaId
+                    FROM SprintLearningObjectives slo
+                    INNER JOIN LearningObjectives lo ON lo.Id = slo.LearningObjectiveId
+                    WHERE slo.SprintId = @sprintId
+                      AND lo.Archived = 0
+                ),
+                ExpectedSteps AS (
+                    SELECT sl.Id AS LearningObjectiveId, COUNT(1) AS ExpectedCount
+                    FROM SprintLOs sl
+                    INNER JOIN Nodes n ON n.SchemaId = sl.SchemaId AND n.Archived = 0
+                    INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
+                    GROUP BY sl.Id
+                ),
+                TaskAgg AS (
+                    SELECT t.LearningObjectiveId,
+                           TotalTasks = COUNT(1),
+                           NonBacklogTasks = SUM(CASE WHEN t.Status <> @backlog THEN 1 ELSE 0 END),
+                           NotDoneTasks = SUM(CASE WHEN t.Status <> @done THEN 1 ELSE 0 END)
+                    FROM Tasks t
+                    INNER JOIN SprintLOs sl ON sl.Id = t.LearningObjectiveId
+                    WHERE t.Archived = 0
+                    GROUP BY t.LearningObjectiveId
+                )
+                SELECT
+                    Total = (SELECT COUNT(1) FROM SprintLOs),
+                    Completed = SUM(CASE WHEN ISNULL(ta.TotalTasks, 0) > 0 AND ISNULL(ta.NotDoneTasks, 0) = 0 THEN 1 ELSE 0 END),
+                    NotStarted = SUM(CASE
+                        WHEN ISNULL(ta.TotalTasks, 0) = 0 AND ISNULL(es.ExpectedCount, 0) > 0 THEN 1
+                        WHEN ISNULL(ta.TotalTasks, 0) > 0 AND ISNULL(ta.NonBacklogTasks, 0) = 0 THEN 1
+                        ELSE 0
+                    END)
+                FROM SprintLOs sl
+                LEFT JOIN ExpectedSteps es ON es.LearningObjectiveId = sl.Id
+                LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = sl.Id;
+                """;
 
-                // Completed: All non-archived tasks are Done (must have at least one task)
-                var completedLOs = sprint.SprintLearningObjectives
-                    .Count(slo => slo.LearningObjective != null && !slo.LearningObjective.Archived &&
-                                  slo.LearningObjective.Tasks != null &&
-                                  slo.LearningObjective.Tasks.Where(t => !t.Archived).Any() &&
-                                  slo.LearningObjective.Tasks.Where(t => !t.Archived).All(t => t.Status == TaskStatusEnum.Done));
-
-                // Not Started: LO has no tasks created yet, OR all existing non-archived tasks have Backlog status
-                // This considers the schema-defined expected tasks - if schema defines tasks but none are created, it's "Not Started"
-                var notStartedLOs = sprint.SprintLearningObjectives
-                    .Count(slo =>
+                var loSummaryRow = await connection.QuerySingleAsync<SprintLoSummaryRow>(
+                    loSummarySql,
+                    new
                     {
-                        if (slo.LearningObjective == null) return false;
+                        sprintId,
+                        backlog = (int)TaskStatusEnum.Backlog,
+                        done = (int)TaskStatusEnum.Done
+                    }
+                );
 
-                        var lo = slo.LearningObjective;
-                        var nonArchivedTasks = (lo.Tasks ?? new List<Models.Task>()).Where(t => !t.Archived).ToList();
-
-                        // Check if schema has expected tasks (non-archived steps in non-archived nodes)
-                        var hasExpectedTasks = lo.Schema?.Nodes?
-                            .Where(node => !node.Archived)
-                            .SelectMany(node => node.Steps ?? new List<Models.Step>())
-                            .Any(step => !step.Archived) ?? false;
-
-                        // Not Started if:
-                        // 1. No tasks created yet (but schema expects tasks), OR
-                        // 2. All existing tasks are in Backlog status
-                        if (nonArchivedTasks.Count == 0)
-                        {
-                            // No tasks created - count as Not Started if schema has expected tasks
-                            return hasExpectedTasks;
-                        }
-
-                        // Has tasks - check if all are in Backlog status
-                        return nonArchivedTasks.All(t => t.Status == TaskStatusEnum.Backlog);
-                    });
+                var totalLOs = loSummaryRow.Total;
+                var completedLOs = loSummaryRow.Completed;
+                var notStartedLOs = loSummaryRow.NotStarted;
 
                 // In Process: Everything else (LOs with mixed statuses, or any ToDo/Doing tasks)
                 // This ensures completedLOs + notStartedLOs + inProcessLOs = totalLOs
@@ -438,110 +486,151 @@ namespace AutomatedTaskSystem.Services.Sprint
 
             try
             {
-                // Verify sprint exists and include all necessary relationships
-                // Include Schema -> Nodes -> Steps for calculating expected tasks from schema
-                var sprint = await _dataContext.Sprints
-                    .Include(s => s.SprintLearningObjectives)
-                        .ThenInclude(slo => slo.LearningObjective)
-                            .ThenInclude(lo => lo.Lesson)
-                                .ThenInclude(l => l.Unit)
-                    .Include(s => s.SprintLearningObjectives)
-                        .ThenInclude(slo => slo.LearningObjective)
-                            .ThenInclude(lo => lo.Tasks.Where(t => !t.Archived))
-                                .ThenInclude(t => t.Group)
-                    .Include(s => s.SprintLearningObjectives)
-                        .ThenInclude(slo => slo.LearningObjective)
-                            .ThenInclude(lo => lo.Schema)
-                                .ThenInclude(schema => schema.Nodes)
-                                    .ThenInclude(node => node.Steps)
-                    .FirstOrDefaultAsync(s => s.Id == sprintId);
+                var connection = await GetOpenConnectionAsync();
 
-                if (sprint == null)
+                const string sprintNameSql = """
+                    SELECT Name
+                    FROM Sprints
+                    WHERE Id = @sprintId;
+                    """;
+
+                var sprintName = await connection.QuerySingleOrDefaultAsync<string>(
+                    sprintNameSql,
+                    new { sprintId }
+                );
+
+                if (string.IsNullOrEmpty(sprintName))
                 {
                     response.Error = true;
                     response.Message = "Sprint not found.";
                     return response;
                 }
 
-                // Build table data for each learning objective
-                var tableData = sprint.SprintLearningObjectives
-                    .Where(slo => slo.LearningObjective != null && !slo.LearningObjective.Archived)
-                    .Select(slo =>
+                const string tableRowsSql = """
+            WITH SprintLOs AS (
+                SELECT lo.Id, lo.Name, lo.StartedAt, lo.SchemaId
+                FROM SprintLearningObjectives slo
+                INNER JOIN LearningObjectives lo ON lo.Id = slo.LearningObjectiveId
+                WHERE slo.SprintId = @sprintId
+                  AND lo.Archived = 0
+            ),
+            ExpectedSteps AS (
+                SELECT sl.Id AS LearningObjectiveId, COUNT(1) AS TotalExpectedTasks
+                FROM SprintLOs sl
+                INNER JOIN Nodes n ON n.SchemaId = sl.SchemaId AND n.Archived = 0
+                INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
+                GROUP BY sl.Id
+            ),
+            TaskAgg AS (
+                SELECT t.LearningObjectiveId,
+                       CompletedTasks = SUM(CASE WHEN t.Status = @done THEN 1 ELSE 0 END),
+                       ActiveTasks = SUM(CASE WHEN t.Status IN (@todo, @doing) THEN 1 ELSE 0 END)
+                FROM Tasks t
+                INNER JOIN SprintLOs sl ON sl.Id = t.LearningObjectiveId
+                WHERE t.Archived = 0
+                GROUP BY t.LearningObjectiveId
+            )
+            SELECT
+                sl.Id,
+                sl.Name,
+                sl.StartedAt,
+                TotalExpectedTasks = ISNULL(es.TotalExpectedTasks, 0),
+                CompletedTasks = ISNULL(ta.CompletedTasks, 0),
+                ActiveTasks = ISNULL(ta.ActiveTasks, 0)
+            FROM SprintLOs sl
+            LEFT JOIN ExpectedSteps es ON es.LearningObjectiveId = sl.Id
+            LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = sl.Id
+            ORDER BY sl.Id;
+            """;
+
+                var loRows = (await connection.QueryAsync<SprintTableLoRow>(
+                    tableRowsSql,
+                    new
                     {
-                        var lo = slo.LearningObjective!;
-                        var tasks = lo.Tasks?.Where(t => !t.Archived).ToList() ?? new List<Models.Task>();
+                        sprintId,
+                        done = (int)TaskStatusEnum.Done,
+                        todo = (int)TaskStatusEnum.ToDo,
+                        doing = (int)TaskStatusEnum.Doing
+                    }
+                )).ToList();
 
-                        // Calculate total expected tasks from Schema -> Nodes -> Steps (excluding archived)
-                        // Progress is based on schema-defined expected tasks, not just existing tasks
-                        var totalExpectedTasks = lo.Schema?.Nodes?
-                            .Where(node => !node.Archived)
-                            .SelectMany(node => node.Steps ?? new List<Models.Step>())
-                            .Count(step => !step.Archived) ?? 0;
+                const string phasesSql = """
+                    SELECT
+                        lo.Id AS LearningObjectiveId,
+                        g.Name AS GroupName,
+                        g.ColorCode AS ColorCode
+                    FROM SprintLearningObjectives slo
+                    INNER JOIN LearningObjectives lo ON lo.Id = slo.LearningObjectiveId AND lo.Archived = 0
+                    INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id AND t.Archived = 0
+                    INNER JOIN Groups g ON g.Id = t.GroupId
+                    WHERE slo.SprintId = @sprintId
+                      AND t.Status IN (@backlog, @todo, @doing);
+                    """;
 
-                        // Count completed tasks (status = Done)
-                        var completedTasks = tasks.Count(t => t.Status == TaskStatusEnum.Done);
-                        var activeTasks = tasks.Count(t => t.Status == TaskStatusEnum.ToDo || t.Status == TaskStatusEnum.Doing);
+                var phaseRows = (await connection.QueryAsync<SprintTablePhaseRow>(
+                    phasesSql,
+                    new
+                    {
+                        sprintId,
+                        backlog = (int)TaskStatusEnum.Backlog,
+                        todo = (int)TaskStatusEnum.ToDo,
+                        doing = (int)TaskStatusEnum.Doing
+                    }
+                )).ToList();
 
-                        // Calculate completion percentage based on expected tasks from schema
-                        // This reflects how much of the schema-defined workflow has been completed
-                        var progress = totalExpectedTasks > 0
-                            ? (int)Math.Round((double)completedTasks / totalExpectedTasks * 100)
-                            : 0;
-
-                        // Determine status based on completion percentage
-                        string status;
-                        if (progress >= 75)
-                            status = "On Track";
-                        else if (progress >= 50)
-                            status = "At Risk";
-                        else
-                            status = "Delayed";
-
-                        // Get current phases (unique groups of active tasks)
-                        var currentPhases = tasks
-                            .Where(t => t.Status == TaskStatusEnum.ToDo || t.Status == TaskStatusEnum.Doing || t.Status == TaskStatusEnum.Backlog)
-                            .Where(t => t.Group != null)
-                            .Select(t => new CurrentPhaseDto
+                var phasesByLoId = phaseRows
+                    .GroupBy(r => r.LearningObjectiveId)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g
+                            .Where(x => !string.IsNullOrWhiteSpace(x.GroupName))
+                            .DistinctBy(x => x.GroupName)
+                            .Select(x => new CurrentPhaseDto
                             {
-                                GroupName = t.Group!.Name,
-                                ColorCode = string.IsNullOrEmpty(t.Group.ColorCode) ? "#6b7280" : t.Group.ColorCode
+                                GroupName = x.GroupName!,
+                                ColorCode = string.IsNullOrEmpty(x.ColorCode) ? "#6b7280" : x.ColorCode
                             })
-                            .DistinctBy(p => p.GroupName)
-                            .ToList();
+                            .ToList()
+                    );
 
-                        // Get subject from lesson's unit name
-                        var subject = (lo.Name ?? "") switch
-                        {
-                            var s when s.Contains("mth", StringComparison.OrdinalIgnoreCase) => "math",
-                            var s when s.Contains("sci", StringComparison.OrdinalIgnoreCase) => "science",
-                            var s when s.Contains("eng", StringComparison.OrdinalIgnoreCase) => "english",
-                            var s when s.Contains("ara", StringComparison.OrdinalIgnoreCase) => "arabic",
-                            var s when s.Contains("soc", StringComparison.OrdinalIgnoreCase) => "social study",
-                            var s when s.Contains("mul", StringComparison.OrdinalIgnoreCase) => "multimedia",
-                            var s when s.Contains("rel", StringComparison.OrdinalIgnoreCase) => "religion",
-                            _ => "unknown" // The default case
-                        };
+                var tableData = loRows.Select(r =>
+                {
+                    var progress = r.TotalExpectedTasks > 0
+                        ? (int)Math.Round((double)r.CompletedTasks / r.TotalExpectedTasks * 100)
+                        : 0;
 
-                        // Format start date
-                        var startDate = lo.StartedAt?.ToString("d/M/yyyy") ?? "";
+                    var status = progress >= 75 ? "On Track"
+                        : progress >= 50 ? "At Risk"
+                        : "Delayed";
 
-                        return new LearningObjectiveTableRowDto
-                        {
-                            Id = lo.Id,
-                            Name = lo.Name,
-                            Subject = subject,
-                            StartDate = startDate,
-                            ActiveTasks = activeTasks,
-                            CurrentPhases = currentPhases,
-                            Status = status,
-                            Progress = progress
-                        };
-                    })
-                    .ToList();
+                    var subject = (r.Name ?? "") switch
+                    {
+                        var s when s.Contains("mth", StringComparison.OrdinalIgnoreCase) => "math",
+                        var s when s.Contains("sci", StringComparison.OrdinalIgnoreCase) => "science",
+                        var s when s.Contains("eng", StringComparison.OrdinalIgnoreCase) => "english",
+                        var s when s.Contains("ara", StringComparison.OrdinalIgnoreCase) => "arabic",
+                        var s when s.Contains("soc", StringComparison.OrdinalIgnoreCase) => "social study",
+                        var s when s.Contains("mul", StringComparison.OrdinalIgnoreCase) => "multimedia",
+                        var s when s.Contains("rel", StringComparison.OrdinalIgnoreCase) => "religion",
+                        _ => "unknown"
+                    };
+
+                    return new LearningObjectiveTableRowDto
+                    {
+                        Id = r.Id,
+                        Name = r.Name,
+                        Subject = subject,
+                        StartDate = r.StartedAt?.ToString("d/M/yyyy") ?? "",
+                        ActiveTasks = r.ActiveTasks,
+                        CurrentPhases = phasesByLoId.GetValueOrDefault(r.Id) ?? new List<CurrentPhaseDto>(),
+                        Status = status,
+                        Progress = progress
+                    };
+                }).ToList();
 
                 response.Data = new SprintLearningObjectivesTableDto
                 {
-                    SprintName = sprint.Name,
+                    SprintName = sprintName,
                     Data = tableData
                 };
 
@@ -558,6 +647,41 @@ namespace AutomatedTaskSystem.Services.Sprint
 
             return response;
         }
+
+        private sealed record SprintTaskSummaryRow(
+            int Completed,
+            int Active,
+            int Rollback,
+            int Flagged
+        );
+
+        private sealed record SprintTagRow(
+            int GroupId,
+            string? Label,
+            string? ColorCode,
+            int Value
+        );
+
+        private sealed record SprintLoSummaryRow(
+            int Total,
+            int Completed,
+            int NotStarted
+        );
+
+        private sealed record SprintTableLoRow(
+            int Id,
+            string Name,
+            DateTime? StartedAt,
+            int TotalExpectedTasks,
+            int CompletedTasks,
+            int ActiveTasks
+        );
+
+        private sealed record SprintTablePhaseRow(
+            int LearningObjectiveId,
+            string? GroupName,
+            string? ColorCode
+        );
     }
 }
 

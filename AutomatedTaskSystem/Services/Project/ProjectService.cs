@@ -1,49 +1,120 @@
+using System.Data;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.SprintDtos;
+using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
-	using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.LearningObjectiveService;
+	using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.ProjectAssignmentService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using AutomatedTaskSystem.Services.UnitService;
+using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
+using System.Data.Common;
 using static AutomatedTaskSystem.DTO.Responses;
 
 namespace AutomatedTaskSystem.Services.ProjectService;
 
-public class ProjectService : IProjectService
+public class ProjectService(DataContext context,
+                            IMemoryCache cache,
+                            IProjectAssignmentService projectAssignmentService,
+                            IUnitService unitService,
+                            ILearningObjectiveService learningObjectiveService,
+                            ITokenService tokenService,
+                            INotificationService notificationService) : IProjectService
 {
-    private readonly DataContext _context;
-    private readonly IProjectAssignmentService _projectAssignmentService;
-    private readonly IUnitService _unitService;
-    private readonly ILearningObjectiveService _learningObjectiveService;
-    private readonly ITokenService _tokenService;
-	    private readonly INotificationService _notificationService;
-
-	    public ProjectService(DataContext context, IProjectAssignmentService projectAssignmentService, IUnitService unitService, ILearningObjectiveService learningObjectiveService, ITokenService tokenService, INotificationService notificationService)
+    private async Task<DbConnection> GetOpenConnectionAsync()
     {
-        _context = context;
-        _projectAssignmentService = projectAssignmentService;
-        _unitService = unitService;
-        _learningObjectiveService = learningObjectiveService;
-        _tokenService = tokenService;
-	        _notificationService = notificationService;
+        var connection = context.Database.GetDbConnection();
+        await connection.EnsureOpenAsync();
+        return connection;
     }
+
+    private static int CalculateProgressPercent(int completed, int expected)
+    {
+        if (expected <= 0) return 0;
+        return Math.Min(100, (int)Math.Round((double)completed / expected * 100));
+    }
+
+    private async Task<Dictionary<int, int>> GetProgressByProjectIdAsync(IEnumerable<int> projectIds)
+    {
+        var ids = projectIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<int, int>();
+
+        var connection = await GetOpenConnectionAsync();
+
+        const string progressSql = """
+WITH ProjectIds AS (
+    SELECT Id
+    FROM Projects
+    WHERE Id IN @projectIds
+),
+Expected AS (
+    SELECT
+        u.ProjectId,
+        ExpectedTasks = COUNT(1)
+    FROM Units u
+    INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
+    INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
+    INNER JOIN Nodes n ON n.SchemaId = lo.SchemaId AND n.Archived = 0
+    INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
+    WHERE u.Archived = 0
+      AND u.ProjectId IN @projectIds
+    GROUP BY u.ProjectId
+),
+Completed AS (
+    SELECT
+        u.ProjectId,
+        CompletedTasks = COUNT(1)
+    FROM Tasks t
+    INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId AND lo.Archived = 0
+    INNER JOIN Lessons l ON l.Id = lo.LessonId AND l.Archived = 0
+    INNER JOIN Units u ON u.Id = l.UnitId AND u.Archived = 0
+    WHERE t.Archived = 0
+      AND t.Status = @done
+      AND u.ProjectId IN @projectIds
+    GROUP BY u.ProjectId
+)
+SELECT
+    p.Id AS ProjectId,
+    ExpectedTasks = ISNULL(e.ExpectedTasks, 0),
+    CompletedTasks = ISNULL(c.CompletedTasks, 0)
+FROM ProjectIds p
+LEFT JOIN Expected e ON e.ProjectId = p.Id
+LEFT JOIN Completed c ON c.ProjectId = p.Id;
+""";
+
+        var rows = await connection.QueryAsync<ProjectProgressRow>(
+            progressSql,
+            new { projectIds = ids, done = (int)TaskStatusEnum.Done }
+        );
+
+        var map = new Dictionary<int, int>();
+        foreach (var r in rows)
+        {
+            map[r.ProjectId] = CalculateProgressPercent(r.CompletedTasks, r.ExpectedTasks);
+        }
+        return map;
+    }
+
+    private sealed record ProjectProgressRow(int ProjectId, int ExpectedTasks, int CompletedTasks);
 
     public async Task<ActionResult<ResponseService<ProjectUnitDTO>>> AddUnit(int Id, string Name)
     {
-        var project = await _context.Projects
+        var project = await context.Projects
             .Where(p => p.Id == Id && !p.Archived)
             .FirstOrDefaultAsync();
 
         if (project is null)
             return new NotFoundResult();
 
-        var unit = await _unitService.CreateUnit(Name, project);
+        var unit = await unitService.CreateUnit(Name, project);
 
         return new ResponseService<ProjectUnitDTO>
         {
@@ -60,7 +131,7 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<List<IDName>>>> AssignToProject(int Id, List<int> UserIds)
     {
-        var user = await _projectAssignmentService.AssignUsersToProject(Id, UserIds);
+        var user = await projectAssignmentService.AssignUsersToProject(Id, UserIds);
 
         if (user.Error)
             return new NotFoundObjectResult(user);
@@ -77,14 +148,14 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<ProjectDTO>>> CreateProject(string Name, string Description, int YearId, bool Term)
     {
-        var year = await _context.Years.Where(y => y.Id == YearId).FirstOrDefaultAsync();
+        var year = await context.Years.Where(y => y.Id == YearId).FirstOrDefaultAsync();
 
         if (year is null)
             return new NotFoundObjectResult(
                 new BaseResponseService { Error = true, Message = "Invalid Year" }
             );
 
-        var newProject = new Project
+        var newProject = new Models.Project
         {
             Name = Name,
             Description = Description,
@@ -94,8 +165,8 @@ public class ProjectService : IProjectService
             Status = ProjectStatusEnum.Active
         };
 
-        _context.Projects.Add(newProject);
-        await _context.SaveChangesAsync();
+        context.Projects.Add(newProject);
+        await context.SaveChangesAsync();
 
         return new ResponseService<ProjectDTO>
         {
@@ -119,7 +190,7 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<BaseResponseService>> DeleteProject(int Id)
     {
-        var project = await _context.Projects
+        var project = await context.Projects
             .Where(p => p.Id == Id && !p.Archived)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
@@ -150,14 +221,14 @@ public class ProjectService : IProjectService
         }
         project.Archived = true;
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return new BaseResponseService { Error = false, Message = "Project is now Deleted" };
     }
 
     public async Task<ActionResult<ResponseService<ProjectDTO>>> EditProject(int id, string Name, string Description, int YearId, bool term)
     {
-        var project = await _context.Projects
+        var project = await context.Projects
             .Where(p => p.Id == id && !p.Archived)
             .Include(p => p.Year)
             .FirstOrDefaultAsync();
@@ -167,7 +238,7 @@ public class ProjectService : IProjectService
 
         if (YearId != project.YearId)
         {
-            var year = await _context.Years.Where(y => y.Id == YearId).FirstOrDefaultAsync();
+            var year = await context.Years.Where(y => y.Id == YearId).FirstOrDefaultAsync();
 
             if (year is null)
                 return new BadRequestObjectResult(
@@ -181,7 +252,7 @@ public class ProjectService : IProjectService
         project.Description = Description;
         project.Term = term;
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return new ResponseService<ProjectDTO>
         {
@@ -201,10 +272,24 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<List<ProjectDTO>>>> GetAllProjects()
     {
-        var projects = await _context.Projects
+        //var cacheKey = GetAllSprintsCacheKey();
+        if (cache.TryGetValue("AllProjects", out List<ProjectDTO>? cachedData) && cachedData != null)
+        {
+            return new ResponseService<List<ProjectDTO>>() { Data = cachedData };
+        }
+            
+        //var connection = context.Database.GetDbConnection();
+        //if (connection.State != ConnectionState.Open)
+        //{
+        //    await connection.OpenAsync();
+        //}
+
+        var projects = await context.Projects
             .Where(p => !p.Archived)
             .Include(p => p.Year)
             .ToListAsync();
+
+        var progressById = await GetProgressByProjectIdAsync(projects.Select(p => p.Id));
 
         return new ResponseService<List<ProjectDTO>>
         {
@@ -219,7 +304,8 @@ public class ProjectService : IProjectService
                             Name = p.Name,
                             Term = p.Term,
                             Year = new IDName { Id = p.YearId, Name = p.Year.Number },
-                            Status = p.Status
+                            Status = p.Status,
+                            ProgressPercent = progressById.GetValueOrDefault(p.Id)
                         }
                 )
                 .ToList(),
@@ -229,10 +315,12 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<List<ProjectDTO>>>> GetAllProjectsForSprint()
     {
-        var projects = await _context.Projects
+        var projects = await context.Projects
             .Where(p => !p.Archived && p.Status != ProjectStatusEnum.Hold && p.Status != ProjectStatusEnum.Closed)
             .Include(p => p.Year)
             .ToListAsync();
+
+        var progressById = await GetProgressByProjectIdAsync(projects.Select(p => p.Id));
 
         return new ResponseService<List<ProjectDTO>>
         {
@@ -247,7 +335,8 @@ public class ProjectService : IProjectService
                             Name = p.Name,
                             Term = p.Term,
                             Year = new IDName { Id = p.YearId, Name = p.Year.Number },
-                            Status = p.Status
+                            Status = p.Status,
+                            ProgressPercent = progressById.GetValueOrDefault(p.Id)
                         }
                 )
                 .ToList(),
@@ -257,7 +346,7 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<List<UserDTO>>>> GetAssignedUsers(int Id)
     {
-        var project = await _context.Projects
+        var project = await context.Projects
             .Where(p => !p.Archived && p.Id == Id)
             .Include(p => p.Users)
             .ThenInclude(u => u.Group)
@@ -308,7 +397,7 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<ProjectDTO>>> GetProject(int Id)
     {
-        var project = await _context.Projects
+        var project = await context.Projects
             .Where(p => p.Id == Id && !p.Archived)
             .Include(p => p.Year)
             .FirstOrDefaultAsync();
@@ -335,7 +424,7 @@ public class ProjectService : IProjectService
     }
 
     public async Task<ActionResult<ResponseService<List<LearningObjectiveDTO>>>> GetLOsForSprint(int id) {
-        var learningObjects = await _context.LearningObjectives.Include(x => x.Schema).Include(x => x.SprintLearningObjectives).Where(x => x.SprintLearningObjectives.Any(slo => slo.SprintId == id)).Select(x => new LearningObjectiveDTO { 
+        var learningObjects = await context.LearningObjectives.Include(x => x.Schema).Include(x => x.SprintLearningObjectives).Where(x => x.SprintLearningObjectives.Any(slo => slo.SprintId == id)).Select(x => new LearningObjectiveDTO { 
             Id = x.Id,
             Name = x.Name,
             Tag = x.Tag,
@@ -353,7 +442,7 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<DetailedProjectDTO>>> GetProjectDetails(int Id)
     {
-        var project = await _context.Projects
+        var project = await context.Projects
             .Where(p => p.Id == Id && !p.Archived)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
@@ -421,7 +510,7 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<List<IDName>>>> GetProjectLearningObjectives(int Id)
     {
-        var res = await _learningObjectiveService.GetLearningObjectivesByProjectId(Id);
+        var res = await learningObjectiveService.GetLearningObjectivesByProjectId(Id);
 
         if (res.Error)
             return new NotFoundObjectResult(res);
@@ -438,7 +527,7 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<List<UserDTO>>>> GetUnassignedUsers(int Id)
     {
-        var project = await _context.Projects
+        var project = await context.Projects
             .Where(p => !p.Archived && p.Id == Id)
             .FirstOrDefaultAsync();
 
@@ -447,7 +536,7 @@ public class ProjectService : IProjectService
                 new BaseResponseService { Error = true, Message = "Project is not found" }
             );
 
-        var users = await _context.Users
+        var users = await context.Users
             .Where(u => !u.Archived && !u.Projects.Any(p => p.Id == project.Id))
             .Include(u => u.Projects)
             .Include(u => u.Group) // Ensure Group is loaded
@@ -481,7 +570,7 @@ public class ProjectService : IProjectService
 
 	public async Task<ActionResult<ResponseService<List<ProjectDTO>>>> GetUserSpecificProjects()
 	{
-	    var authRes = _tokenService.GetUserIdFromToken();
+	    var authRes = tokenService.GetUserIdFromToken();
 	    if (authRes.Error)
 	        return new BadRequestObjectResult(
 	            new BaseResponseService { Error = true, Message = authRes.Message }
@@ -494,7 +583,7 @@ public class ProjectService : IProjectService
 	            new BaseResponseService { Error = true, Message = "Invalid token" }
 	        );
 	
-	    var user = await _context.Users
+	    var user = await context.Users
 	        .Where(u => u.Id == uid && !u.Archived)
 	        .Include(u => u.Projects)
 	        .ThenInclude(p => p.Year)
@@ -508,7 +597,7 @@ public class ProjectService : IProjectService
 	    // Project Manager & Owner can see all active/ongoing projects, no group context needed
 	    if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
         {
-            var allProjects = await _context.Projects
+            var allProjects = await context.Projects
                 .Where(
                     p =>
                         !p.Archived
@@ -521,7 +610,7 @@ public class ProjectService : IProjectService
             var projectIds = allProjects.Select(p => p.Id).ToList();
 
             // Task counting logic for ProjectManager/Owner roles
-            var taskCounts = await _context.Tasks
+            var taskCounts = await context.Tasks
                 .Where(t =>
                     !t.Archived && 
                     t.LearningObjective != null &&
@@ -545,6 +634,10 @@ public class ProjectService : IProjectService
                 Count = taskCounts.FirstOrDefault(tc => tc.ProjectId == p.Id)?.Count ?? 0
             }).ToList();
 
+            var progressById = await GetProgressByProjectIdAsync(allProjects.Select(p => p.Id));
+            foreach (var dto in data)
+                dto.ProgressPercent = progressById.GetValueOrDefault(dto.Id);
+
 	        return new ResponseService<List<ProjectDTO>>
 	        {
 	            Error = false,
@@ -558,7 +651,7 @@ public class ProjectService : IProjectService
 
 	    if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
 	    {
-	        var userGroup = await _context.Groups
+	        var userGroup = await context.Groups
 	            .Where(g => g.Id == user.GroupId)
 	            .FirstOrDefaultAsync();
 
@@ -571,18 +664,18 @@ public class ProjectService : IProjectService
 
 	        if (user.Role == UserRoleEnum.SectionHead)
 	        {
-	            var section = await _context.Sections
+	            var section = await context.Sections
 	                .Where(s => s.HeadId == user.Id && !s.Archived)
 	                .FirstOrDefaultAsync();
 
 	            if (section is not null)
 	            {
-	                var sectionGroupIds = await _context.SectionGroups
+	                var sectionGroupIds = await context.SectionGroups
 	                    .Where(sg => sg.SectionId == section.Id)
 	                    .Select(sg => sg.GroupId)
 	                    .ToListAsync();
 
-	                var sectionGroups = await _context.Groups
+	                var sectionGroups = await context.Groups
 	                    .Where(g => sectionGroupIds.Contains(g.Id))
 	                    .ToListAsync();
 
@@ -602,7 +695,7 @@ public class ProjectService : IProjectService
         var userProjectIds = userProjects.Select(p => p.Id).ToList();
 
         // Task counting logic for other roles (Team Leader, Section Head, Member)
-        IQueryable<Models.Task> baseTaskQuery = _context.Tasks
+        IQueryable<Models.Task> baseTaskQuery = context.Tasks
             .Where(t =>
                 !t.Archived &&
                     t.GroupId == user.GroupId &&
@@ -649,6 +742,10 @@ public class ProjectService : IProjectService
             Count = userTaskCounts.FirstOrDefault(tc => tc.ProjectId == project.Id)?.Count ?? 0
         }).ToList();
 
+        var progressByIdForUser = await GetProgressByProjectIdAsync(userProjects.Select(p => p.Id));
+        foreach (var dto in listOfProjects)
+            dto.ProgressPercent = progressByIdForUser.GetValueOrDefault(dto.Id);
+
         return new ResponseService<List<ProjectDTO>>
         {
             Error = false,
@@ -659,7 +756,7 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<List<IDName>>>> UnassignToProject(int Id, List<int> UserIds)
     {
-        var res = await _projectAssignmentService.UnassignUsersToProject(Id, UserIds);
+        var res = await projectAssignmentService.UnassignUsersToProject(Id, UserIds);
 
         if (res.Error)
             return new NotFoundObjectResult(
@@ -682,7 +779,7 @@ public class ProjectService : IProjectService
 
     public async Task<ActionResult<ResponseService<ProjectDTO>>> UpdateProjectStatus(int id, ProjectStatusEnum status)
     {
-        var project = await _context.Projects
+        var project = await context.Projects
             .Where(p => !p.Archived && p.Id == id)
             .Include(p => p.Year)
             .FirstOrDefaultAsync();
@@ -735,10 +832,10 @@ public class ProjectService : IProjectService
             project.Status = ProjectStatusEnum.Closed;
 	
 	            // Notify the owner when a project is manually closed via the project management interface
-	            _ = await _notificationService.NotifyOwnerOfProjectClosed(project.Id, true);
+	            _ = await notificationService.NotifyOwnerOfProjectClosed(project.Id, true);
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return new ResponseService<ProjectDTO>
         {
@@ -755,4 +852,5 @@ public class ProjectService : IProjectService
             }
         };
     }
+
 }

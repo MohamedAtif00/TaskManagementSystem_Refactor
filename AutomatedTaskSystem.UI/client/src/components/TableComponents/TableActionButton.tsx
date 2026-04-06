@@ -7,6 +7,7 @@ import TrashIcon from "../../assets/Icons/Trash";
 import StopIcon from "../../assets/Icons/Stop";
 import PauseIcon from "../../assets/Icons/Pause";
 import PlayIcon from "../../assets/Icons/Play";
+import PieChartIcon from "../../assets/Icons/PieChart";
 
 type TableActionType =
     | "edit"
@@ -15,6 +16,7 @@ type TableActionType =
     | "duplicate"
     | "pause"
     | "stop"
+    | "chart"
     | "resume";
 
 interface Props {
@@ -71,6 +73,12 @@ const TableAction = ({ type, url, text }: Props) => {
                 ) : type === "resume" ? (
                     <div>
                         <PlayIcon className="group-hover:fill-emerald-600 w-4 h-4 fill-black transition-all ease-in" />
+                    </div>
+                     ) : type === "chart" ? (
+                    <div>
+                        <div className="w-4 h-4">
+                            <PieChartIcon />
+                        </div>
                     </div>
                 ) : (
                     <></>

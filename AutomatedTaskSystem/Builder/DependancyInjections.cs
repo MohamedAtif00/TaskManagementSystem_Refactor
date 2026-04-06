@@ -16,6 +16,7 @@ using AutomatedTaskSystem.Services.ReportService;
 using AutomatedTaskSystem.Services.DashboardService;
 using AutomatedTaskSystem.Services.RollbackService;
 using AutomatedTaskSystem.Services.UserTask;
+using AutomatedTaskSystem.Services.Project;
 using AutomatedTaskSystem.Services.Sprint;
 using AutomatedTaskSystem.Services.Leave;
 using AutomatedTaskSystem.Services.Permission;
@@ -63,6 +64,7 @@ public static class DependancyInjections
         builder.Services.AddScoped<IWorkFromHomeService, WorkFromHomeService>();
         builder.Services.AddScoped<ILessonService,LessonService>();
         builder.Services.AddScoped<ISprintAnalyticsService, SprintAnalyticsService>();
+        builder.Services.AddScoped<IProjectAnalyticsService, ProjectAnalyticsService>();
 
 
         // seeder and email sender

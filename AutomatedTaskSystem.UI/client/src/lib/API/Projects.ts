@@ -4,6 +4,14 @@ import { BasicInfo, url } from "./";
 import REPORTS from "./Reports";
 import { IDName } from "./workFromHome";
 
+/** Single segment for `/projects/{id}/analytics/...` (avoids `1,2` when query is string[]). */
+const projectAnalyticsPathId = (projectId: string | string[] | number | undefined) => {
+    if (projectId === undefined || projectId === null) return "";
+    if (typeof projectId === "number") return String(projectId);
+    if (Array.isArray(projectId)) return projectId[0] != null ? String(projectId[0]) : "";
+    return String(projectId);
+};
+
 const PROJECTS = {
     REPORTS,
     SUMMARY: async (projectId: string | string[]) => {
@@ -228,6 +236,163 @@ const PROJECTS = {
         } = await res.json();
         return data;
     }    ,
+    GET_ANALYTICS_OVERVIEW: async (projectId: number | string | string[], timePeriod?: number) => {
+        try {
+            const pid = projectAnalyticsPathId(projectId);
+            if (!pid) return false;
+            const authHeader = authService.authHeader();
+            const queryParams = timePeriod ? `?timePeriod=${timePeriod}` : "";
+            const res = await fetch(`${url}/projects/${pid}/analytics/overview${queryParams}`, {
+                headers: { ...authHeader },
+            });
+            const raw = await res.json();
+            const error = raw?.error ?? raw?.Error;
+            const outer = raw?.data ?? raw?.Data;
+            if (!res.ok || error || !outer) {
+                return {
+                    error: true,
+                    message: raw?.message ?? raw?.Message ?? "Failed to fetch project analytics",
+                    data: undefined,
+                };
+            }
+            const pp = outer.projectProgress ?? outer.ProjectProgress ?? {};
+            const tas = outer.tasksSummary ?? outer.TasksSummary ?? {};
+            const las = outer.learningActivitiesSummary ?? outer.LearningActivitiesSummary ?? {};
+            const loSum = las.loSummary ?? las.LoSummary ?? {};
+            const tagsRaw = las.tags ?? las.Tags ?? [];
+            const tags = (Array.isArray(tagsRaw) ? tagsRaw : []).map((t: any) => ({
+                groupId: t.groupId ?? t.GroupId,
+                label: t.label ?? t.Label ?? "",
+                value: t.value ?? t.Value ?? 0,
+                color: t.color ?? t.Color ?? "#6b7280",
+                isFilled: t.isFilled ?? t.IsFilled ?? false,
+            }));
+            return {
+                error: false,
+                message: raw?.message ?? raw?.Message ?? "",
+                data: {
+                    numberOfUnits: outer.numberOfUnits ?? outer.NumberOfUnits ?? 0,
+                    numberOfLessons: outer.numberOfLessons ?? outer.NumberOfLessons ?? 0,
+                    numberOfLearningObjectives:
+                        outer.numberOfLearningObjectives ?? outer.NumberOfLearningObjectives ?? 0,
+                    projectProgress: {
+                        progressPercent: pp.progressPercent ?? pp.ProgressPercent ?? 0,
+                        totalExpectedTasks: pp.totalExpectedTasks ?? pp.TotalExpectedTasks ?? 0,
+                        completedTasks: pp.completedTasks ?? pp.CompletedTasks ?? 0,
+                        activeTasks: pp.activeTasks ?? pp.ActiveTasks ?? 0,
+                    },
+                    learningActivitiesSummary: {
+                        loSummary: {
+                            completed: loSum.completed ?? loSum.Completed ?? 0,
+                            inProcess: loSum.inProcess ?? loSum.InProcess ?? 0,
+                            notStarted: loSum.notStarted ?? loSum.NotStarted ?? 0,
+                            total: loSum.total ?? loSum.Total ?? 0,
+                        },
+                        tags,
+                    },
+                    tasksSummary: {
+                        active: tas.active ?? tas.Active ?? 0,
+                        completed: tas.completed ?? tas.Completed ?? 0,
+                        rollback: tas.rollback ?? tas.Rollback ?? 0,
+                        flagged: tas.flagged ?? tas.Flagged ?? 0,
+                        notStarted: tas.notStarted ?? tas.NotStarted ?? 0,
+                        total: tas.total ?? tas.Total ?? 0,
+                    },
+                },
+            };
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
+    GET_PROJECT_LO_PROGRESS: async (projectId: string | string[], timePeriod?: number, group?: number) => {
+        try {
+            const pid = projectAnalyticsPathId(projectId);
+            if (!pid) return false;
+            const authHeader = authService.authHeader();
+            const queryParams = timePeriod ? `?timePeriod=${timePeriod}` : "";
+            const groupParam =
+                group !== undefined && group !== null
+                    ? `${queryParams ? "&" : "?"}group=${group}`
+                    : "";
+            const res = await fetch(
+                `${url}/projects/${pid}/analytics/learning-objectives-progress${queryParams}${groupParam}`,
+                { headers: { ...authHeader } }
+            );
+            const raw = await res.json();
+            const error = raw?.error ?? raw?.Error;
+            const outer = raw?.data ?? raw?.Data;
+            const listRaw = outer?.data ?? outer?.Data ?? [];
+            const list = Array.isArray(listRaw)
+                ? listRaw.map((item: any) => ({
+                      id: item.id ?? item.Id,
+                      name: item.name ?? item.Name ?? "",
+                      value: item.value ?? item.Value ?? 0,
+                      status: item.status ?? item.Status ?? "Delayed",
+                  }))
+                : [];
+            if (!res.ok || error) {
+                return {
+                    error: true,
+                    message: raw?.message ?? raw?.Message ?? "Failed to fetch LO progress",
+                    data: undefined,
+                };
+            }
+            return {
+                error: false,
+                message: raw?.message ?? raw?.Message ?? "",
+                data: { data: list },
+            };
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
+    GET_PROJECT_LO_TABLE: async (projectId: string | string[]) => {
+        try {
+            const pid = projectAnalyticsPathId(projectId);
+            if (!pid) return false;
+            const authHeader = authService.authHeader();
+            const res = await fetch(`${url}/projects/${pid}/analytics/learning-objectives-table`, {
+                headers: { ...authHeader },
+            });
+            const raw = await res.json();
+            const error = raw?.error ?? raw?.Error;
+            const outer = raw?.data ?? raw?.Data;
+            const rowsRaw = outer?.data ?? outer?.Data ?? [];
+            const projectName = outer?.projectName ?? outer?.ProjectName ?? "";
+            if (!res.ok || error) {
+                return {
+                    error: true,
+                    message: raw?.message ?? raw?.Message ?? "Failed to fetch learning objectives table",
+                    data: undefined,
+                };
+            }
+            const rows = Array.isArray(rowsRaw)
+                ? rowsRaw.map((r: any) => ({
+                      id: r.id ?? r.Id,
+                      name: r.name ?? r.Name,
+                      subject: r.subject ?? r.Subject,
+                      startDate: r.startDate ?? r.StartDate,
+                      activeTasks: r.activeTasks ?? r.ActiveTasks,
+                      currentPhases: (r.currentPhases ?? r.CurrentPhases ?? []).map((p: any) => ({
+                          groupName: p.groupName ?? p.GroupName,
+                          colorCode: p.colorCode ?? p.ColorCode,
+                      })),
+                      status: r.status ?? r.Status,
+                      progress: r.progress ?? r.Progress,
+                  }))
+                : [];
+            return {
+                error: false,
+                message: raw?.message ?? raw?.Message ?? "",
+                data: { projectName, data: rows },
+            };
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
     GET_ONE: async (id: string | string[]) => {
         try {
             const res = await fetch(`${url}/projects/${id}`);

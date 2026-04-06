@@ -13,6 +13,7 @@ namespace AutomatedTaskSystem.DTO
             public bool Term { get; set; }
             public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
             public int? Count { get; set; }
+            public int? ProgressPercent { get; set; }
         }
 
         public class DetailedProjectDTO

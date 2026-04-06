@@ -132,7 +132,7 @@ public class ReportService : IReportService
         };
     }
 
-    private GetReportDto createReport(Project project, DateTime? start, DateTime? end)
+    private GetReportDto createReport(Models.Project project, DateTime? start, DateTime? end)
     {
         var report = new GetReportDto
         {

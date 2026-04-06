@@ -27,47 +27,26 @@ using static AutomatedTaskSystem.DTO.Responses;
 
 namespace AutomatedTaskSystem.Services.Leave
 {
-    public class LeaveRequestService : ILeaveRequestService
+    public class LeaveRequestService(DataContext dataContext,
+                               ITokenService tokenService,
+                               IEmailService emailService,
+                               IWebHostEnvironment webHostEnvironment,
+                               IHubContext<UserHub> hubContext,
+                               INotificationService notificationService,
+                               ILogService logger,
+                               LeaveRequestHelper leaveRequestHelper,
+                               IOptions<EmailRecipientSettings> emailRecipientsOptions,
+                               IOptionsSnapshot<LeaveSettings> leaveSettings) : ILeaveRequestService
     {
-        private readonly DataContext _dataContext;
-        private readonly ITokenService _tokenService;
-        private readonly IEmailService _emailService;
-        private readonly IWebHostEnvironment _webHostEnvironment;
-        private readonly IHubContext<UserHub> _hubContext;
-        private readonly INotificationService _notificationService;
-        private readonly ILogService _logService; // <--- ADD THIS
-        private readonly LeaveRequestHelper _leaveRequestHelper;
-        private readonly EmailRecipientSettings _emailRecipients;
-        private readonly LeaveSettings _leaveSettings;
+        private readonly EmailRecipientSettings _emailRecipients = emailRecipientsOptions.Value;
+        private readonly LeaveSettings _leaveSettings = leaveSettings?.Value ?? new LeaveSettings();
 
-        public LeaveRequestService(DataContext dataContext,
-                                   ITokenService tokenService,
-                                   IEmailService emailService,
-                                   IWebHostEnvironment webHostEnvironment,
-                                   IHubContext<UserHub> hubContext,
-                                   INotificationService notificationService,
-                                   ILogService logger,
-                                   LeaveRequestHelper leaveRequestHelper,
-                                   IOptions<EmailRecipientSettings> emailRecipientsOptions,
-                                   IOptions<LeaveSettings> leaveSettings)
-        {
-            _dataContext = dataContext;
-            _tokenService = tokenService;
-            _emailService = emailService;
-            _webHostEnvironment = webHostEnvironment;
-            _hubContext = hubContext;
-            _notificationService = notificationService;
-            _logService = logger;
-            _leaveRequestHelper = leaveRequestHelper;
-            _emailRecipients = emailRecipientsOptions.Value;
-            _leaveSettings = leaveSettings?.Value ?? new LeaveSettings();
-        }
         // Enhanced service method
         public async Task<ResponseService<bool>> CreateLeaveRequest(CreateLeaveRequestDto request)
         {
             var response = new ResponseService<bool>();
 
-            var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
+            var user = await dataContext.Users.FirstOrDefaultAsync(x => x.Id == request.UserId);
             var alreadyUsedFromNext = user.FromNextBalanceDaysUsed;
             if (user == null)
             {
@@ -95,7 +74,7 @@ namespace AutomatedTaskSystem.Services.Leave
             }
 
             // Use helper for calculation
-            int requestedDays = _leaveRequestHelper.CalculateWorkingDays(startDate, endDate);
+            int requestedDays = leaveRequestHelper.CalculateWorkingDays(startDate, endDate);
             var today = DateTime.Today;
             int currentYear = today.Year;
 
@@ -120,7 +99,7 @@ namespace AutomatedTaskSystem.Services.Leave
             int fromNextBalanceDaysToRecord = 0;
             int pendingFromNextBalanceDays = 0;
             if (request.type == LeaveRequestType.Annual || request.type == LeaveRequestType.FromNextBalance)
-                pendingFromNextBalanceDays = await _leaveRequestHelper.GetPendingWorkingDaysAsync(user.Id, LeaveRequestType.FromNextBalance);
+                pendingFromNextBalanceDays = await leaveRequestHelper.GetPendingWorkingDaysAsync(user.Id, LeaveRequestType.FromNextBalance);
 
             // FromNextBalance (direct or via Annual confirmation) is not available after the reset date
             if ((request.type == LeaveRequestType.FromNextBalance || request.ConfirmFromNextBalance) &&
@@ -135,7 +114,7 @@ namespace AutomatedTaskSystem.Services.Leave
             // Annual: always check balance; when request exceeds remaining, require confirmation and set fromNextBalanceDaysToRecord so we can split into two requests
             if (request.type == LeaveRequestType.Annual)
             {
-                var pendingAnnualLeaveDays = await _leaveRequestHelper.GetPendingLeaveDaysAsync(user.Id, LeaveRequestType.Annual);
+                var pendingAnnualLeaveDays = await leaveRequestHelper.GetPendingLeaveDaysAsync(user.Id, LeaveRequestType.Annual);
                 int remainingAnnualLeave = user.Annual_leave_MAX - user.Annual_leave;
                 int neededFromNext = 0;
 
@@ -175,7 +154,7 @@ namespace AutomatedTaskSystem.Services.Leave
             }
             else if (request.type == LeaveRequestType.Emergency)
             {
-                var pendingEmergencyLeaveDays = await _leaveRequestHelper.GetPendingLeaveDaysAsync(user.Id, LeaveRequestType.Emergency);
+                var pendingEmergencyLeaveDays = await leaveRequestHelper.GetPendingLeaveDaysAsync(user.Id, LeaveRequestType.Emergency);
                 int remainingEmergencyLeave = user.Emergency_leave_MAX - user.Emergency_leave;
 
                 if ((pendingEmergencyLeaveDays + requestedDays) > remainingEmergencyLeave)
@@ -223,7 +202,7 @@ namespace AutomatedTaskSystem.Services.Leave
                 }
 
                 // Use helper for medical certificate validation
-                if (request.MedicalCertificate != null && !_leaveRequestHelper.IsValidMedicalCertificate(request.MedicalCertificate))
+                if (request.MedicalCertificate != null && !leaveRequestHelper.IsValidMedicalCertificate(request.MedicalCertificate))
                 {
                     response.Error = true;
                     response.Message = "Invalid medical certificate file.";
@@ -241,7 +220,7 @@ namespace AutomatedTaskSystem.Services.Leave
                 int annualDays = requestedDays - fromNextBalanceDaysToRecord;
                 if (annualDays > 0)
                 {
-                    var (s1, e1, s2, e2) = _leaveRequestHelper.SplitDateRangeByWorkingDays(startDate, endDate, annualDays);
+                    var (s1, e1, s2, e2) = leaveRequestHelper.SplitDateRangeByWorkingDays(startDate, endDate, annualDays);
                     if (s1.HasValue && e1.HasValue) segments.Add((s1.Value, e1.Value, LeaveRequestType.Annual));
                     if (s2.HasValue && e2.HasValue) segments.Add((s2.Value, e2.Value, LeaveRequestType.FromNextBalance));
                 }
@@ -257,7 +236,7 @@ namespace AutomatedTaskSystem.Services.Leave
             int? sectionHeadId = null;
             if (user.Role == UserRoleEnum.TeamLeader)
             {
-                var section = await _dataContext.Sections
+                var section = await dataContext.Sections
                     .Where(s => s.SectionGroups.Any(g => g.GroupId == user.GroupId))
                     .FirstOrDefaultAsync();
                 if (section != null)
@@ -278,22 +257,22 @@ namespace AutomatedTaskSystem.Services.Leave
                     DateCreated = DateTime.Now,
                     SectionheadId = sectionHeadId
                 };
-                _dataContext.LeaveRequests.Add(leaveRequest);
+                dataContext.LeaveRequests.Add(leaveRequest);
                 createdRequests.Add(leaveRequest);
             }
 
 		    try
 		    {
-		        await _dataContext.SaveChangesAsync();
+		        await dataContext.SaveChangesAsync();
 		        	
 		        if (request.type == LeaveRequestType.Sick && request.MedicalCertificate != null && createdRequests.Count == 1)
 		        {
 		        	var leaveRequest = createdRequests[0];
-		        	var medicalCertPath = await _leaveRequestHelper.SaveMedicalCertificate(request.MedicalCertificate, leaveRequest.Id, _webHostEnvironment);
+		        	var medicalCertPath = await leaveRequestHelper.SaveMedicalCertificate(request.MedicalCertificate, leaveRequest.Id, webHostEnvironment);
 		        	leaveRequest.MedicalCertificatePath = medicalCertPath;
 		        	leaveRequest.MedicalCertificateFileName = request.MedicalCertificate.FileName;
-		        	_dataContext.LeaveRequests.Update(leaveRequest);
-		        	await _dataContext.SaveChangesAsync();
+		        	dataContext.LeaveRequests.Update(leaveRequest);
+		        	await dataContext.SaveChangesAsync();
 		        }
 		        	
 		        // --- Auto-approval and email for Owner (each created request) ---
@@ -323,8 +302,8 @@ namespace AutomatedTaskSystem.Services.Leave
 		        	            break;
 		        	    }
 		        	}
-		        	_dataContext.Users.Update(user);
-		        	await _dataContext.SaveChangesAsync();
+		        	dataContext.Users.Update(user);
+		        	await dataContext.SaveChangesAsync();
 		        	
 		        	foreach (var leaveRequest in createdRequests)
 		        	{
@@ -335,7 +314,7 @@ namespace AutomatedTaskSystem.Services.Leave
 		        	            user.Email,
 		        	            leaveRequest.StartDate.ToString("yyyy-MM-dd"),
 		        	            leaveRequest.EndDate.ToString("yyyy-MM-dd"),
-		        	            _leaveRequestHelper.CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
+		        	            leaveRequestHelper.CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate),
 		        	            leaveRequest.Type,
 		        	            user.HR_code),
 		        	        IsHtml = true,
@@ -343,7 +322,7 @@ namespace AutomatedTaskSystem.Services.Leave
 		        	    };
 		        	    if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
 		        	    {
-		        	        var fullFilePath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
+		        	        var fullFilePath = Path.Combine(webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
 		        	        if (File.Exists(fullFilePath))
 		        	        {
 		        	            var attachment = new System.Net.Mail.Attachment(fullFilePath);
@@ -351,11 +330,11 @@ namespace AutomatedTaskSystem.Services.Leave
 		        	            message.Attachments.Add(attachment);
 		        	        }
 		        	    }
-		        	    var emailResult = await _emailService.SendEmailAsync(message);
+		        	    var emailResult = await emailService.SendEmailAsync(message);
 		        	    if (!emailResult.Success)
 		        	        Console.WriteLine($"Error sending auto-approval email for Owner's LeaveRequest {leaveRequest.Id}: {emailResult.Message}");
 		        	
-		        	    await _notificationService.CreateNotification(
+		        	    await notificationService.CreateNotification(
 		        	        user.Id,
 		        	        "Leave Request Automatically Approved",
 		        	        $"{leaveRequest.Type} leave from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} has been automatically approved.",
@@ -366,7 +345,7 @@ namespace AutomatedTaskSystem.Services.Leave
 		        	        status: NotificationStatusEnum.Accepted);
 		        	}
 		        	
-		        	await _hubContext.Clients.User(user.Id.ToString()).SendAsync("LeaveRequestOpinion", new
+		        	await hubContext.Clients.User(user.Id.ToString()).SendAsync("LeaveRequestOpinion", new
 		        	{
 		        	    isApproved = true,
 		        	    message = "Your leave request(s) have been automatically approved."
@@ -376,21 +355,21 @@ namespace AutomatedTaskSystem.Services.Leave
 		        {
 		        	var firstRequestId = createdRequests[0].Id;
 		        	if (user.Role == UserRoleEnum.ProjectManger)
-		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(firstRequestId);
+		        	    await leaveRequestHelper.SendOwnerPendingUpdate(firstRequestId);
 		        	else if (user.Role == UserRoleEnum.TeamLeader)
 		        	{
-		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(firstRequestId);
-		        	    await _leaveRequestHelper.SendProjectManagersPendingUpdate(firstRequestId);
+		        	    await leaveRequestHelper.SendOwnerPendingUpdate(firstRequestId);
+		        	    await leaveRequestHelper.SendProjectManagersPendingUpdate(firstRequestId);
 		        	}
 		        	else
 		        	{
-		        	    await _leaveRequestHelper.SendOwnerPendingUpdate(firstRequestId);
-		        	    await _leaveRequestHelper.SendProjectManagersPendingUpdate(firstRequestId);
+		        	    await leaveRequestHelper.SendOwnerPendingUpdate(firstRequestId);
+		        	    await leaveRequestHelper.SendProjectManagersPendingUpdate(firstRequestId);
 		        	    if (user.TeamleaderId.HasValue)
 		        	    {
-		        	        var teamLeader = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
+		        	        var teamLeader = await dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
 		        	        if (teamLeader != null)
-		        	            await _leaveRequestHelper.SendTeamLeaderPendingUpdates(teamLeader.Id, firstRequestId);
+		        	            await leaveRequestHelper.SendTeamLeaderPendingUpdates(teamLeader.Id, firstRequestId);
 		        	        else
 		        	            Console.WriteLine($"Warning: Team leader with ID {user.TeamleaderId.Value} not found for user {user.Id}.");
 		        	    }
@@ -401,7 +380,7 @@ namespace AutomatedTaskSystem.Services.Leave
 		        	foreach (var leaveRequest in createdRequests)
 		        	{
 		        	    var workingDays = CalculateWorkingDays(leaveRequest.StartDate, leaveRequest.EndDate);
-		        	    await _notificationService.CreateNotification(
+		        	    await notificationService.CreateNotification(
 		        	        user.Id,
 		        	        "Leave Request Submitted",
 		        	        $"{leaveRequest.Type} leave from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} ({workingDays} working days) has been submitted and is pending review.",
@@ -412,11 +391,11 @@ namespace AutomatedTaskSystem.Services.Leave
 		        	        status: NotificationStatusEnum.Pending);
 		        	
 		        	    var approvers = new List<Models.User>();
-		        	    var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
+		        	    var owner = await dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
 		        	    if (owner != null && owner.Id != user.Id) approvers.Add(owner);
 		        	    if (user.GroupId.HasValue)
 		        	    {
-		        	        var projectManagers = await _dataContext.SectionGroups
+		        	        var projectManagers = await dataContext.SectionGroups
 		        	            .Where(sg => sg.GroupId == user.GroupId.Value)
 		        	            .Select(sg => sg.Section.Head)
 		        	            .Distinct()
@@ -425,13 +404,13 @@ namespace AutomatedTaskSystem.Services.Leave
 		        	    }
 		        	    if (user.TeamleaderId.HasValue && user.TeamleaderId.Value != user.Id)
 		        	    {
-		        	        var teamLeaderUser = await _dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
+		        	        var teamLeaderUser = await dataContext.Users.FirstOrDefaultAsync(u => u.Id == user.TeamleaderId.Value);
 		        	        if (teamLeaderUser != null) approvers.Add(teamLeaderUser);
 		        	    }
 		        	    var approverIds = approvers.Where(a => a != null).Select(a => a.Id).Distinct().ToList();
 		        	    var approverMessage = $"{user.Name} submitted a {leaveRequest.Type} leave request from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} ({workingDays} working days).";
 		        	    foreach (var approverId in approverIds)
-		        	        await _notificationService.CreateNotification(
+		        	        await notificationService.CreateNotification(
 		        	            approverId,
 		        	            "New Leave Request Pending Review",
 		        	            approverMessage,
@@ -476,51 +455,51 @@ namespace AutomatedTaskSystem.Services.Leave
         {
             try
             {
-                var userIdResult = _tokenService.GetUserIdFromToken();
+                var userIdResult = tokenService.GetUserIdFromToken();
                 if (userIdResult.Data == null)
                 {
-                    _logService.LogError(null, "Token service returned null userId.Data for request: {@Request}", request);
-                    await _notificationService.ErrorNotification(userIdResult.ToString(), "Could not retrieve user ID from token.");
+                    logger.LogError(null, "Token service returned null userId.Data for request: {@Request}", request);
+                    await notificationService.ErrorNotification(userIdResult.ToString(), "Could not retrieve user ID from token.");
                     // Return with a specific reason
                     return OperationResult.Failed("Could not retrieve user ID from token.");
                 }
 
-                var user = await _dataContext.Users
+                var user = await dataContext.Users
                     .FirstOrDefaultAsync(x => x.Id == Convert.ToInt32(userIdResult.Data));
 
                 if (user == null)
                 {
-                    _logService.LogError(null, "User with ID {UserId} not found when giving opinion for LeaveRequestId {LeaveRequestId}.", userIdResult.Data, request.LeaveRequestId);
-                    await _notificationService.ErrorNotification(userIdResult.ToString(), "This user does not exist.");
+                    logger.LogError(null, "User with ID {UserId} not found when giving opinion for LeaveRequestId {LeaveRequestId}.", userIdResult.Data, request.LeaveRequestId);
+                    await notificationService.ErrorNotification(userIdResult.ToString(), "This user does not exist.");
                     // Return with a specific reason
                     return OperationResult.Failed("User does not exist.");
                 }
 
-                var leaveRequest = await _dataContext.LeaveRequests
+                var leaveRequest = await dataContext.LeaveRequests
                     .Include(x => x.User)
                     .Include(lr => lr.Opinions)
                     .FirstOrDefaultAsync(lr => lr.Id == request.LeaveRequestId);
 
                 if (leaveRequest == null)
                 {
-                    _logService.LogError(null, "Leave request with ID {LeaveRequestId} not found for user {UserId}.", request.LeaveRequestId, user.Id);
-                    await _notificationService.ErrorNotification(userIdResult.ToString(), "Leave request not found.");
+                    logger.LogError(null, "Leave request with ID {LeaveRequestId} not found for user {UserId}.", request.LeaveRequestId, user.Id);
+                    await notificationService.ErrorNotification(userIdResult.ToString(), "Leave request not found.");
                     // Return with a specific reason
                     return OperationResult.Failed("Leave request not found.");
                 }
 
                 if (leaveRequest.Status == LeaveRequestStatusEnum.Cancelled)
                 {
-                    _logService.LogWarning("User {UserId} attempted to give opinion on cancelled leave request {LeaveRequestId}.", user.Id, request.LeaveRequestId);
-                    await _notificationService.ErrorNotification(userIdResult.ToString(), "Cannot give opinion on a cancelled leave request.");
+                    logger.LogWarning("User {UserId} attempted to give opinion on cancelled leave request {LeaveRequestId}.", user.Id, request.LeaveRequestId);
+                    await notificationService.ErrorNotification(userIdResult.ToString(), "Cannot give opinion on a cancelled leave request.");
                     // Return with a specific reason
                     return OperationResult.Failed("Cannot give opinion on a cancelled leave request.");
                 }
 
                 if (leaveRequest.Opinions.Any(o => o.UserId == user.Id))
                 {
-                    _logService.LogWarning("User {UserId} already gave opinion on leave request {LeaveRequestId}.", user.Id, request.LeaveRequestId);
-                    await _notificationService.ErrorNotification(userIdResult.ToString(), "You have already given your opinion on this request.");
+                    logger.LogWarning("User {UserId} already gave opinion on leave request {LeaveRequestId}.", user.Id, request.LeaveRequestId);
+                    await notificationService.ErrorNotification(userIdResult.ToString(), "You have already given your opinion on this request.");
                     // Return with a specific reason
                     return OperationResult.Failed("You have already given your opinion on this request.");
                 }
@@ -557,7 +536,7 @@ namespace AutomatedTaskSystem.Services.Leave
 
                             if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
                             {
-                                var fullFilePath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
+                                var fullFilePath = Path.Combine(webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
                                 if (File.Exists(fullFilePath))
                                 {
                                     var attachment = new System.Net.Mail.Attachment(fullFilePath);
@@ -566,11 +545,11 @@ namespace AutomatedTaskSystem.Services.Leave
                                 }
                                 else
                                 {
-                                    _logService.LogWarning("Medical certificate file not found at {FilePath} for LeaveRequest {LeaveRequestId}.", fullFilePath, leaveRequest.Id);
+                                    logger.LogWarning("Medical certificate file not found at {FilePath} for LeaveRequest {LeaveRequestId}.", fullFilePath, leaveRequest.Id);
                                 }
                             }
 
-                            var emailResult = await _emailService.SendEmailAsync(message);
+                            var emailResult = await emailService.SendEmailAsync(message);
 
                             if (emailResult.Success)
                             {
@@ -591,18 +570,18 @@ namespace AutomatedTaskSystem.Services.Leave
                                         // --- ADDED LOGIC HERE ---
                                         if (!string.IsNullOrEmpty(leaveRequest.MedicalCertificatePath))
                                         {
-                                            var fullFilePath = Path.Combine(_webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
+                                            var fullFilePath = Path.Combine(webHostEnvironment.WebRootPath, leaveRequest.MedicalCertificatePath);
                                             try
                                             {
                                                 if (File.Exists(fullFilePath))
                                                 {
                                                     File.Delete(fullFilePath);
-                                                    _logService.LogInformation("Deleted medical certificate file: {FilePath} for LeaveRequest {LeaveRequestId}.", fullFilePath, leaveRequest.Id);
+                                                    logger.LogInformation("Deleted medical certificate file: {FilePath} for LeaveRequest {LeaveRequestId}.", fullFilePath, leaveRequest.Id);
                                                 }
                                             }
                                             catch (IOException ioEx)
                                             {
-                                                _logService.LogError(ioEx, "Error deleting medical certificate file: {FilePath} for LeaveRequest {LeaveRequestId}.", fullFilePath, leaveRequest.Id);
+                                                logger.LogError(ioEx, "Error deleting medical certificate file: {FilePath} for LeaveRequest {LeaveRequestId}.", fullFilePath, leaveRequest.Id);
                                             }
                                         }
                                         // --- END ADDED LOGIC ---
@@ -619,11 +598,11 @@ namespace AutomatedTaskSystem.Services.Leave
                                         break;
                                 }
 
-                                _dataContext.Opinions.Add(opinion);
-                                _dataContext.Users.Update(senderUser);
-                                _dataContext.LeaveRequests.Update(leaveRequest);
+                                dataContext.Opinions.Add(opinion);
+                                dataContext.Users.Update(senderUser);
+                                dataContext.LeaveRequests.Update(leaveRequest);
 
-                                await _hubContext.Clients.User(leaveRequest.UserId.ToString()).SendAsync("LeaveRequestOpinion", new
+                                await hubContext.Clients.User(leaveRequest.UserId.ToString()).SendAsync("LeaveRequestOpinion", new
                                 {
                                     isApproved = true,
                                     message = "Your leave request has been approved."
@@ -632,7 +611,7 @@ namespace AutomatedTaskSystem.Services.Leave
 		                                // Persistent notification for requester when Owner approves
 		                                var approveTitle = "Leave Request Approved";
 		                                var approveMessage = $"Your {leaveRequest.Type} leave request from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} has been approved.";
-		                                await _notificationService.CreateNotification(
+		                                await notificationService.CreateNotification(
 		                                    leaveRequest.UserId,
 		                                    approveTitle,
 		                                    approveMessage,
@@ -644,12 +623,12 @@ namespace AutomatedTaskSystem.Services.Leave
                             }
                             else
                             {
-                                _logService.LogError(emailResult.Exception, // Pass the actual exception here
+                                logger.LogError(emailResult.Exception, // Pass the actual exception here
                                             "Error sending approval email for LeaveRequest {LeaveRequestId} to user {RequesterUserId}: {ErrorMessage}",
                                             leaveRequest.Id,
                                             leaveRequest.UserId,
                                             emailResult.Message);
-                                await _notificationService.ErrorNotification(userIdResult.ToString(), "Leave request could not be fully processed due to email delivery failure. Please try again or contact support.");
+                                await notificationService.ErrorNotification(userIdResult.ToString(), "Leave request could not be fully processed due to email delivery failure. Please try again or contact support.");
                                 // Return with specific reason from email service
                                 return OperationResult.Failed($"Leave request could not be fully processed due to email delivery failure: {emailResult.Message}");
                             }
@@ -657,10 +636,10 @@ namespace AutomatedTaskSystem.Services.Leave
                         else // Owner rejects
                         {
                             leaveRequest.Status = LeaveRequestStatusEnum.Rejected;
-                            _dataContext.Opinions.Add(opinion);
-                            _dataContext.LeaveRequests.Update(leaveRequest);
+                            dataContext.Opinions.Add(opinion);
+                            dataContext.LeaveRequests.Update(leaveRequest);
 
-                            await _hubContext.Clients.User(leaveRequest.UserId.ToString()).SendAsync("LeaveRequestOpinion", new
+                            await hubContext.Clients.User(leaveRequest.UserId.ToString()).SendAsync("LeaveRequestOpinion", new
                             {
                                 isApproved = false,
                                 message = "Your leave request has been rejected."
@@ -669,7 +648,7 @@ namespace AutomatedTaskSystem.Services.Leave
 		                            // Persistent notification for requester when Owner rejects
 		                            var rejectTitle = "Leave Request Rejected";
 		                            var rejectMessage = $"Your {leaveRequest.Type} leave request from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} has been rejected.";
-		                            await _notificationService.CreateNotification(
+		                            await notificationService.CreateNotification(
 		                                leaveRequest.UserId,
 		                                rejectTitle,
 		                                rejectMessage,
@@ -684,34 +663,34 @@ namespace AutomatedTaskSystem.Services.Leave
                     case UserRoleEnum.TeamLeader:
                     case UserRoleEnum.ProjectManger:
                     case UserRoleEnum.SectionHead:
-                        _dataContext.Opinions.Add(opinion);
+                        dataContext.Opinions.Add(opinion);
                         break;
 
                     default:
-                        _logService.LogWarning("Unauthorized user {UserId} with role {UserRole} attempted to give opinion on leave request {LeaveRequestId}.", user.Id, user.Role, request.LeaveRequestId);
-                        await _notificationService.ErrorNotification(userIdResult.ToString(), "You are not authorized to give opinions on this leave request.");
+                        logger.LogWarning("Unauthorized user {UserId} with role {UserRole} attempted to give opinion on leave request {LeaveRequestId}.", user.Id, user.Role, request.LeaveRequestId);
+                        await notificationService.ErrorNotification(userIdResult.ToString(), "You are not authorized to give opinions on this leave request.");
                         // Return with a specific reason
                         return OperationResult.Failed("You are not authorized to give opinions on this leave request.");
                 }
 
-                await _dataContext.SaveChangesAsync();
+                await dataContext.SaveChangesAsync();
 
-                await _leaveRequestHelper.SendPendingUpdatesAfterOpinion(user, leaveRequest);
+                await leaveRequestHelper.SendPendingUpdatesAfterOpinion(user, leaveRequest);
                 if (user.Role == UserRoleEnum.Owner)
                 {
-                    await _leaveRequestHelper.SendProjectManagersPendingUpdateWithoutNew(leaveRequest.Id);
+                    await leaveRequestHelper.SendProjectManagersPendingUpdateWithoutNew(leaveRequest.Id);
                     if(leaveRequest.User.TeamleaderId != null)
-                    await _leaveRequestHelper.SendTeamLeaderPendingUpdatesWithoutNew(leaveRequest.User.TeamleaderId!.Value); 
+                    await leaveRequestHelper.SendTeamLeaderPendingUpdatesWithoutNew(leaveRequest.User.TeamleaderId!.Value); 
                 }
 
               
-                    _logService.LogInformation("Opinion successfully given for LeaveRequest {LeaveRequestId} by user {UserId}. IsApproved: {IsApproved}", request.LeaveRequestId, user.Id, request.IsApproved);
+                    logger.LogInformation("Opinion successfully given for LeaveRequest {LeaveRequestId} by user {UserId}. IsApproved: {IsApproved}", request.LeaveRequestId, user.Id, request.IsApproved);
                 // Return success with a generic success message
                 return OperationResult.Succeeded("Opinion successfully recorded.");
             }
             catch (Exception ex)
             {
-                _logService.LogError(ex, "An unhandled error occurred in GiveOpinion for LeaveRequestId {LeaveRequestId} by user {UserId}.", request.LeaveRequestId);
+                logger.LogError(ex, "An unhandled error occurred in GiveOpinion for LeaveRequestId {LeaveRequestId} by user {UserId}.", request.LeaveRequestId);
                 // Return a general failure message for unhandled exceptions
                 return OperationResult.Failed("An unexpected error occurred while processing your opinion. Please try again.");
             }
@@ -726,11 +705,11 @@ namespace AutomatedTaskSystem.Services.Leave
         /// <returns>An OperationResult summarizing the overall outcome of the bulk operation.</returns>
         public async Task<OperationResult> GiveBulkOpinion(CreateBulkOpinionDto request)
         {
-            _logService.LogInformation("Attempting to process {Count} bulk opinions.", request.Ids.Length);
+            logger.LogInformation("Attempting to process {Count} bulk opinions.", request.Ids.Length);
 
             if (request.Ids == null || !request.Ids.Any())
             {
-                _logService.LogWarning("No leave request IDs provided for bulk opinion operation.");
+                logger.LogWarning("No leave request IDs provided for bulk opinion operation.");
                 return OperationResult.Failed("No leave request IDs provided for bulk operation.");
             }
 
@@ -746,7 +725,7 @@ namespace AutomatedTaskSystem.Services.Leave
             }
             else
             {
-                _logService.LogError(null, "Invalid status '{Status}' provided for bulk opinion. Only Approved or Rejected are allowed.", request.Status);
+                logger.LogError(null, "Invalid status '{Status}' provided for bulk opinion. Only Approved or Rejected are allowed.", request.Status);
                 return OperationResult.Failed("Invalid status for bulk opinion. Only 'Approved' or 'Rejected' statuses are allowed.");
             }
 
@@ -774,7 +753,7 @@ namespace AutomatedTaskSystem.Services.Leave
                     failedCount++;
                     overallSuccess = false; // Mark overall operation as failed if any individual one fails
                     failedMessages.Add($"Leave Request ID {leaveRequestId}: {individualResult.Message}");
-                    _logService.LogError(null, "Individual opinion for LeaveRequest {LeaveRequestId} failed: {Message}", leaveRequestId, individualResult.Message);
+                    logger.LogError(null, "Individual opinion for LeaveRequest {LeaveRequestId} failed: {Message}", leaveRequestId, individualResult.Message);
                 }
             }
 
@@ -788,7 +767,7 @@ namespace AutomatedTaskSystem.Services.Leave
                 finalMessage = $"Processed {successfulCount} opinions successfully, but {failedCount} failed. Details: {string.Join("; ", failedMessages)}";
             }
 
-            _logService.LogInformation("Bulk opinion operation completed. {Message}", finalMessage);
+            logger.LogInformation("Bulk opinion operation completed. {Message}", finalMessage);
 
             return overallSuccess
                 ? OperationResult.Succeeded(finalMessage)
@@ -797,7 +776,7 @@ namespace AutomatedTaskSystem.Services.Leave
 
 
         public async Task<List<GetOpinion>> GetAllOpinionsForLeaveRequest(int leaveRequestId) { 
-            return await _dataContext.Opinions.Where(x => x.LeaveRequestId == leaveRequestId)
+            return await dataContext.Opinions.Where(x => x.LeaveRequestId == leaveRequestId)
                 .Select(x => new GetOpinion
                 {
                     Id = x.Id,
@@ -809,7 +788,7 @@ namespace AutomatedTaskSystem.Services.Leave
                 .ToListAsync();
         }
         public async Task<ResponseService<GetOpinion>> GetSingleOpinion(int id) { 
-            var op = await _dataContext.Opinions
+            var op = await dataContext.Opinions
                 .Select(x => new GetOpinion
                 {
                     Id = x.Id,
@@ -831,7 +810,7 @@ namespace AutomatedTaskSystem.Services.Leave
         public async Task<ResponseService<PageList<GetLeaveRequestDto>>> GetAllVacationsAsync(int page = 1, int pageSize = 10, string? searchTerm = null, string? fromDate = null, string? toDate = null, string? status = null, string? myStatus = null, string? type = null, bool disablePagination = false)
         {
         // 1. Get the ResponseService<string> from the token service
-        var tokenResponse = _tokenService.GetUserIdFromToken();
+        var tokenResponse = tokenService.GetUserIdFromToken();
 
         // 2. Check if the token response itself indicates an error or has no data
         if (tokenResponse == null || tokenResponse.Error || string.IsNullOrWhiteSpace(tokenResponse.Data))
@@ -855,7 +834,7 @@ namespace AutomatedTaskSystem.Services.Leave
             };
         }
 
-        var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == currentUserId);
+        var user = await dataContext.Users.FirstOrDefaultAsync(x => x.Id == currentUserId);
         if (user == null)
         {
             return new ResponseService<PageList<GetLeaveRequestDto>>
@@ -866,7 +845,7 @@ namespace AutomatedTaskSystem.Services.Leave
             };
         }
 
-        var query = _dataContext.LeaveRequests.Where(x => x.Status != LeaveRequestStatusEnum.Cancelled)
+        var query = dataContext.LeaveRequests.Where(x => x.Status != LeaveRequestStatusEnum.Cancelled)
             .Include(v => v.User)
             .Include(v => v.Opinions) 
             .AsQueryable();
@@ -874,7 +853,7 @@ namespace AutomatedTaskSystem.Services.Leave
         if (user.Role == UserRoleEnum.ProjectManger)
             query = query.Where(x => x.User.Id != user.Id);
 
-        if (user.Role == UserRoleEnum.TeamLeader && _dataContext.Users.Any(x => x.TeamleaderId == user.Id))
+        if (user.Role == UserRoleEnum.TeamLeader && dataContext.Users.Any(x => x.TeamleaderId == user.Id))
         {
             query = query.Where(v => v.User.GroupId == user.GroupId && v.User.Id != user.Id);
         }
@@ -885,7 +864,7 @@ namespace AutomatedTaskSystem.Services.Leave
                                     sg.Section != null && 
                                     sg.Section.HeadId == currentUserId));
         }
-        else if(user.Role == UserRoleEnum.TeamLeader && !_dataContext.Users.Any(x => x.TeamleaderId == user.Id))
+        else if(user.Role == UserRoleEnum.TeamLeader && !dataContext.Users.Any(x => x.TeamleaderId == user.Id))
         {
             return new ResponseService<PageList<GetLeaveRequestDto>>
             {
@@ -1029,7 +1008,7 @@ namespace AutomatedTaskSystem.Services.Leave
     // ✅ Read Single
         public async Task<ActionResult<ResponseService<GetLeaveRequestDto>>> GetVacationByIdAsync(int id)
         {
-            var result = await _dataContext.LeaveRequests
+            var result = await dataContext.LeaveRequests
                 .Include(v => v.User)
                  .Select(x => new GetLeaveRequestDto
                  {
@@ -1059,11 +1038,11 @@ namespace AutomatedTaskSystem.Services.Leave
 
         public async Task<ResponseService<GetSingleLeaveRequestDto>> GetLeaveRequestByUserId(int requestId)
         {
-            var id = _tokenService.GetUserIdFromToken().Data;
-            var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == Convert.ToInt32(id));
+            var id = tokenService.GetUserIdFromToken().Data;
+            var user = await dataContext.Users.FirstOrDefaultAsync(x => x.Id == Convert.ToInt32(id));
 
             // Get the leave request with all necessary includes
-            var leaveRequest = await _dataContext.LeaveRequests
+            var leaveRequest = await dataContext.LeaveRequests
                 .Where(x => x.Id == requestId)
                 .Include(x => x.User)
                     .ThenInclude(u => u.Group)
@@ -1175,7 +1154,7 @@ namespace AutomatedTaskSystem.Services.Leave
             {
 
                 // 1. Build the IQueryable for LeaveRequests, filtered by UserId and including related entities
-                var query = _dataContext.LeaveRequests
+                var query = dataContext.LeaveRequests
                     .Where(x => x.UserId == userId)
                     .Include(x => x.User)
                     .ThenInclude(x => x.Group)
@@ -1276,7 +1255,7 @@ namespace AutomatedTaskSystem.Services.Leave
         // ✅ Update
         public async Task<bool> UpdateVacationAsync(int id, DateTime startDate, DateTime endDate, string? reason, LeaveRequestStatusEnum status)
         {
-            var vacation = await _dataContext.LeaveRequests.FindAsync(id);
+            var vacation = await dataContext.LeaveRequests.FindAsync(id);
             if (vacation == null)
                 return false;
 
@@ -1285,19 +1264,19 @@ namespace AutomatedTaskSystem.Services.Leave
             vacation.Reason = reason;
             vacation.Status = status;
 
-            await _dataContext.SaveChangesAsync();
+            await dataContext.SaveChangesAsync();
             return true;
         }
 
         // ✅ Delete
         public async Task<bool> DeleteVacationAsync(int id)
         {
-            var vacation = await _dataContext.LeaveRequests.FindAsync(id);
+            var vacation = await dataContext.LeaveRequests.FindAsync(id);
             if (vacation == null)
                 return false;
 
-            _dataContext.LeaveRequests.Remove(vacation);
-            await _dataContext.SaveChangesAsync();
+            dataContext.LeaveRequests.Remove(vacation);
+            await dataContext.SaveChangesAsync();
             return true;
         }
 
@@ -1305,7 +1284,7 @@ namespace AutomatedTaskSystem.Services.Leave
         {
             try
             {
-                var leaveRequest = await _dataContext.LeaveRequests
+                var leaveRequest = await dataContext.LeaveRequests
                     .Include(x => x.User)
                     .FirstOrDefaultAsync(x => x.Id == id);
 
@@ -1390,12 +1369,12 @@ namespace AutomatedTaskSystem.Services.Leave
 
                         // --- END MODIFIED LOGIC ---
 
-                        var result = await _emailService.SendEmailAsync(message);
+                        var result = await emailService.SendEmailAsync(message);
                        
 
                         if (!result.Success)
                         {
-                            _logService.LogError(result.Exception, $"Error sending leave cancellation email for request {id}. Message: {result.Message}");
+                            logger.LogError(result.Exception, $"Error sending leave cancellation email for request {id}. Message: {result.Message}");
                             return new ResponseService<bool>
                             {
                                 Error = true,
@@ -1406,12 +1385,12 @@ namespace AutomatedTaskSystem.Services.Leave
                     }
 
 
-		                    await _dataContext.SaveChangesAsync();
+		                    await dataContext.SaveChangesAsync();
 
 		                    // Persistent notification for requester when leave is cancelled
 		                    var cancelTitle = "Leave Request Cancelled";
 		                    var cancelMessage = $"Your {leaveRequest.Type} leave request from {leaveRequest.StartDate:yyyy-MM-dd} to {leaveRequest.EndDate:yyyy-MM-dd} has been cancelled.";
-		                    await _notificationService.CreateNotification(
+		                    await notificationService.CreateNotification(
 		                        leaveRequest.UserId,
 		                        cancelTitle,
 		                        cancelMessage,
@@ -1423,13 +1402,13 @@ namespace AutomatedTaskSystem.Services.Leave
 
 		                    if (senderUser.Role != UserRoleEnum.Owner)
                     {
-                        await _leaveRequestHelper.SendOwnerPendingUpdate();
+                        await leaveRequestHelper.SendOwnerPendingUpdate();
                         if(senderUser.Role != UserRoleEnum.ProjectManger)
-                        await _leaveRequestHelper.SendProjectManagersPendingUpdate();
+                        await leaveRequestHelper.SendProjectManagersPendingUpdate();
 
                         if (senderUser.TeamleaderId != null)
                         {
-                            await _leaveRequestHelper.SendTeamLeaderPendingUpdates(senderUser.TeamleaderId.Value);
+                            await leaveRequestHelper.SendTeamLeaderPendingUpdates(senderUser.TeamleaderId.Value);
 
                         }
                     }
@@ -1450,7 +1429,7 @@ namespace AutomatedTaskSystem.Services.Leave
             }
             catch (Exception ex)
             {
-                _logService.LogError(ex, $"An unhandled error occurred while cancelling leave request with ID {id}.");
+                logger.LogError(ex, $"An unhandled error occurred while cancelling leave request with ID {id}.");
                 return new ResponseService<bool> { Error = true, Message = "An error occurred.", Data = false };
             }
         }
@@ -1469,7 +1448,7 @@ namespace AutomatedTaskSystem.Services.Leave
             if (!rolesToNotify.Any())
                 return new List<Models.User>();
 
-            var users = await _dataContext.Users
+            var users = await dataContext.Users
                 .Where(u => rolesToNotify.Contains(u.Role))
                 .ToListAsync();
 
@@ -1494,7 +1473,7 @@ namespace AutomatedTaskSystem.Services.Leave
                 return response;
             }
 
-            var user = await _dataContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
+            var user = await dataContext.Users.FirstOrDefaultAsync(x => x.Id == userId);
             if (user == null)
             {
                 response.Error = true;
@@ -1503,8 +1482,8 @@ namespace AutomatedTaskSystem.Services.Leave
                 return response;
             }
 
-            int requestedDays = _leaveRequestHelper.CalculateWorkingDays(startDate, endDate);
-            var pendingAnnualLeaveDays = await _leaveRequestHelper.GetPendingLeaveDaysAsync(user.Id, LeaveRequestType.Annual);
+            int requestedDays = leaveRequestHelper.CalculateWorkingDays(startDate, endDate);
+            var pendingAnnualLeaveDays = await leaveRequestHelper.GetPendingLeaveDaysAsync(user.Id, LeaveRequestType.Annual);
             int remainingAnnualLeave = user.Annual_leave_MAX - user.Annual_leave;
             int availableAnnual = remainingAnnualLeave - pendingAnnualLeaveDays;
             if (availableAnnual < 0) availableAnnual = 0;
@@ -1512,7 +1491,7 @@ namespace AutomatedTaskSystem.Services.Leave
             int neededFromNext = 0;
             bool needsConfirmation = false;
             int alreadyUsedFromNext = user.FromNextBalanceDaysUsed;
-            int pendingFromNextBalanceDays = await _leaveRequestHelper.GetPendingWorkingDaysAsync(user.Id, LeaveRequestType.FromNextBalance);
+            int pendingFromNextBalanceDays = await leaveRequestHelper.GetPendingWorkingDaysAsync(user.Id, LeaveRequestType.FromNextBalance);
             var today = DateTime.Today;
             int currentYear = today.Year;
 
@@ -1609,7 +1588,7 @@ namespace AutomatedTaskSystem.Services.Leave
         // Save medical certificate
         private async Task<string> SaveMedicalCertificate(IFormFile file, int requestId)
         {
-            var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "medical-certificates");
+            var uploadsFolder = Path.Combine(webHostEnvironment.WebRootPath, "uploads", "medical-certificates");
             Directory.CreateDirectory(uploadsFolder);
 
             var fileExtension = Path.GetExtension(file.FileName);
