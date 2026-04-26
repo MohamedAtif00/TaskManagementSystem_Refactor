@@ -85,6 +85,7 @@ namespace AutomatedTaskSystem.Dtos.SprintDtos
         public string Name { get; set; } = "";
         public string Subject { get; set; } = "";
         public string StartDate { get; set; } = "";
+        public string EndDate { get; set; } = "";
         public int ActiveTasks { get; set; }
         public List<CurrentPhaseDto> CurrentPhases { get; set; } = new();
         public string Status { get; set; } = "Delayed"; // "On Track" | "At Risk" | "Delayed"

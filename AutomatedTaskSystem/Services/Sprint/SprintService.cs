@@ -70,7 +70,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                         (SELECT COUNT(*)
                          FROM SprintLearningObjectives slo
                          INNER JOIN LearningObjectives lo ON slo.LearningObjectiveId = lo.Id
-                         WHERE slo.SprintId = s.Id AND lo.Archived = 0) AS LoNumber
+                         WHERE slo.SprintId = s.Id AND lo.Archived = 0 AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%') AS LoNumber
                     FROM Sprints s";
 
                 if (archived.HasValue)
@@ -108,6 +108,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                     INNER JOIN Steps st ON st.NodeId = n.Id
                     WHERE slo.SprintId IN @SprintIds
                       AND lo.Archived = 0
+                      AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
                       AND n.Archived = 0
                       AND st.Archived = 0
                     GROUP BY slo.SprintId";
@@ -127,6 +128,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                     INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id
                     WHERE slo.SprintId IN @SprintIds
                       AND lo.Archived = 0
+                      AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
                       AND t.Archived = 0
                       AND t.Status = 3  -- TaskStatusEnum.Done = 3
                     GROUP BY slo.SprintId";
@@ -228,6 +230,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                     learningObjects = sprint.SprintLearningObjectives
                                             .Select(slo => slo.LearningObjective) // Get the LearningObjective from each join entry
                                             .Where(lo => lo != null) // Ensure the LO was loaded successfully (should be with ThenInclude)
+                                            .Where(lo => lo!.Name == null || !lo.Name.Contains("old", StringComparison.OrdinalIgnoreCase))
                                             .Select(lo => new Responses.IDName
                                             {
                                                 Id = lo.Id,

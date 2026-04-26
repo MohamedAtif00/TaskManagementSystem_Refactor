@@ -4,12 +4,11 @@ import API from "../../lib/API";
 import { useRouter } from "next/router";
 import ProjectIcon from "../../assets/Icons/Project";
 import Link from "next/link";
-import { DataGrid, GridColDef,GridRenderCellParams } from "@mui/x-data-grid";
+import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import AddProject from "../../components/pageComponent/projects/addProject";
 import EditProject from "../../components/pageComponent/projects/editProject";
 import RemoveProject from "../../components/pageComponent/projects/removeProject";
 import TableAction from "../../components/TableComponents/TableActionButton";
-import ProgressDonut from "../../components/charts/ProgressDonut"; // Adjust path as needed
 import Head from "next/head";
 import Loader from "../../components/loader";
 import { load } from "../../slices/projectSlice";
@@ -38,18 +37,6 @@ const columnsForDisabled: GridColDef[] = [
     { field: "col4", headerName: "Term", width: 100 },
     {
         field: "col5",
-        headerName: "Progress",
-        width: 100,
-        renderCell: (params: GridRenderCellParams) => {
-            const percentage = params.row.progressPercent ?? 0;
-            return <ProgressDonut percentage={percentage} size={70} />;
-        },
-        sortable: false,
-        filterable: false,
-        disableColumnMenu: true,
-    },
-    {
-        field: "col6",
         headerName: "Actions",
         width: 220,
         renderCell: (c) => (
@@ -71,13 +58,6 @@ const columnsForDisabled: GridColDef[] = [
                         },
                     }}
                     type="edit"
-                />
-                <TableAction
-                    text="chart"
-                    url={{
-                        pathname: `/projects/charts/${c.id}`,
-                    }}
-                    type="chart"
                 />
                 <TableAction
                     text="Archive"
@@ -120,16 +100,7 @@ const columns: GridColDef[] =  [
     { field: "col3", headerName: "Year", width: 100 },
     { field: "col4", headerName: "Term", width: 100 },
     {
-            field: "col5",
-            headerName: "Progress",
-            width: 100 ,
-            renderCell: (params: GridRenderCellParams) => {
-            const percentage = params.row.progressPercent ?? 0;
-            return <ProgressDonut percentage={percentage} size={70} />;
-        },
-    },
-    {
-        field: "col6",
+        field: "col5",
         headerName: "Actions",
         width: 260,
         renderCell: (c) => (
@@ -151,13 +122,6 @@ const columns: GridColDef[] =  [
                         },
                     }}
                     type="edit"
-                />
-                <TableAction
-                    text="chart"
-                    url={{
-                        pathname: `/projects/charts/${c.id}`,
-                    }}
-                    type="chart"
                 />
                 <TableAction
                     text="Archive"
@@ -309,7 +273,6 @@ const Projects = () => {
                                     col2: p.description,
                                     col3: p.year.name,
                                     col4: p.term ? "Term 2" : "Term 1",
-                                    progressPercent: p.progressPercent ?? 0,
                                 };
                             })}
                         columns={columns}
@@ -332,7 +295,6 @@ const Projects = () => {
                                     col2: p.description,
                                     col3: p.year.name,
                                     col4: p.term ? "Term 2" : "Term 1",
-                                    progressPercent: p.progressPercent ?? 0,
                                 };
                             })}
                         columns={columnsForDisabled}
@@ -355,7 +317,6 @@ const Projects = () => {
                                     col2: p.description,
                                     col3: p.year.name,
                                     col4: p.term ? "Term 2" : "Term 1",
-                                    progressPercent: p.progressPercent ?? 0,
                                 };
                             })}
                         columns={columnsForDisabled}

@@ -241,6 +241,7 @@ const SprintChartsPage = () => {
 },
     { field: 'subject', headerName: 'Subject', width: 120 },
     { field: 'startDate', headerName: 'Start Date', width: 110 },
+    { field: 'endDate', headerName: 'End Date', width: 110 },
     { field: 'activeTasks', headerName: 'Active Tasks', width: 100, align: 'center', headerAlign: 'center' },
     { field: 'currentPhases', headerName: 'Current Phase', width: 150, renderCell: (params: GridRenderCellParams) => <CurrentPhaseDisplay phases={params.value} /> },
     { field: 'status', headerName: 'Status', width: 110, renderCell: (params: GridRenderCellParams) => <StatusBadge status={params.value} /> },

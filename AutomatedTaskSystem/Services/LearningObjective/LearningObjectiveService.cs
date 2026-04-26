@@ -13,6 +13,9 @@ public class LearningObjectiveService : ILearningObjectiveService
         _context = context;
     }
 
+    private static bool IsOldLearningObjectiveName(string? name) =>
+        !string.IsNullOrWhiteSpace(name) && name.Contains("old", StringComparison.OrdinalIgnoreCase);
+
     public async Task<ResponseService<List<LearningObjective>>> GetLearningObjectivesByProjectId(
         int Pid
     )
@@ -38,7 +41,7 @@ public class LearningObjectiveService : ILearningObjectiveService
                 foreach (var lesson in unit.Lessons)
                     if (!lesson.Archived)
                         foreach (var lo in lesson.LearningObjectives)
-                            if (!lo.Archived)
+                            if (!lo.Archived && !IsOldLearningObjectiveName(lo.Name))
                                 los.Add(lo);
 
         return new ResponseService<List<LearningObjective>>

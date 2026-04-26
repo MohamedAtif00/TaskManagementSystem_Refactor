@@ -46,6 +46,9 @@ public class ProjectAnalyticsService : IProjectAnalyticsService
         };
     }
 
+    private static bool IsOldLearningObjectiveName(string? name) =>
+        !string.IsNullOrWhiteSpace(name) && name.Contains("old", StringComparison.OrdinalIgnoreCase);
+
     public async Task<ResponseService<ProjectOverviewAnalyticsDto>> GetProjectOverviewAsync(int projectId, TimePeriodFilter? timePeriod = null)
     {
         var response = new ResponseService<ProjectOverviewAnalyticsDto>();
@@ -86,6 +89,7 @@ SELECT
         INNER JOIN Lessons l ON l.Id = lo.LessonId
         INNER JOIN Units u ON u.Id = l.UnitId
         WHERE u.ProjectId = @projectId AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
+          AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
     ),
     TotalExpectedTasks = (
         SELECT COUNT(1)
@@ -96,6 +100,7 @@ SELECT
         INNER JOIN Steps s ON s.NodeId = n.Id
         WHERE u.ProjectId = @projectId
           AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
+          AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
           AND n.Archived = 0 AND s.Archived = 0
     );
 """;
@@ -106,19 +111,20 @@ SELECT
             );
 
             const string taskSummarySql = """
-SELECT
-    Completed = ISNULL(SUM(CASE WHEN t.Status = @done THEN 1 ELSE 0 END), 0),
-    Active = ISNULL(SUM(CASE WHEN t.Status IN (@todo, @doing) THEN 1 ELSE 0 END), 0),
-    [Rollback] = ISNULL(SUM(CASE WHEN t.IsRollback = 1 THEN 1 ELSE 0 END), 0),
-    Flagged = ISNULL(SUM(CASE WHEN t.Flagged = 1 THEN 1 ELSE 0 END), 0)
-FROM Tasks t
-INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId
-INNER JOIN Lessons l ON l.Id = lo.LessonId
-INNER JOIN Units u ON u.Id = l.UnitId
-WHERE u.ProjectId = @projectId
-  AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
-  AND t.Archived = 0;
-""";
+                        SELECT
+                            Completed = ISNULL(SUM(CASE WHEN t.Status = @done THEN 1 ELSE 0 END), 0),
+                            Active = ISNULL(SUM(CASE WHEN t.Status IN (@todo, @doing) THEN 1 ELSE 0 END), 0),
+                            [Rollback] = ISNULL(SUM(CASE WHEN t.IsRollback = 1 THEN 1 ELSE 0 END), 0),
+                            Flagged = ISNULL(SUM(CASE WHEN t.Flagged = 1 THEN 1 ELSE 0 END), 0)
+                        FROM Tasks t
+                        INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId
+                        INNER JOIN Lessons l ON l.Id = lo.LessonId
+                        INNER JOIN Units u ON u.Id = l.UnitId
+                        WHERE u.ProjectId = @projectId
+                          AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
+                          AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
+                          AND t.Archived = 0;
+                        """;
 
             var taskSummaryRow = await connection.QuerySingleAsync<ProjectTaskSummaryRow>(
                 taskSummarySql,
@@ -164,23 +170,24 @@ WHERE u.ProjectId = @projectId
             };
 
             const string tagsSql = """
-SELECT
-    t.GroupId AS GroupId,
-    g.Name AS [Label],
-    g.ColorCode AS ColorCode,
-    COUNT(1) AS [Value]
-FROM Tasks t
-INNER JOIN Groups g ON g.Id = t.GroupId
-INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId
-INNER JOIN Lessons l ON l.Id = lo.LessonId
-INNER JOIN Units u ON u.Id = l.UnitId
-WHERE u.ProjectId = @projectId
-  AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
-  AND t.Archived = 0
-  AND t.Status IN (@backlog, @todo, @doing)
-  AND (@startDate IS NULL OR (t.CreatedAt >= @startDate AND t.CreatedAt <= @endDate))
-GROUP BY t.GroupId, g.Name, g.ColorCode;
-""";
+                        SELECT
+                            t.GroupId AS GroupId,
+                            g.Name AS [Label],
+                            g.ColorCode AS ColorCode,
+                            COUNT(1) AS [Value]
+                        FROM Tasks t
+                        INNER JOIN Groups g ON g.Id = t.GroupId
+                        INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId
+                        INNER JOIN Lessons l ON l.Id = lo.LessonId
+                        INNER JOIN Units u ON u.Id = l.UnitId
+                        WHERE u.ProjectId = @projectId
+                          AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
+                          AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
+                          AND t.Archived = 0
+                          AND t.Status IN (@backlog, @todo, @doing)
+                          AND (@startDate IS NULL OR (t.CreatedAt >= @startDate AND t.CreatedAt <= @endDate))
+                        GROUP BY t.GroupId, g.Name, g.ColorCode;
+                        """;
 
             var tagRows = (await connection.QueryAsync<ProjectOverviewTagRow>(
                     tagsSql,
@@ -221,6 +228,7 @@ WITH ProjectLOs AS (
     INNER JOIN Units u ON u.Id = l.UnitId
     WHERE u.ProjectId = @projectId
       AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
+      AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
 ),
 ExpectedSteps AS (
     SELECT pl.Id AS LearningObjectiveId, COUNT(1) AS ExpectedCount
@@ -360,63 +368,64 @@ LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = pl.Id;
             var connection = await GetOpenConnectionAsync();
 
             const string loProgressSql = """
-WITH ProjectLOs AS (
-    SELECT lo.Id, lo.Name, lo.SchemaId
-    FROM LearningObjectives lo
-    INNER JOIN Lessons l ON l.Id = lo.LessonId AND l.Archived = 0
-    INNER JOIN Units u ON u.Id = l.UnitId AND u.Archived = 0
-    WHERE u.ProjectId = @projectId
-      AND lo.Archived = 0
-),
-Expected AS (
-    SELECT
-        pl.Id AS LearningObjectiveId,
-        TotalExpectedTasks = COUNT(1),
-        TotalExpectedDuration = ISNULL(SUM(tb.Duration), 0)
-    FROM ProjectLOs pl
-    INNER JOIN Nodes n ON n.SchemaId = pl.SchemaId AND n.Archived = 0
-    INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
-    LEFT JOIN TaskBank tb ON tb.Id = s.TaskBankId
-    GROUP BY pl.Id
-),
-FilteredTasks AS (
-    SELECT t.Id, t.LearningObjectiveId, t.Status
-    FROM Tasks t
-    INNER JOIN ProjectLOs pl ON pl.Id = t.LearningObjectiveId
-    WHERE t.Archived = 0
-      AND (@groupId IS NULL OR t.GroupId = @groupId)
-      AND (@startDate IS NULL OR (t.CreatedAt >= @startDate AND t.CreatedAt <= @endDate))
-),
-Completed AS (
-    SELECT ft.LearningObjectiveId, CompletedTasks = COUNT(1)
-    FROM FilteredTasks ft
-    WHERE ft.Status = @done
-    GROUP BY ft.LearningObjectiveId
-),
-Actual AS (
-    SELECT ft.LearningObjectiveId,
-           TotalActualMinutes = ISNULL(SUM(CAST(twt.Duration AS float)) / 60000.0, 0)
-    FROM FilteredTasks ft
-    INNER JOIN TaskWorkTimes twt ON twt.TaskId = ft.Id
-    GROUP BY ft.LearningObjectiveId
-)
-SELECT
-    pl.Id,
-    pl.Name,
-    TotalExpectedTasks = ISNULL(e.TotalExpectedTasks, 0),
-    TotalExpectedDuration = ISNULL(e.TotalExpectedDuration, 0),
-    CompletedTasks = ISNULL(c.CompletedTasks, 0),
-    TotalActualMinutes = ISNULL(a.TotalActualMinutes, 0)
-FROM ProjectLOs pl
-LEFT JOIN Expected e ON e.LearningObjectiveId = pl.Id
-LEFT JOIN Completed c ON c.LearningObjectiveId = pl.Id
-LEFT JOIN Actual a ON a.LearningObjectiveId = pl.Id
-WHERE (@groupId IS NULL OR EXISTS (
-    SELECT 1 FROM Tasks t
-    WHERE t.LearningObjectiveId = pl.Id AND t.Archived = 0 AND t.GroupId = @groupId
-))
-ORDER BY pl.Id;
-""";
+                    WITH ProjectLOs AS (
+                        SELECT lo.Id, lo.Name, lo.SchemaId
+                        FROM LearningObjectives lo
+                        INNER JOIN Lessons l ON l.Id = lo.LessonId AND l.Archived = 0
+                        INNER JOIN Units u ON u.Id = l.UnitId AND u.Archived = 0
+                        WHERE u.ProjectId = @projectId
+                          AND lo.Archived = 0
+                                  AND LOWER(lo.Name) NOT LIKE '%old%'
+                    ),
+                    Expected AS (
+                        SELECT
+                            pl.Id AS LearningObjectiveId,
+                            TotalExpectedTasks = COUNT(1),
+                            TotalExpectedDuration = ISNULL(SUM(tb.Duration), 0)
+                        FROM ProjectLOs pl
+                        INNER JOIN Nodes n ON n.SchemaId = pl.SchemaId AND n.Archived = 0
+                        INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
+                        LEFT JOIN TaskBank tb ON tb.Id = s.TaskBankId
+                        GROUP BY pl.Id
+                    ),
+                    FilteredTasks AS (
+                        SELECT t.Id, t.LearningObjectiveId, t.Status
+                        FROM Tasks t
+                        INNER JOIN ProjectLOs pl ON pl.Id = t.LearningObjectiveId
+                        WHERE t.Archived = 0
+                          AND (@groupId IS NULL OR t.GroupId = @groupId)
+                          AND (@startDate IS NULL OR (t.CreatedAt >= @startDate AND t.CreatedAt <= @endDate))
+                    ),
+                    Completed AS (
+                        SELECT ft.LearningObjectiveId, CompletedTasks = COUNT(1)
+                        FROM FilteredTasks ft
+                        WHERE ft.Status = @done
+                        GROUP BY ft.LearningObjectiveId
+                    ),
+                    Actual AS (
+                        SELECT ft.LearningObjectiveId,
+                               TotalActualMinutes = ISNULL(SUM(CAST(twt.Duration AS float)) / 60000.0, 0)
+                        FROM FilteredTasks ft
+                        INNER JOIN TaskWorkTimes twt ON twt.TaskId = ft.Id
+                        GROUP BY ft.LearningObjectiveId
+                    )
+                    SELECT
+                        pl.Id,
+                        pl.Name,
+                        TotalExpectedTasks = ISNULL(e.TotalExpectedTasks, 0),
+                        TotalExpectedDuration = ISNULL(e.TotalExpectedDuration, 0),
+                        CompletedTasks = ISNULL(c.CompletedTasks, 0),
+                        TotalActualMinutes = ISNULL(a.TotalActualMinutes, 0)
+                    FROM ProjectLOs pl
+                    LEFT JOIN Expected e ON e.LearningObjectiveId = pl.Id
+                    LEFT JOIN Completed c ON c.LearningObjectiveId = pl.Id
+                    LEFT JOIN Actual a ON a.LearningObjectiveId = pl.Id
+                    WHERE (@groupId IS NULL OR EXISTS (
+                        SELECT 1 FROM Tasks t
+                        WHERE t.LearningObjectiveId = pl.Id AND t.Archived = 0 AND t.GroupId = @groupId
+                    ))
+                    ORDER BY pl.Id;
+                    """;
 
             var loRows = (await connection.QueryAsync<ProjectLoProgressRow>(
                 loProgressSql,
@@ -442,6 +451,7 @@ INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id AND t.Archived = 0
 INNER JOIN Groups g ON g.Id = t.GroupId
 WHERE u.ProjectId = @projectId
   AND lo.Archived = 0
+  AND LOWER(lo.Name) NOT LIKE '%old%'
   AND t.Status IN (@backlog, @todo, @doing)
   AND (@groupId IS NULL OR t.GroupId = @groupId);
 """;
@@ -561,7 +571,7 @@ WHERE u.ProjectId = @projectId
             var allLOs = project.Units
                 .Where(u => !u.Archived)
                 .SelectMany(u => u.Lessons.Where(l => !l.Archived))
-                .SelectMany(l => l.LearningObjectives.Where(lo => lo != null && !lo.Archived))
+                .SelectMany(l => l.LearningObjectives.Where(lo => lo != null && !lo.Archived && !IsOldLearningObjectiveName(lo.Name)))
                 .ToList();
 
             var tableData = allLOs.Select(lo =>
@@ -609,6 +619,7 @@ WHERE u.ProjectId = @projectId
                 };
 
                 var startDate = lo.StartedAt?.ToString("d/M/yyyy") ?? "";
+                var endDate = lo.DoneAt?.ToString("d/M/yyyy") ?? "In Process";
 
                 return new LearningObjectiveTableRowDto
                 {
@@ -616,6 +627,7 @@ WHERE u.ProjectId = @projectId
                     Name = lo.Name,
                     Subject = subject,
                     StartDate = startDate,
+                    EndDate = endDate,
                     ActiveTasks = activeTasks,
                     CurrentPhases = currentPhases,
                     Status = status,

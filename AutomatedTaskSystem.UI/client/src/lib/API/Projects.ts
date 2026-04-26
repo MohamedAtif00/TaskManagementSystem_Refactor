@@ -374,6 +374,7 @@ const PROJECTS = {
                       name: r.name ?? r.Name,
                       subject: r.subject ?? r.Subject,
                       startDate: r.startDate ?? r.StartDate,
+                      endDate:r.endDate ?? r.EndaDate,
                       activeTasks: r.activeTasks ?? r.ActiveTasks,
                       currentPhases: (r.currentPhases ?? r.CurrentPhases ?? []).map((p: any) => ({
                           groupName: p.groupName ?? p.GroupName,

@@ -73,6 +73,7 @@ export interface LearningObjectiveTableRow {
     name: string;
     subject: string;
     startDate: string;
+    endDate: string;
     activeTasks: number;
     currentPhases: CurrentPhase[];
     status: 'On Track' | 'At Risk' | 'Delayed';

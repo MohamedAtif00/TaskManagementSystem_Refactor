@@ -135,7 +135,7 @@ const Sprints = () => {
                                             handleRouteToSprintTask(params.row.id);
                                         }}
                                         className="p-2 rounded-md hover:bg-gray-100 transition-colors group/btn"
-                                        title={activeTab === 'archived' ? 'Unarchive Sprint' : 'Archive Sprint'}
+                                        title='Show Sprint Task Board'
                                     >
 
                                         <SprintEye  />
@@ -151,7 +151,7 @@ const Sprints = () => {
                                 handleRoutingToSprintCharts(params.row.id);
                             }}
                             className="p-2 rounded-md hover:bg-gray-100 transition-colors group/btn"
-                            title={activeTab === 'archived' ? 'Unarchive Sprint' : 'Archive Sprint'}
+                            title='Show Sprint Charts'
                         >
                             <PieChartIcon></PieChartIcon>
                         </button>

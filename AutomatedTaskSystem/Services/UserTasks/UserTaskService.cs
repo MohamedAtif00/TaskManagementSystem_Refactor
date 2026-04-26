@@ -128,7 +128,8 @@ public class UserTaskService : IUserTaskService
                                     && t.Status == TaskStatusEnum.Doing
                                     && t.LearningObjective.Lesson.Unit.Project.Status
                                         != ProjectStatusEnum.Closed
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                               
+                                        && t.LearningObjective.Lesson.Unit.Project.Status
                                         != ProjectStatusEnum.Hold
                             )
                             .Count(),

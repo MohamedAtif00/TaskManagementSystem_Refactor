@@ -82,9 +82,9 @@ public class DashboardService : IDashboardService
                     && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
             )
             .Include(t => t.LearningObjective)
-            .ThenInclude(lo => lo.Lesson)
-            .ThenInclude(l => l.Unit)
-            .ThenInclude(u => u.Project)
+                .ThenInclude(lo => lo.Lesson)
+                    .ThenInclude(l => l.Unit)
+                        .ThenInclude(u => u.Project)
             .ToListAsync();
 
         if (reports.Value is null || reports.Value.Data is null)
@@ -149,10 +149,10 @@ public class DashboardService : IDashboardService
             .Where(u => u.Id == uid && !u.Archived)
             .Include(u => u.Group)
             .Include(u => u.Projects)
-            .ThenInclude(u => u.Units)
-            .ThenInclude(u => u.Lessons)
-            .ThenInclude(u => u.LearningObjectives)
-            .ThenInclude(u => u.Tasks)
+                .ThenInclude(u => u.Units)
+                    .ThenInclude(u => u.Lessons)
+                        .ThenInclude(u => u.LearningObjectives)
+                            .ThenInclude(u => u.Tasks)
             .FirstOrDefaultAsync();
         if (user is null)
             return new UnauthorizedObjectResult(
@@ -166,10 +166,10 @@ public class DashboardService : IDashboardService
         var members = await _context.Users
             .Where(u => u.GroupId == user.GroupId && !u.Archived && u.Role == UserRoleEnum.Member)
             .Include(u => u.Tasks)
-            .ThenInclude(t => t.LearningObjective)
-            .ThenInclude(lo => lo.Lesson)
-            .ThenInclude(l => l.Unit)
-            .ThenInclude(u => u.Project)
+                .ThenInclude(t => t.LearningObjective)
+                    .ThenInclude(lo => lo.Lesson)
+                        .ThenInclude(l => l.Unit)
+                            .ThenInclude(u => u.Project)
             .ToListAsync();
 
         var ProjectsDetails = new List<GetTasksPerItemDto> { };

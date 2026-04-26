@@ -480,7 +480,7 @@ LEFT JOIN Completed c ON c.ProjectId = p.Id;
                                                 Id = l.Id,
                                                 Name = l.Name,
                                                 LearningObjectives = l.LearningObjectives
-                                                    .Where(lo => !lo.Archived)
+                                                    .Where(lo => !lo.Archived && (lo.Name == null || !lo.Name.Contains("old", StringComparison.OrdinalIgnoreCase)))
                                                     .Select(
                                                         lo =>
                                                             new LearningObjectiveDTO

@@ -51,6 +51,9 @@ namespace AutomatedTaskSystem.Services.Sprint
             };
         }
 
+        private static bool IsOldLearningObjectiveName(string? name) =>
+            !string.IsNullOrWhiteSpace(name) && name.Contains("old", StringComparison.OrdinalIgnoreCase);
+
         public async Task<ResponseService<SprintOverviewDto>> GetSprintOverviewAsync(int sprintId, TimePeriodFilter? timePeriod = null)
         {
             var response = new ResponseService<SprintOverviewDto>();
@@ -79,7 +82,8 @@ namespace AutomatedTaskSystem.Services.Sprint
                     INNER JOIN LearningObjectives lo ON lo.Id = slo.LearningObjectiveId AND lo.Archived = 0
                     INNER JOIN Nodes n ON n.SchemaId = lo.SchemaId AND n.Archived = 0
                     INNER JOIN Steps st ON st.NodeId = n.Id AND st.Archived = 0
-                    WHERE slo.SprintId = @sprintId;
+                    WHERE slo.SprintId = @sprintId
+                      AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%';
                     """;
 
                 var totalExpectedTasks = await connection.QuerySingleAsync<int>(
@@ -96,7 +100,8 @@ namespace AutomatedTaskSystem.Services.Sprint
                         FROM Tasks t
                         INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId AND lo.Archived = 0
                         INNER JOIN SprintLearningObjectives slo ON slo.LearningObjectiveId = lo.Id AND slo.SprintId = @sprintId
-                        WHERE t.Archived = 0;
+                        WHERE t.Archived = 0
+                          AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%';
                         """;
 
                 var taskSummaryRow = await connection.QuerySingleAsync<SprintTaskSummaryRow>(
@@ -156,6 +161,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                     INNER JOIN SprintLearningObjectives slo ON slo.LearningObjectiveId = lo.Id AND slo.SprintId = @sprintId
                     INNER JOIN Groups g ON g.Id = t.GroupId
                     WHERE t.Archived = 0
+                      AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
                       AND t.Status IN (@backlog, @todo, @doing)
                       AND (@startDate IS NULL OR (t.CreatedAt >= @startDate AND t.CreatedAt <= @endDate))
                     GROUP BY t.GroupId, g.Name, g.ColorCode;
@@ -204,6 +210,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                     INNER JOIN LearningObjectives lo ON lo.Id = slo.LearningObjectiveId
                     WHERE slo.SprintId = @sprintId
                       AND lo.Archived = 0
+                      AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
                 ),
                 ExpectedSteps AS (
                     SELECT sl.Id AS LearningObjectiveId, COUNT(1) AS ExpectedCount
@@ -361,6 +368,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                 // Filter learning objectives: only include LOs that have at least one task matching the groupId filter
                 var filteredSprintLOs = sprint.SprintLearningObjectives
                     .Where(slo => slo.LearningObjective != null && !slo.LearningObjective.Archived)
+                    .Where(slo => !IsOldLearningObjectiveName(slo.LearningObjective!.Name))
                     .Where(slo => !groupId.HasValue ||
                         (slo.LearningObjective!.Tasks != null &&
                          slo.LearningObjective.Tasks.Any(t => !t.Archived && t.GroupId == groupId.Value)))
@@ -508,11 +516,12 @@ namespace AutomatedTaskSystem.Services.Sprint
 
                 const string tableRowsSql = """
             WITH SprintLOs AS (
-                SELECT lo.Id, lo.Name, lo.StartedAt, lo.SchemaId
+                SELECT lo.Id, lo.Name, lo.StartedAt, lo.DoneAt, lo.SchemaId
                 FROM SprintLearningObjectives slo
                 INNER JOIN LearningObjectives lo ON lo.Id = slo.LearningObjectiveId
                 WHERE slo.SprintId = @sprintId
                   AND lo.Archived = 0
+                  AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
             ),
             ExpectedSteps AS (
                 SELECT sl.Id AS LearningObjectiveId, COUNT(1) AS TotalExpectedTasks
@@ -534,6 +543,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                 sl.Id,
                 sl.Name,
                 sl.StartedAt,
+                sl.DoneAt,
                 TotalExpectedTasks = ISNULL(es.TotalExpectedTasks, 0),
                 CompletedTasks = ISNULL(ta.CompletedTasks, 0),
                 ActiveTasks = ISNULL(ta.ActiveTasks, 0)
@@ -564,6 +574,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                     INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id AND t.Archived = 0
                     INNER JOIN Groups g ON g.Id = t.GroupId
                     WHERE slo.SprintId = @sprintId
+                      AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
                       AND t.Status IN (@backlog, @todo, @doing);
                     """;
 
@@ -621,6 +632,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                         Name = r.Name,
                         Subject = subject,
                         StartDate = r.StartedAt?.ToString("d/M/yyyy") ?? "",
+                        EndDate = r.DoneAt?.ToString("d/M/yyyy") ?? "In Process",
                         ActiveTasks = r.ActiveTasks,
                         CurrentPhases = phasesByLoId.GetValueOrDefault(r.Id) ?? new List<CurrentPhaseDto>(),
                         Status = status,
@@ -672,6 +684,7 @@ namespace AutomatedTaskSystem.Services.Sprint
             int Id,
             string Name,
             DateTime? StartedAt,
+            DateTime? DoneAt,
             int TotalExpectedTasks,
             int CompletedTasks,
             int ActiveTasks
