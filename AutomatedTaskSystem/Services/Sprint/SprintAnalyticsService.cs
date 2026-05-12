@@ -95,7 +95,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                         SELECT
                             Completed = SUM(CASE WHEN t.Status = @done THEN 1 ELSE 0 END),
                             Active = SUM(CASE WHEN t.Status IN (@todo, @doing) THEN 1 ELSE 0 END),
-                            Rollback = SUM(CASE WHEN t.IsRollback = 1 THEN 1 ELSE 0 END),
+                            RollbackCount = SUM(CASE WHEN t.IsRollback = 1 THEN 1 ELSE 0 END),
                             Flagged = SUM(CASE WHEN t.Flagged = 1 THEN 1 ELSE 0 END)
                         FROM Tasks t
                         INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId AND lo.Archived = 0
@@ -125,7 +125,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                 {
                     Active = activeCount,
                     Completed = completedCount,
-                    Rollback = taskSummaryRow.Rollback,
+                    Rollback = taskSummaryRow.RollbackCount,
                     Flagged = taskSummaryRow.Flagged,
                     NotStarted = Math.Max(0, notStartedCount),
                     Total = totalExpectedTasks
@@ -663,7 +663,7 @@ namespace AutomatedTaskSystem.Services.Sprint
         private sealed record SprintTaskSummaryRow(
             int Completed,
             int Active,
-            int Rollback,
+            int RollbackCount,
             int Flagged
         );
 

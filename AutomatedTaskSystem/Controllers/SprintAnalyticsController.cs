@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers
 {
-    [Route("sprints/{sprintId}/analytics")]
+    [Route("sprints/analytics")]
     [ApiController]
     public class SprintAnalyticsController : ControllerBase
     {
@@ -22,7 +22,7 @@ namespace AutomatedTaskSystem.Controllers
         /// <param name="timePeriod">Optional time period filter: 1=Today, 2=Last Week, 3=Last Month, 4=All Time (default)</param>
         /// <returns>Sprint overview analytics data</returns>
         [HttpGet("overview")]
-        public async Task<IActionResult> GetSprintOverview(int sprintId, [FromQuery] int? timePeriod = null)
+        public async Task<IActionResult> GetSprintOverview([FromQuery]int sprintId, [FromQuery] int? timePeriod = null)
         {
             try
             {
@@ -40,6 +40,13 @@ namespace AutomatedTaskSystem.Controllers
                     if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
                     {
                         return NotFound(result);
+                    }
+
+                    // If the service hit an exception, it returns "An unexpected error occurred: ..."
+                    // That should surface as 500 (server error), not 400 (client error).
+                    if (result.Message.Contains("unexpected error occurred", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return StatusCode(500, result);
                     }
                     return BadRequest(result);
                 }
@@ -67,7 +74,7 @@ namespace AutomatedTaskSystem.Controllers
         /// <param name="group">Optional group (tag) ID filter. When specified, only LOs with tasks assigned to this group are returned.</param>
         /// <returns>Learning objectives progress data</returns>
         [HttpGet("learning-objectives-progress")]
-        public async Task<IActionResult> GetLearningObjectivesProgress(int sprintId, [FromQuery] int? timePeriod = null, [FromQuery] int? group = null)
+        public async Task<IActionResult> GetLearningObjectivesProgress([FromQuery] int sprintId, [FromQuery] int? timePeriod = null, [FromQuery] int? group = null)
         {
             try
             {
@@ -85,6 +92,11 @@ namespace AutomatedTaskSystem.Controllers
                     if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
                     {
                         return NotFound(result);
+                    }
+
+                    if (result.Message.Contains("unexpected error occurred", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return StatusCode(500, result);
                     }
                     return BadRequest(result);
                 }
@@ -110,7 +122,7 @@ namespace AutomatedTaskSystem.Controllers
         /// <param name="sprintId">The ID of the sprint</param>
         /// <returns>Learning objectives table data with Id, Name, Subject, StartDate, ActiveTasks, CurrentPhases, Status, Progress</returns>
         [HttpGet("learning-objectives-table")]
-        public async Task<IActionResult> GetLearningObjectivesTable(int sprintId)
+        public async Task<IActionResult> GetLearningObjectivesTable([FromQuery] int sprintId)
         {
             try
             {
@@ -121,6 +133,11 @@ namespace AutomatedTaskSystem.Controllers
                     if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
                     {
                         return NotFound(result);
+                    }
+
+                    if (result.Message.Contains("unexpected error occurred", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return StatusCode(500, result);
                     }
                     return BadRequest(result);
                 }

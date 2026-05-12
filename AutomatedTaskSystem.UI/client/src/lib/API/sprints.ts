@@ -14,6 +14,9 @@ declare interface ResponseService<T> {
 // Re-export types for use in other files
 export type { TagData, SprintOverviewData, LearningObjectivesProgressData, LearningObjectivesTableData, LearningObjectiveTableRow, CurrentPhase, TaskSummary, LearningObjectiveSummary };
 
+const asSingle = (v: string | string[] | undefined | null) =>
+    Array.isArray(v) ? v[0] : v;
+
 const SPRINTS = {
     GET_ONE: async (id: string | string[]): Promise<ResponseService<ISprint>> => {
  
@@ -263,10 +266,15 @@ const SPRINTS = {
         try {
             const authHeader = authService.authHeader();
 
+            const sid = asSingle(sprintId);
+            if (!sid) {
+                return { error: true, message: 'Missing sprintId', data: undefined };
+            }
+
             // Build URL with optional timePeriod query parameter
-            let apiUrl = `${url}/sprints/${sprintId}/analytics/overview`;
+            let apiUrl = `${url}/sprints/analytics/overview?sprintId=${encodeURIComponent(sid)}`;
             if (timePeriod !== undefined && timePeriod !== null) {
-                apiUrl += `?timePeriod=${timePeriod}`;
+                apiUrl += `&timePeriod=${timePeriod}`;
             }
 
             const res = await fetch(apiUrl, {
@@ -305,9 +313,13 @@ const SPRINTS = {
     GET_SPRINT_LO_PROGRESS: async (sprintId: string | string[], timePeriod?: number,group?:number): Promise<ResponseService<LearningObjectivesProgressData>> => {
         try {
             const authHeader = authService.authHeader();
-            const queryParams = timePeriod ? `?timePeriod=${timePeriod}` : '';
-            const groupParam = group !== undefined && group !== null ? `${queryParams ? '&' : '?'}group=${group}` : '';
-            const res = await fetch(`${url}/sprints/${sprintId}/analytics/learning-objectives-progress${queryParams}${groupParam}`, {
+            const sid = asSingle(sprintId);
+            if (!sid) {
+                return { error: true, message: 'Missing sprintId', data: undefined };
+            }
+            const queryParams = timePeriod ? `&timePeriod=${timePeriod}` : '';
+            const groupParam = group !== undefined && group !== null ? `&group=${group}` : '';
+            const res = await fetch(`${url}/sprints/analytics/learning-objectives-progress?sprintId=${encodeURIComponent(sid)}${queryParams}${groupParam}`, {
                 headers: {
                     ...authHeader,
                 },
@@ -340,7 +352,11 @@ const SPRINTS = {
     GET_SPRINT_LO_TABLE: async (sprintId: string | string[]): Promise<ResponseService<LearningObjectivesTableData>> => {
         try {
             const authHeader = authService.authHeader();
-            const res = await fetch(`${url}/sprints/${sprintId}/analytics/learning-objectives-table`, {
+            const sid = asSingle(sprintId);
+            if (!sid) {
+                return { error: true, message: 'Missing sprintId', data: undefined };
+            }
+            const res = await fetch(`${url}/sprints/analytics/learning-objectives-table?sprintId=${encodeURIComponent(sid)}`, {
                 headers: {
                     ...authHeader,
                 },
