@@ -36,8 +36,8 @@ public class LeaveSettingsTests
     public void EmergencyAllowed_AfterCutoffBeforeReset_IsBlocked()
     {
         int year = 2025;
-        var today = new DateTime(2025, 5, 15); // between 04-30 and 05-01 reset
-        var cutoff = LeaveSettings.ParseDateForYear("04-30", year);
+        var today = new DateTime(2025, 4, 15); // after 03-20 cutoff, before 05-01 reset
+        var cutoff = LeaveSettings.ParseDateForYear("03-20", year);
         var resetDate = LeaveSettings.ParseDateForYear("05-01", year);
         bool emergencyAllowed = (cutoff == null && resetDate == null) ||
             (cutoff != null && today <= cutoff.Value) ||

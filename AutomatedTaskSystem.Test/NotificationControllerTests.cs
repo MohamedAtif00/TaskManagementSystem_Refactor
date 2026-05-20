@@ -1,7 +1,13 @@
 using AutomatedTaskSystem.Controllers;
+using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.NotificationDtos;
 using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Services.Leave;
+using AutomatedTaskSystem.Services.Permission;
+using AutomatedTaskSystem.Services.WorkFromHome;
+using Microsoft.EntityFrameworkCore;
+using Moq;
 using AutomatedTaskSystem.Models.Enums.NotificationCategory;
 using AutomatedTaskSystem.Models.Enums.NotificationStatus;
 using AutomatedTaskSystem.Models.Enums.NotificationType;
@@ -9,6 +15,7 @@ using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using Microsoft.AspNetCore.Mvc;
+using Task = System.Threading.Tasks.Task;
 
 namespace AutomatedTaskSystem.Test;
 
@@ -85,7 +92,8 @@ public class NotificationControllerTests
             NotificationTypeEnum type,
             int? relatedEntityId = null,
             bool hasActions = false,
-            NotificationStatusEnum? status = null)
+            NotificationStatusEnum? status = null,
+            string? additionalData = null)
         {
             var notification = new Notification
             {
@@ -129,11 +137,28 @@ public class NotificationControllerTests
             return Task.FromResult(query.ToList());
         }
 
-        public Task<bool> MarkAsRead(int notificationId, int userId)
+        public Task<bool> MarkAsRead(int notificationId, int userId, bool? accepted = null)
             => Task.FromResult(true);
 
         public Task<bool> UpdateNotificationStatus(int notificationId, NotificationStatusEnum status)
             => Task.FromResult(true);
+    }
+
+    private static NotificationController CreateController(
+        INotificationService notificationService,
+        ITokenService tokenService)
+    {
+        var options = new DbContextOptionsBuilder<DataContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        return new NotificationController(
+            notificationService,
+            tokenService,
+            new DataContext(options),
+            Mock.Of<ILeaveRequestService>(),
+            Mock.Of<IPermissionService>(),
+            Mock.Of<IWorkFromHomeService>());
     }
 
     [Fact]
@@ -176,7 +201,7 @@ public class NotificationControllerTests
             }
         };
 
-        var controller = new NotificationController(
+        var controller = CreateController(
             new FakeNotificationService(notifications),
             new FakeTokenService("1"));
 
@@ -208,7 +233,7 @@ public class NotificationControllerTests
     [Fact]
     public async Task GetMyNotifications_ReturnsBadRequest_WhenTokenServiceReturnsError()
     {
-        var controller = new NotificationController(
+        var controller = CreateController(
             new FakeNotificationService(Array.Empty<Notification>()),
             new FakeTokenService(userId: null, error: true, message: "Invalid Request."));
 

@@ -396,12 +396,12 @@ namespace AutomatedTaskSystem.Services.Sprint
                 }
 
                 // Check for overlaps, excluding the current sprint being updated
-                if (await IsOverlappingAsync(newStartDateOnly, newEndDateOnly,sprintId))
-                {
-                    response.Error = true;
-                    response.Message = "The updated date range overlaps with another existing sprint.";
-                    return response;
-                }
+                //if (await IsOverlappingAsync(newStartDateOnly, newEndDateOnly,sprintId))
+                //{
+                //    response.Error = true;
+                //    response.Message = "The updated date range overlaps with another existing sprint.";
+                //    return response;
+                //}
 
                 // 3. Update basic sprint properties
                 sprintToUpdate.Name = request.Name;

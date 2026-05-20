@@ -22,6 +22,7 @@ try
 {
     var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
     var builder = WebApplication.CreateBuilder(args);
+    var isTesting = builder.Environment.IsEnvironment("Testing");
 
     // Services
     builder.Services.AddControllers();
@@ -73,22 +74,32 @@ try
             };
         });
 
-    builder.Services.AddHostedService<MonthlyDatabaseOperationWorker>();
+    if (!isTesting)
+    {
+        builder.Services.AddHostedService<MonthlyDatabaseOperationWorker>();
+    }
 
     builder.Services.AddDbContext<DataContext>(opts =>
     {
-        string ConnString = builder.Configuration.GetConnectionString("DefaultConnection");
-        opts.UseSqlServer(
-            ConnString,
-            options =>
-            {
-                options.EnableRetryOnFailure(
-                    maxRetryCount: 5,
-                    maxRetryDelay: System.TimeSpan.FromSeconds(5),
-                    errorNumbersToAdd: null
-                );
-            }
-        );
+        if (isTesting)
+        {
+            opts.UseInMemoryDatabase("IntegrationTests");
+        }
+        else
+        {
+            string ConnString = builder.Configuration.GetConnectionString("DefaultConnection");
+            opts.UseSqlServer(
+                ConnString,
+                options =>
+                {
+                    options.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: System.TimeSpan.FromSeconds(5),
+                        errorNumbersToAdd: null
+                    );
+                }
+            );
+        }
         opts.EnableDetailedErrors(true);
     });
 
@@ -125,10 +136,13 @@ try
     });
 
 
-    using (var serviceScope = builder.Services.BuildServiceProvider().CreateScope())
+    if (!isTesting)
     {
-        var context = serviceScope.ServiceProvider.GetRequiredService<DataContext>();
-        context.Database.Migrate();
+        using (var serviceScope = builder.Services.BuildServiceProvider().CreateScope())
+        {
+            var context = serviceScope.ServiceProvider.GetRequiredService<DataContext>();
+            context.Database.Migrate();
+        }
     }
 
     var app = builder.Build();
@@ -138,7 +152,7 @@ try
     app.UseCors(MyAllowSpecificOrigins);
 
     // 👇 Exception handling should be very early in the pipeline
-    if (app.Environment.IsDevelopment())
+    if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
     {
         app.UseDeveloperExceptionPage();
     }
@@ -164,13 +178,16 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-    // 👇 Call seeding logic here
-    using (var scope = app.Services.CreateScope())
+    // 👇 Call seeding logic here (skipped in integration tests)
+    if (!isTesting)
     {
-        var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
-        dbContext.Database.Migrate(); // This applies pending migrations
-        var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
-        await seeder.Seed();
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+            dbContext.Database.Migrate(); // This applies pending migrations
+            var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+            await seeder.Seed();
+        }
     }
 
     // 👇 Endpoint routing
