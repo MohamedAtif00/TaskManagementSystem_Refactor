@@ -9,8 +9,13 @@ import ChartIcon from "../../assets/Icons/Chart";
 import { ReactElement, useContext, useEffect } from "react";
 import { SignalRContext } from "../connection/connectionProvider";
 
-// Define UserRole explicitly if it's not already defined elsewhere
-type UserRole = 0 | 1 | 2 | 3 | 4;
+const ROLE_LABELS: Record<UserRole, string> = {
+    0: "Project Manager",
+    1: "Section Head",
+    2: "Team Leader",
+    3: "Member",
+    4: "Owner",
+};
 
 const Sidebar = () => {
     const dispatch = useAppDispatch();
@@ -87,7 +92,9 @@ const Sidebar = () => {
             <div className={styles.profile}>
                 <div className="cursor-pointer" onClick={() => router.push(`/resources/users/${auth.id}`)}>{user.name}</div>
                 <div className={styles.profileInfo}>
-                    <div>{user.group}</div>
+                    {user.group ? <span>{user.group}</span> : null}
+                    {user.group && <span aria-hidden="true">·</span>}
+                    <span>{ROLE_LABELS[auth.role]}</span>
                 </div>
             </div>
             <div className={styles.navlinks}>
@@ -113,7 +120,7 @@ const Sidebar = () => {
                             text="Schemas"
                         />
                         <Navlink
-                            activeCondition={path.includes("/projects")}
+                            activeCondition={path.includes("/projects") || path.includes("/subjects")}
                             to="/projects"
                             icon="Project"
                             text="Projects"

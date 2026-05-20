@@ -6,5 +6,5 @@ namespace AutomatedTaskSystem.Services.UnitService;
 
 public interface IUnitService
 {
-	Task<ResponseService<Unit>> CreateUnit(string Name, Models.Project Project);
+	Task<ResponseService<Unit>> CreateUnit(string Name, Models.Subject subject);
 }

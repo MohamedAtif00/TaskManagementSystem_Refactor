@@ -88,7 +88,7 @@ import Link from "next/link";
 		    completedTasks?: number;
 		    remainingTasks?: number;
 		}) => {
-		    const href = `/projects/${projectId}`;
+		    const href = `/subjects/${projectId}`;
 		    return (
 		        <Link
 		            href={href}
@@ -124,7 +124,7 @@ import Link from "next/link";
 		    closedManually?: boolean;
 		    yearName?: string;
 		}) => {
-		    const href = `/projects/${projectId}`;
+		    const href = `/subjects/${projectId}`;
 		    const closedText = closedManually ? "has been closed manually." : "has been closed.";
 		    return (
 		        <Link

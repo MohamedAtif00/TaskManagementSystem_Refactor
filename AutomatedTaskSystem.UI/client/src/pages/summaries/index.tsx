@@ -122,8 +122,8 @@ const Projects = () => {
                                 col0: p.id,
                                 col1: p.name,
                                 col2: p.description,
-                                col3: p.year.name,
-                                col4: p.term ? "Term 2" : "Term 1",
+                                col3: p.projectYear?.name ?? "",
+                                col4: p.term?.name ?? "",
                             };
                         })}
                         columns={columns}

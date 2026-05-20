@@ -2,7 +2,6 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Configs;
 using AutomatedTaskSystem.Services.Log;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace AutomatedTaskSystem.Services.Leave.BackgroundService

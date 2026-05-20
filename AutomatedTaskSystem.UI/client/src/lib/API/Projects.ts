@@ -4,7 +4,7 @@ import { BasicInfo, url } from "./";
 import REPORTS from "./Reports";
 import { IDName } from "./workFromHome";
 
-/** Single segment for `/projects/{id}/analytics/...` (avoids `1,2` when query is string[]). */
+/** Single segment for `/subjects/{id}/analytics/...` (avoids `1,2` when query is string[]). */
 const projectAnalyticsPathId = (projectId: string | string[] | number | undefined) => {
     if (projectId === undefined || projectId === null) return "";
     if (typeof projectId === "number") return String(projectId);
@@ -16,7 +16,7 @@ const PROJECTS = {
     REPORTS,
     SUMMARY: async (projectId: string | string[]) => {
         try {
-            const res = await fetch(`${url}/projects/${projectId}/summary`);
+            const res = await fetch(`${url}/subjects/${projectId}/summary`);
             const data: ISummary = await res.json();
             return data;
         } catch (error) {
@@ -27,7 +27,7 @@ const PROJECTS = {
     USERS_UNASSIGNED: async (projectId: string | string[]) => {
         try {
             const res = await fetch(
-                `${url}/projects/${projectId}/users/unassigned`
+                `${url}/subjects/${projectId}/users/unassigned`
             );
             const data: {
                 data: IUser[];
@@ -43,7 +43,7 @@ const PROJECTS = {
     USERS_ASSIGNED: async (projectId: string | string[]) => {
         try {
             const res = await fetch(
-                `${url}/projects/${projectId}/users/assigned`
+                `${url}/subjects/${projectId}/users/assigned`
             );
             const data: {
                 data: IUser[];
@@ -64,7 +64,7 @@ const PROJECTS = {
         userIds: number[];
     }) => {
         try {
-            const res = await fetch(`${url}/projects/${projectId}/unassign`, {
+            const res = await fetch(`${url}/subjects/${projectId}/unassign`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -88,7 +88,7 @@ const PROJECTS = {
         groupIds: number[] | undefined;
     }) => {
         try {
-            const res = await fetch(`${url}/projects/${projectId}/assign`, {
+            const res = await fetch(`${url}/subjects/${projectId}/assign`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -106,22 +106,20 @@ const PROJECTS = {
         id,
         name,
         description,
-        term,
-        year,
+        termId,
     }: {
         id: string | string[] | number;
         name: string;
         description: string;
-        term: boolean;
-        year: number;
+        termId: number;
     }) => {
         try {
-            const res = await fetch(`${url}/projects/${id}`, {
+            const res = await fetch(`${url}/subjects/${id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ name, description, term, yearId: year }),
+                body: JSON.stringify({ name, description, termId }),
             });
             const data: {
                 data: IProject;
@@ -142,7 +140,7 @@ const PROJECTS = {
         status: 0 | 1 | 2;
     }) => {
         try {
-            const res = await fetch(`${url}/projects/${id}/status`, {
+            const res = await fetch(`${url}/subjects/${id}/status`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -163,21 +161,19 @@ const PROJECTS = {
     CREATE: async ({
         name,
         description,
-        term,
-        year,
+        termId,
     }: {
         name: string;
         description: string;
-        term: boolean;
-        year: number;
+        termId: number;
     }) => {
         try {
-            const res = await fetch(`${url}/projects`, {
+            const res = await fetch(`${url}/subjects`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ name, description, term, yearId: year }),
+                body: JSON.stringify({ name, description, termId }),
             });
             const data: {
                 data: IProject;
@@ -192,7 +188,7 @@ const PROJECTS = {
     },
     DELETE: async (id: string | string[] | number) => {
         try {
-            const res = await fetch(`${url}/projects/${id}`, {
+            const res = await fetch(`${url}/subjects/${id}`, {
                 method: "DELETE",
             });
             const data: {
@@ -207,7 +203,7 @@ const PROJECTS = {
     },
     GET_ALL_LOS: async (projectId: number) => {
 
-        const res = await fetch(`${url}/projects/${projectId}/los`);
+        const res = await fetch(`${url}/subjects/${projectId}/los`);
         const data: {
             error: boolean;
             message: string;
@@ -218,7 +214,7 @@ const PROJECTS = {
     },
     GET_ALL: async () => {
       
-        const res = await fetch(`${url}/projects`);
+        const res = await fetch(`${url}/subjects`);
         const data: {
             data: IProject[];
             error: boolean;
@@ -226,9 +222,19 @@ const PROJECTS = {
         } = await res.json();
         return data;
 
-    },GET_ALL_FOR_SPRINT:async ()=>{
+    },
+    GET_BY_TERM: async (termId: number) => {
+        const res = await fetch(`${url}/subjects/by-term/${termId}`);
+        const data: {
+            data: IProject[];
+            error: boolean;
+            message: string;
+        } = await res.json();
+        return data;
+    },
+    GET_ALL_FOR_SPRINT:async ()=>{
 
-        const res = await fetch(`${url}/projects/GetAllForSprint`);
+        const res = await fetch(`${url}/subjects/GetAllForSprint`);
         const data: {
             data: IProject[];
             error: boolean;
@@ -242,7 +248,7 @@ const PROJECTS = {
             if (!pid) return false;
             const authHeader = authService.authHeader();
             const queryParams = timePeriod ? `?timePeriod=${timePeriod}` : "";
-            const res = await fetch(`${url}/projects/${pid}/analytics/overview${queryParams}`, {
+            const res = await fetch(`${url}/subjects/${pid}/analytics/overview${queryParams}`, {
                 headers: { ...authHeader },
             });
             const raw = await res.json();
@@ -316,7 +322,7 @@ const PROJECTS = {
                     ? `${queryParams ? "&" : "?"}group=${group}`
                     : "";
             const res = await fetch(
-                `${url}/projects/${pid}/analytics/learning-objectives-progress${queryParams}${groupParam}`,
+                `${url}/subjects/${pid}/analytics/learning-objectives-progress${queryParams}${groupParam}`,
                 { headers: { ...authHeader } }
             );
             const raw = await res.json();
@@ -353,7 +359,7 @@ const PROJECTS = {
             const pid = projectAnalyticsPathId(projectId);
             if (!pid) return false;
             const authHeader = authService.authHeader();
-            const res = await fetch(`${url}/projects/${pid}/analytics/learning-objectives-table`, {
+            const res = await fetch(`${url}/subjects/${pid}/analytics/learning-objectives-table`, {
                 headers: { ...authHeader },
             });
             const raw = await res.json();
@@ -396,7 +402,7 @@ const PROJECTS = {
     },
     GET_ONE: async (id: string | string[]) => {
         try {
-            const res = await fetch(`${url}/projects/${id}`);
+            const res = await fetch(`${url}/subjects/${id}`);
             if (res.status >= 400) return false;
             const data: {
                 data: IProject;
@@ -411,7 +417,7 @@ const PROJECTS = {
     },
     GET_ONE_DETAILED: async (id: string | string[]) => {
         try {
-            const res = await fetch(`${url}/projects/${id}/details`);
+            const res = await fetch(`${url}/subjects/${id}/details`);
             if (res.status >= 400) return false;
             const data: {
                 data: ProjectDetails;
@@ -433,7 +439,7 @@ const PROJECTS = {
             projectId: number;
         }) => {
             try {
-                const res = await fetch(`${url}/projects/${projectId}/units`, {
+                const res = await fetch(`${url}/subjects/${projectId}/units`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -662,10 +668,110 @@ const PROJECTS = {
             },
         },
     },
+    ROOT: {
+        LIST: async () => {
+            const res = await fetch(`${url}/projects`);
+            return res.json();
+        },
+        GET: async (rootProjectId: number) => {
+            const res = await fetch(`${url}/projects/${rootProjectId}`);
+            return res.json();
+        },
+        CREATE: async (name: string, description?: string) => {
+            const res = await fetch(`${url}/projects`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, description: description ?? "" }),
+            });
+            return res.json();
+        },
+        UPDATE: async (rootProjectId: number, name: string, description?: string) => {
+            const res = await fetch(`${url}/projects/${rootProjectId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, description: description ?? "" }),
+            });
+            return res.json();
+        },
+        YEARS: async (rootProjectId: number) => {
+            const res = await fetch(`${url}/projects/${rootProjectId}/years`);
+            return res.json();
+        },
+        GET_YEAR: async (projectYearId: number) => {
+            const res = await fetch(`${url}/projects/years/${projectYearId}`);
+            return res.json();
+        },
+        CREATE_YEAR: async (rootProjectId: number, label: string) => {
+            const res = await fetch(`${url}/projects/${rootProjectId}/years`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ label }),
+            });
+            return res.json();
+        },
+        UPDATE_YEAR: async (projectYearId: number, label: string) => {
+            const res = await fetch(`${url}/projects/years/${projectYearId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ label }),
+            });
+            return res.json();
+        },
+        TERMS: async (projectYearId: number) => {
+            const res = await fetch(`${url}/projects/years/${projectYearId}/terms`);
+            return res.json();
+        },
+        GET_TERM: async (termId: number) => {
+            const res = await fetch(`${url}/projects/terms/${termId}`);
+            return res.json();
+        },
+        CREATE_TERM: async (
+            projectYearId: number,
+            body: {
+                name: string;
+                order?: number;
+                startDate?: string | null;
+                endDate?: string | null;
+            }
+        ) => {
+            const res = await fetch(`${url}/projects/years/${projectYearId}/terms`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: body.name,
+                    order: body.order ?? 0,
+                    startDate: body.startDate || null,
+                    endDate: body.endDate || null,
+                }),
+            });
+            return res.json();
+        },
+        UPDATE_TERM: async (
+            termId: number,
+            body: {
+                name: string;
+                order?: number;
+                startDate?: string | null;
+                endDate?: string | null;
+            }
+        ) => {
+            const res = await fetch(`${url}/projects/terms/${termId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: body.name,
+                    order: body.order ?? 0,
+                    startDate: body.startDate || null,
+                    endDate: body.endDate || null,
+                }),
+            });
+            return res.json();
+        },
+    },
     YEARS: {
         GET_ALL: async () => {
             try {
-                const res = await fetch(`${url}/projects/years`);
+                const res = await fetch(`${url}/subjects/years`);
                 const data: {
                     data: { id: number; name: string }[];
                     error: boolean;

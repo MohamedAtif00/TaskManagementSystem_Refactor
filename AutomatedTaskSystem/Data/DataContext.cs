@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Xml;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
@@ -108,7 +109,7 @@ public class DataContext : DbContext
         modelBuilder.Entity<User>().Property(u => u.Role).HasDefaultValue(UserRoleEnum.Member);
 
         modelBuilder
-            .Entity<Project>()
+            .Entity<Subject>()
             .Property(p => p.Status)
             .HasDefaultValue(ProjectStatusEnum.Active);
 
@@ -124,7 +125,27 @@ public class DataContext : DbContext
                 new Year { Active = true, Id = 5, Number = "2024" }
             );
 
-        modelBuilder.Entity<Project>().Property(p => p.YearId).HasDefaultValue(1);
+        modelBuilder
+            .Entity<User>()
+            .HasMany(u => u.Subjects)
+            .WithMany(s => s.Users)
+            .UsingEntity<Dictionary<string, object>>(
+                "SubjectUser",
+                j =>
+                    j.HasOne<Subject>()
+                        .WithMany()
+                        .HasForeignKey("SubjectsId")
+                        .OnDelete(DeleteBehavior.Cascade),
+                j =>
+                    j.HasOne<User>()
+                        .WithMany()
+                        .HasForeignKey("UsersId")
+                        .OnDelete(DeleteBehavior.NoAction),
+                j =>
+                {
+                    j.HasKey("SubjectsId", "UsersId");
+                    j.ToTable("SubjectUser");
+                });
 
         modelBuilder
             .Entity<Rollback>()
@@ -196,6 +217,37 @@ public class DataContext : DbContext
             .WithMany(x => x.Opinions)
             .OnDelete(DeleteBehavior.NoAction);
 
+        modelBuilder.Entity<Subject>().ToTable("Subjects");
+        modelBuilder.Entity<ProjectTerm>().ToTable("Terms");
+
+        modelBuilder
+            .Entity<ProjectYear>()
+            .HasOne(py => py.RootProject)
+            .WithMany(r => r.Years)
+            .HasForeignKey(py => py.RootProjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder
+            .Entity<ProjectTerm>()
+            .HasOne(t => t.ProjectYear)
+            .WithMany(py => py.Terms)
+            .HasForeignKey(t => t.ProjectYearId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder
+            .Entity<Subject>()
+            .HasOne(s => s.Term)
+            .WithMany(t => t.Subjects)
+            .HasForeignKey(s => s.TermId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder
+            .Entity<Unit>()
+            .HasOne(u => u.Subject)
+            .WithMany(s => s.Units)
+            .HasForeignKey(u => u.SubjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
 	        modelBuilder
 	            .Entity<Notification>()
 	            .Property(n => n.Category)
@@ -226,7 +278,10 @@ public class DataContext : DbContext
     public DbSet<Year> Years => Set<Year>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
-    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<RootProject> RootProjects => Set<RootProject>();
+    public DbSet<ProjectYear> ProjectYears => Set<ProjectYear>();
+    public DbSet<ProjectTerm> ProjectTerms => Set<ProjectTerm>();
+    public DbSet<Subject> Subjects => Set<Subject>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<Schema> Schemas => Set<Schema>();
     public DbSet<SchemaType> SchemaTypes => Set<SchemaType>();

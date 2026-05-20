@@ -18,14 +18,15 @@ public class ReportService : IReportService
 
     public async Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllProjectsReports(DateTime? start, DateTime? end)
     {
-        var projects = await _context.Projects
+        var projects = await _context.Subjects
             .Where(
                 p =>
                     !p.Archived
                     && p.Status != ProjectStatusEnum.Closed
                     && p.Status != ProjectStatusEnum.Hold
             )
-            .Include(p => p.Year)
+            .Include(p => p.Term)
+            .ThenInclude(t => t.ProjectYear)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
             .ThenInclude(l => l.LearningObjectives)
@@ -55,7 +56,7 @@ public class ReportService : IReportService
 
     public async Task<ActionResult<ResponseService<GetProjectReportDto>>> GetProjectReport(int id)
     {
-        var project = await _context.Projects
+        var project = await _context.Subjects
             .Where(
                 p =>
                     p.Id == id
@@ -63,7 +64,8 @@ public class ReportService : IReportService
                     && p.Status != ProjectStatusEnum.Closed
                     && p.Status != ProjectStatusEnum.Hold
             )
-            .Include(p => p.Year)
+            .Include(p => p.Term)
+            .ThenInclude(t => t.ProjectYear)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
             .ThenInclude(l => l.LearningObjectives)
@@ -80,8 +82,8 @@ public class ReportService : IReportService
             Id = project.Id,
             Name = project.Name,
             Description = project.Description,
-            Term = project.Term ? "Term 2" : "Term 1",
-            Year = project.Year.Number
+            Term = project.Term.Name,
+            Year = project.Term.ProjectYear.Label
         };
 
         foreach (var unit in project.Units)
@@ -132,15 +134,15 @@ public class ReportService : IReportService
         };
     }
 
-    private GetReportDto createReport(Models.Project project, DateTime? start, DateTime? end)
+    private GetReportDto createReport(Models.Subject project, DateTime? start, DateTime? end)
     {
         var report = new GetReportDto
         {
             Id = project.Id,
             Name = project.Name,
             Description = project.Description,
-            Year = project.Year.Number,
-            Term = project.Term ? "Term 2" : "Term 1",
+            Year = project.Term.ProjectYear.Label,
+            Term = project.Term.Name,
         };
 
         foreach (var unit in project.Units)

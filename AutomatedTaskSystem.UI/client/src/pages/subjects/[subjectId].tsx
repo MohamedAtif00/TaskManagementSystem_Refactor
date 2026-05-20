@@ -40,7 +40,7 @@ const LearningObjective = (
             <div className="bg-inherit flex justify-end">
                 <Link
                     href={{
-                        pathname: `/projects/${router.query.projectId}`,
+                        pathname: `/subjects/${router.query.subjectId}`,
                         query: {
                             "learning-objective": props.id,
                             form: "edit-learning-objective",
@@ -99,7 +99,7 @@ const Lesson = (
                     </button>
                     <Link
                         href={{
-                            pathname: `/projects/${router.query.projectId}`,
+                            pathname: `/subjects/${router.query.subjectId}`,
                             query: {
                                 lesson: props.id,
                                 form: "edit-lesson",
@@ -115,7 +115,7 @@ const Lesson = (
                         icon={<PlusIcon />}
                         text="Learning Objective"
                         url={{
-                            pathname: `/projects/${router.query.projectId}`,
+                            pathname: `/subjects/${router.query.subjectId}`,
                             query: {
                                 form: "learning-objective",
                                 lessonId: props.id,
@@ -181,7 +181,7 @@ const Unit = (
                     </button>
                     <Link
                         href={{
-                            pathname: `/projects/${router.query.projectId}`,
+                            pathname: `/subjects/${router.query.subjectId}`,
                             query: {
                                 unit: props.id,
                                 form: "edit-unit",
@@ -197,7 +197,7 @@ const Unit = (
                         icon={<PlusIcon />}
                         text="Lesson"
                         url={{
-                            pathname: `/projects/${router.query.projectId}`,
+                            pathname: `/subjects/${router.query.subjectId}`,
                             query: {
                                 form: "lesson",
                                 unitId: props.id,
@@ -231,8 +231,8 @@ const Project = () => {
     if (!auth.isAuth || (auth.role !== 0 && auth.role !== 4)) router.replace("/");
 
     useEffect(() => {
-        if (router.query.projectId)
-            API.PROJECTS.GET_ONE_DETAILED(router.query.projectId).then(
+        if (router.query.subjectId)
+            API.PROJECTS.GET_ONE_DETAILED(router.query.subjectId).then(
                 (res) => {
                     if (res && !res.error) setProject(res.data);
                 }
@@ -278,19 +278,19 @@ const Project = () => {
         project: {
             assign: (userIds: number[], groupIds?: number[]) => {
                 API.PROJECTS.ASSIGN({
-                    projectId: router.query.projectId!,
+                    projectId: router.query.subjectId!,
                     userIds,
                     groupIds
                 }).then(() => {
-                    router.push(`/projects/${router.query.projectId}`);
+                    router.push(`/subjects/${router.query.subjectId}`);
                 });
             },
             unassign: (userIds: number[]) => {
                 API.PROJECTS.UNASSIGN({
-                    projectId: router.query.projectId!,
+                    projectId: router.query.subjectId!,
                     userIds,
                 }).then(() => {
-                    router.push(`/projects/${router.query.projectId}`);
+                    router.push(`/subjects/${router.query.subjectId}`);
                 });
             },
         },
@@ -308,7 +308,7 @@ const Project = () => {
                                     units: [...ps!.units, res.data],
                                 };
                             });
-                            router.push(`/projects/${router.query.projectId}`);
+                            router.push(`/subjects/${router.query.subjectId}`);
                         }
                     });
                 }
@@ -347,7 +347,7 @@ const Project = () => {
                                 });
                                 return { ...ps!, units: newUnits };
                             });
-                            router.push(`/projects/${project.id}`);
+                            router.push(`/subjects/${project.id}`);
                         }
                     });
                 }
@@ -375,7 +375,7 @@ const Project = () => {
                                     return { ...ps!, units };
                                 });
                                 router.push(
-                                    `/projects/${router.query.projectId}`
+                                    `/subjects/${router.query.subjectId}`
                                 );
                             }
                         });
@@ -397,7 +397,7 @@ const Project = () => {
                                     });
                                     return { ...ps!, units: newUnits };
                                 });
-                                router.push(`/projects/${project.id}`);
+                                router.push(`/subjects/${project.id}`);
                             }
                         }
                     );
@@ -463,7 +463,7 @@ const Project = () => {
                             //     return { ...ps!, units };
                             // });
                             //
-                            router.push(`/projects/${project!.id}`);
+                            router.push(`/subjects/${project!.id}`);
                         }
                     });
                 }
@@ -492,7 +492,7 @@ const Project = () => {
                     });
                     return { ...ps!, units: newUnits };
                 });
-                router.push(`/projects/${project!.id}`);
+                router.push(`/subjects/${project!.id}`);
             },
             remove: (id: number) => {
                 API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.REMOVE(id).then(
@@ -562,7 +562,7 @@ const Project = () => {
                                 return { ...ps!, units: newUnits };
                             });
                         }
-                        router.push(`/projects/${project!.id}`);
+                        router.push(`/subjects/${project!.id}`);
                     });
                 else
                     return API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.UNASSIGN(
@@ -640,7 +640,7 @@ const Project = () => {
                         icon={<PlusIcon />}
                         text="Remove Users"
                         url={{
-                            pathname: `/projects/${project.id}`,
+                            pathname: `/subjects/${project.id}`,
                             query: {
                                 form: "unassign",
                             },
@@ -650,7 +650,7 @@ const Project = () => {
                         icon={<PlusIcon />}
                         text="Assign Users"
                         url={{
-                            pathname: `/projects/${project.id}`,
+                            pathname: `/subjects/${project.id}`,
                             query: {
                                 form: "assign",
                             },
@@ -667,7 +667,7 @@ const Project = () => {
                         icon={<PlusIcon />}
                         text="Unit"
                         url={{
-                            pathname: `/projects/${project.id}`,
+                            pathname: `/subjects/${project.id}`,
                             query: {
                                 form: "unit",
                             },
@@ -688,15 +688,15 @@ const Project = () => {
             </div>
             <>
                 <AddUnit
-                    path={`/projects/${project.id}`}
+                    path={`/subjects/${project.id}`}
                     submit={handlers.unit.add}
                 />
                 <AddLesson
-                    path={`/projects/${project.id}`}
+                    path={`/subjects/${project.id}`}
                     submit={handlers.lesson.add}
                 />
                 <AddLearningObjective
-                    path={`/projects/${project.id}`}
+                    path={`/subjects/${project.id}`}
                     submit={handlers.learningObjective.add}
                 />
                 <ProjectAssign handler={handlers.project.assign} />

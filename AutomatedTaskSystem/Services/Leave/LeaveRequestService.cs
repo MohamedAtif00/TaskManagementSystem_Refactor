@@ -1,11 +1,8 @@
-using System.Net.Mail;
-using System.Net.NetworkInformation;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos;
 using AutomatedTaskSystem.Dtos.LeaveDtos;
 using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Hub;
-using AutomatedTaskSystem.Migrations;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.NotificationCategory;
 using AutomatedTaskSystem.Models.Enums.NotificationStatus;
@@ -16,12 +13,9 @@ using AutomatedTaskSystem.Services.Log;
 using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
-using AutomatedTaskSystem.Services.YearService;
 using AutomatedTaskSystem.Models.Configs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.Extensions.FileSystemGlobbing.Internal;
 using Microsoft.Extensions.Options;
 using static AutomatedTaskSystem.DTO.Responses;
 

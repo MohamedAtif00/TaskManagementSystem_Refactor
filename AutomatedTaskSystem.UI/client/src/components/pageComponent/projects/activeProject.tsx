@@ -2,19 +2,23 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import FormConclusion from "../../formComponents/FormConclusion";
 import API from "../../../lib/API";
+import { dismissFormModal } from "../../../lib/routerHelpers";
 import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
 import { edit } from "../../../slices/projectSlice";
 
 const ActivateProject = () => {
     const dispatch = useAppDispatch();
-    const { query, pathname, push: routerPush } = useRouter();
+    const router = useRouter();
+    const { query, pathname } = router;
     const [active, setActive] = useState<boolean>(false);
     const [project, setProject] = useState<IProject>();
 
     useEffect(() => {
-        if (query.form === "activate-project" && query.projectId) {
-            API.PROJECTS.GET_ONE(query.projectId.toString()).then((res) => {
+        const sid = query.subjectId ?? query.projectId;
+        const idStr = Array.isArray(sid) ? sid[0] : sid;
+        if (query.form === "activate-project" && idStr) {
+            API.PROJECTS.GET_ONE(idStr).then((res) => {
                 if (res && !res.error) setProject(res.data);
             });
             return setActive(true);
@@ -32,7 +36,7 @@ const ActivateProject = () => {
             }).then((res) => {
                 if (res && !res.error) {
                     dispatch(edit(res.data));
-                    routerPush(pathname);
+                    dismissFormModal(router);
                 }
             });
     };
@@ -60,7 +64,7 @@ const ActivateProject = () => {
                             </div>
                             <form onSubmit={handleSubmit}>
                                 <FormConclusion
-                                    pathname="/projects"
+                                    pathname={pathname}
                                     submittable={true}
                                     type="emerald"
                                     text={{

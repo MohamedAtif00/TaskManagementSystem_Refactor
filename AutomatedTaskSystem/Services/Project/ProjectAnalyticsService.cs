@@ -49,7 +49,7 @@ public class ProjectAnalyticsService : IProjectAnalyticsService
     private static bool IsOldLearningObjectiveName(string? name) =>
         !string.IsNullOrWhiteSpace(name) && name.Contains("old", StringComparison.OrdinalIgnoreCase);
 
-    public async Task<ResponseService<ProjectOverviewAnalyticsDto>> GetProjectOverviewAsync(int projectId, TimePeriodFilter? timePeriod = null)
+    public async Task<ResponseService<ProjectOverviewAnalyticsDto>> GetProjectOverviewAsync(int subjectId, TimePeriodFilter? timePeriod = null)
     {
         var response = new ResponseService<ProjectOverviewAnalyticsDto>();
 
@@ -57,9 +57,9 @@ public class ProjectAnalyticsService : IProjectAnalyticsService
         {
             var (startDate, endDate) = GetDateRangeFromTimePeriod(timePeriod);
 
-            var projectExists = await _context.Projects
+            var projectExists = await _context.Subjects
                 .AsNoTracking()
-                .AnyAsync(p => p.Id == projectId);
+                .AnyAsync(p => p.Id == subjectId);
 
             if (!projectExists)
             {
@@ -75,20 +75,20 @@ SELECT
     NumberOfUnits = (
         SELECT COUNT(1)
         FROM Units u
-        WHERE u.ProjectId = @projectId AND u.Archived = 0
+        WHERE u.SubjectId = @subjectId AND u.Archived = 0
     ),
     NumberOfLessons = (
         SELECT COUNT(1)
         FROM Lessons l
         INNER JOIN Units u ON u.Id = l.UnitId
-        WHERE u.ProjectId = @projectId AND u.Archived = 0 AND l.Archived = 0
+        WHERE u.SubjectId = @subjectId AND u.Archived = 0 AND l.Archived = 0
     ),
     NumberOfLearningObjectives = (
         SELECT COUNT(1)
         FROM LearningObjectives lo
         INNER JOIN Lessons l ON l.Id = lo.LessonId
         INNER JOIN Units u ON u.Id = l.UnitId
-        WHERE u.ProjectId = @projectId AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
+        WHERE u.SubjectId = @subjectId AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
           AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
     ),
     TotalExpectedTasks = (
@@ -98,7 +98,7 @@ SELECT
         INNER JOIN Units u ON u.Id = l.UnitId
         INNER JOIN Nodes n ON n.SchemaId = lo.SchemaId
         INNER JOIN Steps s ON s.NodeId = n.Id
-        WHERE u.ProjectId = @projectId
+        WHERE u.SubjectId = @subjectId
           AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
           AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
           AND n.Archived = 0 AND s.Archived = 0
@@ -107,7 +107,7 @@ SELECT
 
             var aggregates = await connection.QuerySingleAsync<ProjectOverviewAggregatesRow>(
                 aggregateSql,
-                new { projectId }
+                new { subjectId }
             );
 
             const string taskSummarySql = """
@@ -120,7 +120,7 @@ SELECT
                         INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId
                         INNER JOIN Lessons l ON l.Id = lo.LessonId
                         INNER JOIN Units u ON u.Id = l.UnitId
-                        WHERE u.ProjectId = @projectId
+                        WHERE u.SubjectId = @subjectId
                           AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
                           AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
                           AND t.Archived = 0;
@@ -130,7 +130,7 @@ SELECT
                 taskSummarySql,
                 new
                 {
-                    projectId,
+                    subjectId,
                     done = (int)TaskStatusEnum.Done,
                     todo = (int)TaskStatusEnum.ToDo,
                     doing = (int)TaskStatusEnum.Doing
@@ -180,7 +180,7 @@ SELECT
                         INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId
                         INNER JOIN Lessons l ON l.Id = lo.LessonId
                         INNER JOIN Units u ON u.Id = l.UnitId
-                        WHERE u.ProjectId = @projectId
+                        WHERE u.SubjectId = @subjectId
                           AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
                           AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
                           AND t.Archived = 0
@@ -193,7 +193,7 @@ SELECT
                     tagsSql,
                     new
                     {
-                        projectId,
+                        subjectId,
                         backlog = (int)TaskStatusEnum.Backlog,
                         todo = (int)TaskStatusEnum.ToDo,
                         doing = (int)TaskStatusEnum.Doing,
@@ -226,7 +226,7 @@ WITH ProjectLOs AS (
     FROM LearningObjectives lo
     INNER JOIN Lessons l ON l.Id = lo.LessonId
     INNER JOIN Units u ON u.Id = l.UnitId
-    WHERE u.ProjectId = @projectId
+    WHERE u.SubjectId = @subjectId
       AND u.Archived = 0 AND l.Archived = 0 AND lo.Archived = 0
       AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
 ),
@@ -264,7 +264,7 @@ LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = pl.Id;
                 loSummarySql,
                 new
                 {
-                    projectId,
+                    subjectId,
                     backlog = (int)TaskStatusEnum.Backlog,
                     done = (int)TaskStatusEnum.Done
                 }
@@ -347,16 +347,16 @@ LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = pl.Id;
         int NotStarted
     );
 
-    public async Task<ResponseService<ProjectLearningObjectivesProgressDto>> GetProjectLearningObjectivesProgressAsync(int projectId, TimePeriodFilter? timePeriod = null, int? groupId = null)
+    public async Task<ResponseService<ProjectLearningObjectivesProgressDto>> GetProjectLearningObjectivesProgressAsync(int subjectId, TimePeriodFilter? timePeriod = null, int? groupId = null)
     {
         var response = new ResponseService<ProjectLearningObjectivesProgressDto>();
 
         try
         {
             var (startDate, endDate) = GetDateRangeFromTimePeriod(timePeriod);
-            var projectExists = await _context.Projects
+            var projectExists = await _context.Subjects
                 .AsNoTracking()
-                .AnyAsync(p => p.Id == projectId);
+                .AnyAsync(p => p.Id == subjectId);
 
             if (!projectExists)
             {
@@ -373,7 +373,7 @@ LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = pl.Id;
                         FROM LearningObjectives lo
                         INNER JOIN Lessons l ON l.Id = lo.LessonId AND l.Archived = 0
                         INNER JOIN Units u ON u.Id = l.UnitId AND u.Archived = 0
-                        WHERE u.ProjectId = @projectId
+                        WHERE u.SubjectId = @subjectId
                           AND lo.Archived = 0
                                   AND LOWER(lo.Name) NOT LIKE '%old%'
                     ),
@@ -431,7 +431,7 @@ LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = pl.Id;
                 loProgressSql,
                 new
                 {
-                    projectId,
+                    subjectId,
                     groupId,
                     startDate,
                     endDate,
@@ -449,7 +449,7 @@ INNER JOIN Lessons l ON l.Id = lo.LessonId AND l.Archived = 0
 INNER JOIN Units u ON u.Id = l.UnitId AND u.Archived = 0
 INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id AND t.Archived = 0
 INNER JOIN Groups g ON g.Id = t.GroupId
-WHERE u.ProjectId = @projectId
+WHERE u.SubjectId = @subjectId
   AND lo.Archived = 0
   AND LOWER(lo.Name) NOT LIKE '%old%'
   AND t.Status IN (@backlog, @todo, @doing)
@@ -460,7 +460,7 @@ WHERE u.ProjectId = @projectId
                 phasesSql,
                 new
                 {
-                    projectId,
+                    subjectId,
                     groupId,
                     backlog = (int)TaskStatusEnum.Backlog,
                     todo = (int)TaskStatusEnum.ToDo,
@@ -540,13 +540,13 @@ WHERE u.ProjectId = @projectId
         string? ColorCode
     );
 
-    public async Task<ResponseService<ProjectLearningObjectivesTableDto>> GetProjectLearningObjectivesTableAsync(int projectId)
+    public async Task<ResponseService<ProjectLearningObjectivesTableDto>> GetProjectLearningObjectivesTableAsync(int subjectId)
     {
         var response = new ResponseService<ProjectLearningObjectivesTableDto>();
 
         try
         {
-            var project = await _context.Projects
+            var project = await _context.Subjects
                 .AsSplitQuery()
                 .Include(p => p.Units.Where(u => !u.Archived))
                     .ThenInclude(u => u.Lessons.Where(l => !l.Archived))
@@ -559,7 +559,7 @@ WHERE u.ProjectId = @projectId
                             .ThenInclude(lo => lo.Schema)
                                 .ThenInclude(schema => schema.Nodes)
                                     .ThenInclude(node => node.Steps)
-                .FirstOrDefaultAsync(p => p.Id == projectId);
+                .FirstOrDefaultAsync(p => p.Id == subjectId);
 
             if (project == null)
             {

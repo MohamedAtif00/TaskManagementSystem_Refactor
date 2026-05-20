@@ -12,18 +12,18 @@ public class UnitService : IUnitService
 	{
 		_context = context;
 	}
-	public async Task<ResponseService<Unit>> CreateUnit(string Name, Models.Project Project)
+	public async Task<ResponseService<Unit>> CreateUnit(string Name, Models.Subject subject)
 	{
 		var newUnit = new Unit
 		{
 			Archived = false,
 			Name = Name,
-			Project = Project,
-			ProjectId = Project.Id
+			Subject = subject,
+			SubjectId = subject.Id
 		};
 
 		_context.Units.Add(newUnit);
-		Project.Units.Add(newUnit);
+		subject.Units.Add(newUnit);
 		await _context.SaveChangesAsync();
 
 		return new ResponseService<Unit>

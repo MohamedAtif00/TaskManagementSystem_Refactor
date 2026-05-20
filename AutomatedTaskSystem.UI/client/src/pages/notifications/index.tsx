@@ -142,7 +142,7 @@ const NotificationsPage: NextPage = () => {
 		if (n.relatedEntityId != null) {
 			switch (n.type) {
 				case "project":
-					return  `/projects/${n.relatedEntityId}`;
+					return  `/subjects/${n.relatedEntityId}`;
 				case "sprint":
 					return `/sprints/${n.relatedEntityId}`;
                 case "Task":

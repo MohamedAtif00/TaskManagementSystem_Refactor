@@ -1,6 +1,5 @@
 using AutomatedTaskSystem.Models.Configs;
 using AutomatedTaskSystem.Services.Leave.BackgroundService;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace AutomatedTaskSystem.Services.Leave

@@ -144,7 +144,7 @@ const TASKS = {
 	PROJECTS: async () => {
 		try {
 			const authHeader = authService.authHeader();
-			const res = await fetch(`${url}/projects/assignment`, {
+			const res = await fetch(`${url}/subjects/assignment`, {
 				headers: { ...authHeader },
 			});
 			const data: {
@@ -211,7 +211,7 @@ const TASKS = {
 				console.error("Unathorized");
 				return false;
 			}
-			const res = await fetch(`${url}/projects/${projectId}/tasks/cards`, {
+			const res = await fetch(`${url}/subjects/${projectId}/tasks/cards`, {
 				headers: {
 					...auth,
 				},
@@ -234,7 +234,7 @@ const TASKS = {
 				console.error("Unathorized");
 				return false;
 			}
-			const res = await fetch(`${url}/projects/${projectId}/tasks/sheet`, {
+			const res = await fetch(`${url}/subjects/${projectId}/tasks/sheet`, {
 				headers: {
 					...auth,
 				},

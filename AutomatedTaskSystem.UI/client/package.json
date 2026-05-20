@@ -5,6 +5,7 @@
 	"scripts": {
 		"dev": "next dev",
 		"build": "next build",
+		"build:iis": "next build && node scripts/prepare-iis.mjs",
 		"start": "next start",
 		"export": "next export",
 		"lint": "next lint"

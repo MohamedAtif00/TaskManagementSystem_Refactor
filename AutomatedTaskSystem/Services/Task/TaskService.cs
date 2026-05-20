@@ -214,7 +214,7 @@ public class TaskService : ITaskService
             .Include(lo => lo.Schema)
             .Include(lo => lo.Lesson)
             .ThenInclude(l => l.Unit)
-            .ThenInclude(u => u.Project)
+            .ThenInclude(u => u.Subject)
             .FirstOrDefaultAsync();
         if (lo is null)
             return new BadRequestObjectResult(
@@ -290,7 +290,7 @@ public class TaskService : ITaskService
             .Where(lo => lo.Id == learningObjectiveId && !lo.Archived)
             .Include(lo => lo.Lesson)
                 .ThenInclude(l => l.Unit)
-                    .ThenInclude(u => u.Project)
+                    .ThenInclude(u => u.Subject)
                         .ThenInclude(p => p.Users) // Include project users for auth check
             .Include(lo => lo.SprintLearningObjectives)
                 .ThenInclude(slo => slo.Sprint)
@@ -306,7 +306,7 @@ public class TaskService : ITaskService
         // --- AUTH CHECK --- (No changes from previous refined version, assuming it's correct now)
         if (user.Role == UserRoleEnum.Member || user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
         {
-            var hasAccess = learningObjective.Lesson.Unit.Project.Users.Any(u => u.Id == user.Id);
+            var hasAccess = learningObjective.Lesson.Unit.Subject.Users.Any(u => u.Id == user.Id);
 
             if (!hasAccess && (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead))
             {
@@ -960,7 +960,7 @@ public class TaskService : ITaskService
 	        // Project managers and owners can see all tasks in the project, regardless of group
 	        if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
 	        {
-            var p = await _context.Projects
+            var p = await _context.Subjects
                 .Where(_ => _.Id == pid && !_.Archived)
                 .Include(p => p.Units)
                 .ThenInclude(u => u.Lessons)
@@ -1075,7 +1075,7 @@ public class TaskService : ITaskService
             };
         }
 
-        var project = await _context.Projects
+        var project = await _context.Subjects
             .Where(p => !p.Archived && p.Id == pid)
             .Include(p => p.Users)
             .FirstOrDefaultAsync();
@@ -1130,7 +1130,7 @@ public class TaskService : ITaskService
             query = _context.Tasks.Where(
                 t =>
                     groups.Select(g => g.Id).Contains(t.GroupId)
-                    && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
+                    && t.LearningObjective.Lesson.Unit.SubjectId == project.Id
                     && !t.Archived
             );
         }
@@ -1140,7 +1140,7 @@ public class TaskService : ITaskService
                 t =>
                     t.GroupId == user.GroupId
                     && !t.Archived
-                    && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
+                    && t.LearningObjective.Lesson.Unit.SubjectId == project.Id
                     && (t.UserId == user.Id || t.Status == TaskStatusEnum.Backlog)
                     && (!t.TL || t.UserId == user.Id)
             );
@@ -1225,7 +1225,7 @@ public class TaskService : ITaskService
             .Include(t => t.LearningObjective)
             .ThenInclude(lo => lo.Lesson)
             .ThenInclude(l => l.Unit)
-            .ThenInclude(u => u.Project)
+            .ThenInclude(u => u.Subject)
             .ThenInclude(p => p.Users)
             .Include(t => t.User)
             .FirstOrDefaultAsync();
@@ -1235,7 +1235,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Task is not found" }
             );
 
-        var user = task.LearningObjective.Lesson.Unit.Project.Users
+        var user = task.LearningObjective.Lesson.Unit.Subject.Users
             .Where(u => u.Id != task.UserId && u.GroupId == task.GroupId && !u.Archived)
             .ToList();
 
@@ -2396,7 +2396,7 @@ public class TaskService : ITaskService
 	        // Find the project this task belongs to via navigation properties
 	        var projectId = await _context.Tasks
 	            .Where(t => !t.Archived && t.Id == completedTaskId)
-	            .Select(t => (int?)t.LearningObjective.Lesson.Unit.ProjectId)
+	            .Select(t => (int?)t.LearningObjective.Lesson.Unit.SubjectId)
 	            .FirstOrDefaultAsync();
 	
 	        if (!projectId.HasValue)
@@ -2405,7 +2405,7 @@ public class TaskService : ITaskService
 	        // Count remaining non-archived tasks in the project that are not Done
 	        var remainingTasks = await _context.Tasks
 	            .Where(t => !t.Archived
-	                        && t.LearningObjective.Lesson.Unit.ProjectId == projectId.Value
+	                        && t.LearningObjective.Lesson.Unit.SubjectId == projectId.Value
 	                        && t.Status != TaskStatusEnum.Done)
 	            .CountAsync();
 	
@@ -2413,7 +2413,7 @@ public class TaskService : ITaskService
 	            return;
 	
 	        // All tasks are done for this project — mark the project as Closed if not already
-	        var project = await _context.Projects
+	        var project = await _context.Subjects
 	            .Where(p => !p.Archived && p.Id == projectId.Value)
 	            .FirstOrDefaultAsync();
 	
@@ -2679,7 +2679,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Invalid auth" }
             );
 
-        var project = await _context.Projects
+        var project = await _context.Subjects
             .Where(p => p.Id == projectId)
             .Include(p => p.Users)
             .ThenInclude(u => u.Group)
@@ -3738,7 +3738,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );
 
-        var p = await _context.Projects
+        var p = await _context.Subjects
             .Where(_ => _.Id == pid && !_.Archived)
             .FirstOrDefaultAsync();
 

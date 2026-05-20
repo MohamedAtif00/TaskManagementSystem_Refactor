@@ -4,7 +4,7 @@ using AutomatedTaskSystem.Services.AuthService;
 using AutomatedTaskSystem.Services.GroupService;
 using AutomatedTaskSystem.Services.LearningObjectiveService;
 using AutomatedTaskSystem.Services.ProjectAssignmentService;
-using AutomatedTaskSystem.Services.ProjectService;
+using AutomatedTaskSystem.Services.SubjectService;
 using AutomatedTaskSystem.Services.SchemaService;
 using AutomatedTaskSystem.Services.SectionService;
 using AutomatedTaskSystem.Services.TaskService;
@@ -17,6 +17,7 @@ using AutomatedTaskSystem.Services.DashboardService;
 using AutomatedTaskSystem.Services.RollbackService;
 using AutomatedTaskSystem.Services.UserTask;
 using AutomatedTaskSystem.Services.Project;
+using AutomatedTaskSystem.Services.RootProjectService;
 using AutomatedTaskSystem.Services.Sprint;
 using AutomatedTaskSystem.Services.Leave;
 using AutomatedTaskSystem.Services.Permission;
@@ -37,6 +38,7 @@ public static class DependancyInjections
     {
         builder.Services.AddMemoryCache();
         builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<IRootProjectService, RootProjectService>();
         builder.Services.AddScoped<IUserTaskService, UserTaskService>();
         builder.Services.AddScoped<IRollbackService, RollbackService>();
         builder.Services.AddScoped<IDashboardService, DashboardService>();
@@ -44,7 +46,7 @@ public static class DependancyInjections
         builder.Services.AddScoped<IReportService, ReportService>();
         builder.Services.AddScoped<ITokenService, TokenService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
-        builder.Services.AddScoped<IProjectService, ProjectService>();
+        builder.Services.AddScoped<ISubjectService, SubjectService>();
         builder.Services.AddScoped<IProjectAssignmentService, ProjectAssignmentService>();
         builder.Services.AddScoped<IUnitService, UnitService>();
         builder.Services.AddScoped<ILearningObjectiveService, LearningObjectiveService>();

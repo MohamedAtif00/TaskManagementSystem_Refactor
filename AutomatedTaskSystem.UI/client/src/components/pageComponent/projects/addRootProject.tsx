@@ -1,0 +1,71 @@
+import { useRouter } from "next/router";
+import InputTextField from "../../formComponents/InputTextField";
+import { useEffect, useState } from "react";
+import FormConclusion from "../../formComponents/FormConclusion";
+import API from "../../../lib/API";
+import { dismissFormModal } from "../../../lib/routerHelpers";
+import { motion } from "framer-motion";
+
+const AddRootProject = () => {
+    const router = useRouter();
+    const { query, pathname } = router;
+    const [active, setActive] = useState(false);
+    const [name, setName] = useState("");
+    const [description, setDescription] = useState("");
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        if (query.form === "add-root") {
+            setName("");
+            setDescription("");
+            setError("");
+            setActive(true);
+            return;
+        }
+        setActive(false);
+    }, [query]);
+
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        setError("");
+        if (!name.trim()) return setError("Please enter a project name");
+
+        API.PROJECTS.ROOT.CREATE(name.trim(), description).then((res) => {
+            if (res && typeof res === "object" && "error" in res && !res.error) {
+                dismissFormModal(router);
+            }
+        });
+    };
+
+    if (!active) return null;
+
+    return (
+        <motion.div
+            initial={{ backgroundColor: "#00000000" }}
+            animate={{ backgroundColor: "#00000055", height: "auto" }}
+            className="z-50 flex items-center justify-center fixed top-0 left-0 right-0 min-h-screen"
+        >
+            <motion.div
+                initial={{ opacity: 0.1 }}
+                animate={{ opacity: 1 }}
+                className="bg-white px-5 py-4 basis-80 rounded-lg max-w-lg w-full"
+            >
+                <h2 className="text-lg mb-5">Add project</h2>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+                    <div className="flex flex-col gap-2">
+                        <div className="text-red-600">{error}</div>
+                        <InputTextField label="Name" value={name} handleChange={setName} />
+                        <InputTextField
+                            label="Description"
+                            value={description}
+                            handleChange={setDescription}
+                        />
+                    </div>
+                    <FormConclusion pathname={pathname} submittable={true} />
+                </form>
+            </motion.div>
+        </motion.div>
+    );
+};
+
+export default AddRootProject;

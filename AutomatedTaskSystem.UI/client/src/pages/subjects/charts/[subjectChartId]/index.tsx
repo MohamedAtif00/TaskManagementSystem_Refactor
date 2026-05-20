@@ -3,17 +3,17 @@ import { useRouter } from "next/router";
 import Head from "next/head";
 
 /**
- * Legacy URL: /projects/charts/[id] → analytics now live under the Tasks module.
+ * Legacy URL: /subjects/charts/[id] → analytics now live under the Tasks module.
  */
 const ProjectChartsRedirect = () => {
   const router = useRouter();
-  const { projectChartId } = router.query;
+  const { subjectChartId } = router.query;
 
   useEffect(() => {
-    if (!router.isReady || projectChartId === undefined) return;
-    const id = Array.isArray(projectChartId) ? projectChartId[0] : projectChartId;
+    if (!router.isReady || subjectChartId === undefined) return;
+    const id = Array.isArray(subjectChartId) ? subjectChartId[0] : subjectChartId;
     router.replace(`/tasks/charts/${id}`);
-  }, [router, router.isReady, projectChartId]);
+  }, [router, router.isReady, subjectChartId]);
 
   return (
     <>

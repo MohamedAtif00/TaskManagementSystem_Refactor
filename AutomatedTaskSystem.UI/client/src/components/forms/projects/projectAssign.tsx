@@ -286,14 +286,15 @@ const ProjectAssign = ({ handler }: Props) => {
   const [groups, setGroups] = useState<GroupAccordion[]>([]);
 
   useEffect(() => {
+    const sid = router.query.subjectId ?? router.query.projectId;
     const _active =
-      router.query.form === "assign" && router.query.projectId !== undefined;
-    setActive(_active);
+      router.query.form === "assign" && sid !== undefined;
+    setActive(!!_active);
     if (!_active) setSelectedIds([]);
   }, [router]);
 
   useEffect(() => {
-    const id = router.query.projectId;
+    const id = router.query.subjectId ?? router.query.projectId;
     if (!id) return;
 
     API.PROJECTS.USERS_UNASSIGNED(id).then((res) => {
@@ -351,7 +352,7 @@ const ProjectAssign = ({ handler }: Props) => {
   if (!active) return <></>;
 
   return (
-    <Backdrop mainRoute={`/projects/${router.query.projectId}`}>
+    <Backdrop mainRoute={`/subjects/${router.query.subjectId ?? router.query.projectId}`}>
       <div
         style={{
           background: "#F1F5F9",

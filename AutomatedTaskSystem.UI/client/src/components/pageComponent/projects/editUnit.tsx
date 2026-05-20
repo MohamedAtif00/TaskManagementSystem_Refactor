@@ -50,7 +50,7 @@ const EditUnit: React.FC<Props> = (props) => {
                         />
                     </div>
                     <FormConclusion
-                        pathname={`/projects/${props.projectId}`}
+                        pathname={`/subjects/${props.projectId}`}
                         submittable={true}
                     />
                 </form>

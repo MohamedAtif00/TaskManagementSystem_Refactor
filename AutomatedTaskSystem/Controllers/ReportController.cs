@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers
 {
-    [Route("projects")]
+    [Route("subjects")]
     [ApiController]
     public class ReportController : ControllerBase
     {
