@@ -33,7 +33,10 @@ public interface ISubjectService
         List<int> UserIds
     );
     Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetAllProjects();
-    Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsByTerm(int termId);
+    Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsByTerm(
+        int termId,
+        bool includeInactiveStatuses = false
+    );
     Task<ActionResult<ResponseService<List<IDName>>>> GetProjectLearningObjectives(
         int Id
     );

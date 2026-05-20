@@ -51,10 +51,12 @@ public class SubjectController : ControllerBase
         Requests.LOAssignDTO req
     ) => await _subjectService.UnassignToProject(id, req.UserIds);
 
+    [Authorize]
     [HttpGet("{id}/details")]
     public async Task<ActionResult<ResponseService<DetailedProjectDTO>>> GetSubjectDetail(int id) =>
         await _subjectService.GetProjectDetails(id);
 
+    [Authorize]
     [HttpGet("{id}")]
     public async Task<ActionResult<ResponseService<SubjectDTO>>> GetSubject(int id) =>
         await _subjectService.GetProject(id);
@@ -63,9 +65,12 @@ public class SubjectController : ControllerBase
     public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjects() =>
         await _subjectService.GetAllProjects();
 
+    [Authorize]
     [HttpGet("by-term/{termId:int}")]
-    public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsByTerm(int termId) =>
-        await _subjectService.GetSubjectsByTerm(termId);
+    public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsByTerm(
+        int termId,
+        [FromQuery] bool includeInactive = false
+    ) => await _subjectService.GetSubjectsByTerm(termId, includeInactive);
 
     [HttpGet("GetAllForSprint")]
     public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsForSprint() =>

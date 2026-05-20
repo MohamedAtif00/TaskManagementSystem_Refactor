@@ -223,8 +223,14 @@ const PROJECTS = {
         return data;
 
     },
-    GET_BY_TERM: async (termId: number) => {
-        const res = await fetch(`${url}/subjects/by-term/${termId}`);
+    GET_BY_TERM: async (
+        termId: number,
+        options?: { includeInactive?: boolean }
+    ) => {
+        const query = options?.includeInactive ? "?includeInactive=true" : "";
+        const res = await fetch(`${url}/subjects/by-term/${termId}${query}`, {
+            headers: { ...authService.authHeader() },
+        });
         const data: {
             data: IProject[];
             error: boolean;
@@ -402,7 +408,9 @@ const PROJECTS = {
     },
     GET_ONE: async (id: string | string[]) => {
         try {
-            const res = await fetch(`${url}/subjects/${id}`);
+            const res = await fetch(`${url}/subjects/${id}`, {
+                headers: { ...authService.authHeader() },
+            });
             if (res.status >= 400) return false;
             const data: {
                 data: IProject;
@@ -417,7 +425,9 @@ const PROJECTS = {
     },
     GET_ONE_DETAILED: async (id: string | string[]) => {
         try {
-            const res = await fetch(`${url}/subjects/${id}/details`);
+            const res = await fetch(`${url}/subjects/${id}/details`, {
+                headers: { ...authService.authHeader() },
+            });
             if (res.status >= 400) return false;
             const data: {
                 data: ProjectDetails;

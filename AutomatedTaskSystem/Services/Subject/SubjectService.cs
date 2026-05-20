@@ -43,6 +43,77 @@ public class SubjectService(
         return Math.Min(100, (int)Math.Round((double)completed / expected * 100));
     }
 
+    private static bool CanViewAllSubjects(UserRoleEnum role) =>
+        role is UserRoleEnum.ProjectManger or UserRoleEnum.Owner;
+
+    private static bool PassesAssignmentStatusFilter(Subject s, bool includeInactiveStatuses) =>
+        includeInactiveStatuses
+        || (s.Status != ProjectStatusEnum.Hold && s.Status != ProjectStatusEnum.Closed);
+
+    private static List<Subject> FilterSubjectsByUserRole(
+        Models.User user,
+        IEnumerable<Subject> candidates,
+        bool includeInactiveStatuses
+    )
+    {
+        var list = candidates
+            .Where(s => !s.Archived && PassesAssignmentStatusFilter(s, includeInactiveStatuses))
+            .ToList();
+
+        if (CanViewAllSubjects(user.Role))
+            return list;
+
+        var assignedIds = user.Subjects
+            .Where(s => !s.Archived)
+            .Select(s => s.Id)
+            .ToHashSet();
+
+        return list.Where(s => assignedIds.Contains(s.Id)).ToList();
+    }
+
+    private static bool UserCanAccessSubject(Models.User user, Subject subject)
+    {
+        if (CanViewAllSubjects(user.Role))
+            return true;
+
+        return user.Subjects.Any(s => !s.Archived && s.Id == subject.Id);
+    }
+
+    private async Task<(Models.User? User, ActionResult? Error)> ResolveCurrentUserAsync()
+    {
+        var authRes = tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return (
+                null,
+                new UnauthorizedObjectResult(
+                    new BaseResponseService { Error = true, Message = authRes.Message }
+                )
+            );
+
+        if (!int.TryParse(authRes.Data, out var uid))
+            return (
+                null,
+                new UnauthorizedObjectResult(
+                    new BaseResponseService { Error = true, Message = "Invalid token" }
+                )
+            );
+
+        var user = await context.Users
+            .Where(u => u.Id == uid && !u.Archived)
+            .Include(u => u.Subjects)
+            .FirstOrDefaultAsync();
+
+        if (user is null)
+            return (
+                null,
+                new NotFoundObjectResult(
+                    new BaseResponseService { Error = true, Message = $"User of id:{uid} is not found" }
+                )
+            );
+
+        return (user, null);
+    }
+
     private static SubjectDTO MapSubjectDto(Subject s, int? progressPercent = null, int? count = null)
     {
         var py = s.Term.ProjectYear;
@@ -291,8 +362,15 @@ LEFT JOIN Completed c ON c.SubjectId = p.Id;
         };
     }
 
-    public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsByTerm(int termId)
+    public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsByTerm(
+        int termId,
+        bool includeInactiveStatuses = false
+    )
     {
+        var (user, userError) = await ResolveCurrentUserAsync();
+        if (userError is not null)
+            return userError;
+
         var term = await context.ProjectTerms
             .Include(t => t.ProjectYear)
             .ThenInclude(py => py.RootProject)
@@ -355,12 +433,14 @@ LEFT JOIN Completed c ON c.SubjectId = p.Id;
             InvalidateAllSubjectsCache();
         }
 
-        var progressById = await GetProgressBySubjectIdAsync(matched.Select(s => s.Id));
+        var visible = FilterSubjectsByUserRole(user!, matched, includeInactiveStatuses);
+
+        var progressById = await GetProgressBySubjectIdAsync(visible.Select(s => s.Id));
 
         return new ResponseService<List<SubjectDTO>>
         {
             Error = false,
-            Data = matched
+            Data = visible
                 .Select(s => MapSubjectDto(s, progressById.GetValueOrDefault(s.Id)))
                 .ToList(),
             Message = "Subjects for term",
@@ -468,6 +548,10 @@ LEFT JOIN Completed c ON c.SubjectId = p.Id;
 
     public async Task<ActionResult<ResponseService<SubjectDTO>>> GetProject(int Id)
     {
+        var (user, userError) = await ResolveCurrentUserAsync();
+        if (userError is not null)
+            return userError;
+
         var subject = await context.Subjects
             .Where(p => p.Id == Id && !p.Archived)
             .Include(p => p.Term)
@@ -475,7 +559,7 @@ LEFT JOIN Completed c ON c.SubjectId = p.Id;
             .ThenInclude(py => py.RootProject)
             .FirstOrDefaultAsync();
 
-        if (subject is null)
+        if (subject is null || !UserCanAccessSubject(user!, subject))
             return new NotFoundObjectResult(
                 new BaseResponseService { Error = true, Message = "Subject is not found" }
             );
@@ -490,6 +574,10 @@ LEFT JOIN Completed c ON c.SubjectId = p.Id;
 
     public async Task<ActionResult<ResponseService<DetailedProjectDTO>>> GetProjectDetails(int Id)
     {
+        var (user, userError) = await ResolveCurrentUserAsync();
+        if (userError is not null)
+            return userError;
+
         var subject = await context.Subjects
             .Where(p => p.Id == Id && !p.Archived)
             .Include(p => p.Units)
@@ -498,7 +586,7 @@ LEFT JOIN Completed c ON c.SubjectId = p.Id;
             .ThenInclude(lo => lo.Schema)
             .FirstOrDefaultAsync();
 
-        if (subject is null)
+        if (subject is null || !UserCanAccessSubject(user!, subject))
             return new NotFoundObjectResult(
                 new BaseResponseService { Error = true, Message = "Subject is not found" }
             );
@@ -622,21 +710,12 @@ LEFT JOIN Completed c ON c.SubjectId = p.Id;
 
     public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetUserSpecificProjects()
     {
-        var authRes = tokenService.GetUserIdFromToken();
-        if (authRes.Error)
-            return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = authRes.Message }
-            );
+        var (user, userError) = await ResolveCurrentUserAsync();
+        if (userError is not null)
+            return userError;
 
-        var convertable = int.TryParse(authRes.Data!, out int uid);
-
-        if (!convertable)
-            return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = "Invalid token" }
-            );
-
-        var user = await context.Users
-            .Where(u => u.Id == uid && !u.Archived)
+        user = await context.Users
+            .Where(u => u.Id == user!.Id)
             .Include(u => u.Subjects)
             .ThenInclude(p => p.Term)
             .ThenInclude(t => t.ProjectYear)
@@ -645,10 +724,10 @@ LEFT JOIN Completed c ON c.SubjectId = p.Id;
 
         if (user is null)
             return new NotFoundObjectResult(
-                new BaseResponseService { Error = true, Message = $"User of id:{uid} is not found" }
+                new BaseResponseService { Error = true, Message = "User is not found" }
             );
 
-        if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
+        if (CanViewAllSubjects(user.Role))
         {
             var allSubjects = await context.Subjects
                 .Where(

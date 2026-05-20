@@ -189,7 +189,9 @@ const TermSubjectsPage = () => {
                 setTermStartDate(t.startDate ?? null);
                 setTermEndDate(t.endDate ?? null);
             }
-            const all = await API.PROJECTS.GET_BY_TERM(termId);
+            const all = await API.PROJECTS.GET_BY_TERM(termId, {
+                includeInactive: true,
+            });
             if (all && !all.error) {
                 setSubjects(all.data);
                 dispatch(load(all.data));
