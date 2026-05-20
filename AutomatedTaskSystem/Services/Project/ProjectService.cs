@@ -45,11 +45,16 @@ public class ProjectService(DataContext context,
     private async Task<Dictionary<int, int>> GetProgressByProjectIdAsync(IEnumerable<int> projectIds)
     {
         var ids = projectIds.Distinct().ToList();
-        if (ids.Count == 0) return new Dictionary<int, int>();
+        if (ids.Count == 0 || !context.Database.IsRelational())
+        {
+            return ids.ToDictionary(id => id, _ => 0);
+        }
 
-        var connection = await GetOpenConnectionAsync();
+        try
+        {
+            var connection = await GetOpenConnectionAsync();
 
-        const string progressSql = """
+            const string progressSql = """
 WITH ProjectIds AS (
     SELECT Id
     FROM Projects
@@ -90,17 +95,22 @@ LEFT JOIN Expected e ON e.ProjectId = p.Id
 LEFT JOIN Completed c ON c.ProjectId = p.Id;
 """;
 
-        var rows = await connection.QueryAsync<ProjectProgressRow>(
-            progressSql,
-            new { projectIds = ids, done = (int)TaskStatusEnum.Done }
-        );
+            var rows = await connection.QueryAsync<ProjectProgressRow>(
+                progressSql,
+                new { projectIds = ids, done = (int)TaskStatusEnum.Done }
+            );
 
-        var map = new Dictionary<int, int>();
-        foreach (var r in rows)
-        {
-            map[r.ProjectId] = CalculateProgressPercent(r.CompletedTasks, r.ExpectedTasks);
+            var map = new Dictionary<int, int>();
+            foreach (var r in rows)
+            {
+                map[r.ProjectId] = CalculateProgressPercent(r.CompletedTasks, r.ExpectedTasks);
+            }
+            return map;
         }
-        return map;
+        catch
+        {
+            return ids.ToDictionary(id => id, _ => 0);
+        }
     }
 
     private sealed record ProjectProgressRow(int ProjectId, int ExpectedTasks, int CompletedTasks);
