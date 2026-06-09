@@ -37,10 +37,10 @@ const NodeCard: React.FC<Props> = ({
             <div
                 onClick={onClick}
                 className={`${
-                    isComplete
-                        ? "text-emerald-600 border-emerald-600 cursor-default"
-                        : type && type === "previous"
+                    type === "previous"
                         ? "text-teal-600 border-teal-600 cursor-pointer"
+                        : isComplete
+                        ? "text-emerald-600 border-emerald-600 cursor-default"
                         : type === "current" || type === "parallel"
                         ? "text-blue-600 border-blue-600 cursor-pointer"
                         : "cursor-pointer"

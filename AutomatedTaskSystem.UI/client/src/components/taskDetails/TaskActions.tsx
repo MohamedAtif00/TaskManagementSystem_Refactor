@@ -29,7 +29,7 @@ interface Props {
     pause: boolean;
     isReview: boolean;
     priority: TaskPriority;
-    type:string 
+    type: TaskType;
 }
 
 const TaskAction: React.FC<Props> = ({
@@ -282,7 +282,7 @@ const TaskAction: React.FC<Props> = ({
             <JumpForm
                 taskId={taskId}
                 updateTask={handleUpdate}
-                type="tasks"
+                type={type}
             />
         </div>
     ) : (

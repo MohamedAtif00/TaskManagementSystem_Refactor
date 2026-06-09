@@ -13,7 +13,7 @@ import useTaskPathHandler from "../useTaskPathHandler.ts";
 interface Props {
     taskId: number;
     updateTask: (value: ITask) => void;
-    type:"tasks"|"sprints"
+    type: TaskType;
 }
 
 const JumpForm: React.FC<Props> = ({ taskId, updateTask,type }) => {
