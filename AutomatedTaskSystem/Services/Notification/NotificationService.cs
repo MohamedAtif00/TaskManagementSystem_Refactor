@@ -1,4 +1,5 @@
 ﻿	using AutomatedTaskSystem.Data;
+	using AutomatedTaskSystem.Helper;
 	using AutomatedTaskSystem.Hub;
 	using AutomatedTaskSystem.Models;
 	using AutomatedTaskSystem.Models.Enums.NotificationCategory;
@@ -193,6 +194,85 @@ using Microsoft.AspNetCore.SignalR;
 	            catch (Exception ex)
 	            {
 	                Console.WriteLine($"Error sending TaskAssigned notification for task {taskId} to user {assignedUserId}: {ex.Message}");
+	                return false;
+	            }
+	        }
+
+	        public async Task<bool> NotifyTeamLeaderOfFlaggedTask(int teamLeaderId, int taskId, int flaggedByUserId, string comment)
+	        {
+	            try
+	            {
+	                var task = await _dataContext.Tasks
+	                    .Where(t => !t.Archived && t.Id == taskId)
+	                    .Include(t => t.LearningObjective)
+	                        .ThenInclude(lo => lo.Lesson)
+	                            .ThenInclude(l => l.Unit)
+	                                .ThenInclude(u => u.Project)
+	                    .FirstOrDefaultAsync();
+
+	                if (task is null)
+	                {
+	                    Console.WriteLine($"Warning: Task with id {taskId} not found when trying to notify team leader {teamLeaderId} about flagged task.");
+	                    return false;
+	                }
+
+	                var flaggedByUser = await _dataContext.Users
+	                    .FirstOrDefaultAsync(u => u.Id == flaggedByUserId);
+
+	                var teamLeader = await _dataContext.Users
+	                    .FirstOrDefaultAsync(u => u.Id == teamLeaderId && !u.Archived);
+
+	                var canView = teamLeader is not null && await CanUserViewTask(teamLeader, task);
+
+	                var client = _hubContext.Clients.User(teamLeaderId.ToString());
+	                var project = task.LearningObjective.Lesson.Unit.Project;
+	                var learningObjectiveName = task.LearningObjective.Name;
+	                var flaggedByName = flaggedByUser?.Name ?? "A user";
+
+	                await client.SendAsync("TaskFlagged", new
+	                {
+	                    taskId = task.Id,
+	                    taskName = task.Name,
+	                    learningObjectiveName,
+	                    projectId = project.Id,
+	                    projectName = project.Name,
+	                    flaggedByUserId = flaggedByUser?.Id,
+	                    flaggedByUserName = flaggedByName,
+	                    comment,
+	                    canView
+	                });
+
+	                var title = "Task Flagged";
+	                var message = $"{flaggedByName} flagged task '{task.Name}' in LO '{learningObjectiveName}' (project '{project.Name}'). Comment: {comment}";
+	                var additionalData = System.Text.Json.JsonSerializer.Serialize(new
+	                {
+	                    projectId = project.Id,
+	                    kind = "flagged",
+	                    taskName = task.Name,
+	                    learningObjectiveName,
+	                    projectName = project.Name,
+	                    flaggedByUserName = flaggedByName,
+	                    comment,
+	                    taskGroupId = task.GroupId,
+	                    canView
+	                });
+
+	                await CreateNotification(
+	                    teamLeaderId,
+	                    title,
+	                    message,
+	                    NotificationCategoryEnum.WorkUpdates,
+	                    NotificationTypeEnum.Task,
+	                    relatedEntityId: task.Id,
+	                    hasActions: false,
+	                    status: null,
+	                    additionalData: additionalData);
+
+	                return true;
+	            }
+	            catch (Exception ex)
+	            {
+	                Console.WriteLine($"Error sending TaskFlagged notification for task {taskId} to team leader {teamLeaderId}: {ex.Message}");
 	                return false;
 	            }
 	        }
@@ -417,7 +497,13 @@ using Microsoft.AspNetCore.SignalR;
 	            return notification;
 	        }
 
-	        public async Task<List<NotificationModel>> GetUserNotifications(int userId, NotificationCategoryEnum? category = null, NotificationTimeRange? timeFilter = null, bool? isRead = null)
+	        private IQueryable<NotificationModel> BuildUserNotificationsQuery(
+	            int userId,
+	            NotificationCategoryEnum? category = null,
+	            NotificationTimeRange? timeFilter = null,
+	            bool? isRead = null,
+	            NotificationTypeEnum? type = null,
+	            bool? flaggedOnly = null)
 	        {
 	            var query = _dataContext.Notifications
 	                .Where(n => n.UserId == userId);
@@ -425,6 +511,18 @@ using Microsoft.AspNetCore.SignalR;
 	            if (category.HasValue)
 	            {
 	                query = query.Where(n => n.Category == category.Value);
+	            }
+
+	            if (type.HasValue)
+	            {
+	                query = query.Where(n => n.Type == type.Value);
+	            }
+
+	            if (flaggedOnly == true)
+	            {
+	                query = query.Where(n =>
+	                    n.Title == "Task Flagged" ||
+	                    (n.AdditionalData != null && n.AdditionalData.Contains("\"kind\":\"flagged\"")));
 	            }
 
 	            if (isRead.HasValue)
@@ -446,9 +544,40 @@ using Microsoft.AspNetCore.SignalR;
 	                query = query.Where(n => n.CreatedAt >= from);
 	            }
 
-	            return await query
-	                .OrderByDescending(n => n.CreatedAt)
-	                .ToListAsync();
+	            return query.OrderByDescending(n => n.CreatedAt);
+	        }
+
+	        public Task<List<NotificationModel>> GetUserNotifications(
+	            int userId,
+	            NotificationCategoryEnum? category = null,
+	            NotificationTimeRange? timeFilter = null,
+	            bool? isRead = null,
+	            NotificationTypeEnum? type = null,
+	            bool? flaggedOnly = null)
+	        {
+	            return BuildUserNotificationsQuery(userId, category, timeFilter, isRead, type, flaggedOnly).ToListAsync();
+	        }
+
+	        public Task<PageList<NotificationModel>> GetUserNotificationsPaged(
+	            int userId,
+	            int page,
+	            int pageSize,
+	            NotificationCategoryEnum? category = null,
+	            NotificationTimeRange? timeFilter = null,
+	            bool? isRead = null,
+	            NotificationTypeEnum? type = null,
+	            bool? flaggedOnly = null)
+	        {
+	            return PageList<NotificationModel>.CreateAsync(
+	                BuildUserNotificationsQuery(userId, category, timeFilter, isRead, type, flaggedOnly),
+	                page,
+	                pageSize);
+	        }
+
+	        public Task<int> GetUnreadNotificationCount(int userId)
+	        {
+	            return _dataContext.Notifications
+	                .CountAsync(n => n.UserId == userId && !n.IsRead);
 	        }
 
 	        public async Task<bool> MarkAsRead(int notificationId, int userId,bool? accepted = null)
@@ -480,6 +609,22 @@ using Microsoft.AspNetCore.SignalR;
 	            return true;
 	        }
 
+	        public async Task<int> MarkAllAsRead(int userId)
+	        {
+	            var unreadNotifications = await _dataContext.Notifications
+	                .Where(n => n.UserId == userId && !n.IsRead)
+	                .ToListAsync();
+
+	            if (unreadNotifications.Count == 0)
+	                return 0;
+
+	            foreach (var notification in unreadNotifications)
+	                notification.IsRead = true;
+
+	            await _dataContext.SaveChangesAsync();
+	            return unreadNotifications.Count;
+	        }
+
 	        public async Task<bool> UpdateNotificationStatus(int notificationId, NotificationStatusEnum status)
 	        {
 	            var notification = await _dataContext.Notifications
@@ -498,6 +643,29 @@ using Microsoft.AspNetCore.SignalR;
 		            }
 		            await _dataContext.SaveChangesAsync();
 	            return true;
+	        }
+
+	        private async Task<bool> CanUserViewTask(User user, Models.Task task)
+	        {
+	            if (task.Status == TaskStatusEnum.Done || task.Status == TaskStatusEnum.Rollback)
+	                return false;
+
+	            if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
+	                return true;
+
+	            if (user.Role == UserRoleEnum.TeamLeader)
+	                return user.GroupId == task.GroupId;
+
+	            if (user.Role == UserRoleEnum.SectionHead)
+	            {
+	                if (user.GroupId == task.GroupId)
+	                    return true;
+
+	                return await _dataContext.SectionGroups.AnyAsync(sg =>
+	                    sg.Section.HeadId == user.Id && sg.GroupId == task.GroupId);
+	            }
+
+	            return false;
 	        }
 	    }
 	}

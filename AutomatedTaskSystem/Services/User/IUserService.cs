@@ -17,6 +17,7 @@ public interface IUserService
         Requests.UserDTO req
     );
     Task<ActionResult<ResponseService<List<Responses.UserDTO>>>> GetUsers();
+    Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetTeamLeaders();
     Task<ActionResult<BaseResponseService>> ArchiveUser(int id);
     Task<ActionResult<ResponseService<List<GetUserChangesDto>>>> GetUserChanges(int userId);
 }

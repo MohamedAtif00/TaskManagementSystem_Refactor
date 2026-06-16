@@ -510,6 +510,30 @@ public class UserService : IUserService
         };
     }
 
+    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetTeamLeaders()
+    {
+        var recipients = await _context.Users
+            .Where(u =>
+                !u.Archived &&
+                (u.Role == UserRoleEnum.TeamLeader || u.Role == UserRoleEnum.SectionHead))
+            .OrderBy(u => u.Name)
+            .Select(u => new Responses.IDName
+            {
+                Id = u.Id,
+                Name = u.Role == UserRoleEnum.SectionHead
+                    ? $"{u.Name} (Section Head)"
+                    : $"{u.Name} (Team Leader)"
+            })
+            .ToListAsync();
+
+        return new ResponseService<List<Responses.IDName>>
+        {
+            Data = recipients,
+            Error = false,
+            Message = "List of team leaders and section heads"
+        };
+    }
+
 
     private async Task<string> GenerateCode()
     {

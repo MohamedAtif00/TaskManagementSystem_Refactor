@@ -41,17 +41,6 @@ const SheetView = () => {
             );
     }, [router.query.projectId]);
 
-    useEffect(() => {
-        if (project) {
-            const refreshInterval = setInterval(() => {
-                API.TASKS.GET_PROJECT_SHEET(project.id.toString()).then(
-                    (res) => { if (res && !res.error) { setUnits(res.data.units); } }
-                );
-            }, 30000);
-            return () => clearInterval(refreshInterval);
-        }
-    }, [project]);
-
     if (project === undefined)
         return (
             <div className="flex items-center justify-center mx-auto h-full">

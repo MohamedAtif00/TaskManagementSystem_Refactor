@@ -35,6 +35,12 @@ namespace AutomatedTaskSystem.Controllers
             await _userService.GetUsers();
 
         // GET:
+        // Get all team leaders
+        [HttpGet("team-leaders")]
+        public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetTeamLeaders() =>
+            await _userService.GetTeamLeaders();
+
+        // GET:
         // Get One User
         [HttpGet("{id}")]
         public async Task<ActionResult<ResponseService<Responses.UserDTO>>> GetUser(int id) =>

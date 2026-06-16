@@ -18,6 +18,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import JumpForm from "./jumpForm";
 import useTaskPathHandler from "./useTaskPathHandler.ts";
+import FlagTaskModal from "./FlagTaskModal";
 
 interface Props {
     access: "WorkOn" | "Manage" | "WorkOnAndManage" | "None";
@@ -45,6 +46,7 @@ const TaskAction: React.FC<Props> = ({
 }) => {
     
     const [priorityFocus, setPriorityFocus] = useState(false);
+    const [showFlagModal, setShowFlagModal] = useState(false);
     const auth = useAppSelector((s) => s.authSlice);
     const pathHandler = useTaskPathHandler({type:type});
 
@@ -64,10 +66,15 @@ const TaskAction: React.FC<Props> = ({
         API.TASKS.PROCEED(taskId).then((res) => {
             if (res && !res.error) handleUpdate(res.data);
         });
-    const flagTask = () =>
-        API.TASKS.FLAG_TASK(taskId).then((res) => {
-            if (res && !res.error) handleUpdate(res.data);
-        });
+    const flagTask = () => {
+        if (flag) {
+            API.TASKS.FLAG_TASK({ taskId }).then((res) => {
+                if (res && !res.error) handleUpdate(res.data);
+            });
+            return;
+        }
+        setShowFlagModal(true);
+    };
     const pauseTask = () =>
         API.TASKS.PAUSE(taskId).then((res) => {
             if (res && !res.error) handleUpdate(res.data);
@@ -284,6 +291,13 @@ const TaskAction: React.FC<Props> = ({
                 updateTask={handleUpdate}
                 type={type}
             />
+            {showFlagModal && (
+                <FlagTaskModal
+                    taskId={taskId}
+                    onClose={() => setShowFlagModal(false)}
+                    onSuccess={handleUpdate}
+                />
+            )}
         </div>
     ) : (
         <></>

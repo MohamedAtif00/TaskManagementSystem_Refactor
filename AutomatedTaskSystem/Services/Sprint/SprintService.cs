@@ -205,10 +205,12 @@ namespace AutomatedTaskSystem.Services.Sprint
             try
             {
                 var sprint = await dataContext.Sprints
-                    .Include(s => s.SprintLearningObjectives) // Include the join table entries
-                        .ThenInclude(slo => slo.LearningObjective) // Then include the actual LearningObjective from the join table
-                    .FirstOrDefaultAsync(s => s.Id == id);
-                    
+                .Include(s => s.SprintLearningObjectives
+                    // Filter the join table entries to only those where the LO is not archived
+                    .Where(slo => !slo.LearningObjective.Archived))
+                    .ThenInclude(slo => slo.LearningObjective) // Pull in the actual LearningObjective
+                .FirstOrDefaultAsync(s => s.Id == id);
+
                 if (sprint == null)
                 {
                     response.Error = true;

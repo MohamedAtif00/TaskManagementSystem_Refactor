@@ -79,4 +79,10 @@ public static partial class Requests
         public List<RollbackLogDto> Logs { get; set; } = new List<RollbackLogDto> { };
         public string? Clarification { get; set; }
     }
+
+    public class FlagTaskDTO
+    {
+        public int TeamLeaderId { get; set; }
+        public string Comment { get; set; } = "";
+    }
 }

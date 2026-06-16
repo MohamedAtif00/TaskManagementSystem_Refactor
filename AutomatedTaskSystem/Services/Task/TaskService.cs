@@ -1453,7 +1453,7 @@ public class TaskService : ITaskService
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id) =>
         await getTaskDetails(id);
 
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ToggleFlag(int id)
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ToggleFlag(int id, int? teamLeaderId = null, string? comment = null)
     {
         var task = await _context.Tasks
             .Where(t => !t.Archived && t.Id == id)
@@ -1496,6 +1496,27 @@ public class TaskService : ITaskService
         }
         else
         {
+            if (!teamLeaderId.HasValue)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Team leader or section head is required when flagging a task" }
+                );
+
+            if (string.IsNullOrWhiteSpace(comment))
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Comment is required when flagging a task" }
+                );
+
+            var notifyRecipient = await _context.Users
+                .FirstOrDefaultAsync(u =>
+                    !u.Archived &&
+                    u.Id == teamLeaderId.Value &&
+                    (u.Role == UserRoleEnum.TeamLeader || u.Role == UserRoleEnum.SectionHead));
+
+            if (notifyRecipient is null)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "Invalid team leader or section head" }
+                );
+
             task.Flagged = true;
 
             task.Status = TaskStatusEnum.ToDo;
@@ -1519,15 +1540,25 @@ public class TaskService : ITaskService
                 TaskId = task.Id,
                 ActorOne = user,
                 ActorOneId = user.Id,
-                ActorTwo = null,
-                ActorTwoId = null,
+                ActorTwo = notifyRecipient,
+                ActorTwoId = notifyRecipient.Id,
                 TimeStamp = DateTime.Now,
-                AdditionalInfo = null,
+                AdditionalInfo = comment.Trim(),
                 TaskSecondary = null,
                 TaskSecondaryId = null
             };
 
             _context.TaskActivities.Add(newActivity);
+
+            await _context.SaveChangesAsync();
+
+            await _notificationService.NotifyTeamLeaderOfFlaggedTask(
+                notifyRecipient.Id,
+                task.Id,
+                user.Id,
+                comment.Trim());
+
+            return await getTaskDetails(task.Id);
         }
 
         await _context.SaveChangesAsync();

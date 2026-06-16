@@ -1,3 +1,4 @@
+using AutomatedTaskSystem.Dtos.NotificationDtos;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 
 namespace AutomatedTaskSystem.DTO
@@ -23,6 +24,8 @@ namespace AutomatedTaskSystem.DTO
 			public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
 			public int Id { get; set; } = 0;
 			public string? Group { get; set; } = "";
+
+			public int Notifications { get; set; }
 		}
 	}
 }

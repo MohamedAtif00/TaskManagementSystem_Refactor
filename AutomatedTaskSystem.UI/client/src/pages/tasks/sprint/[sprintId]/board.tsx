@@ -97,15 +97,6 @@ const TaskBoard = () => {
         }
     }, [sprint]);
 
-    useEffect(() => {
-        if (sprint) {
-            const refreshInterval = setInterval(() => {
-                loadTasks(sprint.id.toString());
-            }, 30000);
-            return () => clearInterval(refreshInterval);
-        }
-    }, [sprint]);
-
     if (tasks === undefined)
         return (
             <div className="flex items-center justify-center mx-auto h-full">

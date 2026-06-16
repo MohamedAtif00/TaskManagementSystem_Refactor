@@ -317,6 +317,25 @@ const RESOURCES = {
 				return false;
 			}
 		},
+		GET_TEAM_LEADERS: async () => {
+			try {
+				const auth = authService.authHeader();
+				const res = await fetch(`${url}/users/team-leaders`, {
+					headers: {
+						...auth,
+					},
+				});
+				const data: {
+					data: { id: number; name: string }[];
+					error: boolean;
+					message: string;
+				} = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		},
 		GET_ONE: async (id: number | string) => {
 			try {
 				const res = await fetch(`${url}/users/${id}`);

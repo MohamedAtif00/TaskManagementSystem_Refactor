@@ -77,21 +77,14 @@ const TaskBoard = () => {
         }
     };
 
-    // Effect to fetch tasks initially and set up refresh interval
     useEffect(() => {
-        // Only fetch tasks if router is ready and `learningObjectId` is a string
         if (!router.isReady || typeof learningObjectId !== 'string') {
-            setTasks(undefined); // Reset tasks while waiting or if invalid LO ID
+            setTasks(undefined);
             return;
         }
 
-        // Use the `learningObjectId` from the URL as the ID for the API call
-        // This implicitly filters tasks by this LO if the backend supports it at that route.
         fetchTasks(learningObjectId);
-
-        const refreshInterval = setInterval(() => fetchTasks(learningObjectId), 30000);
-        return () => clearInterval(refreshInterval);
-    }, [router.isReady, learningObjectId]); // Depend only on learningObjectId (and router.isReady) for task fetching
+    }, [router.isReady, learningObjectId]);
 
     // Loading State
     if (tasks === undefined || project === undefined) { // Check both project and tasks for loading

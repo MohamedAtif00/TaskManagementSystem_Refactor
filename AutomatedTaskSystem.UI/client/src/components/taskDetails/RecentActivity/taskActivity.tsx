@@ -151,8 +151,23 @@ const TaskActivity: React.FC<Props> = (props) => {
 							<span className="font-bold">
 								{props.actorOne ? props.actorOne.name : "User"}
 							</span>{" "}
-							flagged the task.
+							flagged the task
+							{props.actorTwo ? (
+								<>
+									{" "}
+									for{" "}
+									<span className="font-bold">
+										{props.actorTwo.name}
+									</span>
+								</>
+							) : null}
+							.
 						</div>
+						{props.additionalInfo && (
+							<div className="text-sm text-slate-600 mt-1">
+								&ldquo;{props.additionalInfo}&rdquo;
+							</div>
+						)}
 					</div>
 				</div>
 			) : props.type === 9 ? (

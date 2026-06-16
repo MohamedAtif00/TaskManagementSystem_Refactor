@@ -23,7 +23,7 @@ public interface ITaskService
     );
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> GetTaskDetails(int id);
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> TogglePause(int id);
-    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ToggleFlag(int id);
+    Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ToggleFlag(int id, int? teamLeaderId = null, string? comment = null);
     Task<ActionResult<ResponseService<GetTaskAssignmentDto>>> GetTaskAssignment(int id);
     Task<ActionResult<BaseResponseService>> AssignUser(int id, int uid);
     Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid);

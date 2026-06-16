@@ -301,8 +301,8 @@ public class TaskController : ControllerBase
     // PATCH:
     // Toggle Flag Route
     [HttpPatch("{id}/flag")]
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ToggleFlat(int id) =>
-        await _taskService.ToggleFlag(id);
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ToggleFlat(int id, [FromBody] Requests.FlagTaskDTO? req) =>
+        await _taskService.ToggleFlag(id, req?.TeamLeaderId, req?.Comment);
 
     // PATCH:
     // Toggle Pause Route

@@ -1,9 +1,11 @@
-import React, { ReactNode, useEffect, useRef, useState, createContext } from "react";
+import React, { ReactNode, useCallback, useEffect, useRef, useState, createContext } from "react";
 import * as signalR from "@microsoft/signalr";
 import { useAppSelector } from "../../app/hooks";
-import { url } from "../../lib/API";
+import API, { url } from "../../lib/API";
 import { toast } from "react-toastify";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import FlagNotificationContent from "../notifications/FlagNotificationContent";
 
 		// Toast components
 		const NewLeaveRequestToast = ({ closeToast, leaveRequestId }: { closeToast: () => void; leaveRequestId: number }) => {
@@ -54,6 +56,65 @@ import Link from "next/link";
 		            style={{ cursor: "pointer", textDecoration: "none", color: "inherit", display: "block", padding: "8px" }}
 		        >
 		            New task assigned to you: <strong>{taskName}</strong> ({projectName}). Click to view.
+		        </Link>
+		    );
+		};
+
+		const TaskFlaggedToast = ({
+		    closeToast,
+		    taskId,
+		    projectId,
+		    taskName,
+		    learningObjectiveName,
+		    projectName,
+		    flaggedByUserName,
+		    comment,
+		    canView = false,
+		}: {
+		    closeToast: () => void;
+		    taskId: number;
+		    projectId: number;
+		    taskName: string;
+		    learningObjectiveName?: string;
+		    projectName: string;
+		    flaggedByUserName?: string;
+		    comment?: string;
+		    canView?: boolean;
+		}) => {
+		    const href = `/tasks/${projectId}/board?taskId=${taskId}`;
+		    const content = (
+		        <div className="rounded-lg border-l-4 border-red-500 bg-gradient-to-r from-red-50 to-rose-50 p-3 -m-2">
+		            <FlagNotificationContent
+		                compact
+		                data={{
+		                    taskName,
+		                    learningObjectiveName,
+		                    projectName,
+		                    flaggedByUserName,
+		                    comment,
+		                    projectId,
+		                    canView,
+		                }}
+		            />
+		            {canView && (
+		                <p className="mt-2 text-xs font-semibold text-red-600 pl-12">
+		                    Click to view task →
+		                </p>
+		            )}
+		        </div>
+		    );
+
+		    if (!canView) {
+		        return content;
+		    }
+
+		    return (
+		        <Link
+		            href={href}
+		            onClick={closeToast}
+		            className="block no-underline text-inherit"
+		        >
+		            {content}
 		        </Link>
 		    );
 		};
@@ -147,19 +208,37 @@ export interface SignalRContextType {
     connection: signalR.HubConnection | null;
     connectionState: "connected" | "connecting" | "disconnected";
     pendingNumber: number;
+    unreadNotificationCount: number;
+    refreshUnreadNotificationCount: () => Promise<void>;
 }
 
 export const SignalRContext = createContext<SignalRContextType>({
     connection: null,
     connectionState: "disconnected",
     pendingNumber: 0,
+    unreadNotificationCount: 0,
+    refreshUnreadNotificationCount: async () => {},
 });
 
 const SignalRProvider = ({ children }: { children: ReactNode }) => {
     const auth = useAppSelector((state) => state.authSlice);
+    const router = useRouter();
     const connectionRef = useRef<signalR.HubConnection | null>(null);
     const [connectionState, setConnectionState] = useState<"connected" | "connecting" | "disconnected">("disconnected");
     const [pendingNumber, setPendingNumber] = useState(0);
+    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+
+    const refreshUnreadNotificationCount = useCallback(async () => {
+        if (!auth.isAuth) {
+            setUnreadNotificationCount(0);
+            return;
+        }
+
+        const res = await API.NOTIFICATIONS.GET_UNREAD_COUNT();
+        if (!res.error && res.data !== undefined) {
+            setUnreadNotificationCount(res.data);
+        }
+    }, [auth.isAuth]);
 
 		    useEffect(() => {
         let isMounted = true;
@@ -168,8 +247,11 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
             connectionRef.current?.stop();
             connectionRef.current = null;
             setConnectionState("disconnected");
+            setUnreadNotificationCount(0);
             return;
         }
+
+        refreshUnreadNotificationCount();
 
         if (!connectionRef.current) {
             const connection = new signalR.HubConnectionBuilder()
@@ -219,7 +301,12 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
             connectionRef.current?.stop();
             connectionRef.current = null;
         };
-    }, [auth.isAuth]);
+    }, [auth.isAuth, refreshUnreadNotificationCount]);
+
+    useEffect(() => {
+        if (!auth.isAuth) return;
+        refreshUnreadNotificationCount();
+    }, [auth.isAuth, router.pathname, refreshUnreadNotificationCount]);
 
 		    useEffect(() => {
         const connection = connectionRef.current;
@@ -227,6 +314,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 
         // Combined handlers
          const onRequestOpinion = (data: any, type: 'leave' | 'permission' | 'workFromHome') => {
+            refreshUnreadNotificationCount();
             let requestTypeString = '';
             switch(type) {
                 case 'leave':
@@ -257,6 +345,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
             }
 
             if (data.isNewRequest) {
+                refreshUnreadNotificationCount();
                 if (data.newLeaveRequestId) {
                     toast.info(
                         ({ closeToast }) => <NewLeaveRequestToast leaveRequestId={data.newLeaveRequestId} closeToast={closeToast} />,
@@ -292,6 +381,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 			console.log("TaskAssigned received:", data);
 			const { taskId, projectId, taskName, projectName } = data;
 			if (!taskId || !projectId) return;
+            refreshUnreadNotificationCount();
 			toast.info(
 				({ closeToast }) => (
 					<TaskAssignedToast
@@ -306,10 +396,40 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 			);
 		};
 
+		const onTaskFlagged = (data: any) => {
+			if (!data) return;
+			const { taskId, projectId, taskName, learningObjectiveName, projectName, flaggedByUserName, comment, canView } = data;
+			if (!taskId || !projectId) return;
+			refreshUnreadNotificationCount();
+			toast(
+				({ closeToast }) => (
+					<TaskFlaggedToast
+						closeToast={closeToast}
+						taskId={taskId}
+						projectId={projectId}
+						taskName={taskName}
+						learningObjectiveName={learningObjectiveName}
+						projectName={projectName}
+						flaggedByUserName={flaggedByUserName}
+						comment={comment}
+						canView={canView === true}
+					/>
+				),
+				{
+					autoClose: 6000,
+					closeOnClick: false,
+					className: "!bg-white !border !border-red-200 !shadow-lg !rounded-xl",
+					bodyClassName: "!p-3",
+					progressClassName: "!bg-red-500",
+				}
+			);
+		};
+
 		const onProjectAssignedd = (data: any) => {
 	            if (!data || !data.projectId) return;
 				console.log("ProjectAssigned received:", data);
 	            const { projectId, projectName, description, assignedByUserId, assignedByUserName } = data;
+                refreshUnreadNotificationCount();
 	            toast.info(
 	                ({ closeToast }) => (
 	                    <ProjectAssignedToast
@@ -327,6 +447,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 	            if (!data || !data.projectId) return;
 				console.log("ProjectCompleted received:", data);
 	            const { projectId, projectName, totalTasks, completedTasks, remainingTasks } = data;
+                refreshUnreadNotificationCount();
 	            toast.info(
 	                ({ closeToast }) => (
 	                    <ProjectCompletedToast
@@ -348,6 +469,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 	            if (!data || !data.projectId) return;
 				console.log("ProjectClosed received:", data);
 	            const { projectId, projectName, closedManually, yearName } = data;
+                refreshUnreadNotificationCount();
 	            toast.info(
 	                ({ closeToast }) => (
 	                    <ProjectClosedToast
@@ -369,6 +491,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 			connection.on("UpdatePendings",(data)=> onUpdatePendings(data));
 			connection.on("ReceiveError", onReceiveError);
 			connection.on("TaskAssigned",(data)=> onTaskAssigned(data));
+			connection.on("TaskFlagged", (data) => onTaskFlagged(data));
 			connection.on("ProjectAssigned",(data)=> onProjectAssignedd(data));
 			connection.on("ProjectCompleted", onProjectCompleted);
 			connection.on("ProjectClosed", onProjectClosed);
@@ -380,10 +503,11 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 				connection.off("UpdatePendings");
 				connection.off("ReceiveError");
 				connection.off("TaskAssigned");
+				connection.off("TaskFlagged");
 				connection.off("ProjectCompleted");
 				connection.off("ProjectClosed");
 			};
-    }, [connectionState]);
+    }, [connectionState, refreshUnreadNotificationCount]);
 
     return (
         <SignalRContext.Provider
@@ -391,6 +515,8 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
                 connection: connectionRef.current,
                 connectionState,
                 pendingNumber,
+                unreadNotificationCount,
+                refreshUnreadNotificationCount,
             }}
         >
             {children}
