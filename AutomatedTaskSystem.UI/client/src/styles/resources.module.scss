@@ -7,6 +7,53 @@
 	gap: 1rem;
 }
 
+.sectionDetail {
+	padding: 1.25rem 0;
+	display: block;
+}
+
+.sectionActions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem;
+	margin-top: 1.5rem;
+	width: fit-content;
+
+	button {
+		height: auto;
+		min-height: unset;
+		align-self: auto;
+		flex: 0 0 auto;
+		padding: 0.5rem 1rem;
+		font-size: 0.875rem;
+		font-weight: 600;
+		line-height: 1.25rem;
+		border-radius: 0.375rem;
+		border: none;
+		cursor: pointer;
+		white-space: nowrap;
+	}
+}
+
+.editButton {
+	background: #2563eb;
+	color: #fff;
+
+	&:hover {
+		background: #1d4ed8;
+	}
+}
+
+.deleteButton {
+	background: #dc2626;
+	color: #fff;
+
+	&:hover {
+		background: #b91c1c;
+	}
+}
+
 .resource {
 	padding: 0.5rem 1rem;
 	font-weight: 700;

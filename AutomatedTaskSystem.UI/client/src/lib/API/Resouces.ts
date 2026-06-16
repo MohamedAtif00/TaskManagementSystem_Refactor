@@ -516,6 +516,63 @@ const RESOURCES = {
 				return false;
 			}
 		},
+		EDIT: async ({
+			id,
+			name,
+			groups,
+			headId,
+		}: {
+			id: number;
+			name: string;
+			headId: number;
+			groups: number[];
+		}) => {
+			try {
+				const auth = authService.authHeader();
+				if (auth) {
+					const res = await fetch(`${url}/sections/${id}`, {
+						method: "PATCH",
+						headers: {
+							"Content-Type": "application/json",
+							...auth,
+						},
+						body: JSON.stringify({ name, headId, groups }),
+					});
+					const data: {
+						data: ISection;
+						error: boolean;
+						message: string;
+					} = await res.json();
+					return data;
+				}
+				return { error: true, message: "Unauthorized", data: null };
+			} catch (error) {
+				console.error(error);
+				return { error: true, message: "Request failed", data: null };
+			}
+		},
+		DELETE: async ({ id }: { id: string | number }) => {
+			try {
+				const auth = authService.authHeader();
+				if (auth) {
+					const res = await fetch(`${url}/sections/${id}`, {
+						method: "DELETE",
+						headers: {
+							...auth,
+						},
+					});
+					const data: {
+						error: boolean;
+						message: string;
+					} = await res.json();
+					return data;
+				}
+				return false;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		},
 	},
 };
 

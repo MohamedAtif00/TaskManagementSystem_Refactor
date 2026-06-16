@@ -64,6 +64,10 @@
         position: static;
     }
 
+    &.elevated {
+        max-height: calc(100vh - 9rem);
+    }
+
     .darkFont {
         color: $gunmetal;
     }
@@ -73,6 +77,33 @@
         flex-direction: column;
         gap: 2.5rem;
         overflow: auto;
+    }
+
+    .actions {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+
+        .cancel {
+            flex: 1;
+            height: 2.25rem;
+            background-color: #eaeef4;
+            color: $gunmetal;
+            border-radius: 0.5rem;
+            border: none;
+            font-family: Inter;
+            font-size: 1rem;
+            cursor: pointer;
+
+            &:hover {
+                background-color: #dbdfe5;
+            }
+        }
+
+        .submit {
+            flex: 1;
+            width: auto;
+        }
     }
 
     .inputs {

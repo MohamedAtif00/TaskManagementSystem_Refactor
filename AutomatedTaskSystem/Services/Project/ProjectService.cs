@@ -8,7 +8,7 @@ using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.LearningObjectiveService;
-	using AutomatedTaskSystem.Services.Notification;
+using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.ProjectAssignmentService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
@@ -55,45 +55,45 @@ public class ProjectService(DataContext context,
             var connection = await GetOpenConnectionAsync();
 
             const string progressSql = """
-WITH ProjectIds AS (
-    SELECT Id
-    FROM Projects
-    WHERE Id IN @projectIds
-),
-Expected AS (
-    SELECT
-        u.ProjectId,
-        ExpectedTasks = COUNT(1)
-    FROM Units u
-    INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
-    INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
-    INNER JOIN Nodes n ON n.SchemaId = lo.SchemaId AND n.Archived = 0
-    INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
-    WHERE u.Archived = 0
-      AND u.ProjectId IN @projectIds
-    GROUP BY u.ProjectId
-),
-Completed AS (
-    SELECT
-        u.ProjectId,
-        CompletedTasks = COUNT(1)
-    FROM Tasks t
-    INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId AND lo.Archived = 0
-    INNER JOIN Lessons l ON l.Id = lo.LessonId AND l.Archived = 0
-    INNER JOIN Units u ON u.Id = l.UnitId AND u.Archived = 0
-    WHERE t.Archived = 0
-      AND t.Status = @done
-      AND u.ProjectId IN @projectIds
-    GROUP BY u.ProjectId
-)
-SELECT
-    p.Id AS ProjectId,
-    ExpectedTasks = ISNULL(e.ExpectedTasks, 0),
-    CompletedTasks = ISNULL(c.CompletedTasks, 0)
-FROM ProjectIds p
-LEFT JOIN Expected e ON e.ProjectId = p.Id
-LEFT JOIN Completed c ON c.ProjectId = p.Id;
-""";
+            WITH ProjectIds AS (
+                SELECT Id
+                FROM Projects
+                WHERE Id IN @projectIds
+            ),
+            Expected AS (
+                SELECT
+                    u.ProjectId,
+                    ExpectedTasks = COUNT(1)
+                FROM Units u
+                INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
+                INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
+                INNER JOIN Nodes n ON n.SchemaId = lo.SchemaId AND n.Archived = 0
+                INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
+                WHERE u.Archived = 0
+                  AND u.ProjectId IN @projectIds
+                GROUP BY u.ProjectId
+            ),
+            Completed AS (
+                SELECT
+                    u.ProjectId,
+                    CompletedTasks = COUNT(1)
+                FROM Tasks t
+                INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId AND lo.Archived = 0
+                INNER JOIN Lessons l ON l.Id = lo.LessonId AND l.Archived = 0
+                INNER JOIN Units u ON u.Id = l.UnitId AND u.Archived = 0
+                WHERE t.Archived = 0
+                  AND t.Status = @done
+                  AND u.ProjectId IN @projectIds
+                GROUP BY u.ProjectId
+            )
+            SELECT
+                p.Id AS ProjectId,
+                ExpectedTasks = ISNULL(e.ExpectedTasks, 0),
+                CompletedTasks = ISNULL(c.CompletedTasks, 0)
+            FROM ProjectIds p
+            LEFT JOIN Expected e ON e.ProjectId = p.Id
+            LEFT JOIN Completed c ON c.ProjectId = p.Id;
+            """;
 
             var rows = await connection.QueryAsync<ProjectProgressRow>(
                 progressSql,

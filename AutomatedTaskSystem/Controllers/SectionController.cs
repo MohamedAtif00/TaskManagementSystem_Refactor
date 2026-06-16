@@ -44,5 +44,21 @@ namespace AutomatedTaskSystem.Controllers
         [Authorize]
         public async Task<ActionResult<ResponseService<Responses.SectionDTO>>> GetSection(int id) =>
             await _sectionService.GetSection(id);
+
+        // PATCH:
+        // Edit Section
+        [HttpPatch("{id}")]
+        [Authorize]
+        public async Task<ActionResult<ResponseService<Responses.SectionDTO>>> EditSection(
+            int id,
+            Requests.SectionDTO req
+        ) => await _sectionService.EditSection(id, req);
+
+        // DELETE:
+        // Archive Section
+        [HttpDelete("{id}")]
+        [Authorize]
+        public async Task<ActionResult<BaseResponseService>> DeleteSection(int id) =>
+            await _sectionService.DeleteSection(id);
     }
 }
