@@ -317,6 +317,25 @@ const RESOURCES = {
 				return false;
 			}
 		},
+		GET_TEAM_LEADERS: async () => {
+			try {
+				const auth = authService.authHeader();
+				const res = await fetch(`${url}/users/team-leaders`, {
+					headers: {
+						...auth,
+					},
+				});
+				const data: {
+					data: { id: number; name: string }[];
+					error: boolean;
+					message: string;
+				} = await res.json();
+				return data;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		},
 		GET_ONE: async (id: number | string) => {
 			try {
 				const res = await fetch(`${url}/users/${id}`);
@@ -489,6 +508,63 @@ const RESOURCES = {
 					});
 					if (res.status == 404) return false;
 					const data: { id: number; name: string } = await res.json();
+					return data;
+				}
+				return false;
+			} catch (error) {
+				console.error(error);
+				return false;
+			}
+		},
+		EDIT: async ({
+			id,
+			name,
+			groups,
+			headId,
+		}: {
+			id: number;
+			name: string;
+			headId: number;
+			groups: number[];
+		}) => {
+			try {
+				const auth = authService.authHeader();
+				if (auth) {
+					const res = await fetch(`${url}/sections/${id}`, {
+						method: "PATCH",
+						headers: {
+							"Content-Type": "application/json",
+							...auth,
+						},
+						body: JSON.stringify({ name, headId, groups }),
+					});
+					const data: {
+						data: ISection;
+						error: boolean;
+						message: string;
+					} = await res.json();
+					return data;
+				}
+				return { error: true, message: "Unauthorized", data: null };
+			} catch (error) {
+				console.error(error);
+				return { error: true, message: "Request failed", data: null };
+			}
+		},
+		DELETE: async ({ id }: { id: string | number }) => {
+			try {
+				const auth = authService.authHeader();
+				if (auth) {
+					const res = await fetch(`${url}/sections/${id}`, {
+						method: "DELETE",
+						headers: {
+							...auth,
+						},
+					});
+					const data: {
+						error: boolean;
+						message: string;
+					} = await res.json();
 					return data;
 				}
 				return false;

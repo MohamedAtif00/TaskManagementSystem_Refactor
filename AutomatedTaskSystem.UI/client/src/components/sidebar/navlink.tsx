@@ -5,7 +5,7 @@ import SchemaIcon from "../../assets/Icons/Schema";
 import Link from "next/link";
 import ProjectIcon from "../../assets/Icons/Project";
 import TaskIcon from "../../assets/Icons/Task";
-import { ReactNode, useContext, useState } from "react";
+import { ReactNode, useState } from "react";
 import SprintIcon from "../../assets/Icons/Sprint";
 import NotificationIcon from "../../assets/Icons/Notification";
 import { useInsideNavList } from "./navlist";

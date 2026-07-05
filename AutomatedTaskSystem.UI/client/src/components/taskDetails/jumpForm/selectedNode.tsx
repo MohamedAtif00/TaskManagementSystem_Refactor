@@ -16,52 +16,90 @@ const NodeCards: React.FC<Props> = ({  nodes, updateSelected }) => {
     const [mainNode, setMainNode] = useState<NodeAhead>();
     const [focus, setFocus] = useState<NodeCardFocus[]>([]);
 
+    const hasSamePreviousNodes = (
+        a: BasicInfo[],
+        b: BasicInfo[]
+    ): boolean => {
+        const aIds = a.map((p) => p.id).sort((x, y) => x - y);
+        const bIds = b.map((p) => p.id).sort((x, y) => x - y);
+        return (
+            aIds.length === bIds.length &&
+            aIds.every((id, i) => id === bIds[i])
+        );
+    };
+
+    const isParallelWith = (
+        a: NodeAhead,
+        b: NodeAhead
+    ): boolean => hasSamePreviousNodes(a.previousNodes, b.previousNodes);
+
     const handleNodeCardHover = (value: number) => {
         const newState: NodeCardFocus[] = [];
 
-        const foundPoint = nodes.find((p) => p.id === value);
+        const currentNode = nodes.find((p) => p.id === value);
 
-        if (!foundPoint) return;
+        if (!currentNode) return;
 
-        const tohandle: number[] = [];
+        const hasFocus = (nodeId: number) =>
+            newState.some((entry) => entry.id === nodeId);
+
         newState.push({
-            id: foundPoint.id,
+            id: currentNode.id,
             type: "current",
         });
-        foundPoint.previousNodes.forEach((p) => {
-            tohandle.push(p.id);
-        });
-        while (tohandle.length > 0) {
-            const id = tohandle.pop();
 
-            const foundPoint = nodes.find((p) => p.id === id);
-            if (!foundPoint) continue;
+        const toHandle = currentNode.previousNodes.map((p) => p.id);
+        while (toHandle.length > 0) {
+            const id = toHandle.pop();
+            if (id === undefined || hasFocus(id)) continue;
+
+            const ancestorNode = nodes.find((p) => p.id === id);
+            if (!ancestorNode) continue;
 
             newState.push({
-                id: foundPoint.id,
+                id: ancestorNode.id,
                 type: "previous",
             });
 
-            foundPoint.previousNodes.forEach((p) => {
-                tohandle.push(p.id);
+            ancestorNode.previousNodes.forEach((p) => {
+                toHandle.push(p.id);
             });
         }
 
-        newState.forEach((p) => {
-            if (p.type !== "previous") return;
+        // Side branches from ancestors (e.g. VO when hovering Publish) are
+        // upstream work, not parallel — only same-level siblings are parallel.
+        [...newState].forEach((entry) => {
+            if (entry.type !== "previous") return;
 
-            const foundPoint = nodes.find((_) => _.id == p.id);
+            const ancestor = nodes.find((n) => n.id === entry.id);
+            ancestor?.nextNodes.forEach((next) => {
+                const branchNode = nodes.find((n) => n.id === next.id);
+                if (
+                    !branchNode ||
+                    branchNode.id === currentNode.id ||
+                    hasFocus(branchNode.id) ||
+                    isParallelWith(branchNode, currentNode)
+                ) {
+                    return;
+                }
 
-            foundPoint?.nextNodes.forEach((p) => {
-                const foundPoint = nodes.find((_) => _.id == p.id);
-
-                foundPoint &&
-                    !newState.some((_) => _.id === foundPoint.id) &&
-                    newState.push({
-                        type: "parallel",
-                        id: foundPoint.id,
-                    });
+                newState.push({
+                    id: branchNode.id,
+                    type: "previous",
+                });
             });
+        });
+
+        nodes.forEach((node) => {
+            if (
+                node.id !== currentNode.id &&
+                isParallelWith(node, currentNode)
+            ) {
+                newState.push({
+                    type: "parallel",
+                    id: node.id,
+                });
+            }
         });
 
         setFocus(newState);

@@ -343,15 +343,28 @@ const TASKS = {
 			return false;
 		}
 	},
-	FLAG_TASK: async (taskId: number) => {
+	FLAG_TASK: async ({
+		taskId,
+		teamLeaderId,
+		comment,
+	}: {
+		taskId: number;
+		teamLeaderId?: number;
+		comment?: string;
+	}) => {
 		try {
 			const authHeader = authService.authHeader();
+			const body =
+				teamLeaderId !== undefined && comment !== undefined
+					? JSON.stringify({ teamLeaderId, comment })
+					: undefined;
 			const res = await fetch(`${url}/tasks/${taskId}/flag`, {
 				method: "PATCH",
 				headers: {
 					"Content-Type": "application/json",
 					...authHeader,
 				},
+				body,
 			});
 			const data: {
 				data: ITask;

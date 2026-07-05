@@ -24,7 +24,7 @@ const Sidebar = () => {
     const auth = useAppSelector((s) => s.authSlice); // auth.role will be of type UserRole if authSlice correctly types it
     const router = useRouter()
 
-    const { connection, connectionState, pendingNumber } = useContext(SignalRContext);
+    const { connection, connectionState, pendingNumber, unreadNotificationCount } = useContext(SignalRContext);
 
     const logoutHandler = () => {
         authService.logout().then(() => {
@@ -167,12 +167,6 @@ const Sidebar = () => {
                     icon="Task"
                     text="Tasks"
                 />
-	                {/* <Navlink
-	                    activeCondition={path === "/notifications" || path.startsWith("/notifications/")}
-	                    to="/notifications"
-	                    icon="Notification"
-	                    text="Notifications"
-	                /> */}
                 {(auth.role < 3 || auth.role === 4) && (<Navlink
                             activeCondition={path.includes("/user-tasks")}
                             to="/user-tasks"
@@ -209,7 +203,16 @@ const Sidebar = () => {
 	                    activeCondition={path === "/notifications" || path.startsWith("/notifications/")}
 	                    to="/notifications"
 	                    icon="Notification"
-	                    text="Notifications"
+	                    text={
+                            <span className="flex items-center gap-1">
+                                Notifications
+                                {unreadNotificationCount > 0 && (
+                                    <span className="ml-1 bg-red-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                                        {unreadNotificationCount}
+                                    </span>
+                                )}
+                            </span>
+                        }
 	                />
 
                 

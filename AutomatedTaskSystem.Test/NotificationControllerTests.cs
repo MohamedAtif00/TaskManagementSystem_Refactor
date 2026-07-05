@@ -1,7 +1,13 @@
 using AutomatedTaskSystem.Controllers;
+using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.NotificationDtos;
 using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Services.Leave;
+using AutomatedTaskSystem.Services.Permission;
+using AutomatedTaskSystem.Services.WorkFromHome;
+using Microsoft.EntityFrameworkCore;
+using Moq;
 using AutomatedTaskSystem.Models.Enums.NotificationCategory;
 using AutomatedTaskSystem.Models.Enums.NotificationStatus;
 using AutomatedTaskSystem.Models.Enums.NotificationType;
@@ -9,6 +15,7 @@ using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
 using Microsoft.AspNetCore.Mvc;
+using Task = System.Threading.Tasks.Task;
 
 namespace AutomatedTaskSystem.Test;
 
@@ -68,6 +75,9 @@ public class NotificationControllerTests
         public Task<bool> NotifyUserOfTaskAssignment(int assignedUserId, int taskId, int? assignedByUserId = null)
             => Task.FromResult(true);
 
+        public Task<bool> NotifyTeamLeaderOfFlaggedTask(int teamLeaderId, int taskId, int flaggedByUserId, string comment)
+            => Task.FromResult(true);
+
         public Task<bool> NotifyUserOfProjectAssignment(int assignedUserId, int projectId, int? assignedByUserId = null)
             => Task.FromResult(true);
 
@@ -85,7 +95,8 @@ public class NotificationControllerTests
             NotificationTypeEnum type,
             int? relatedEntityId = null,
             bool hasActions = false,
-            NotificationStatusEnum? status = null)
+            NotificationStatusEnum? status = null,
+            string? additionalData = null)
         {
             var notification = new Notification
             {
@@ -109,7 +120,45 @@ public class NotificationControllerTests
             int userId,
             NotificationCategoryEnum? category = null,
             NotificationTimeRange? timeFilter = null,
-            bool? isRead = null)
+            bool? isRead = null,
+            NotificationTypeEnum? type = null,
+            bool? flaggedOnly = null)
+        {
+            return Task.FromResult(FilterNotifications(userId, category, isRead, type, flaggedOnly).ToList());
+        }
+
+        public Task<PageList<Notification>> GetUserNotificationsPaged(
+            int userId,
+            int page,
+            int pageSize,
+            NotificationCategoryEnum? category = null,
+            NotificationTimeRange? timeFilter = null,
+            bool? isRead = null,
+            NotificationTypeEnum? type = null,
+            bool? flaggedOnly = null)
+        {
+            var filtered = FilterNotifications(userId, category, isRead, type, flaggedOnly).ToList();
+            var totalCount = filtered.Count;
+            var items = filtered
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Task.FromResult(new PageList<Notification>(items, page, pageSize, totalCount));
+        }
+
+        public Task<int> GetUnreadNotificationCount(int userId)
+        {
+            var count = _notifications.Count(n => n.UserId == userId && !n.IsRead);
+            return Task.FromResult(count);
+        }
+
+        private IEnumerable<Notification> FilterNotifications(
+            int userId,
+            NotificationCategoryEnum? category,
+            bool? isRead,
+            NotificationTypeEnum? type = null,
+            bool? flaggedOnly = null)
         {
             var query = _notifications.Where(n => n.UserId == userId);
 
@@ -118,22 +167,54 @@ public class NotificationControllerTests
                 query = query.Where(n => n.Category == category.Value);
             }
 
+            if (type.HasValue)
+            {
+                query = query.Where(n => n.Type == type.Value);
+            }
+
+            if (flaggedOnly == true)
+            {
+                query = query.Where(n => n.Title == "Task Flagged");
+            }
+
             if (isRead.HasValue)
             {
                 query = query.Where(n => n.IsRead == isRead.Value);
             }
 
-            // In-memory ordering to mimic production behaviour (newest first)
-            query = query.OrderByDescending(n => n.CreatedAt);
-
-            return Task.FromResult(query.ToList());
+            return query.OrderByDescending(n => n.CreatedAt);
         }
 
-        public Task<bool> MarkAsRead(int notificationId, int userId)
+        public Task<bool> MarkAsRead(int notificationId, int userId, bool? accepted = null)
             => Task.FromResult(true);
+
+        public Task<int> MarkAllAsRead(int userId)
+        {
+            var unread = _notifications.Where(n => n.UserId == userId && !n.IsRead).ToList();
+            foreach (var notification in unread)
+                notification.IsRead = true;
+            return Task.FromResult(unread.Count);
+        }
 
         public Task<bool> UpdateNotificationStatus(int notificationId, NotificationStatusEnum status)
             => Task.FromResult(true);
+    }
+
+    private static NotificationController CreateController(
+        INotificationService notificationService,
+        ITokenService tokenService)
+    {
+        var options = new DbContextOptionsBuilder<DataContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        return new NotificationController(
+            notificationService,
+            tokenService,
+            new DataContext(options),
+            Mock.Of<ILeaveRequestService>(),
+            Mock.Of<IPermissionService>(),
+            Mock.Of<IWorkFromHomeService>());
     }
 
     [Fact]
@@ -176,7 +257,7 @@ public class NotificationControllerTests
             }
         };
 
-        var controller = new NotificationController(
+        var controller = CreateController(
             new FakeNotificationService(notifications),
             new FakeTokenService("1"));
 
@@ -185,6 +266,8 @@ public class NotificationControllerTests
             category: null,
             timeFilter: null,
             isRead: null,
+            type: null,
+            flagged: null,
             page: 1,
             pageSize: 10);
 
@@ -208,7 +291,7 @@ public class NotificationControllerTests
     [Fact]
     public async Task GetMyNotifications_ReturnsBadRequest_WhenTokenServiceReturnsError()
     {
-        var controller = new NotificationController(
+        var controller = CreateController(
             new FakeNotificationService(Array.Empty<Notification>()),
             new FakeTokenService(userId: null, error: true, message: "Invalid Request."));
 
@@ -216,6 +299,8 @@ public class NotificationControllerTests
             category: null,
             timeFilter: null,
             isRead: null,
+            type: null,
+            flagged: null,
             page: 1,
             pageSize: 10);
 
@@ -224,6 +309,56 @@ public class NotificationControllerTests
 
         Assert.True(errorBody.Error);
         Assert.Equal("Invalid Request.", errorBody.Message);
+    }
+
+    [Fact]
+    public async Task GetUnreadNotificationCount_ReturnsOnlyUnreadNotificationsForCurrentUser()
+    {
+        var notifications = new[]
+        {
+            new Notification
+            {
+                Id = 1,
+                UserId = 1,
+                Title = "Unread",
+                Message = "Unread notification",
+                Category = NotificationCategoryEnum.General,
+                Type = NotificationTypeEnum.System,
+                IsRead = false
+            },
+            new Notification
+            {
+                Id = 2,
+                UserId = 1,
+                Title = "Read",
+                Message = "Read notification",
+                Category = NotificationCategoryEnum.General,
+                Type = NotificationTypeEnum.System,
+                IsRead = true
+            },
+            new Notification
+            {
+                Id = 3,
+                UserId = 2,
+                Title = "Other user unread",
+                Message = "Should be filtered out",
+                Category = NotificationCategoryEnum.General,
+                Type = NotificationTypeEnum.System,
+                IsRead = false
+            }
+        };
+
+        var controller = CreateController(
+            new FakeNotificationService(notifications),
+            new FakeTokenService("1"));
+
+        var result = await controller.GetUnreadNotificationCount();
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<ResponseService<int>>(okResult.Value);
+
+        Assert.False(response.Error);
+        Assert.Equal(1, response.Data);
     }
 }
 

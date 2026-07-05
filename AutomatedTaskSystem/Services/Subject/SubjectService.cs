@@ -138,7 +138,10 @@ public class SubjectService(
     private async Task<Dictionary<int, int>> GetProgressBySubjectIdAsync(IEnumerable<int> subjectIds)
     {
         var ids = subjectIds.Distinct().ToList();
-        if (ids.Count == 0) return new Dictionary<int, int>();
+        if (ids.Count == 0 || !context.Database.IsRelational())
+        {
+            return ids.ToDictionary(id => id, _ => 0);
+        }
 
         var connection = await GetOpenConnectionAsync();
 

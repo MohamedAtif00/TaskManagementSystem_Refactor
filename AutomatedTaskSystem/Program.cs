@@ -22,6 +22,7 @@ try
 {
     var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
     var builder = WebApplication.CreateBuilder(args);
+    var isTesting = builder.Environment.IsEnvironment("Testing");
 
     // Services
     builder.Services.AddControllers();
@@ -73,22 +74,32 @@ try
             };
         });
 
-    builder.Services.AddHostedService<MonthlyDatabaseOperationWorker>();
+    if (!isTesting)
+    {
+        builder.Services.AddHostedService<MonthlyDatabaseOperationWorker>();
+    }
 
     builder.Services.AddDbContext<DataContext>(opts =>
     {
-        string ConnString = builder.Configuration.GetConnectionString("DefaultConnection");
-        opts.UseSqlServer(
-            ConnString,
-            options =>
-            {
-                options.EnableRetryOnFailure(
-                    maxRetryCount: 5,
-                    maxRetryDelay: System.TimeSpan.FromSeconds(5),
-                    errorNumbersToAdd: null
-                );
-            }
-        );
+        if (isTesting)
+        {
+            opts.UseInMemoryDatabase("IntegrationTests");
+        }
+        else
+        {
+            string ConnString = builder.Configuration.GetConnectionString("DefaultConnection");
+            opts.UseSqlServer(
+                ConnString,
+                options =>
+                {
+                    options.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: System.TimeSpan.FromSeconds(5),
+                        errorNumbersToAdd: null
+                    );
+                }
+            );
+        }
         opts.EnableDetailedErrors(true);
     });
 
@@ -124,7 +135,6 @@ try
         AllowAutoRedirect = false
     });
 
-
     var app = builder.Build();
 
     // 👇 Static files and CORS should come early in the pipeline
@@ -132,7 +142,7 @@ try
     app.UseCors(MyAllowSpecificOrigins);
 
     // 👇 Exception handling should be very early in the pipeline
-    if (app.Environment.IsDevelopment())
+    if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
     {
         app.UseDeveloperExceptionPage();
     }
@@ -158,14 +168,17 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-    // 👇 Apply migrations, repair schema drift, then seed
-    using (var scope = app.Services.CreateScope())
+    // 👇 Apply migrations, repair schema drift, then seed (skipped in integration tests)
+    if (!isTesting)
     {
-        var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
-        await dbContext.Database.MigrateAsync();
-        await SubjectSchemaRepair.ApplyAsync(dbContext);
-        var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
-        await seeder.Seed();
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
+            await dbContext.Database.MigrateAsync();
+            await SubjectSchemaRepair.ApplyAsync(dbContext);
+            var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
+            await seeder.Seed();
+        }
     }
 
     // 👇 Endpoint routing

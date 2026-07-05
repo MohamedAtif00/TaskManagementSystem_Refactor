@@ -36,11 +36,57 @@ export interface GetUserNotificationsParams {
   category?: string;
   timeFilter?: string;
   isRead?: boolean;
+  type?: string;
+  flagged?: boolean;
   page?: number;
   pageSize?: number;
 }
 
 const NOTIFICATIONS = {
+  GET_UNREAD_COUNT: async (): Promise<ResponseService<number>> => {
+    try {
+      const headers = authService.authHeader();
+
+      if (!headers) {
+        return {
+          error: true,
+          message: "User is not authenticated.",
+        };
+      }
+
+      const res = await fetch(`${url}/notifications/unread-count`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...headers,
+        },
+      });
+
+      if (!res.ok) {
+        const errorResponse = await res
+          .json()
+          .catch(() => ({ message: res.statusText }));
+
+        return {
+          error: true,
+          message:
+            errorResponse.message ||
+            `Failed to fetch unread notification count: HTTP status ${res.status}`,
+        };
+      }
+
+      const data: ResponseService<number> = await res.json();
+      return data;
+    } catch (error) {
+      return {
+        error: true,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch unread notification count.",
+      };
+    }
+  },
+
   GET_MY_NOTIFICATIONS: async (
     params?: GetUserNotificationsParams
   ): Promise<ResponseService<PageList<NotificationDto[]>>> => {
@@ -211,6 +257,50 @@ const NOTIFICATIONS = {
             error instanceof Error
               ? error.message
               : "Failed to mark notification as read.",
+        };
+      }
+    },
+    MARK_ALL_AS_READ: async (): Promise<ResponseService<number>> => {
+      try {
+        const headers = authService.authHeader();
+
+        if (!headers) {
+          return {
+            error: true,
+            message: "User is not authenticated.",
+          };
+        }
+
+        const res = await fetch(`${url}/notifications/mark-all-as-read`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...headers,
+          },
+        });
+
+        if (!res.ok) {
+          const errorResponse = await res
+            .json()
+            .catch(() => ({ message: res.statusText }));
+
+          return {
+            error: true,
+            message:
+              errorResponse.message ||
+              `Failed to mark all notifications as read: HTTP status ${res.status}`,
+          };
+        }
+
+        const data: ResponseService<number> = await res.json();
+        return data;
+      } catch (error) {
+        return {
+          error: true,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to mark all notifications as read.",
         };
       }
     },

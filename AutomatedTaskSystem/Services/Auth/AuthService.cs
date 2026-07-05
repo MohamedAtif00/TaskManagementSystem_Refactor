@@ -1,5 +1,6 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.NotificationDtos;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
@@ -34,6 +35,8 @@ public class AuthService : IAuthService
             .Include(u => u.Group)
             .FirstOrDefaultAsync();
 
+        var notification = await _context.Notifications.Where(n => n.UserId == user.Id && !n.IsRead).CountAsync();
+
         if (user is null)
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Invalid token" }
@@ -44,9 +47,10 @@ public class AuthService : IAuthService
             Data = new Responses.AuthInfoDTO
             {
                 Id = user.Id,
-                Group = user.Group?.Name??"",
+                Group = user.Group?.Name ?? "",
                 Role = user.Role,
-                Name = user.Name
+                Name = user.Name,
+                Notifications = notification
             },
             Error = false,
             Message = "User info"

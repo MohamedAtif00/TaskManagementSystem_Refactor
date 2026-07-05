@@ -14,4 +14,9 @@ public interface ISectionService
         List<int> Groups
     );
     Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetSections();
+    Task<ActionResult<ResponseService<Responses.SectionDTO>>> EditSection(
+        int id,
+        Requests.SectionDTO request
+    );
+    Task<ActionResult<BaseResponseService>> DeleteSection(int id);
 }

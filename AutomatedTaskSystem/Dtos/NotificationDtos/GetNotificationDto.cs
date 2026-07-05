@@ -11,7 +11,7 @@ namespace AutomatedTaskSystem.Dtos.NotificationDtos
         public bool HasActions { get; set; }
         public string? Status { get; set; }
         public bool IsRead { get; set; }
-        public int? RelatedEntityId { get; set; }
+        public int? RelatedEntityId { get; set; }   
         public string? AdditionalData { get; set; }
     }
 }

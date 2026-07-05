@@ -10,9 +10,9 @@ namespace AutomatedTaskSystem.Controllers
     [ApiController]
     public class VacationController : ControllerBase
     {
-        private readonly LeaveRequestService _vacationService;
+        private readonly ILeaveRequestService _vacationService;
 
-        public VacationController(LeaveRequestService vacationService)
+        public VacationController(ILeaveRequestService vacationService)
         {
             _vacationService = vacationService;
         }

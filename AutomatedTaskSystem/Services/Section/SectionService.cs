@@ -201,9 +201,21 @@ public class SectionService : ISectionService
     }
 
 
+    public async Task<ActionResult<BaseResponseService>> DeleteSection(int id)
+    {
+        var section = await _context.Sections.FirstOrDefaultAsync(s => s.Id == id && !s.Archived);
+
+        if (section is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Message = "Section not found.", Error = true }
+            );
+
+        section.Archived = true;
+        await _context.SaveChangesAsync();
+
+        return new BaseResponseService { Message = "Section deleted.", Error = false };
+    }
+
     private async Task<bool> CheckIfExists(string Name) =>
         await _context.Sections.AnyAsync(g => g.Name.ToLower() == Name.ToLower());
-
-
-
 }

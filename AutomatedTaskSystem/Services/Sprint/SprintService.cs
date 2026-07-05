@@ -205,10 +205,12 @@ namespace AutomatedTaskSystem.Services.Sprint
             try
             {
                 var sprint = await dataContext.Sprints
-                    .Include(s => s.SprintLearningObjectives) // Include the join table entries
-                        .ThenInclude(slo => slo.LearningObjective) // Then include the actual LearningObjective from the join table
-                    .FirstOrDefaultAsync(s => s.Id == id);
-                    
+                .Include(s => s.SprintLearningObjectives
+                    // Filter the join table entries to only those where the LO is not archived
+                    .Where(slo => !slo.LearningObjective.Archived))
+                    .ThenInclude(slo => slo.LearningObjective) // Pull in the actual LearningObjective
+                .FirstOrDefaultAsync(s => s.Id == id);
+
                 if (sprint == null)
                 {
                     response.Error = true;
@@ -396,12 +398,12 @@ namespace AutomatedTaskSystem.Services.Sprint
                 }
 
                 // Check for overlaps, excluding the current sprint being updated
-                if (await IsOverlappingAsync(newStartDateOnly, newEndDateOnly,sprintId))
-                {
-                    response.Error = true;
-                    response.Message = "The updated date range overlaps with another existing sprint.";
-                    return response;
-                }
+                //if (await IsOverlappingAsync(newStartDateOnly, newEndDateOnly,sprintId))
+                //{
+                //    response.Error = true;
+                //    response.Message = "The updated date range overlaps with another existing sprint.";
+                //    return response;
+                //}
 
                 // 3. Update basic sprint properties
                 sprintToUpdate.Name = request.Name;

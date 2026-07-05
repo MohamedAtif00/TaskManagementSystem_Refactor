@@ -54,6 +54,8 @@ namespace AutomatedTaskSystem.Controllers
             [FromQuery] NotificationCategoryEnum? category,
             [FromQuery] NotificationTimeRange? timeFilter,
             [FromQuery] bool? isRead,
+            [FromQuery] NotificationTypeEnum? type,
+            [FromQuery] bool? flagged,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
@@ -86,17 +88,17 @@ namespace AutomatedTaskSystem.Controllers
                 pageSize = 10;
             }
 
-            var notifications = await _notificationService.GetUserNotifications(
+            var pagedNotifications = await _notificationService.GetUserNotificationsPaged(
                 userId,
+                page,
+                pageSize,
                 category,
                 timeFilter,
-                isRead);
+                isRead,
+                type,
+                flagged);
 
-            var totalCount = notifications.Count;
-
-            var pagedItems = notifications
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
+            var pagedItems = pagedNotifications.items
                 .Select(n => new GetNotificationDto
                 {
                     Id = n.Id,
@@ -115,9 +117,9 @@ namespace AutomatedTaskSystem.Controllers
 
             var pageList = new PageList<GetNotificationDto>(
                 pagedItems,
-                page,
-                pageSize,
-                totalCount);
+                pagedNotifications.page,
+                pagedNotifications.pageSize,
+                pagedNotifications.totalCount);
 
             var response = new ResponseService<PageList<GetNotificationDto>>
             {
@@ -127,6 +129,41 @@ namespace AutomatedTaskSystem.Controllers
             };
 
             return Ok(response);
+        }
+
+        /// <summary>
+        /// Get the number of unread notifications for the currently authenticated user.
+        /// </summary>
+        [HttpGet("unread-count")]
+        public async Task<IActionResult> GetUnreadNotificationCount()
+        {
+            var authRes = _tokenService.GetUserIdFromToken();
+            if (authRes.Error)
+            {
+                return BadRequest(new BaseResponseService
+                {
+                    Error = true,
+                    Message = authRes.Message
+                });
+            }
+
+            if (!int.TryParse(authRes.Data, out var userId))
+            {
+                return BadRequest(new BaseResponseService
+                {
+                    Error = true,
+                    Message = "Invalid user id in token."
+                });
+            }
+
+            var count = await _notificationService.GetUnreadNotificationCount(userId);
+
+            return Ok(new ResponseService<int>
+            {
+                Error = false,
+                Message = "Unread notification count",
+                Data = count
+            });
         }
 
         /// <summary>
@@ -393,6 +430,43 @@ namespace AutomatedTaskSystem.Controllers
         [HttpPut("{notificationId:int}/mark-as-read")]
         public async Task<IActionResult> MarkAsRead(int notificationId,[FromQuery] bool accepted)
             => Ok(await _notificationService.MarkAsRead(notificationId: notificationId,Convert.ToInt32( User.FindFirst(ClaimTypes.NameIdentifier.ToString())?.Value),accepted));
+
+        /// <summary>
+        /// Mark all unread notifications as read for the currently authenticated user.
+        /// </summary>
+        [HttpPut("mark-all-as-read")]
+        public async Task<IActionResult> MarkAllAsRead()
+        {
+            var authRes = _tokenService.GetUserIdFromToken();
+            if (authRes.Error)
+            {
+                return BadRequest(new BaseResponseService
+                {
+                    Error = true,
+                    Message = authRes.Message
+                });
+            }
+
+            if (!int.TryParse(authRes.Data, out var userId))
+            {
+                return BadRequest(new BaseResponseService
+                {
+                    Error = true,
+                    Message = "Invalid user id in token."
+                });
+            }
+
+            var count = await _notificationService.MarkAllAsRead(userId);
+
+            return Ok(new ResponseService<int>
+            {
+                Error = false,
+                Message = count == 0
+                    ? "No unread notifications to mark as read."
+                    : $"{count} notification{(count == 1 ? "" : "s")} marked as read.",
+                Data = count
+            });
+        }
         
     }
 }

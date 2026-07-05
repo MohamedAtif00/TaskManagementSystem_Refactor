@@ -1,4 +1,5 @@
-﻿using AutomatedTaskSystem.Models.Enums.NotificationCategory;
+﻿using AutomatedTaskSystem.Helper;
+using AutomatedTaskSystem.Models.Enums.NotificationCategory;
 using AutomatedTaskSystem.Models.Enums.NotificationStatus;
 using AutomatedTaskSystem.Models.Enums.NotificationType;
 using NotificationModel = AutomatedTaskSystem.Models.Notification;
@@ -18,6 +19,7 @@ namespace AutomatedTaskSystem.Services.Notification
 		Task<bool> ErrorNotification(string userId, string errorMessage, string? details = null);
 		Task<bool> NotifyOwnerOfNewPendingLeaveRequest(int newLeaveRequestId);
 		Task<bool> NotifyUserOfTaskAssignment(int assignedUserId, int taskId, int? assignedByUserId = null);
+		Task<bool> NotifyTeamLeaderOfFlaggedTask(int teamLeaderId, int taskId, int flaggedByUserId, string comment);
 			Task<bool> NotifyUserOfProjectAssignment(int assignedUserId, int projectId, int? assignedByUserId = null);
 		Task<bool> NotifyOwnerOfProjectClosed(int projectId, bool closedManually);
 		Task<bool> NotifyOwnerOfProjectCompleted(int projectId);
@@ -37,9 +39,24 @@ namespace AutomatedTaskSystem.Services.Notification
 			int userId,
 			NotificationCategoryEnum? category = null,
 			NotificationTimeRange? timeFilter = null,
-			bool? isRead = null);
+			bool? isRead = null,
+			NotificationTypeEnum? type = null,
+			bool? flaggedOnly = null);
+
+		Task<PageList<NotificationModel>> GetUserNotificationsPaged(
+			int userId,
+			int page,
+			int pageSize,
+			NotificationCategoryEnum? category = null,
+			NotificationTimeRange? timeFilter = null,
+			bool? isRead = null,
+			NotificationTypeEnum? type = null,
+			bool? flaggedOnly = null);
+
+		Task<int> GetUnreadNotificationCount(int userId);
 
 		Task<bool> MarkAsRead(int notificationId, int userId, bool? accepted = null);
+		Task<int> MarkAllAsRead(int userId);
 		Task<bool> UpdateNotificationStatus(int notificationId, NotificationStatusEnum status);
 	}
 }

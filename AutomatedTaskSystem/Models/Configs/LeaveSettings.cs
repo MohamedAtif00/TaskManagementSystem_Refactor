@@ -29,9 +29,8 @@ namespace AutomatedTaskSystem.Models.Configs
         {
             if (string.IsNullOrWhiteSpace(value)) return null;
             value = value.Trim();
-            if (DateTime.TryParse(value, out var full))
-                return full;
-            // MM-dd: use given year
+
+            // MM-dd first so values like "04-30" use the requested year, not TryParse's default year.
             if (value.Length <= 5 && value.Contains('-'))
             {
                 var parts = value.Split('-');
@@ -41,6 +40,10 @@ namespace AutomatedTaskSystem.Models.Configs
                         return new DateTime(year, m, d);
                 }
             }
+
+            if (DateTime.TryParse(value, out var full))
+                return full;
+
             return null;
         }
     }
