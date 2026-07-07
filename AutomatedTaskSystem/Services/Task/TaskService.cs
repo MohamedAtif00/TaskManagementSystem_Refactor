@@ -2538,8 +2538,7 @@ public class TaskService : ITaskService
             if (currentNode is null)
                 return true;
 
-            if (currentNode.Next.Count == 0)
-                task.LearningObjective.DoneAt = DateTime.Now;
+            await UpdateLearningObjectiveCompletionAsync(task.LearningObjectiveId);
 
             foreach (var nextNode in currentNode.Next)
             {
@@ -2630,8 +2629,7 @@ public class TaskService : ITaskService
 
         if (currentNode is not null)
         {
-            if (currentNode.Next.Count == 0)
-                lo.DoneAt = DateTime.Now;
+            await UpdateLearningObjectiveCompletionAsync(loId);
 
             foreach (var nextNode in currentNode.Next)
             {
@@ -2700,6 +2698,28 @@ public class TaskService : ITaskService
             }
         }
         return true;
+    }
+
+    private async System.Threading.Tasks.Task UpdateLearningObjectiveCompletionAsync(int learningObjectiveId)
+    {
+        var lo = await _context.LearningObjectives
+            .Where(item => !item.Archived && item.Id == learningObjectiveId)
+            .FirstOrDefaultAsync();
+
+        if (lo is null)
+            return;
+
+        var loTasks = await _context.Tasks
+            .Where(t => !t.Archived && t.LearningObjectiveId == learningObjectiveId)
+            .ToListAsync();
+
+        var hasActiveTasks = loTasks.Count > 0;
+        var hasIncompleteTasks = loTasks.Any(t => t.Status != TaskStatusEnum.Done);
+
+        if (hasActiveTasks && !hasIncompleteTasks)
+            lo.DoneAt ??= DateTime.Now;
+        else
+            lo.DoneAt = null;
     }
 
     public async Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(int projectId)
