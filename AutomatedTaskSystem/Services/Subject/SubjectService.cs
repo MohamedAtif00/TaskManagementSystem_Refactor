@@ -213,53 +213,54 @@ public class SubjectService(
 
         var connection = await GetOpenConnectionAsync();
 
+        // Pass IDs as JSON once instead of expanding IN (@p0, @p1, ...) which is slow for large lists.
+        // Drive both aggregates from the ID set so SQL Server starts at Units by SubjectId.
         const string progressSql = """
 WITH SubjectIds AS (
-    SELECT Id
-    FROM Subjects
-    WHERE Id IN @subjectIds
+    SELECT DISTINCT CAST([value] AS INT) AS Id
+    FROM OPENJSON(@subjectIdsJson)
 ),
 Expected AS (
     SELECT
         u.SubjectId,
         ExpectedTasks = COUNT(1)
-    FROM Units u
+    FROM SubjectIds sid
+    INNER JOIN Units u ON u.SubjectId = sid.Id AND u.Archived = 0
     INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
     INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
     INNER JOIN Nodes n ON n.SchemaId = lo.SchemaId AND n.Archived = 0
     INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
-    WHERE u.Archived = 0
-      AND u.SubjectId IN @subjectIds
     GROUP BY u.SubjectId
 ),
 Completed AS (
     SELECT
         u.SubjectId,
         CompletedTasks = COUNT(1)
-    FROM Tasks t
-    INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId AND lo.Archived = 0
-    INNER JOIN Lessons l ON l.Id = lo.LessonId AND l.Archived = 0
-    INNER JOIN Units u ON u.Id = l.UnitId AND u.Archived = 0
-    WHERE t.Archived = 0
-      AND t.Status = @done
-      AND u.SubjectId IN @subjectIds
+    FROM SubjectIds sid
+    INNER JOIN Units u ON u.SubjectId = sid.Id AND u.Archived = 0
+    INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
+    INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
+    INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id AND t.Archived = 0 AND t.Status = @done
     GROUP BY u.SubjectId
 )
 SELECT
-    p.Id AS SubjectId,
+    SubjectId = COALESCE(e.SubjectId, c.SubjectId),
     ExpectedTasks = ISNULL(e.ExpectedTasks, 0),
     CompletedTasks = ISNULL(c.CompletedTasks, 0)
-FROM SubjectIds p
-LEFT JOIN Expected e ON e.SubjectId = p.Id
-LEFT JOIN Completed c ON c.SubjectId = p.Id;
+FROM Expected e
+FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
 """;
 
         var rows = await connection.QueryAsync<SubjectProgressRow>(
             progressSql,
-            new { subjectIds = ids, done = (int)TaskStatusEnum.Done }
+            new
+            {
+                subjectIdsJson = JsonSerializer.Serialize(ids),
+                done = (int)TaskStatusEnum.Done
+            }
         );
 
-        var map = new Dictionary<int, int>();
+        var map = ids.ToDictionary(id => id, _ => 0);
         foreach (var r in rows)
         {
             map[r.SubjectId] = CalculateProgressPercent(r.CompletedTasks, r.ExpectedTasks);

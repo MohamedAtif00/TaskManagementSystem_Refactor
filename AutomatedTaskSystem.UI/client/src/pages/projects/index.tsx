@@ -23,17 +23,11 @@ type SetupSubject = {
 
 const STEP_TITLES = ["Create Project", "Configure Levels", "Setup Folders"] as const;
 
-const DEFAULT_LEVELS = ["Years", "Terms", "Subjects"];
 const LEVEL_TITLE_PLACEHOLDER = "Please add level title";
 const levelStorageKey = (rootId: number) => `project-level-names:${rootId}`;
 
-const singularLevelName = (levelName: string) => {
-    if (levelName === "Years") return "Year";
-    if (levelName === "Terms") return "Term";
-    if (levelName === "Subjects") return "Subject";
-    if (levelName === "Grades") return "Grade";
-    return levelName.endsWith("s") ? levelName.slice(0, -1) : levelName;
-};
+const singularLevelName = (levelName: string) =>
+    levelName.endsWith("s") ? levelName.slice(0, -1) : levelName;
 
 const addActionColor = (depth: number) =>
     ["text-blue-600 hover:text-blue-700", "text-purple-600 hover:text-purple-700", "text-emerald-600 hover:text-emerald-700"][
@@ -464,7 +458,7 @@ const ProjectsIndex = () => {
         const subjectCount = subjectCountByFolder[folder.id] ?? 0;
         const badgeCount = children.length > 0 ? children.length : subjectCount;
         const isExpanded = expandedFolderIds.has(folder.id);
-        const childLevelName = levelNames[depth] ?? `Folder ${depth + 1}`;
+        const childLevelName = levelNames[depth] ?? `Level ${depth + 1}`;
         const childSingularName = singularLevelName(childLevelName);
         const canAddChild = depth < levelNames.length;
 
@@ -590,10 +584,10 @@ const ProjectsIndex = () => {
         levelNames.length === parsedNumberOfLevels && levelNames.every((level) => level.trim().length > 0);
     const canAddFolder = selectedDepth < parsedNumberOfLevels;
     const canAddSubject = selectedDepth === parsedNumberOfLevels;
-    const nextLevelName = levelNames[selectedDepth] ?? DEFAULT_LEVELS[selectedDepth] ?? `Folder ${selectedDepth + 1}`;
+    const nextLevelName = levelNames[selectedDepth] ?? `Level ${selectedDepth + 1}`;
     const nextSingularLevelName = singularLevelName(nextLevelName);
     const currentLevelLabel =
-        selectedDepth === 0 ? "Project" : levelNames[selectedDepth - 1] ?? DEFAULT_LEVELS[selectedDepth - 1] ?? `Folder ${selectedDepth}`;
+        selectedDepth === 0 ? "Project" : levelNames[selectedDepth - 1] ?? `Level ${selectedDepth}`;
     const currentSingularLabel = singularLevelName(currentLevelLabel);
     const selectedChildCount = selectedFolder ? foldersByParent[selectedFolder.id]?.length ?? 0 : 0;
     const isFolderEmpty = !!selectedFolder && selectedChildCount === 0;

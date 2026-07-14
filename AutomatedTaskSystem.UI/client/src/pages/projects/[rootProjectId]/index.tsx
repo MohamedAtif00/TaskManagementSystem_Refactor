@@ -14,23 +14,16 @@ type FolderDto = {
 };
 
 const levelStorageKey = (rootId: number) => `project-level-names:${rootId}`;
-const DEFAULT_LEVELS = ["Years", "Terms", "Subjects", "Grades", "New", "Folder"];
 
-const normalizeLevelNames = (levels: string[], count = DEFAULT_LEVELS.length) =>
-    Array.from({ length: count }, (_, index) => {
-        const value = (levels[index] ?? "").trim();
-        return !value || /^Level\s+\d+$/i.test(value)
-            ? DEFAULT_LEVELS[index] ?? `Folder ${index + 1}`
-            : value;
-    });
-
-const singularLevelName = (levelName: string) => {
-    if (levelName === "Years") return "Year";
-    if (levelName === "Terms") return "Term";
-    if (levelName === "Subjects") return "Subject";
-    if (levelName === "Grades") return "Grade";
-    return levelName.endsWith("s") ? levelName.slice(0, -1) : levelName;
+const cleanLevelNames = (levels: unknown): string[] => {
+    if (!Array.isArray(levels)) return [];
+    return levels
+        .map((x) => String(x ?? "").trim())
+        .filter((x) => x.length > 0);
 };
+
+const singularLevelName = (levelName: string) =>
+    levelName.endsWith("s") ? levelName.slice(0, -1) : levelName;
 
 const addActionColor = (depth: number) =>
     ["text-blue-600 hover:text-blue-700", "text-purple-600 hover:text-purple-700", "text-emerald-600 hover:text-emerald-700"][
@@ -63,7 +56,7 @@ const ProjectTreePage = () => {
     const [parentById, setParentById] = useState<Record<number, number | null>>({});
     const [childrenByParent, setChildrenByParent] = useState<Record<number, FolderDto[]>>({});
     const [subjectCountByFolder, setSubjectCountByFolder] = useState<Record<number, number>>({});
-    const [levelNames, setLevelNames] = useState<string[]>(DEFAULT_LEVELS.slice(0, 3));
+    const [levelNames, setLevelNames] = useState<string[]>([]);
     const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
     const [expandedFolderIds, setExpandedFolderIds] = useState<Set<number>>(new Set());
     const [addModal, setAddModal] = useState<{ parentFolderId: number; label: string } | null>(null);
@@ -132,7 +125,7 @@ const ProjectTreePage = () => {
             const root = rootRes.data as FolderDto;
             setRootFolder(root);
             if (Array.isArray(root.levelNames) && root.levelNames.length > 0) {
-                setLevelNames(normalizeLevelNames(root.levelNames, root.levelNames.length));
+                setLevelNames(cleanLevelNames(root.levelNames));
             }
             setFolderById({ [root.id]: root });
             setParentById({ [root.id]: null });
@@ -157,7 +150,7 @@ const ProjectTreePage = () => {
                     try {
                         const parsed = JSON.parse(rawLevels);
                         if (Array.isArray(parsed) && parsed.length > 0) {
-                            setLevelNames(normalizeLevelNames(parsed.map((x) => String(x)), parsed.length));
+                            setLevelNames(cleanLevelNames(parsed));
                         }
                     } catch {
                         // ignore corrupt local storage value
@@ -286,7 +279,9 @@ const ProjectTreePage = () => {
     };
 
     const renderEmptyLevelScaffold = (parentFolderId: number, depth: number, canAddAtThisLevel = true) => {
-        const levelName = levelNames[depth] ?? DEFAULT_LEVELS[depth];
+        if (depth >= levelNames.length) return null;
+
+        const levelName = levelNames[depth]?.trim();
         if (!levelName) return null;
 
         const singularName = singularLevelName(levelName);
@@ -328,7 +323,7 @@ const ProjectTreePage = () => {
         const isSelected = selectedFolderId === folder.id;
         const isInSelectedPath = selectedPathIds.has(folder.id);
         const isExpanded = expandedFolderIds.has(folder.id);
-        const childLevelName = levelNames[depth] ?? DEFAULT_LEVELS[depth] ?? `Folder ${depth + 1}`;
+        const childLevelName = levelNames[depth] ?? `Level ${depth + 1}`;
         const childSingularName = singularLevelName(childLevelName);
         const canAddChild = depth < levelNames.length;
         return (
@@ -405,7 +400,7 @@ const ProjectTreePage = () => {
                         <div className="col-span-8 p-6">
                             <h2 className="text-2xl font-semibold mb-2">{selectedFolder?.name ?? rootFolder.name}</h2>
                             <p className="text-slate-500">
-                                Level: {selectedDepth === 0 ? "Project" : levelNames[selectedDepth - 1] ?? DEFAULT_LEVELS[selectedDepth - 1] ?? `Folder ${selectedDepth}`}
+                                Level: {selectedDepth === 0 ? "Project" : levelNames[selectedDepth - 1] ?? `Level ${selectedDepth}`}
                             </p>
                             <p className="text-slate-500 mt-2">
                                 Children: {selectedFolder ? (childrenByParent[selectedFolder.id]?.length ?? 0) : 0}
