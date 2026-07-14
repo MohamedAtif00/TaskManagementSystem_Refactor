@@ -345,8 +345,6 @@ using Microsoft.AspNetCore.SignalR;
 
 	            var project = await _dataContext.Subjects
 	                .Where(p => !p.Archived && p.Id == subjectId)
-	                .Include(p => p.Term)
-	                .ThenInclude(t => t.ProjectYear)
 	                .FirstOrDefaultAsync();
 
 	            if (project is null)
@@ -364,8 +362,7 @@ using Microsoft.AspNetCore.SignalR;
 	                    subjectId = project.Id,
 	                    projectName = project.Name,
 	                    description = project.Description,
-	                    yearId = project.Term.ProjectYearId,
-	                    yearName = project.Term.ProjectYear.Label,
+	                    folderId = project.FolderId,
 	                    status = project.Status.ToString(),
 	                    closedManually
 	                });
@@ -405,8 +402,6 @@ using Microsoft.AspNetCore.SignalR;
 
 	            var project = await _dataContext.Subjects
 	                .Where(p => !p.Archived && p.Id == subjectId)
-	                .Include(p => p.Term)
-	                .ThenInclude(t => t.ProjectYear)
 	                .Include(p => p.Units)
 	                    .ThenInclude(u => u.Lessons)
 	                        .ThenInclude(l => l.LearningObjectives)
@@ -439,8 +434,7 @@ using Microsoft.AspNetCore.SignalR;
 	                    subjectId = project.Id,
 	                    projectName = project.Name,
 	                    description = project.Description,
-	                    yearId = project.Term.ProjectYearId,
-	                    yearName = project.Term.ProjectYear.Label,
+	                    folderId = project.FolderId,
 	                    status = project.Status.ToString(),
 	                    totalTasks,
 	                    completedTasks,

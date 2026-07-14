@@ -289,19 +289,34 @@ type Props = {
     subjects: IProject[];
 };
 
+const parseYearTerm = (folderPath?: string) => {
+    const parts = (folderPath ?? "")
+        .split(">")
+        .map((x) => x.trim())
+        .filter(Boolean);
+
+    return {
+        year: parts[1] ?? "",
+        term: parts[2] ?? "",
+    };
+};
+
 const TaskSubjectsDataGrid = ({ subjects }: Props) => {
-    const rows: TaskSubjectRow[] = subjects.map((p) => ({
-        id: p.id,
-        col0: p.id,
-        col1: p.name,
-        col2: p.description,
-        col3: p.projectYear?.name ?? "",
-        col4: p.term?.name ?? "",
-        col5: p.count || 0,
-        col6: "",
-        progressPercent: p.progressPercent ?? 0,
-        col7: "",
-    }));
+    const rows: TaskSubjectRow[] = subjects.map((p) => {
+        const { year, term } = parseYearTerm(p.folderPath);
+        return {
+            id: p.id,
+            col0: p.id,
+            col1: p.name,
+            col2: p.description,
+            col3: year,
+            col4: term,
+            col5: p.count || 0,
+            col6: "",
+            progressPercent: p.progressPercent ?? 0,
+            col7: "",
+        };
+    });
 
     return (
         <div className="pb-4 mt-4 w-full min-w-0">

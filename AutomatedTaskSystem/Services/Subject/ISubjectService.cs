@@ -17,13 +17,13 @@ public interface ISubjectService
     Task<ActionResult<ResponseService<SubjectDTO>>> CreateProject(
         string Name,
         string Description,
-        int termId
+        int folderId
     );
     Task<ActionResult<ResponseService<SubjectDTO>>> EditProject(
         int id,
         string Name,
         string Description,
-        int termId
+        int folderId
     );
     Task<ActionResult<ResponseService<List<UserDTO>>>> GetUnassignedUsers(int Id);
     Task<ActionResult<ResponseService<List<UserDTO>>>> GetAssignedUsers(int Id);
@@ -33,8 +33,8 @@ public interface ISubjectService
         List<int> UserIds
     );
     Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetAllProjects();
-    Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsByTerm(
-        int termId,
+    Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsByFolder(
+        int folderId,
         bool includeInactiveStatuses = false
     );
     Task<ActionResult<ResponseService<List<IDName>>>> GetProjectLearningObjectives(

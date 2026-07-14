@@ -1,4 +1,3 @@
-﻿using AutomatedTaskSystem.Helper;
 using AutomatedTaskSystem.Data;
 
 using AutomatedTaskSystem.DTO;
@@ -8,6 +7,7 @@ using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Services.UserService;
 
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 
 
@@ -25,9 +25,8 @@ namespace AutomatedTaskSystem.Seeding
 
 
 
-        public const string DefaultRootProjectName = "Selah Eltelmeez";
-
-        public const string DefaultYearLabel = "2026/2027";
+        public const string RootFolderName = "Selah Eltelmeez";
+        public const string FallbackYearLabel = "2026/2027";
 
 
 
@@ -109,7 +108,7 @@ namespace AutomatedTaskSystem.Seeding
 
 
 
-            await SeedDefaultProjectHierarchyAsync();
+            await SeedDefaultFolderHierarchyAsync();
 
 
 
@@ -123,27 +122,17 @@ namespace AutomatedTaskSystem.Seeding
 
         /// <summary>
 
-        /// Ensures Selah Eltelmeez → 2026/2027 → Term 1 &amp; Term 2, then assigns every subject
-
-        /// (active, on hold, closed, reopened — not archived) to the term implied by its code suffix
-
-        /// (e.g. <c>ara_1k_1a</c> → Term 1, <c>ara_3r_2e</c> → Term 2).
+        /// Ensures Selah Eltelmeez -> 2026/2027 -> Term -> Subject
+        /// and assigns all subjects by parsed subject/term.
 
         /// </summary>
 
-        private async System.Threading.Tasks.Task SeedDefaultProjectHierarchyAsync()
+        private async System.Threading.Tasks.Task SeedDefaultFolderHierarchyAsync()
 
         {
-
-            var root = await EnsureRootProjectAsync(DefaultRootProjectName);
-
-            var year = await EnsureProjectYearAsync(root.Id, DefaultYearLabel);
-
-            var terms = await EnsureDefaultTermsAsync(year);
-
-
-
-            var assigned = await ClassifySubjectsIntoTermsAsync(terms);
+            var root = await EnsureFolderAsync(RootFolderName, null);
+            var year = await EnsureFolderAsync(FallbackYearLabel, root.Id);
+            var assigned = await AssignSubjectsByGradeAndTermAsync(year.Id);
 
             if (assigned > 0)
 
@@ -151,278 +140,120 @@ namespace AutomatedTaskSystem.Seeding
 
                 Console.WriteLine(
 
-                    $"[DataSeeder] Classified {assigned} subject(s) into terms by name suffix (1a/1e → Term 1, 2a/2e → Term 2).");
+                    $"[DataSeeder] Assigned {assigned} subject(s) into term/subject folders.");
 
             }
 
         }
 
-
-
-        private async Task<RootProject> EnsureRootProjectAsync(string projectName)
+        private async Task<Folder> EnsureFolderAsync(string name, int? parentFolderId)
 
         {
-
-            var root = await _context.RootProjects.FirstOrDefaultAsync(r => r.Name == projectName);
-
-            if (root is not null)
-
-                return root;
-
-
-
-            root = new RootProject { Name = projectName, Description = "" };
-
-            _context.RootProjects.Add(root);
-
-            await _context.SaveChangesAsync();
-
-            return root;
-
-        }
-
-
-
-        private async Task<ProjectYear> EnsureProjectYearAsync(int rootProjectId, string yearLabel)
-
-        {
-
-            var year = await _context.ProjectYears.FirstOrDefaultAsync(y =>
-
-                y.RootProjectId == rootProjectId && y.Label == yearLabel);
-
-            if (year is not null)
-
-                return year;
-
-
-
-            year = new ProjectYear { RootProjectId = rootProjectId, Label = yearLabel };
-
-            _context.ProjectYears.Add(year);
-
-            await _context.SaveChangesAsync();
-
-            return year;
-
-        }
-
-
-
-        private async Task<Dictionary<int, ProjectTerm>> EnsureDefaultTermsAsync(ProjectYear year)
-
-        {
-
-            await NormalizeLegacyTermNamesAsync(year);
-
-
-
-            var term1 = await EnsureTermAsync(year, SubjectTermClassifier.TermDisplayName(1), order: 0);
-
-            var term2 = await EnsureTermAsync(year, SubjectTermClassifier.TermDisplayName(2), order: 1);
-
-
-
-            return new Dictionary<int, ProjectTerm>
-
+            var folder = await _context.Folders.FirstOrDefaultAsync(f =>
+                f.Name == name && f.ParentFolderId == parentFolderId);
+            if (folder is not null)
             {
-
-                [1] = term1,
-
-                [2] = term2,
-
-            };
-
-        }
-
-
-
-        /// <summary>Renames legacy <c>Term2</c> / <c>Term1</c> rows to <c>Term 2</c> / <c>Term 1</c>.</summary>
-
-        private async System.Threading.Tasks.Task NormalizeLegacyTermNamesAsync(ProjectYear year)
-
-        {
-
-            var legacyNames = new Dictionary<string, string>
-
-            {
-
-                ["Term1"] = "Term 1",
-
-                ["Term2"] = "Term 2",
-
-            };
-
-
-
-            var changed = false;
-
-            foreach (var (from, to) in legacyNames)
-
-            {
-
-                var legacy = await _context.ProjectTerms.FirstOrDefaultAsync(t =>
-
-                    t.ProjectYearId == year.Id && t.Name == from);
-
-                if (legacy is null)
-
-                    continue;
-
-
-
-                var canonical = await _context.ProjectTerms.FirstOrDefaultAsync(t =>
-
-                    t.ProjectYearId == year.Id && t.Name == to);
-
-                if (canonical is not null && canonical.Id != legacy.Id)
-
+                if (folder.ProjectId == 0)
                 {
-
-                    var subjectsOnLegacy = await _context.Subjects
-
-                        .Where(s => s.TermId == legacy.Id)
-
-                        .ToListAsync();
-
-                    foreach (var subject in subjectsOnLegacy)
-
-                        subject.TermId = canonical.Id;
-
-
-
-                    _context.ProjectTerms.Remove(legacy);
-
-                    changed = true;
-
+                    var fallbackProject = new Project
+                    {
+                        Name = parentFolderId is null ? name : RootFolderName,
+                        Description = "Auto-created during seeding",
+                    };
+                    _context.Projects.Add(fallbackProject);
+                    await _context.SaveChangesAsync();
+                    folder.ProjectId = fallbackProject.Id;
+                    await _context.SaveChangesAsync();
                 }
-
-                else
-
-                {
-
-                    legacy.Name = to;
-
-                    legacy.Order = to == "Term 1" ? 0 : 1;
-
-                    changed = true;
-
-                }
-
+                return folder;
             }
 
-
-
-            if (changed)
-
+            int projectId;
+            if (parentFolderId is null)
+            {
+                var project = new Project { Name = name, Description = "Auto-created during seeding" };
+                _context.Projects.Add(project);
                 await _context.SaveChangesAsync();
+                projectId = project.Id;
+            }
+            else
+            {
+                var parent = await _context.Folders.AsNoTracking().FirstOrDefaultAsync(f => f.Id == parentFolderId.Value);
+                if (parent is null)
+                    throw new InvalidOperationException($"Parent folder {parentFolderId.Value} was not found during seeding.");
+                projectId = parent.ProjectId;
+            }
 
-        }
-
-
-
-        private async Task<ProjectTerm> EnsureTermAsync(ProjectYear year, string name, int order)
-
-        {
-
-            var term = await _context.ProjectTerms.FirstOrDefaultAsync(t =>
-
-                t.ProjectYearId == year.Id && t.Name == name);
-
-            if (term is not null)
-
-                return term;
-
-
-
-            term = new ProjectTerm { ProjectYearId = year.Id, Name = name, Order = order };
-
-            _context.ProjectTerms.Add(term);
-
+            folder = new Folder { Name = name, ParentFolderId = parentFolderId, ProjectId = projectId };
+            _context.Folders.Add(folder);
             await _context.SaveChangesAsync();
-
-            return term;
-
+            return folder;
         }
 
-
-
-        /// <summary>
-
-        /// Assigns all non-archived subjects to Term 1 or Term 2 based on name; includes hold/closed/reopened.
-
-        /// </summary>
-
-        private async Task<int> ClassifySubjectsIntoTermsAsync(IReadOnlyDictionary<int, ProjectTerm> termsByNumber)
+        private async Task<int> AssignSubjectsByGradeAndTermAsync(int yearFolderId)
 
         {
-
             var subjects = await _context.Subjects
-
                 .Where(s => !s.Archived)
-
                 .ToListAsync();
 
-
-
             var changed = 0;
-
-            var unclassified = 0;
-
-
-
             foreach (var subject in subjects)
-
             {
+                var termNumber = ResolveTermNumber(subject.Name);
+                var termFolder = await EnsureFolderAsync($"Term {termNumber}", yearFolderId);
 
-                var parsed = SubjectTermClassifier.TryParseTermNumberFromSubjectName(subject.Name);
+                var subjectFolderName = ResolveSubjectFolderName(subject.Name);
+                var subjectFolder = await EnsureFolderAsync(subjectFolderName, termFolder.Id);
 
-                var termNumber = SubjectTermClassifier.ResolveTermNumberFromSubjectName(subject.Name);
-
-                var targetTerm = termsByNumber[termNumber];
-
-
-
-                if (parsed is null)
-
-                    unclassified++;
-
-
-
-                if (subject.TermId == targetTerm.Id)
-
+                if (subject.FolderId == subjectFolder.Id)
                     continue;
 
-
-
-                subject.TermId = targetTerm.Id;
-
+                subject.FolderId = subjectFolder.Id;
                 changed++;
-
             }
-
-
 
             if (changed > 0)
-
                 await _context.SaveChangesAsync();
 
-
-
-            if (unclassified > 0)
-
-            {
-
-                Console.WriteLine(
-
-                    $"[DataSeeder] {unclassified} subject(s) without a term suffix (e.g. *_1a) were assigned to Term 1.");
-
-            }
-
-
-
             return changed;
+        }
 
+        private static int ResolveTermNumber(string subjectName)
+        {
+            var lower = subjectName.ToLowerInvariant();
+
+            var termMatch = Regex.Match(lower, @"(?:^|_)([12])[ae](?:_|$)");
+            if (termMatch.Success && int.TryParse(termMatch.Groups[1].Value, out var termFromSuffix))
+                return termFromSuffix;
+
+            var literalMatch = Regex.Match(lower, @"term[_\s-]?([12])");
+            if (literalMatch.Success && int.TryParse(literalMatch.Groups[1].Value, out var termFromLiteral))
+                return termFromLiteral;
+
+            return 1;
+        }
+
+        private static string ResolveSubjectFolderName(string subjectName)
+        {
+            var lower = subjectName.ToLowerInvariant().Trim();
+            var prefixMatch = Regex.Match(lower, @"^([^_]+)_");
+            if (!prefixMatch.Success)
+                return "Other";
+
+            return prefixMatch.Groups[1].Value switch
+            {
+                "ara" => "Arabic",
+                "eng" => "English",
+                "mth" => "Math",
+                "sci" => "Science",
+                "soc" => "Social Studies",
+                "ict" => "ICT",
+                "mul" => "Multimedia",
+                "rel" => "Religion",
+                "tsk" => "Tokkatsu",
+                _ => "Other"
+            };
         }
 
 

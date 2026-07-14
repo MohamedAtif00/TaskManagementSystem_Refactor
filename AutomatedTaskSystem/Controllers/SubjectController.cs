@@ -66,11 +66,11 @@ public class SubjectController : ControllerBase
         await _subjectService.GetAllProjects();
 
     [Authorize]
-    [HttpGet("by-term/{termId:int}")]
-    public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsByTerm(
-        int termId,
+    [HttpGet("by-folder/{folderId:int}")]
+    public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsByFolder(
+        int folderId,
         [FromQuery] bool includeInactive = false
-    ) => await _subjectService.GetSubjectsByTerm(termId, includeInactive);
+    ) => await _subjectService.GetSubjectsByFolder(folderId, includeInactive);
 
     [HttpGet("GetAllForSprint")]
     public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsForSprint() =>
@@ -84,12 +84,12 @@ public class SubjectController : ControllerBase
     public async Task<ActionResult<ResponseService<SubjectDTO>>> EditSubject(
         int id,
         Requests.SubjectWriteDTO req
-    ) => await _subjectService.EditProject(id, req.Name, req.Description, req.TermId);
+    ) => await _subjectService.EditProject(id, req.Name, req.Description, req.FolderId);
 
     [HttpPost]
     public async Task<ActionResult<ResponseService<SubjectDTO>>> CreateSubject(
         Requests.SubjectWriteDTO req
-    ) => await _subjectService.CreateProject(req.Name, req.Description, req.TermId);
+    ) => await _subjectService.CreateProject(req.Name, req.Description, req.FolderId);
 
     [HttpPost("{id}/units")]
     public async Task<ActionResult<ResponseService<ProjectUnitDTO>>> AddUnit(

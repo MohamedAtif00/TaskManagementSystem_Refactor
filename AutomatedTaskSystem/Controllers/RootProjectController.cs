@@ -1,251 +1,47 @@
 using AutomatedTaskSystem.DTO;
-
 using AutomatedTaskSystem.Services.ResponseService;
-
 using AutomatedTaskSystem.Services.RootProjectService;
-
 using Microsoft.AspNetCore.Mvc;
 
-
-
 namespace AutomatedTaskSystem.Controllers;
-
-
-
-[Route("projects")]
-
+[Route("folders")]
 [ApiController]
-
-public class RootProjectController(IRootProjectService rootProjectService) : ControllerBase
-
+public class RootProjectController(IFolderService folderService) : ControllerBase
 {
-
     [HttpGet]
+    public async Task<ActionResult<ResponseService<List<FolderDto>>>> GetRoots() =>
+        (await folderService.GetRootsAsync()).ToActionResult();
 
-    public async Task<ActionResult<ResponseService<List<RootProjectListDto>>>> GetAll() =>
-
-        (await rootProjectService.GetAllAsync()).ToActionResult();
-
-
-
-    [HttpGet("{rootProjectId:int}")]
-
-    public async Task<ActionResult<ResponseService<RootProjectDetailDto>>> Get(int rootProjectId) =>
-
-        (await rootProjectService.GetAsync(rootProjectId)).ToActionResult();
-
-
+    [HttpGet("{folderId:int}")]
+    public async Task<ActionResult<ResponseService<FolderDto>>> Get(int folderId) =>
+        (await folderService.GetAsync(folderId)).ToActionResult();
 
     [HttpPost]
-
-    public async Task<ActionResult<ResponseService<RootProjectListDto>>> Create(
-
-        [FromBody] CreateRootProjectRequest body
-
-    ) => (await rootProjectService.CreateAsync(body.Name, body.Description)).ToActionResult();
-
-
-
-    [HttpPatch("{rootProjectId:int}")]
-
-    public async Task<ActionResult<ResponseService<RootProjectDetailDto>>> Update(
-
-        int rootProjectId,
-
-        [FromBody] CreateRootProjectRequest body
-
-    ) => (await rootProjectService.UpdateAsync(rootProjectId, body.Name, body.Description)).ToActionResult();
-
-
-
-    [HttpGet("{rootProjectId:int}/years")]
-
-    public async Task<ActionResult<ResponseService<List<Responses.IDName>>>> GetYears(int rootProjectId) =>
-
-        (await rootProjectService.GetYearsAsync(rootProjectId)).ToActionResult();
-
-
-
-    [HttpPost("{rootProjectId:int}/years")]
-
-    public async Task<ActionResult<ResponseService<Responses.IDName>>> CreateYear(
-
-        int rootProjectId,
-
-        [FromBody] LabelRequest body
-
-    ) => (await rootProjectService.CreateYearAsync(rootProjectId, body.Label)).ToActionResult();
-
-
-
-    [HttpGet("years/{projectYearId:int}")]
-
-    public async Task<ActionResult<ResponseService<ProjectYearDetailDto>>> GetYear(int projectYearId) =>
-
-        (await rootProjectService.GetYearAsync(projectYearId)).ToActionResult();
-
-
-
-    [HttpPatch("years/{projectYearId:int}")]
-
-    public async Task<ActionResult<ResponseService<ProjectYearDetailDto>>> UpdateYear(
-
-        int projectYearId,
-
-        [FromBody] LabelRequest body
-
-    ) => (await rootProjectService.UpdateYearAsync(projectYearId, body.Label)).ToActionResult();
-
-
-
-    [HttpGet("years/{projectYearId:int}/terms")]
-
-    public async Task<ActionResult<ResponseService<List<ProjectTermListDto>>>> GetTerms(int projectYearId) =>
-
-        (await rootProjectService.GetTermsAsync(projectYearId)).ToActionResult();
-
-
-
-    [HttpPost("years/{projectYearId:int}/terms")]
-
-    public async Task<ActionResult<ResponseService<ProjectTermListDto>>> CreateTerm(
-
-        int projectYearId,
-
-        [FromBody] CreateTermRequest body
-
-    ) =>
-
-        (
-
-            await rootProjectService.CreateTermAsync(
-
-                projectYearId,
-
-                body.Name,
-
-                body.Order,
-
-                body.StartDate,
-
-                body.EndDate
-
-            )
-
-        ).ToActionResult();
-
-
-
-    [HttpGet("terms/{termId:int}")]
-
-    public async Task<ActionResult<ResponseService<ProjectTermDetailDto>>> GetTerm(int termId) =>
-
-        (await rootProjectService.GetTermAsync(termId)).ToActionResult();
-
-
-
-    [HttpPatch("terms/{termId:int}")]
-
-    public async Task<ActionResult<ResponseService<ProjectTermDetailDto>>> UpdateTerm(
-
-        int termId,
-
-        [FromBody] UpdateTermRequest body
-
-    ) =>
-
-        (
-
-            await rootProjectService.UpdateTermAsync(
-
-                termId,
-
-                body.Name,
-
-                body.Order,
-
-                body.StartDate,
-
-                body.EndDate
-
-            )
-
-        ).ToActionResult();
-
+    public async Task<ActionResult<ResponseService<FolderDto>>> Create(
+        [FromBody] CreateFolderRequestDto body
+    ) => (await folderService.CreateAsync(body.Name, body.ParentFolderId, body.Description, body.LevelNames)).ToActionResult();
+
+    [HttpPatch("{folderId:int}")]
+    public async Task<ActionResult<ResponseService<FolderDto>>> Update(
+        int folderId,
+        [FromBody] UpdateFolderRequestDto body
+    ) => (await folderService.UpdateAsync(folderId, body.Name, body.Description, body.LevelNames)).ToActionResult();
+
+    [HttpGet("{folderId:int}/children")]
+    public async Task<ActionResult<ResponseService<List<FolderDto>>>> GetChildren(int folderId) =>
+        (await folderService.GetChildrenAsync(folderId)).ToActionResult();
+
+    [HttpGet("with-subjects")]
+    public async Task<ActionResult<ResponseService<List<FolderDto>>>> GetFoldersWithSubjects() =>
+        (await folderService.GetSubjectsFoldersAsync()).ToActionResult();
 }
-
-
-
-public class CreateRootProjectRequest
-
-{
-
-    public string Name { get; set; } = "";
-
-    public string? Description { get; set; }
-
-}
-
-
-
-public class LabelRequest
-
-{
-
-    public string Label { get; set; } = "";
-
-}
-
-
-
-public class CreateTermRequest
-
-{
-
-    public string Name { get; set; } = "";
-
-    public int Order { get; set; }
-
-    public DateTime? StartDate { get; set; }
-
-    public DateTime? EndDate { get; set; }
-
-}
-
-
-
-public class UpdateTermRequest
-
-{
-
-    public string Name { get; set; } = "";
-
-    public int Order { get; set; }
-
-    public DateTime? StartDate { get; set; }
-
-    public DateTime? EndDate { get; set; }
-
-}
-
-
 
 internal static class ResponseServiceExtensions
-
 {
-
     public static ActionResult<ResponseService<T>> ToActionResult<T>(this ResponseService<T> r)
-
     {
-
         if (r.Error)
-
             return new BadRequestObjectResult(r);
-
         return new OkObjectResult(r);
-
     }
-
 }
-
-

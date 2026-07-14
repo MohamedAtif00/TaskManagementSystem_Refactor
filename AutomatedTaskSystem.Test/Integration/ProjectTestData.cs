@@ -12,7 +12,7 @@ namespace AutomatedTaskSystem.Test.Integration;
 public sealed class ProjectTestData
 {
     public int YearId { get; init; }
-    public int TermId { get; init; }
+    public int FolderId { get; init; }
     public int OwnerUserId { get; init; }
     public int MemberUserId { get; init; }
     public int ProjectId { get; init; }
@@ -69,42 +69,19 @@ public sealed class ProjectTestData
             await db.SaveChangesAsync();
         }
 
-        var rootProject = await db.RootProjects.FirstOrDefaultAsync(r => r.Name == "Integration Test Root");
-        if (rootProject is null)
+        var rootFolder = await db.Folders.FirstOrDefaultAsync(f => f.Name == "IntegrationRoot" && f.ParentFolderId == null);
+        if (rootFolder is null)
         {
-            rootProject = new RootProject
-            {
-                Name = "Integration Test Root",
-                Description = "Seeded for SubjectController integration tests",
-            };
-            db.RootProjects.Add(rootProject);
+            rootFolder = new Folder { Name = "IntegrationRoot" };
+            db.Folders.Add(rootFolder);
             await db.SaveChangesAsync();
         }
 
-        var projectYear = await db.ProjectYears.FirstOrDefaultAsync(y =>
-            y.RootProjectId == rootProject.Id && y.Label == "2025-2026");
-        if (projectYear is null)
+        var leafFolder = await db.Folders.FirstOrDefaultAsync(f => f.Name == "IntegrationLeaf" && f.ParentFolderId == rootFolder.Id);
+        if (leafFolder is null)
         {
-            projectYear = new ProjectYear
-            {
-                RootProjectId = rootProject.Id,
-                Label = "2025-2026",
-            };
-            db.ProjectYears.Add(projectYear);
-            await db.SaveChangesAsync();
-        }
-
-        var term = await db.ProjectTerms.FirstOrDefaultAsync(t =>
-            t.ProjectYearId == projectYear.Id && t.Name == "Term 1");
-        if (term is null)
-        {
-            term = new ProjectTerm
-            {
-                ProjectYearId = projectYear.Id,
-                Name = "Term 1",
-                Order = 1,
-            };
-            db.ProjectTerms.Add(term);
+            leafFolder = new Folder { Name = "IntegrationLeaf", ParentFolderId = rootFolder.Id };
+            db.Folders.Add(leafFolder);
             await db.SaveChangesAsync();
         }
 
@@ -115,7 +92,7 @@ public sealed class ProjectTestData
             {
                 Name = "Integration Test Project",
                 Description = "Seeded for SubjectController integration tests",
-                TermId = term.Id,
+                FolderId = leafFolder.Id,
                 Status = ProjectStatusEnum.Active,
             };
             db.Subjects.Add(subject);
@@ -125,7 +102,7 @@ public sealed class ProjectTestData
         return new ProjectTestData
         {
             YearId = year.Id,
-            TermId = term.Id,
+            FolderId = leafFolder.Id,
             OwnerUserId = owner.Id,
             MemberUserId = member.Id,
             ProjectId = subject.Id,

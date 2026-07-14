@@ -10,8 +10,8 @@ public class Subject
     public string Description { get; set; } = "";
     public List<Unit> Units { get; set; } = new();
     public List<User> Users { get; set; } = new();
-    public ProjectTerm Term { get; set; } = null!;
-    public int TermId { get; set; }
+    public Folder Folder { get; set; } = null!;
+    public int FolderId { get; set; }
     public bool Archived { get; set; } = false;
     [Range(0, 3)]
     public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;

@@ -11,10 +11,10 @@ import Dropdown from "../../formComponents/DropDown";
 
 type IdName = { id: number; name: string };
 
-const presetTermId = (query: ReturnType<typeof useRouter>["query"]) => {
-    const t = query.termId;
-    if (t === undefined) return null;
-    const n = Number(Array.isArray(t) ? t[0] : t);
+const presetFolderId = (query: ReturnType<typeof useRouter>["query"]) => {
+    const raw = query.folderId ?? query.termId;
+    if (raw === undefined) return null;
+    const n = Number(Array.isArray(raw) ? raw[0] : raw);
     return Number.isNaN(n) ? null : n;
 };
 
@@ -22,68 +22,30 @@ const AddProject = () => {
     const dispatch = useAppDispatch();
     const router = useRouter();
     const { query, pathname } = router;
-    const lockedTermId = presetTermId(query);
+    const lockedFolderId = presetFolderId(query);
     const [active, setActive] = useState<boolean>(false);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
-    const [root, setRoot] = useState<IdName | null>(null);
-    const [year, setYear] = useState<IdName | null>(null);
-    const [term, setTerm] = useState<IdName | null>(null);
-    const [roots, setRoots] = useState<IdName[]>([]);
-    const [years, setYears] = useState<IdName[]>([]);
-    const [terms, setTerms] = useState<IdName[]>([]);
+    const [folder, setFolder] = useState<IdName | null>(null);
+    const [folders, setFolders] = useState<IdName[]>([]);
     const [error, setError] = useState("");
 
     useEffect(() => {
         if (query.form === "add-project") {
-            if (lockedTermId === null) {
-                API.PROJECTS.ROOT.LIST().then((res) => {
+            if (lockedFolderId === null) {
+                API.PROJECTS.ROOT.WITH_SUBJECTS().then((res) => {
                     if (res && typeof res === "object" && "error" in res && !res.error && "data" in res) {
-                        setRoots((res as { data: IdName[] }).data);
+                        setFolders((res as { data: IdName[] }).data);
                     }
                 });
             }
             setName("");
             setDescription("");
-            setRoot(null);
-            setYear(null);
-            setTerm(null);
-            setYears([]);
-            setTerms([]);
+            setFolder(null);
             return setActive(true);
         }
         setActive(false);
-    }, [query, lockedTermId]);
-
-    useEffect(() => {
-        if (!active || lockedTermId !== null) return;
-        if (root === null) {
-            setYears([]);
-            setYear(null);
-            setTerms([]);
-            setTerm(null);
-            return;
-        }
-        API.PROJECTS.ROOT.YEARS(root.id).then((res) => {
-            if (res && typeof res === "object" && "error" in res && !res.error && "data" in res) {
-                setYears((res as { data: IdName[] }).data);
-            } else setYears([]);
-        });
-    }, [root, active, lockedTermId]);
-
-    useEffect(() => {
-        if (!active || lockedTermId !== null) return;
-        if (year === null) {
-            setTerms([]);
-            setTerm(null);
-            return;
-        }
-        API.PROJECTS.ROOT.TERMS(year.id).then((res) => {
-            if (res && typeof res === "object" && "error" in res && !res.error && "data" in res) {
-                setTerms((res as { data: IdName[] }).data);
-            } else setTerms([]);
-        });
-    }, [year, active, lockedTermId]);
+    }, [query, lockedFolderId]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -91,19 +53,17 @@ const AddProject = () => {
 
         if (name === "") return setError("Please enter name");
 
-        const termId =
-            lockedTermId !== null ? lockedTermId : term === null ? null : term.id;
+        const folderId =
+            lockedFolderId !== null ? lockedFolderId : folder === null ? null : folder.id;
 
-        if (termId === null) {
-            if (root === null) return setError("Please select a project");
-            if (year === null) return setError("Please select a year");
-            return setError("Please select a term");
+        if (folderId === null) {
+            return setError("Please select a folder");
         }
 
         API.PROJECTS.CREATE({
             name,
             description,
-            termId,
+            folderId,
         }).then((res) => {
             if (res && !res.error) {
                 dispatch(add(res.data));
@@ -134,32 +94,13 @@ const AddProject = () => {
                                 value={description}
                                 handleChange={setDescription}
                             />
-                            {lockedTermId === null && (
+                            {lockedFolderId === null && (
                                 <div className="flex flex-col gap-3">
                                     <Dropdown
-                                        value={root}
-                                        handleChange={(v) => {
-                                            setRoot(v);
-                                            setYear(null);
-                                            setTerm(null);
-                                        }}
-                                        label="Project"
-                                        options={roots}
-                                    />
-                                    <Dropdown
-                                        value={year}
-                                        handleChange={(v) => {
-                                            setYear(v);
-                                            setTerm(null);
-                                        }}
-                                        label="Year"
-                                        options={years}
-                                    />
-                                    <Dropdown
-                                        value={term}
-                                        handleChange={setTerm}
-                                        label="Term"
-                                        options={terms}
+                                        value={folder}
+                                        handleChange={setFolder}
+                                        label="Folder"
+                                        options={folders}
                                     />
                                 </div>
                             )}

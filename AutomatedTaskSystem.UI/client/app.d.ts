@@ -186,6 +186,9 @@ interface IProject {
     id: number;
     description: string;
     name: string;
+    folderId?: number;
+    folderPath?: string;
+    levelNames?: string[];
     rootProjectId: number;
     projectYearId: number;
     termId: number;

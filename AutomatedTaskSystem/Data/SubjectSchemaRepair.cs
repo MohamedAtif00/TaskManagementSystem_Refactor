@@ -55,15 +55,15 @@ public static class SubjectSchemaRepair
                 FOREIGN KEY (UsersId) REFERENCES dbo.Users(Id) ON DELETE NO ACTION;
 
         IF OBJECT_ID(N'dbo.Subjects', N'U') IS NOT NULL
-           AND COL_LENGTH(N'dbo.Subjects', N'TermId') IS NOT NULL
-           AND OBJECT_ID(N'dbo.Terms', N'U') IS NOT NULL
-           AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Subjects_Terms_TermId')
-            ALTER TABLE dbo.Subjects ADD CONSTRAINT FK_Subjects_Terms_TermId
-                FOREIGN KEY (TermId) REFERENCES dbo.Terms(Id) ON DELETE NO ACTION;
+           AND COL_LENGTH(N'dbo.Subjects', N'FolderId') IS NOT NULL
+           AND OBJECT_ID(N'dbo.Folders', N'U') IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Subjects_Folders_FolderId')
+            ALTER TABLE dbo.Subjects ADD CONSTRAINT FK_Subjects_Folders_FolderId
+                FOREIGN KEY (FolderId) REFERENCES dbo.Folders(Id) ON DELETE NO ACTION;
 
         IF OBJECT_ID(N'dbo.Subjects', N'U') IS NOT NULL
-           AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Subjects_TermId' AND object_id = OBJECT_ID(N'dbo.Subjects'))
-            CREATE INDEX IX_Subjects_TermId ON dbo.Subjects(TermId);
+           AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Subjects_FolderId' AND object_id = OBJECT_ID(N'dbo.Subjects'))
+            CREATE INDEX IX_Subjects_FolderId ON dbo.Subjects(FolderId);
         """;
 
     public static async Task ApplyAsync(DataContext context, CancellationToken cancellationToken = default)

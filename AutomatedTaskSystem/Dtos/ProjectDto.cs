@@ -9,12 +9,9 @@ namespace AutomatedTaskSystem.DTO
             public int Id { get; set; }
             public string Name { get; set; } = "";
             public string Description { get; set; } = "";
-            public int RootProjectId { get; set; }
-            public int ProjectYearId { get; set; }
-            public int TermId { get; set; }
-            public IDName RootProject { get; set; } = new IDName { };
-            public IDName ProjectYear { get; set; } = new IDName { };
-            public IDName Term { get; set; } = new IDName { };
+            public int FolderId { get; set; }
+            public string FolderPath { get; set; } = "";
+            public List<string> LevelNames { get; set; } = new();
             public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
             public int? Count { get; set; }
             public int? ProgressPercent { get; set; }
@@ -88,7 +85,7 @@ namespace AutomatedTaskSystem.DTO
         {
             public string Name { get; set; } = "";
             public string Description { get; set; } = "";
-            public int TermId { get; set; }
+            public int FolderId { get; set; }
         }
 
         public class LOAssignDTO

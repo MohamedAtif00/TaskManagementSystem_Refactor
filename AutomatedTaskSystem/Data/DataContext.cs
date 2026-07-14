@@ -218,27 +218,28 @@ public class DataContext : DbContext
             .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<Subject>().ToTable("Subjects");
-        modelBuilder.Entity<ProjectTerm>().ToTable("Terms");
+        modelBuilder.Entity<Project>().ToTable("FolderProjects");
+        modelBuilder.Entity<Folder>().ToTable("Folders");
 
         modelBuilder
-            .Entity<ProjectYear>()
-            .HasOne(py => py.RootProject)
-            .WithMany(r => r.Years)
-            .HasForeignKey(py => py.RootProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .Entity<Project>()
+            .HasMany(p => p.Folders)
+            .WithOne(f => f.Project)
+            .HasForeignKey(f => f.ProjectId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder
-            .Entity<ProjectTerm>()
-            .HasOne(t => t.ProjectYear)
-            .WithMany(py => py.Terms)
-            .HasForeignKey(t => t.ProjectYearId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .Entity<Folder>()
+            .HasOne(f => f.ParentFolder)
+            .WithMany(f => f.Children)
+            .HasForeignKey(f => f.ParentFolderId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder
             .Entity<Subject>()
-            .HasOne(s => s.Term)
-            .WithMany(t => t.Subjects)
-            .HasForeignKey(s => s.TermId)
+            .HasOne(s => s.Folder)
+            .WithMany(f => f.Subjects)
+            .HasForeignKey(s => s.FolderId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder
@@ -278,9 +279,8 @@ public class DataContext : DbContext
     public DbSet<Year> Years => Set<Year>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
-    public DbSet<RootProject> RootProjects => Set<RootProject>();
-    public DbSet<ProjectYear> ProjectYears => Set<ProjectYear>();
-    public DbSet<ProjectTerm> ProjectTerms => Set<ProjectTerm>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<Folder> Folders => Set<Folder>();
     public DbSet<Subject> Subjects => Set<Subject>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<Schema> Schemas => Set<Schema>();

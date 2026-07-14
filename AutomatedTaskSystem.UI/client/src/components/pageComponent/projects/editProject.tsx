@@ -24,12 +24,8 @@ const EditProject = () => {
     const [active, setActive] = useState<boolean>(false);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
-    const [root, setRoot] = useState<IdName | null>(null);
-    const [year, setYear] = useState<IdName | null>(null);
-    const [term, setTerm] = useState<IdName | null>(null);
-    const [roots, setRoots] = useState<IdName[]>([]);
-    const [years, setYears] = useState<IdName[]>([]);
-    const [terms, setTerms] = useState<IdName[]>([]);
+    const [folder, setFolder] = useState<IdName | null>(null);
+    const [folders, setFolders] = useState<IdName[]>([]);
     const [error, setError] = useState("");
 
     useEffect(() => {
@@ -42,46 +38,21 @@ const EditProject = () => {
                 const s = one.data;
                 setName(s.name);
                 setDescription(s.description);
-                const rootsRes = await API.PROJECTS.ROOT.LIST();
-                if (!cancelled && rootsRes && typeof rootsRes === "object" && "error" in rootsRes && !rootsRes.error && "data" in rootsRes) {
-                    setRoots((rootsRes as { data: IdName[] }).data);
-                }
-                const yearsRes = await API.PROJECTS.ROOT.YEARS(s.rootProjectId);
-                if (!cancelled && yearsRes && typeof yearsRes === "object" && "error" in yearsRes && !yearsRes.error && "data" in yearsRes) {
-                    setYears((yearsRes as { data: IdName[] }).data);
-                }
-                const termsRes = await API.PROJECTS.ROOT.TERMS(s.projectYearId);
-                if (!cancelled && termsRes && typeof termsRes === "object" && "error" in termsRes && !termsRes.error && "data" in termsRes) {
-                    setTerms((termsRes as { data: IdName[] }).data);
+                const foldersRes = await API.PROJECTS.ROOT.WITH_SUBJECTS();
+                if (!cancelled && foldersRes && typeof foldersRes === "object" && "error" in foldersRes && !foldersRes.error && "data" in foldersRes) {
+                    setFolders((foldersRes as { data: IdName[] }).data);
                 }
                 if (!cancelled) {
-                    setRoot(s.rootProject);
-                    setYear(s.projectYear);
-                    setTerm(s.term);
+                    const folderId = Number((s as any).folderId);
+                    if (!Number.isNaN(folderId)) {
+                        setFolder({ id: folderId, name: (s as any).folderPath ?? `Folder #${folderId}` });
+                    }
                 }
             })();
             return setActive(true);
         }
         setActive(false);
     }, [query]);
-
-    useEffect(() => {
-        if (!active || root === null) return;
-        API.PROJECTS.ROOT.YEARS(root.id).then((res) => {
-            if (res && typeof res === "object" && "error" in res && !res.error && "data" in res) {
-                setYears((res as { data: IdName[] }).data);
-            }
-        });
-    }, [root?.id, active]);
-
-    useEffect(() => {
-        if (!active || year === null) return;
-        API.PROJECTS.ROOT.TERMS(year.id).then((res) => {
-            if (res && typeof res === "object" && "error" in res && !res.error && "data" in res) {
-                setTerms((res as { data: IdName[] }).data);
-            }
-        });
-    }, [year?.id, active]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -91,15 +62,13 @@ const EditProject = () => {
         if (!sid) return setError("Missing subject");
 
         if (name === "") return setError("Please enter name");
-        if (root === null) return setError("Please select a curriculum project");
-        if (year === null) return setError("Please select an academic year");
-        if (term === null) return setError("Please select a term");
+        if (folder === null) return setError("Please select a folder");
 
         API.PROJECTS.EDIT({
             id: sid,
             name,
             description,
-            termId: term.id,
+            folderId: folder.id,
         }).then((res) => {
             if (res && !res.error) {
                 dispatch(edit(res.data));
@@ -139,29 +108,10 @@ const EditProject = () => {
                             />
                             <div className="flex flex-col gap-3">
                                 <Dropdown
-                                    value={root}
-                                    handleChange={(v) => {
-                                        setRoot(v);
-                                        setYear(null);
-                                        setTerm(null);
-                                    }}
-                                    label="Project"
-                                    options={roots}
-                                />
-                                <Dropdown
-                                    value={year}
-                                    handleChange={(v) => {
-                                        setYear(v);
-                                        setTerm(null);
-                                    }}
-                                    label="Year"
-                                    options={years}
-                                />
-                                <Dropdown
-                                    value={term}
-                                    handleChange={setTerm}
-                                    label="Term"
-                                    options={terms}
+                                    value={folder}
+                                    handleChange={setFolder}
+                                    label="Folder"
+                                    options={folders}
                                 />
                             </div>
                         </div>

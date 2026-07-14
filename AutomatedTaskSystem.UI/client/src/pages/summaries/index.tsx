@@ -25,6 +25,18 @@ const columns: GridColDef[] = [
     { field: "col4", headerName: "Term", width: 100 },
 ];
 
+const parseYearTerm = (folderPath?: string) => {
+    const parts = (folderPath ?? "")
+        .split(">")
+        .map((x) => x.trim())
+        .filter(Boolean);
+
+    return {
+        year: parts[1] ?? "",
+        term: parts[2] ?? "",
+    };
+};
+
 const Projects = () => {
     const projects = useAppSelector((states) => states.projectSlice);
     const dispatch = useAppDispatch();
@@ -117,13 +129,14 @@ const Projects = () => {
                             },
                         }}
                         rows={projects.map((p) => {
+                            const { year, term } = parseYearTerm(p.folderPath);
                             return {
                                 id: p.id,
                                 col0: p.id,
                                 col1: p.name,
                                 col2: p.description,
-                                col3: p.projectYear?.name ?? "",
-                                col4: p.term?.name ?? "",
+                                col3: year,
+                                col4: term,
                             };
                         })}
                         columns={columns}

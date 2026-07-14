@@ -38,7 +38,7 @@ public static class DependancyInjections
     {
         builder.Services.AddMemoryCache();
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddScoped<IRootProjectService, RootProjectService>();
+        builder.Services.AddScoped<IFolderService, FolderService>();
         builder.Services.AddScoped<IUserTaskService, UserTaskService>();
         builder.Services.AddScoped<IRollbackService, RollbackService>();
         builder.Services.AddScoped<IDashboardService, DashboardService>();

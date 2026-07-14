@@ -106,12 +106,12 @@ const PROJECTS = {
         id,
         name,
         description,
-        termId,
+        folderId,
     }: {
         id: string | string[] | number;
         name: string;
         description: string;
-        termId: number;
+        folderId: number;
     }) => {
         try {
             const res = await fetch(`${url}/subjects/${id}`, {
@@ -119,7 +119,7 @@ const PROJECTS = {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ name, description, termId }),
+                body: JSON.stringify({ name, description, folderId }),
             });
             const data: {
                 data: IProject;
@@ -161,11 +161,11 @@ const PROJECTS = {
     CREATE: async ({
         name,
         description,
-        termId,
+        folderId,
     }: {
         name: string;
         description: string;
-        termId: number;
+        folderId: number;
     }) => {
         try {
             const res = await fetch(`${url}/subjects`, {
@@ -173,7 +173,7 @@ const PROJECTS = {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ name, description, termId }),
+                body: JSON.stringify({ name, description, folderId }),
             });
             const data: {
                 data: IProject;
@@ -224,11 +224,11 @@ const PROJECTS = {
 
     },
     GET_BY_TERM: async (
-        termId: number,
+        folderId: number,
         options?: { includeInactive?: boolean }
     ) => {
         const query = options?.includeInactive ? "?includeInactive=true" : "";
-        const res = await fetch(`${url}/subjects/by-term/${termId}${query}`, {
+        const res = await fetch(`${url}/subjects/by-folder/${folderId}${query}`, {
             headers: { ...authService.authHeader() },
         });
         const data: {
@@ -238,6 +238,10 @@ const PROJECTS = {
         } = await res.json();
         return data;
     },
+    GET_BY_FOLDER: async (
+        folderId: number,
+        options?: { includeInactive?: boolean }
+    ) => PROJECTS.GET_BY_TERM(folderId, options),
     GET_ALL_FOR_SPRINT:async ()=>{
 
         const res = await fetch(`${url}/subjects/GetAllForSprint`);
@@ -680,63 +684,67 @@ const PROJECTS = {
     },
     ROOT: {
         LIST: async () => {
-            const res = await fetch(`${url}/projects`);
+            const res = await fetch(`${url}/folders`);
             return res.json();
         },
-        GET: async (rootProjectId: number) => {
-            const res = await fetch(`${url}/projects/${rootProjectId}`);
+        WITH_SUBJECTS: async () => {
+            const res = await fetch(`${url}/folders/with-subjects`);
             return res.json();
         },
-        CREATE: async (name: string, description?: string) => {
-            const res = await fetch(`${url}/projects`, {
+        GET: async (folderId: number) => {
+            const res = await fetch(`${url}/folders/${folderId}`);
+            return res.json();
+        },
+        CREATE: async (name: string, description?: string, levelNames?: string[]) => {
+            const res = await fetch(`${url}/folders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, description: description ?? "" }),
+                body: JSON.stringify({ name, description: description ?? "", parentFolderId: null, levelNames }),
             });
             return res.json();
         },
-        UPDATE: async (rootProjectId: number, name: string, description?: string) => {
-            const res = await fetch(`${url}/projects/${rootProjectId}`, {
+        UPDATE: async (folderId: number, name: string, description?: string, levelNames?: string[]) => {
+            const res = await fetch(`${url}/folders/${folderId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, description: description ?? "" }),
+                body: JSON.stringify({ name, description: description ?? "", levelNames }),
             });
             return res.json();
         },
-        YEARS: async (rootProjectId: number) => {
-            const res = await fetch(`${url}/projects/${rootProjectId}/years`);
+        YEARS: async (folderId: number) => {
+            const res = await fetch(`${url}/folders/${folderId}/children`);
             return res.json();
         },
-        GET_YEAR: async (projectYearId: number) => {
-            const res = await fetch(`${url}/projects/years/${projectYearId}`);
+        GET_YEAR: async (folderId: number) => {
+            const res = await fetch(`${url}/folders/${folderId}`);
             return res.json();
         },
-        CREATE_YEAR: async (rootProjectId: number, label: string) => {
-            const res = await fetch(`${url}/projects/${rootProjectId}/years`, {
+        CREATE_YEAR: async (parentFolderId: number, label: string) => {
+            const res = await fetch(`${url}/folders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ label }),
+                body: JSON.stringify({ name: label, parentFolderId }),
             });
             return res.json();
         },
-        UPDATE_YEAR: async (projectYearId: number, label: string) => {
-            const res = await fetch(`${url}/projects/years/${projectYearId}`, {
+        UPDATE_YEAR: async (folderId: number, label: string) => {
+            const res = await fetch(`${url}/folders/${folderId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ label }),
+                body: JSON.stringify({ name: label }),
             });
             return res.json();
         },
-        TERMS: async (projectYearId: number) => {
-            const res = await fetch(`${url}/projects/years/${projectYearId}/terms`);
+        TERMS: async (folderId: number) => {
+            const res = await fetch(`${url}/folders/${folderId}/children`);
             return res.json();
         },
-        GET_TERM: async (termId: number) => {
-            const res = await fetch(`${url}/projects/terms/${termId}`);
+        GET_TERM: async (folderId: number) => {
+            const res = await fetch(`${url}/folders/${folderId}`);
             return res.json();
         },
         CREATE_TERM: async (
-            projectYearId: number,
+            parentFolderId: number,
             body: {
                 name: string;
                 order?: number;
@@ -744,20 +752,18 @@ const PROJECTS = {
                 endDate?: string | null;
             }
         ) => {
-            const res = await fetch(`${url}/projects/years/${projectYearId}/terms`, {
+            const res = await fetch(`${url}/folders`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: body.name,
-                    order: body.order ?? 0,
-                    startDate: body.startDate || null,
-                    endDate: body.endDate || null,
+                    parentFolderId,
                 }),
             });
             return res.json();
         },
         UPDATE_TERM: async (
-            termId: number,
+            folderId: number,
             body: {
                 name: string;
                 order?: number;
@@ -765,14 +771,11 @@ const PROJECTS = {
                 endDate?: string | null;
             }
         ) => {
-            const res = await fetch(`${url}/projects/terms/${termId}`, {
+            const res = await fetch(`${url}/folders/${folderId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: body.name,
-                    order: body.order ?? 0,
-                    startDate: body.startDate || null,
-                    endDate: body.endDate || null,
                 }),
             });
             return res.json();

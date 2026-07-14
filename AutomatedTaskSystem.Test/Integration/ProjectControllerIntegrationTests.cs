@@ -58,7 +58,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         {
             name = "New Integration Project",
             description = "Created via integration test",
-            termId = _data.TermId,
+            folderId = _data.FolderId,
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -66,7 +66,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         Assert.NotNull(body);
         Assert.False(body!.Error);
         Assert.Equal("New Integration Project", body.Data!.Name);
-        Assert.Equal(_data.TermId, body.Data.TermId);
+        Assert.Equal(_data.FolderId, body.Data.FolderId);
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         {
             name = "Invalid Term Project",
             description = "Should fail",
-            termId = 999999,
+            folderId = 999999,
         });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -194,7 +194,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         {
             name = "Updated Integration Project",
             description = "Updated description",
-            termId = _data.TermId,
+            folderId = _data.FolderId,
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -212,7 +212,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         {
             name = "Updated Integration Project",
             description = "Updated description",
-            termId = 999999,
+            folderId = 999999,
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -225,7 +225,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         {
             name = "Ghost Project",
             description = "N/A",
-            termId = _data.TermId,
+            folderId = _data.FolderId,
         });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -447,7 +447,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         {
             name,
             description = "Isolated test project",
-            termId = _data.TermId,
+            folderId = _data.FolderId,
         });
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<ProjectDto>>(JsonOptions);
@@ -472,7 +472,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         public int Id { get; set; }
         public string Name { get; set; } = "";
         public string Description { get; set; } = "";
-        public int TermId { get; set; }
+        public int FolderId { get; set; }
         public ProjectStatusEnum Status { get; set; }
     }
 
