@@ -32,11 +32,6 @@ const Sidebar = () => {
         });
     };
 
-    useEffect(() => {
-        // console.log("🔄 Sidebar - pendingNumber:", pendingNumber);
-        // console.log("🔄 Sidebar - connectionState:", connectionState);
-    }, [pendingNumber, connectionState]);
-
     // Build the NavList items conditionally
     const leavesNavItems: ReactElement[] = [];
 
@@ -88,7 +83,7 @@ const Sidebar = () => {
 
     return (
         <div id={styles.sidebar}>
-            <h3>ATS</h3>
+            <h3>TMS</h3>
             <div className={styles.profile}>
                 <div className="cursor-pointer" onClick={() => router.push(`/resources/users/${auth.id}`)}>{user.name}</div>
                 <div className={styles.profileInfo}>
@@ -102,7 +97,7 @@ const Sidebar = () => {
                     activeCondition={path === "/"}
                     to="/"
                     icon="Home"
-                    text="Home"
+                    text="Dashboard"
                 />
                 {(auth.role === 4 || auth.role === 0) ? (
                     <>
@@ -110,14 +105,14 @@ const Sidebar = () => {
                             activeCondition={path.includes("/resources")}
                             to="/resources"
                             icon="Resources"
-                            text="Resources"
+                            text="User Management"
                         />
                         
                         <Navlink
                             activeCondition={path.includes("/schemas")}
                             to="/schemas"
                             icon="Schema"
-                            text="Schemas"
+                            text="Work Flow"
                         />
                         <Navlink
                             activeCondition={path.includes("/projects") || path.includes("/subjects")}
@@ -125,7 +120,7 @@ const Sidebar = () => {
                             icon="Project"
                             text="Projects"
                         />
-                        <NavList label="Reports" icon={ChartIcon}>
+                        {/* <NavList label="Reports" icon={ChartIcon}>
                             <Navlink
                                 activeCondition={path.includes("/project-overview")}
                                 to="/project-overview"
@@ -138,8 +133,6 @@ const Sidebar = () => {
                                 icon="Project"
                                 text="Summaries"
                             />
-                            {/* {(auth.role < 3 || auth.role === 4) && ( */}
-                            {/* Wrap the conditional Navlink in a fragment */}
                             <>
                                 {(auth.role === 4) && (
                                     <Navlink
@@ -150,7 +143,7 @@ const Sidebar = () => {
                                     />
                                 )}
                             </>
-                        </NavList>
+                        </NavList> */}
                        
                     </>
                 ) : null}
@@ -165,7 +158,7 @@ const Sidebar = () => {
                     activeCondition={path.includes("/tasks") && !path.includes("/tasks/sprint/")}
                     to="/tasks"
                     icon="Task"
-                    text="Tasks"
+                    text="Kanban"
                 />
                 {(auth.role < 3 || auth.role === 4) && (<Navlink
                             activeCondition={path.includes("/user-tasks")}

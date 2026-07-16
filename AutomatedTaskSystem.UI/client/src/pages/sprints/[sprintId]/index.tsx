@@ -60,7 +60,7 @@ const SingleSprintPage = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
-                    <title>ATS - Loading Sprint</title>
+                    <title>TMS - Loading Sprint</title>
                 </Head>
                 {/* Assuming Loader is a React component */}
                 <Loader />
@@ -72,7 +72,7 @@ const SingleSprintPage = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full text-red-500">
                 <Head>
-                    <title>ATS - Error</title>
+                    <title>TMS - Error</title>
                 </Head>
                 <p>{error}</p>
             </div>
@@ -83,7 +83,7 @@ const SingleSprintPage = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full text-gray-500">
                 <Head>
-                    <title>ATS - Sprint Not Found</title>
+                    <title>TMS - Sprint Not Found</title>
                 </Head>
                 <p>Sprint not found.</p>
             </div>
@@ -102,7 +102,7 @@ const SingleSprintPage = () => {
     return (
         <>
             <Head>
-                <title>ATS - {sprint.name}</title>
+                <title>TMS - {sprint.name}</title>
             </Head>
             <div className="mx-auto relative max-h-screen overflow-y-auto pr-4 w-11/12">
                 <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">

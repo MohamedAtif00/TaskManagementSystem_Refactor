@@ -193,8 +193,15 @@ namespace AutomatedTaskSystem.Seeding
         private async Task<int> AssignSubjectsByGradeAndTermAsync(int yearFolderId)
 
         {
+            var existingFolderIds = await _context.Folders
+                .AsNoTracking()
+                .Select(f => f.Id)
+                .ToHashSetAsync();
+
+            // Only repair orphans. Never overwrite a subject that already has a valid folder
+            // (startup used to force name-based placement into "Other" and wipe user choices).
             var subjects = await _context.Subjects
-                .Where(s => !s.Archived)
+                .Where(s => !s.Archived && !existingFolderIds.Contains(s.FolderId))
                 .ToListAsync();
 
             var changed = 0;

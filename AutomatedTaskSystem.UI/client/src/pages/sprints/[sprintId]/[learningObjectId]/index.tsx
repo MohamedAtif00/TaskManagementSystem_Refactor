@@ -42,7 +42,7 @@ const TaskSheet = () => {
     return (
         <div className="flex items-center justify-center mx-auto h-full">
             <Head>
-                <title>ATS - Loading View</title> {/* Clarified title */}
+                <title>TMS - Loading View</title> {/* Clarified title */}
             </Head>
             <Loader />
         </div>

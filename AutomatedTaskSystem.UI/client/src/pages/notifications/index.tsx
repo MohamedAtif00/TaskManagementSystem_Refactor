@@ -562,8 +562,8 @@ const NotificationsPage: NextPage = () => {
     return (
         <div className="grow overflow-y-auto bg-slate-100">
             <Head>
-                <title>ATS - Notifications</title>
-                <meta name="description" content="Notifications center for ATS" />
+                <title>TMS - Notifications</title>
+                <meta name="description" content="Notifications center for TMS" />
             </Head>
 
             <div className="mx-auto max-w-5xl  px-4 sm:px-6 lg:px-8">

@@ -85,7 +85,7 @@ const TaskBank = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <Loader />
             </div>
@@ -94,7 +94,7 @@ const TaskBank = () => {
     return (
         <>
             <Head>
-                <title>ATS - Task Bank</title>
+                <title>TMS - Task Bank</title>
             </Head>
             <div className="mainContainer">
                 <Header text="Task Bank" icon="Schema">

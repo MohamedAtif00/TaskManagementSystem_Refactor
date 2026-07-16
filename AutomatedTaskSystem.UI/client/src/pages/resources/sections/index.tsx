@@ -59,7 +59,7 @@ const Sections = () => {
     return (
         <>
             <Head>
-                <title>ATS - Sections</title>
+                <title>TMS - Sections</title>
             </Head>
             <div className="mainContainer">
                 <Header text="Sections" icon="Resources">

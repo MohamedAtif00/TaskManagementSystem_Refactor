@@ -97,7 +97,7 @@ const Section = () => {
 		return (
 			<div className="flex items-center justify-center mx-auto h-full">
 				<Head>
-					<title>ATS - Loading</title>
+					<title>TMS - Loading</title>
 				</Head>
 				<Loader />
 			</div>
@@ -106,7 +106,7 @@ const Section = () => {
 	return (
 		<>
 			<Head>
-				<title>ATS - {section.name} Section</title>
+				<title>TMS - {section.name} Section</title>
 			</Head>
 			<div className="mainContainer">
 				<Header text={section.name} icon="Resources" />

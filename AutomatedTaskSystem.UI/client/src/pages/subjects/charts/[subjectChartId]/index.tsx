@@ -18,7 +18,7 @@ const ProjectChartsRedirect = () => {
   return (
     <>
       <Head>
-        <title>ATS - Redirect</title>
+        <title>TMS - Redirect</title>
       </Head>
     </>
   );

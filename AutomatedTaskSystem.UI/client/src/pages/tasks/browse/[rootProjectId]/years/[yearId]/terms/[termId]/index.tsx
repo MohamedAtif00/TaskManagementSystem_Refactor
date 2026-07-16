@@ -103,7 +103,7 @@ const TaskTermSubjectsPage = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <Loader />
             </div>
@@ -148,7 +148,7 @@ const TaskTermSubjectsPage = () => {
     return (
         <div className="mx-auto relative max-h-screen w-full min-w-0 overflow-y-auto overflow-x-hidden px-2 sm:px-4 box-border">
             <Head>
-                <title>ATS - Subjects — {currentName}</title>
+                <title>TMS - Subjects — {currentName}</title>
             </Head>
             <div className="pt-4 px-2">
                 <CurriculumBreadcrumb

@@ -86,8 +86,8 @@ const LeafFolderSubjectsPage = () => {
     }, [auth.isAuth, auth.role, router, router.isReady, router.asPath, folderId, loadPageData]);
 
     const title = useMemo(() => {
-        if (folder?.name) return `ATS - Subjects - ${folder.name}`;
-        return "ATS - Subjects";
+        if (folder?.name) return `TMS - Subjects - ${folder.name}`;
+        return "TMS - Subjects";
     }, [folder?.name]);
 
     const parseYearTerm = (folderPath?: string) => {

@@ -132,7 +132,7 @@ const TasksIndex = () => {
     return (
         <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
             <Head>
-                <title>ATS - Tasks</title>
+                <title>TMS - Tasks</title>
             </Head>
             <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
                 <div className="flex gap-3 items-center min-w-0">

@@ -64,7 +64,7 @@ const ArchivedSchemas = () => {
     return (
       <div className="flex items-center justify-center mx-auto h-full">
         <Head>
-          <title>ATS - Loading</title>
+          <title>TMS - Loading</title>
         </Head>
         <Loader />
       </div>
@@ -73,7 +73,7 @@ const ArchivedSchemas = () => {
   return (
     <>
       <Head>
-        <title>ATS - Archived Schemas</title>
+        <title>TMS - Archived Schemas</title>
       </Head>
       <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
         <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">

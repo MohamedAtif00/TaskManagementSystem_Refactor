@@ -67,7 +67,7 @@ const Reports = () => {
         return (
             <>
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <div className="flex items-center justify-center mx-auto">
                     <Loader />
@@ -79,7 +79,7 @@ const Reports = () => {
         return (
             <div className="flex items-center justify-center mx-auto">
                 <Head>
-                    <title>ATS - Page not found</title>
+                    <title>TMS - Page not found</title>
                 </Head>
                 <div>Report is not found</div>
             </div>
@@ -88,7 +88,7 @@ const Reports = () => {
     return (
         <>
             <Head>
-                <title>ATS - Project Overview</title>
+                <title>TMS - Project Overview</title>
             </Head>
             <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
                 <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">

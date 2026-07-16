@@ -48,7 +48,7 @@ const SheetView = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <Loader />
             </div>
@@ -65,7 +65,7 @@ const SheetView = () => {
 
     return (<div className="grow max-w-full">
         <Head>
-            <title>ATS - {project.name} Tasks</title>
+            <title>TMS - {project.name} Tasks</title>
         </Head>
         <div className="sticky left-0 right-0 top-0 px-4 bg-white py-4 border-solid border-b border-sky-950 border-t-0 flex justify-between">
             <div className="flex items-center gap-2">

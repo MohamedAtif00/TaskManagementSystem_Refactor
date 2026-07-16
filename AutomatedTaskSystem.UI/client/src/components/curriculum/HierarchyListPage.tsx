@@ -57,7 +57,7 @@ const HierarchyListPage = ({
     return (
         <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
             <Head>
-                <title>ATS - {pageTitle}</title>
+                <title>TMS - {pageTitle}</title>
             </Head>
             {breadcrumbs && breadcrumbs.length > 0 && (
                 <div className="pt-4 px-2">

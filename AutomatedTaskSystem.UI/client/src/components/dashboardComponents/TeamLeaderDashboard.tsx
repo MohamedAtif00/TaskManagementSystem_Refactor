@@ -29,7 +29,7 @@ const TeamLeaderDashboard = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <Loader />
             </div>
@@ -49,7 +49,7 @@ const TeamLeaderDashboard = () => {
     return (
         <div className="grid grid-cols-12 gap-8 p-8 w-full">
             <Head>
-                <title>ATS - Home</title>
+                <title>TMS - Home</title>
             </Head>
             <DashboardCard label="Members" value={dashboard.members} size={4} />
             <div className="col-span-4 p-4 bg-white rounded flex items-center justify-start gap-1">

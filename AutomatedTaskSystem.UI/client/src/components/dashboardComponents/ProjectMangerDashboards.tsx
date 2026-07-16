@@ -42,7 +42,7 @@ const ProjectManagerDashboard = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <Loader />
             </div>
