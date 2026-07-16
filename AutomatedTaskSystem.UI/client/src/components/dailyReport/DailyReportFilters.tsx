@@ -1,0 +1,170 @@
+import { PRIORITY_OPTIONS, STATUS_OPTIONS } from "./constants";
+
+interface Props {
+    filters: DailyReportFilters;
+    lookups: DailyReportLookups | null;
+    rowCount: number;
+    onFilterChange: (key: keyof DailyReportFilters, value: string) => void;
+    onReset: () => void;
+}
+
+const selectClass =
+    "px-3 py-2 rounded-full border border-slate-300 bg-white text-sm min-w-[120px]";
+
+const DailyReportFilters = ({
+    filters,
+    lookups,
+    rowCount,
+    onFilterChange,
+    onReset,
+}: Props) => {
+    return (
+        <div className="bg-white rounded-3xl p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm">
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Team</label>
+                <select
+                    className={selectClass}
+                    value={filters.team}
+                    onChange={(e) => onFilterChange("team", e.target.value)}
+                >
+                    <option value="">All</option>
+                    {(lookups?.teams ?? []).map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Semester</label>
+                <select
+                    className={selectClass}
+                    value={filters.semester}
+                    onChange={(e) => onFilterChange("semester", e.target.value)}
+                >
+                    <option value="">All</option>
+                    {(lookups?.semesters ?? ["Term 1", "Term 2"]).map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Subjects</label>
+                <select
+                    className={selectClass}
+                    value={filters.subject}
+                    onChange={(e) => onFilterChange("subject", e.target.value)}
+                >
+                    <option value="">All</option>
+                    {(lookups?.subjects ?? []).map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Grade</label>
+                <select
+                    className={selectClass}
+                    value={filters.grade}
+                    onChange={(e) => onFilterChange("grade", e.target.value)}
+                >
+                    <option value="">All</option>
+                    {(lookups?.grades ?? []).map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Task Name</label>
+                <select
+                    className={selectClass}
+                    value={filters.taskName}
+                    onChange={(e) => onFilterChange("taskName", e.target.value)}
+                >
+                    <option value="">All</option>
+                    {(lookups?.taskNames ?? []).map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Status</label>
+                <select
+                    className={selectClass}
+                    value={filters.status}
+                    onChange={(e) => onFilterChange("status", e.target.value)}
+                >
+                    <option value="">All</option>
+                    {STATUS_OPTIONS.map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Problem Type</label>
+                <select
+                    className={selectClass}
+                    value={filters.problemType}
+                    onChange={(e) => onFilterChange("problemType", e.target.value)}
+                >
+                    <option value="">All</option>
+                    {(lookups?.problemTypes ?? []).map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Priority</label>
+                <select
+                    className={selectClass}
+                    value={filters.priority}
+                    onChange={(e) => onFilterChange("priority", e.target.value)}
+                >
+                    <option value="">All</option>
+                    {PRIORITY_OPTIONS.map((v) => (
+                        <option key={v} value={v}>{v}</option>
+                    ))}
+                </select>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Date From</label>
+                <input
+                    type="date"
+                    className={selectClass}
+                    value={filters.from}
+                    onChange={(e) => onFilterChange("from", e.target.value)}
+                />
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[120px]">
+                <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Date To</label>
+                <input
+                    type="date"
+                    className={selectClass}
+                    value={filters.to}
+                    onChange={(e) => onFilterChange("to", e.target.value)}
+                />
+            </div>
+
+            <div className="inline-flex items-center gap-2 bg-indigo-50 rounded-full px-4 py-2 text-sm font-bold text-slate-800">
+                Filtered: {rowCount} row{rowCount !== 1 ? "s" : ""}
+            </div>
+
+            <button
+                type="button"
+                onClick={onReset}
+                className="ml-auto px-4 py-2 rounded-full bg-slate-400 text-white text-sm font-semibold hover:bg-slate-500"
+            >
+                Clear Filters
+            </button>
+        </div>
+    );
+};
+
+export default DailyReportFilters;

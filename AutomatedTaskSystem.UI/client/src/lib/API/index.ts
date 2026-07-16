@@ -8,6 +8,7 @@ import LEAVE from "./Leave";
 import PERMISSION from "./Permission";
 import WORK_FROM_HOME from "./workFromHome";
 import NOTIFICATIONS from "./Notifications";
+import DAILY_REPORT from "./dailyReport";
 
 
 // export const url = "/api";
@@ -39,7 +40,8 @@ const API = {
     LEAVE,
     PERMISSION,
 	    WORK_FROM_HOME,
-	    NOTIFICATIONS
+	    NOTIFICATIONS,
+    DAILY_REPORT
 };
 
 export default API;

@@ -80,6 +80,16 @@ public class DataContext : DbContext
             .HasOne(lo => lo.Schema)
             .WithMany(s => s.LearningObjectives);
 
+        modelBuilder.Entity<DailyReportNoteOverride>()
+            .HasIndex(o => o.TaskId)
+            .IsUnique();
+
+        modelBuilder.Entity<DailyReportNoteOverride>()
+            .HasOne(o => o.Task)
+            .WithMany()
+            .HasForeignKey(o => o.TaskId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder
             .Entity<Models.Task>()
             .HasOne(t => t.Group)
@@ -308,4 +318,5 @@ public class DataContext : DbContext
     public DbSet<Opinion> Opinions => Set<Opinion>();
     public DbSet<SprintLearningObjective> SprintLearningObjectives => Set<SprintLearningObjective>();
 	    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<DailyReportNoteOverride> DailyReportNoteOverrides => Set<DailyReportNoteOverride>();
 }

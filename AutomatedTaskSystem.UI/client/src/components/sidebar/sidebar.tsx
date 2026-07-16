@@ -160,6 +160,12 @@ const Sidebar = () => {
                     icon="Task"
                     text="Kanban"
                 />
+                <Navlink
+                    activeCondition={path.includes("/daily-report")}
+                    to="/daily-report"
+                    icon="Task"
+                    text="Daily Report"
+                />
                 {(auth.role < 3 || auth.role === 4) && (<Navlink
                             activeCondition={path.includes("/user-tasks")}
                             to="/user-tasks"
