@@ -10,23 +10,35 @@ export const PRIORITY_OPTIONS = ["High", "Medium", "Low"] as const;
 
 export const DEFAULT_PAGE_SIZE = 5;
 
-const formatDate = (date: Date) => date.toISOString().slice(0, 10);
-
-const today = new Date();
-const sevenDaysAgo = new Date();
-sevenDaysAgo.setDate(today.getDate() - 7);
-
-export const EMPTY_FILTERS: DailyReportFilters = {
-    from: formatDate(sevenDaysAgo),
-    to: formatDate(today),
-    team: "",
-    semester: "",
-    subject: "",
-    grade: "",
-    taskName: "",
-    status: "",
-    problemType: "",
-    priority: "",
-    page: 1,
-    pageSize: DEFAULT_PAGE_SIZE,
+/** Local calendar date as YYYY-MM-DD (avoid UTC shift from toISOString). */
+const formatLocalDate = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
 };
+
+const buildDefaultFilters = (): DailyReportFilters => {
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+
+    return {
+        from: formatLocalDate(sevenDaysAgo),
+        to: formatLocalDate(today),
+        team: "",
+        semester: "",
+        subject: "",
+        grade: "",
+        taskName: "",
+        status: "",
+        problemType: "",
+        priority: "",
+        page: 1,
+        pageSize: DEFAULT_PAGE_SIZE,
+    };
+};
+
+export const EMPTY_FILTERS: DailyReportFilters = buildDefaultFilters();
+
+export const createEmptyFilters = () => buildDefaultFilters();

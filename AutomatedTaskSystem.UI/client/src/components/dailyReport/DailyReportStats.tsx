@@ -16,12 +16,13 @@ const DailyReportStats = ({ summary }: Props) => {
     if (!summary) return null;
 
     const values = [
-        summary.total,
-        summary.approved,
-        summary.hold,
-        summary.rollback,
-        summary.activeTeams,
+        summary.total ?? 0,
+        summary.approved ?? 0,
+        summary.hold ?? 0,
+        summary.rollback ?? 0,
+        summary.activeTeams ?? 0,
     ];
+    const topTeams = summary.topTeams ?? [];
 
     return (
         <div className="flex flex-wrap gap-4 mb-6 justify-between">
@@ -40,11 +41,11 @@ const DailyReportStats = ({ summary }: Props) => {
                 </div>
             ))}
 
-            {summary.topTeams.length > 0 && (
+            {topTeams.length > 0 && (
                 <div className="flex-[2] min-w-[180px] bg-[#f1f5f9] rounded-[20px] py-2 px-3 text-center">
                     <strong className="text-sm text-[#334155]">🏷️ Most Active Teams</strong>
                     <div className="mt-1">
-                        {summary.topTeams.map((team) => (
+                        {topTeams.map((team) => (
                             <span
                                 key={team.team}
                                 className="inline-block bg-[#e2e8f0] rounded-[20px] px-3 py-1 text-xs font-semibold m-0.5"

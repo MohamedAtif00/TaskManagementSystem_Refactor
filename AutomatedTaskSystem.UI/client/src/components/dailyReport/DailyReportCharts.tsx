@@ -34,13 +34,14 @@ const DailyReportCharts = ({ charts }: Props) => {
         ],
     };
 
+    const problemTypes = charts.problemTypes ?? [];
     const problemLabels =
-        charts.problemTypes.length > 0
-            ? charts.problemTypes.map((p) => p.problemType)
+        problemTypes.length > 0
+            ? problemTypes.map((p) => p.problemType)
             : ["No rollback issues"];
     const problemValues =
-        charts.problemTypes.length > 0
-            ? charts.problemTypes.map((p) => p.count)
+        problemTypes.length > 0
+            ? problemTypes.map((p) => p.count)
             : [0];
 
     const problemData = {
@@ -56,11 +57,11 @@ const DailyReportCharts = ({ charts }: Props) => {
     };
 
     return (
-        <div className="flex flex-wrap gap-8 mt-4">
-            <div className="flex-1 min-w-[220px] bg-white/90 rounded-2xl p-2">
+        <div className="flex flex-wrap gap-2 mt-4">
+            <div className="flex-1 min-w-fit bg-white/90 rounded-2xl p-2 h-[300px] flex justify-center">
                 <Doughnut
                     data={statusData}
-                    options={{
+                    options={{  
                         responsive: true,
                         maintainAspectRatio: true,
                         plugins: { legend: { position: "bottom" } },

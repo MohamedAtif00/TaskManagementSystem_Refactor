@@ -224,6 +224,7 @@ public class DailyReportService : IDailyReportService
         parameters.Add("pageSize", pageSize);
 
         var phaseASql = $"""
+            SET NOCOUNT ON;
             {cteSql},
             Filtered AS ({filteredSql})
             {DailyReportSql.CountAndPagedTaskIds}
@@ -262,6 +263,7 @@ public class DailyReportService : IDailyReportService
     {
         var (cteSql, filteredSql, parameters) = BuildQueryParts(filter, user);
         var sql = $"""
+            SET NOCOUNT ON;
             {cteSql},
             Filtered AS ({filteredSql})
             {DailyReportSql.SummaryAndTopTeams}
