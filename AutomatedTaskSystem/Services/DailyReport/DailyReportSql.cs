@@ -2,12 +2,14 @@ namespace AutomatedTaskSystem.Services.DailyReport;
 
 internal static class DailyReportSql
 {
-    /// <summary>Minimal CTE for counts, aggregates, and filter dropdowns — no rollback/note joins.</summary>
+    /// <summary>Minimal CTE for counts, aggregates, and paged TaskIds — no rollback/note joins.</summary>
     internal const string LightBaseCte = """
         WITH ActivityDates AS (
             SELECT TaskId, MAX(TimeStamp) AS ReportDate
             FROM TaskActivities
             WHERE Type IN (@statusDone, @statusRollback, @rollbackActivity)
+              AND TimeStamp >= @fromDate
+              AND TimeStamp < DATEADD(DAY, 1, @toDate)
             GROUP BY TaskId
         ),
         BaseRows AS (
@@ -16,7 +18,10 @@ internal static class DailyReportSql
                 CAST(COALESCE(ad.ReportDate, t.CreatedAt) AS date) AS ReportDate,
                 g.Name AS Team,
                 CASE
-                    WHEN s.Name LIKE '%[_]2a' OR s.Name LIKE '%[_]2e' OR LOWER(s.Name) LIKE '%term2%' OR LOWER(s.Name) LIKE '%term_2%' THEN 'Term 2'
+                    WHEN s.Name LIKE '%[_]2a' OR s.Name LIKE '%[_]2e'
+                      OR LOWER(s.Name) LIKE '%term2%'
+                      OR LOWER(s.Name) LIKE '%term[_]2%'
+                    THEN 'Term 2'
                     ELSE 'Term 1'
                 END AS Semester,
                 CASE
@@ -30,23 +35,12 @@ internal static class DailyReportSql
                     WHEN s.Name LIKE 'rel[_]%' THEN 'Religion'
                     ELSE 'Other'
                 END AS Subjects,
-                CASE LOWER(
-                    CASE
-                        WHEN CHARINDEX('_', s.Name) > 0
-                             AND CHARINDEX('_', s.Name, CHARINDEX('_', s.Name) + 1) > CHARINDEX('_', s.Name)
-                        THEN SUBSTRING(s.Name, CHARINDEX('_', s.Name) + 1,
-                            CHARINDEX('_', s.Name, CHARINDEX('_', s.Name) + 1) - CHARINDEX('_', s.Name) - 1)
-                        ELSE ''
-                    END)
+                CASE LOWER(parsed.GradeCode)
                     WHEN '1k' THEN 'Kg1' WHEN '2k' THEN 'Kg2'
                     WHEN '1r' THEN 'Grade 1' WHEN '2r' THEN 'Grade 2' WHEN '3r' THEN 'Grade 3'
                     WHEN '4r' THEN 'Grade 4' WHEN '5r' THEN 'Grade 5' WHEN '6r' THEN 'Grade 6'
                     WHEN '7r' THEN 'Grade 7'
-                    ELSE CASE WHEN CHARINDEX('_', s.Name) > 0
-                         AND CHARINDEX('_', s.Name, CHARINDEX('_', s.Name) + 1) > CHARINDEX('_', s.Name)
-                        THEN SUBSTRING(s.Name, CHARINDEX('_', s.Name) + 1,
-                            CHARINDEX('_', s.Name, CHARINDEX('_', s.Name) + 1) - CHARINDEX('_', s.Name) - 1)
-                        ELSE '' END
+                    ELSE parsed.GradeCode
                 END AS Grade,
                 COALESCE(NULLIF(tb.Name, ''), t.Name) AS TaskName,
                 CASE
@@ -69,104 +63,22 @@ internal static class DailyReportSql
             LEFT JOIN Steps st ON st.Id = t.StepId
             LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
             LEFT JOIN ActivityDates ad ON ad.TaskId = t.Id
-            WHERE t.Archived = 0 AND lo.Archived = 0 AND l.Archived = 0
-              AND un.Archived = 0 AND s.Archived = 0
-              {DATE_FILTER_BASE}
-              {ROLE_FILTER}
-        )
-        """;
-
-    internal const string BaseCte = """
-        WITH ActivityDates AS (
-            SELECT TaskId, MAX(TimeStamp) AS ReportDate
-            FROM TaskActivities
-            WHERE Type IN (@statusDone, @statusRollback, @rollbackActivity)
-            GROUP BY TaskId
-        ),
-        LatestRollback AS (
-            SELECT r.TaskId, r.Clarification, tg.Name AS ToGroupName,
-                ROW_NUMBER() OVER (PARTITION BY r.TaskId ORDER BY r.Id DESC) AS rn
-            FROM Rollbacks r
-            LEFT JOIN Tasks tt ON tt.Id = r.ToTaskId
-            LEFT JOIN Groups tg ON tg.Id = tt.GroupId
-        ),
-        RollbackProblem AS (
-            SELECT r.TaskId,
-                COALESCE(NULLIF(LTRIM(RTRIM(ri.Note)), ''), tb.Name, '') AS ProblemType,
-                ROW_NUMBER() OVER (PARTITION BY r.TaskId ORDER BY ri.Id) AS rn
-            FROM Rollbacks r
-            INNER JOIN RollbackIssues ri ON ri.RollbackId = r.Id
-            LEFT JOIN Steps st ON st.Id = ri.StepId
-            LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
-        ),
-        BaseRows AS (
-            SELECT
-                t.Id AS TaskId,
-                CAST(COALESCE(ad.ReportDate, t.CreatedAt) AS date) AS ReportDate,
-                g.Name AS Team,
-                CASE
-                    WHEN s.Name LIKE '%[_]2a' OR s.Name LIKE '%[_]2e' OR LOWER(s.Name) LIKE '%term2%' OR LOWER(s.Name) LIKE '%term_2%' THEN 'Term 2'
-                    ELSE 'Term 1'
-                END AS Semester,
-                CASE
-                    WHEN s.Name LIKE 'ara[_]%' THEN 'Arabic'
-                    WHEN s.Name LIKE 'eng[_]%' THEN 'English'
-                    WHEN s.Name LIKE 'mth[_]%' THEN 'Math (A)'
-                    WHEN s.Name LIKE 'sci[_]%' THEN 'Science (A)'
-                    WHEN s.Name LIKE 'soc[_]%' THEN 'Social'
-                    WHEN s.Name LIKE 'ict[_]%' THEN 'ICT (A)'
-                    WHEN s.Name LIKE 'mul[_]%' THEN 'MUL (A)'
-                    WHEN s.Name LIKE 'rel[_]%' THEN 'Religion'
-                    ELSE 'Other'
-                END AS Subjects,
-                CASE LOWER(
+            CROSS APPLY (SELECT FirstUnderScore = CHARINDEX('_', s.Name)) firstPosition
+            CROSS APPLY (
+                SELECT SecondUnderScore = CHARINDEX('_', s.Name, firstPosition.FirstUnderScore + 1)
+            ) secondPosition
+            CROSS APPLY (
+                SELECT GradeCode =
                     CASE
-                        WHEN CHARINDEX('_', s.Name) > 0
-                             AND CHARINDEX('_', s.Name, CHARINDEX('_', s.Name) + 1) > CHARINDEX('_', s.Name)
-                        THEN SUBSTRING(s.Name, CHARINDEX('_', s.Name) + 1,
-                            CHARINDEX('_', s.Name, CHARINDEX('_', s.Name) + 1) - CHARINDEX('_', s.Name) - 1)
+                        WHEN firstPosition.FirstUnderScore > 0
+                         AND secondPosition.SecondUnderScore > firstPosition.FirstUnderScore
+                        THEN SUBSTRING(
+                            s.Name,
+                            firstPosition.FirstUnderScore + 1,
+                            secondPosition.SecondUnderScore - firstPosition.FirstUnderScore - 1)
                         ELSE ''
-                    END)
-                    WHEN '1k' THEN 'Kg1' WHEN '2k' THEN 'Kg2'
-                    WHEN '1r' THEN 'Grade 1' WHEN '2r' THEN 'Grade 2' WHEN '3r' THEN 'Grade 3'
-                    WHEN '4r' THEN 'Grade 4' WHEN '5r' THEN 'Grade 5' WHEN '6r' THEN 'Grade 6'
-                    WHEN '7r' THEN 'Grade 7'
-                    ELSE CASE WHEN CHARINDEX('_', s.Name) > 0
-                         AND CHARINDEX('_', s.Name, CHARINDEX('_', s.Name) + 1) > CHARINDEX('_', s.Name)
-                        THEN SUBSTRING(s.Name, CHARINDEX('_', s.Name) + 1,
-                            CHARINDEX('_', s.Name, CHARINDEX('_', s.Name) + 1) - CHARINDEX('_', s.Name) - 1)
-                        ELSE '' END
-                END AS Grade,
-                COALESCE(NULLIF(tb.Name, ''), t.Name) AS TaskName,
-                ISNULL(lo.Tag, '') AS LoCode,
-                ISNULL(lo.Template, '') AS LoType,
-                COALESCE(NULLIF(usr.Name, ''), NULLIF(lr.ToGroupName, ''), g.Name, '') AS AssignedTo,
-                CASE
-                    WHEN t.Status = @taskRollback OR t.IsRollback = 1 THEN 'Rollback'
-                    WHEN t.Status = @taskDone THEN 'Approved'
-                    ELSE 'Hold'
-                END AS [Status],
-                ISNULL(rp.ProblemType, '') AS ProblemType,
-                CASE t.Priority
-                    WHEN @priorityHigh THEN 'High'
-                    WHEN @priorityMedium THEN 'Medium'
-                    WHEN @priorityLow THEN 'Low'
-                    ELSE ''
-                END AS [Priority],
-                COALESCE(NULLIF(notes.Notes, ''), lr.Clarification, '') AS Notes
-            FROM Tasks t
-            INNER JOIN Groups g ON g.Id = t.GroupId
-            INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId
-            INNER JOIN Lessons l ON l.Id = lo.LessonId
-            INNER JOIN Units un ON un.Id = l.UnitId
-            INNER JOIN Subjects s ON s.Id = un.SubjectId
-            LEFT JOIN Users usr ON usr.Id = t.UserId
-            LEFT JOIN Steps st ON st.Id = t.StepId
-            LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
-            LEFT JOIN ActivityDates ad ON ad.TaskId = t.Id
-            LEFT JOIN DailyReportNoteOverrides notes ON notes.TaskId = t.Id
-            LEFT JOIN LatestRollback lr ON lr.TaskId = t.Id AND lr.rn = 1
-            LEFT JOIN RollbackProblem rp ON rp.TaskId = t.Id AND rp.rn = 1
+                    END
+            ) parsed
             WHERE t.Archived = 0 AND lo.Archived = 0 AND l.Archived = 0
               AND un.Archived = 0 AND s.Archived = 0
               {DATE_FILTER_BASE}
@@ -187,16 +99,154 @@ internal static class DailyReportSql
           {PRIORITY_FILTER}
         """;
 
-    internal const string PagedRows = """
-        SELECT TaskId, CONVERT(varchar(10), ReportDate, 23) AS [Date], Team, Semester, Subjects, Grade,
-               TaskName, LoCode, LoType, AssignedTo, [Status], ProblemType, [Priority], Notes
-        FROM Filtered
+    /// <summary>
+    /// CTEs only apply to one statement — materialize once, then return two result sets.
+    /// Prefix with LightBaseCte + Filtered AS (...).
+    /// </summary>
+    internal const string CountAndPagedTaskIds = """
+        SELECT * INTO #DailyReportFiltered FROM Filtered;
+        SELECT COUNT(1) FROM #DailyReportFiltered;
+        SELECT TaskId
+        FROM #DailyReportFiltered
         ORDER BY ReportDate DESC, TaskId DESC
         OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY
         """;
 
-    internal const string CountRows = """
-        SELECT COUNT(1) FROM Filtered
+    /// <summary>Full row detail for a small set of TaskIds only (current page).</summary>
+    internal const string EnrichRowsSql = """
+        WITH LatestRollback AS (
+            SELECT r.TaskId, r.Clarification, tg.Name AS ToGroupName,
+                ROW_NUMBER() OVER (PARTITION BY r.TaskId ORDER BY r.Id DESC) AS rn
+            FROM Rollbacks r
+            LEFT JOIN Tasks tt ON tt.Id = r.ToTaskId
+            LEFT JOIN Groups tg ON tg.Id = tt.GroupId
+            WHERE r.TaskId IN @taskIds
+        ),
+        RollbackProblem AS (
+            SELECT r.TaskId,
+                COALESCE(NULLIF(LTRIM(RTRIM(ri.Note)), ''), tb.Name, '') AS ProblemType,
+                ROW_NUMBER() OVER (PARTITION BY r.TaskId ORDER BY ri.Id) AS rn
+            FROM Rollbacks r
+            INNER JOIN RollbackIssues ri ON ri.RollbackId = r.Id
+            LEFT JOIN Steps st ON st.Id = ri.StepId
+            LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
+            WHERE r.TaskId IN @taskIds
+        ),
+        ActivityDates AS (
+            SELECT TaskId, MAX(TimeStamp) AS ReportDate
+            FROM TaskActivities
+            WHERE TaskId IN @taskIds
+              AND Type IN (@statusDone, @statusRollback, @rollbackActivity)
+            GROUP BY TaskId
+        )
+        SELECT
+            t.Id AS TaskId,
+            CONVERT(varchar(10), CAST(COALESCE(ad.ReportDate, t.CreatedAt) AS date), 23) AS [Date],
+            g.Name AS Team,
+            CASE
+                WHEN s.Name LIKE '%[_]2a' OR s.Name LIKE '%[_]2e'
+                  OR LOWER(s.Name) LIKE '%term2%'
+                  OR LOWER(s.Name) LIKE '%term[_]2%'
+                THEN 'Term 2'
+                ELSE 'Term 1'
+            END AS Semester,
+            CASE
+                WHEN s.Name LIKE 'ara[_]%' THEN 'Arabic'
+                WHEN s.Name LIKE 'eng[_]%' THEN 'English'
+                WHEN s.Name LIKE 'mth[_]%' THEN 'Math (A)'
+                WHEN s.Name LIKE 'sci[_]%' THEN 'Science (A)'
+                WHEN s.Name LIKE 'soc[_]%' THEN 'Social'
+                WHEN s.Name LIKE 'ict[_]%' THEN 'ICT (A)'
+                WHEN s.Name LIKE 'mul[_]%' THEN 'MUL (A)'
+                WHEN s.Name LIKE 'rel[_]%' THEN 'Religion'
+                ELSE 'Other'
+            END AS Subjects,
+            CASE LOWER(parsed.GradeCode)
+                WHEN '1k' THEN 'Kg1' WHEN '2k' THEN 'Kg2'
+                WHEN '1r' THEN 'Grade 1' WHEN '2r' THEN 'Grade 2' WHEN '3r' THEN 'Grade 3'
+                WHEN '4r' THEN 'Grade 4' WHEN '5r' THEN 'Grade 5' WHEN '6r' THEN 'Grade 6'
+                WHEN '7r' THEN 'Grade 7'
+                ELSE parsed.GradeCode
+            END AS Grade,
+            COALESCE(NULLIF(tb.Name, ''), t.Name) AS TaskName,
+            ISNULL(lo.Tag, '') AS LoCode,
+            ISNULL(lo.Template, '') AS LoType,
+            COALESCE(NULLIF(usr.Name, ''), NULLIF(lr.ToGroupName, ''), g.Name, '') AS AssignedTo,
+            CASE
+                WHEN t.Status = @taskRollback OR t.IsRollback = 1 THEN 'Rollback'
+                WHEN t.Status = @taskDone THEN 'Approved'
+                ELSE 'Hold'
+            END AS [Status],
+            ISNULL(rp.ProblemType, '') AS ProblemType,
+            CASE t.Priority
+                WHEN @priorityHigh THEN 'High'
+                WHEN @priorityMedium THEN 'Medium'
+                WHEN @priorityLow THEN 'Low'
+                ELSE ''
+            END AS [Priority],
+            COALESCE(NULLIF(notes.Notes, ''), lr.Clarification, '') AS Notes
+        FROM Tasks t
+        INNER JOIN Groups g ON g.Id = t.GroupId
+        INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId
+        INNER JOIN Lessons l ON l.Id = lo.LessonId
+        INNER JOIN Units un ON un.Id = l.UnitId
+        INNER JOIN Subjects s ON s.Id = un.SubjectId
+        LEFT JOIN Users usr ON usr.Id = t.UserId
+        LEFT JOIN Steps st ON st.Id = t.StepId
+        LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
+        LEFT JOIN ActivityDates ad ON ad.TaskId = t.Id
+        LEFT JOIN DailyReportNoteOverrides notes ON notes.TaskId = t.Id
+        LEFT JOIN LatestRollback lr ON lr.TaskId = t.Id AND lr.rn = 1
+        LEFT JOIN RollbackProblem rp ON rp.TaskId = t.Id AND rp.rn = 1
+        CROSS APPLY (SELECT FirstUnderScore = CHARINDEX('_', s.Name)) firstPosition
+        CROSS APPLY (
+            SELECT SecondUnderScore = CHARINDEX('_', s.Name, firstPosition.FirstUnderScore + 1)
+        ) secondPosition
+        CROSS APPLY (
+            SELECT GradeCode =
+                CASE
+                    WHEN firstPosition.FirstUnderScore > 0
+                     AND secondPosition.SecondUnderScore > firstPosition.FirstUnderScore
+                    THEN SUBSTRING(
+                        s.Name,
+                        firstPosition.FirstUnderScore + 1,
+                        secondPosition.SecondUnderScore - firstPosition.FirstUnderScore - 1)
+                    ELSE ''
+                END
+        ) parsed
+        WHERE t.Id IN @taskIds
+        """;
+
+    /// <summary>
+    /// CTEs only apply to one statement — materialize once, then return two result sets.
+    /// Prefix with LightBaseCte + Filtered AS (...).
+    /// </summary>
+    internal const string SummaryAndTopTeams = """
+        SELECT * INTO #DailyReportSummary FROM Filtered;
+        SELECT
+            COUNT(1) AS Total,
+            SUM(CASE WHEN [Status] = 'Approved' THEN 1 ELSE 0 END) AS Approved,
+            SUM(CASE WHEN [Status] = 'Hold' THEN 1 ELSE 0 END) AS [Hold],
+            SUM(CASE WHEN [Status] = 'Rollback' THEN 1 ELSE 0 END) AS [Rollback],
+            COUNT(DISTINCT NULLIF(Team, '')) AS ActiveTeams
+        FROM #DailyReportSummary;
+        SELECT TOP 4 Team, COUNT(1) AS [Count]
+        FROM #DailyReportSummary
+        WHERE Team IS NOT NULL AND Team <> ''
+        GROUP BY Team
+        ORDER BY COUNT(1) DESC
+        """;
+
+    internal const string ProblemTypeExistsFilter = """
+        AND EXISTS (
+            SELECT 1
+            FROM Rollbacks r
+            INNER JOIN RollbackIssues ri ON ri.RollbackId = r.Id
+            LEFT JOIN Steps pst ON pst.Id = ri.StepId
+            LEFT JOIN TaskBank ptb ON ptb.Id = pst.TaskBankId
+            WHERE r.TaskId = TaskId
+              AND COALESCE(NULLIF(LTRIM(RTRIM(ri.Note)), ''), ptb.Name, '') = @problemType
+        )
         """;
 
     /// <summary>Problem-type chart — only rollback tasks, no full report CTE.</summary>
@@ -210,8 +260,8 @@ internal static class DailyReportSql
         LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
         WHERE t.Archived = 0
           AND (t.Status = @taskRollback OR t.IsRollback = 1)
-          AND CAST(t.CreatedAt AS date) >= @fromDate
-          AND CAST(t.CreatedAt AS date) <= @toDate
+          AND t.CreatedAt >= @fromDate
+          AND t.CreatedAt < DATEADD(DAY, 1, @toDate)
           {ROLE_FILTER}
         GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(ri.Note)), ''), tb.Name, '')
         HAVING COALESCE(NULLIF(LTRIM(RTRIM(ri.Note)), ''), tb.Name, '') <> ''
@@ -223,8 +273,8 @@ internal static class DailyReportSql
         FROM Tasks t
         INNER JOIN Groups g ON g.Id = t.GroupId
         WHERE t.Archived = 0
-          AND CAST(t.CreatedAt AS date) >= @fromDate
-          AND CAST(t.CreatedAt AS date) <= @toDate
+          AND t.CreatedAt >= @fromDate
+          AND t.CreatedAt < DATEADD(DAY, 1, @toDate)
           {ROLE_FILTER}
         ORDER BY g.Name
         """;
@@ -235,8 +285,8 @@ internal static class DailyReportSql
         LEFT JOIN Steps st ON st.Id = t.StepId
         LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
         WHERE t.Archived = 0
-          AND CAST(t.CreatedAt AS date) >= @fromDate
-          AND CAST(t.CreatedAt AS date) <= @toDate
+          AND t.CreatedAt >= @fromDate
+          AND t.CreatedAt < DATEADD(DAY, 1, @toDate)
           {ROLE_FILTER}
         ORDER BY Value
         """;

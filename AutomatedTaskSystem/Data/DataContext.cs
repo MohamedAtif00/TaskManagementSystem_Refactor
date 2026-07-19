@@ -90,6 +90,32 @@ public class DataContext : DbContext
             .HasForeignKey(o => o.TaskId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Daily Report hot-path indexes
+        modelBuilder.Entity<TaskActivity>()
+            .HasIndex(a => new { a.Type, a.TimeStamp })
+            .IncludeProperties(a => a.TaskId)
+            .HasDatabaseName("IX_TaskActivities_Type_TimeStamp_TaskId");
+
+        modelBuilder.Entity<Models.Task>()
+            .HasIndex(t => new { t.Archived, t.GroupId, t.CreatedAt })
+            .IncludeProperties(t => new
+            {
+                t.LearningObjectiveId,
+                t.StepId,
+                t.UserId,
+                t.Status,
+                t.IsRollback,
+                t.Priority,
+                t.Name
+            })
+            .HasDatabaseName("IX_Tasks_Archived_GroupId_CreatedAt");
+
+        modelBuilder.Entity<Rollback>()
+            .HasIndex(r => new { r.TaskId, r.Id })
+            .IsDescending(false, true)
+            .IncludeProperties(r => new { r.Clarification, r.ToTaskId })
+            .HasDatabaseName("IX_Rollbacks_TaskId_Id");
+
         modelBuilder
             .Entity<Models.Task>()
             .HasOne(t => t.Group)

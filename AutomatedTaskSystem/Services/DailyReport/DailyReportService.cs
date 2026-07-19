@@ -1,4 +1,3 @@
-using System.Data.Common;
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.DailyReport;
 using AutomatedTaskSystem.Models;
@@ -48,14 +47,11 @@ public class DailyReportService : IDailyReportService
             return Unauthorized<GetDailyReportDashboardDto>("Invalid Auth");
 
         var normalized = NormalizeFilter(filter);
-        var parameters = BuildParameters(normalized, user);
-        AddDateParameters(normalized, parameters);
-
         var page = normalized.Page;
         var pageSize = normalized.PageSize;
 
-        var rowsTask = QueryPagedRowsParallelAsync(normalized, user, page, pageSize, useFullCte: true);
-        var summaryTask = QuerySummaryParallelAsync(normalized, user);
+        var rowsTask = QueryPagedRowsTwoPhaseAsync(normalized, user, page, pageSize);
+        var summaryTask = QuerySummaryBatchAsync(normalized, user);
         var chartsTask = QueryProblemTypesDirectAsync(normalized, user);
         var lookupsTask = QueryLightLookupsAsync(normalized, user);
 
@@ -99,8 +95,8 @@ public class DailyReportService : IDailyReportService
             return Unauthorized<GetDailyReportPagedDto>("Invalid Auth");
 
         var normalized = NormalizeFilter(filter);
-        var (rows, totalCount) = await QueryPagedRowsParallelAsync(
-            normalized, user, normalized.Page, normalized.PageSize, useFullCte: true);
+        var (rows, totalCount) = await QueryPagedRowsTwoPhaseAsync(
+            normalized, user, normalized.Page, normalized.PageSize);
 
         return new ResponseService<GetDailyReportPagedDto>
         {
@@ -122,7 +118,7 @@ public class DailyReportService : IDailyReportService
         if (user is null)
             return Unauthorized<GetDailyReportSummaryDto>("Invalid Auth");
 
-        var summary = await QuerySummaryParallelAsync(NormalizeFilter(filter), user);
+        var summary = await QuerySummaryBatchAsync(NormalizeFilter(filter), user);
         return new ResponseService<GetDailyReportSummaryDto>
         {
             Error = false,
@@ -138,7 +134,7 @@ public class DailyReportService : IDailyReportService
             return Unauthorized<GetDailyReportChartDto>("Invalid Auth");
 
         var normalized = NormalizeFilter(filter);
-        var summary = await QuerySummaryParallelAsync(normalized, user);
+        var summary = await QuerySummaryBatchAsync(normalized, user);
         var problemTypes = await QueryProblemTypesDirectAsync(normalized, user);
 
         return new ResponseService<GetDailyReportChartDto>
@@ -214,66 +210,69 @@ public class DailyReportService : IDailyReportService
         };
     }
 
-    private async Task<(List<GetDailyReportRowDto> Rows, int TotalCount)> QueryPagedRowsParallelAsync(
+    /// <summary>
+    /// Phase A: light CTE count + TaskIds. Phase B: enrich only those TaskIds with rollback/notes.
+    /// </summary>
+    private async Task<(List<GetDailyReportRowDto> Rows, int TotalCount)> QueryPagedRowsTwoPhaseAsync(
         DailyReportFilterDto filter,
         User user,
         int page,
-        int pageSize,
-        bool useFullCte)
+        int pageSize)
     {
-        var (cteSql, filteredSql, parameters) = BuildQueryParts(filter, user, useFullCte);
-        var countSql = $"{cteSql}, Filtered AS ({filteredSql}) {DailyReportSql.CountRows}";
-        var pageSql = $"""
+        var (cteSql, filteredSql, parameters) = BuildQueryParts(filter, user);
+        parameters.Add("offset", (page - 1) * pageSize);
+        parameters.Add("pageSize", pageSize);
+
+        var phaseASql = $"""
             {cteSql},
             Filtered AS ({filteredSql})
-            {DailyReportSql.PagedRows}
+            {DailyReportSql.CountAndPagedTaskIds}
             """;
 
-        var countParams = CloneParameters(parameters);
-        countParams.Add("offset", (page - 1) * pageSize);
-        countParams.Add("pageSize", pageSize);
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
 
-        var pageParams = CloneParameters(parameters);
-        pageParams.Add("offset", (page - 1) * pageSize);
-        pageParams.Add("pageSize", pageSize);
+        int totalCount;
+        List<int> taskIds;
+        await using (var multi = await connection.QueryMultipleAsync(phaseASql, parameters, commandTimeout: 60))
+        {
+            totalCount = await multi.ReadSingleAsync<int>();
+            taskIds = (await multi.ReadAsync<int>()).ToList();
+        }
 
-        var countTask = RunScalarAsync<int>(countSql, countParams);
-        var pageTask = RunQueryAsync<GetDailyReportRowDto>(pageSql, pageParams);
-        await System.Threading.Tasks.Task.WhenAll(countTask, pageTask);
+        if (taskIds.Count == 0)
+            return ([], totalCount);
 
-        return (await pageTask, await countTask);
+        var enrichParams = BuildParameters(filter, user);
+        enrichParams.Add("taskIds", taskIds);
+
+        var enriched = (await connection.QueryAsync<GetDailyReportRowDto>(
+            DailyReportSql.EnrichRowsSql, enrichParams, commandTimeout: 60)).ToList();
+
+        var byId = enriched.ToDictionary(r => r.TaskId);
+        var ordered = taskIds
+            .Where(byId.ContainsKey)
+            .Select(id => byId[id])
+            .ToList();
+
+        return (ordered, totalCount);
     }
 
-    private async Task<GetDailyReportSummaryDto> QuerySummaryParallelAsync(DailyReportFilterDto filter, User user)
+    private async Task<GetDailyReportSummaryDto> QuerySummaryBatchAsync(DailyReportFilterDto filter, User user)
     {
-        var (cteSql, filteredSql, parameters) = BuildQueryParts(filter, user, useFullCte: false);
-        var aggregateSql = $"""
+        var (cteSql, filteredSql, parameters) = BuildQueryParts(filter, user);
+        var sql = $"""
             {cteSql},
             Filtered AS ({filteredSql})
-            SELECT
-                COUNT(1) AS Total,
-                SUM(CASE WHEN [Status] = 'Approved' THEN 1 ELSE 0 END) AS Approved,
-                SUM(CASE WHEN [Status] = 'Hold' THEN 1 ELSE 0 END) AS [Hold],
-                SUM(CASE WHEN [Status] = 'Rollback' THEN 1 ELSE 0 END) AS [Rollback],
-                COUNT(DISTINCT NULLIF(Team, '')) AS ActiveTeams
-            FROM Filtered
-            """;
-        var topTeamsSql = $"""
-            {cteSql},
-            Filtered AS ({filteredSql})
-            SELECT TOP 4 Team, COUNT(1) AS [Count]
-            FROM Filtered
-            WHERE Team IS NOT NULL AND Team <> ''
-            GROUP BY Team
-            ORDER BY COUNT(1) DESC
+            {DailyReportSql.SummaryAndTopTeams}
             """;
 
-        var summaryTask = RunQuerySingleAsync<SummaryRow>(aggregateSql, CloneParameters(parameters));
-        var teamsTask = RunQueryAsync<TeamCountRow>(topTeamsSql, CloneParameters(parameters));
-        await System.Threading.Tasks.Task.WhenAll(summaryTask, teamsTask);
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
 
-        var summaryRow = await summaryTask;
-        var topTeams = await teamsTask;
+        await using var multi = await connection.QueryMultipleAsync(sql, parameters, commandTimeout: 60);
+        var summaryRow = await multi.ReadSingleAsync<SummaryRow>();
+        var topTeams = (await multi.ReadAsync<TeamCountRow>()).ToList();
 
         return new GetDailyReportSummaryDto
         {
@@ -312,17 +311,22 @@ public class DailyReportService : IDailyReportService
         var teamsSql = DailyReportSql.LightLookupsTeams.Replace("{ROLE_FILTER}", roleFilter);
         var tasksSql = DailyReportSql.LightLookupsTaskNames.Replace("{ROLE_FILTER}", roleFilter);
 
-        var teamsTask = RunQueryAsync<LookupValueRow>(teamsSql, CloneParameters(parameters));
-        var taskNamesTask = RunQueryAsync<LookupValueRow>(tasksSql, CloneParameters(parameters));
-        await System.Threading.Tasks.Task.WhenAll(teamsTask, taskNamesTask);
+        var batchSql = teamsSql + ";\n" + tasksSql;
+
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        await using var multi = await connection.QueryMultipleAsync(batchSql, parameters, commandTimeout: 60);
+        var teams = (await multi.ReadAsync<LookupValueRow>()).ToList();
+        var taskNames = (await multi.ReadAsync<LookupValueRow>()).ToList();
 
         return new GetDailyReportLookupsDto
         {
-            Teams = (await teamsTask).Select(r => r.Value).ToList(),
+            Teams = teams.Select(r => r.Value).ToList(),
             Semesters = StaticSemesters.ToList(),
             Subjects = StaticSubjects.ToList(),
             Grades = StaticGrades.ToList(),
-            TaskNames = (await taskNamesTask).Select(r => r.Value).ToList(),
+            TaskNames = taskNames.Select(r => r.Value).ToList(),
             ProblemTypes = [],
             Priorities = StaticPriorities.ToList()
         };
@@ -330,21 +334,23 @@ public class DailyReportService : IDailyReportService
 
     private (string BaseCte, string FilteredSql, DynamicParameters Parameters) BuildQueryParts(
         DailyReportFilterDto filter,
-        User user,
-        bool useFullCte)
+        User user)
     {
         var parameters = BuildParameters(filter, user);
         AddDateParameters(filter, parameters);
         var roleFilter = BuildRoleFilterSql(user, parameters);
         var dateFilterBase = """
-            AND CAST(COALESCE(ad.ReportDate, t.CreatedAt) AS date) >= @fromDate
-            AND CAST(COALESCE(ad.ReportDate, t.CreatedAt) AS date) <= @toDate
+            AND COALESCE(ad.ReportDate, t.CreatedAt) >= @fromDate
+            AND COALESCE(ad.ReportDate, t.CreatedAt) < DATEADD(DAY, 1, @toDate)
             """;
 
-        var baseTemplate = useFullCte ? DailyReportSql.BaseCte : DailyReportSql.LightBaseCte;
-        var baseCte = baseTemplate
+        var baseCte = DailyReportSql.LightBaseCte
             .Replace("{ROLE_FILTER}", roleFilter)
             .Replace("{DATE_FILTER_BASE}", dateFilterBase);
+
+        var problemFilter = string.IsNullOrWhiteSpace(filter.ProblemType)
+            ? ""
+            : DailyReportSql.ProblemTypeExistsFilter;
 
         var filteredRows = DailyReportSql.FilteredRows
             .Replace("{TEAM_FILTER}", string.IsNullOrWhiteSpace(filter.Team) ? "" : "AND Team = @team")
@@ -353,7 +359,7 @@ public class DailyReportService : IDailyReportService
             .Replace("{GRADE_FILTER}", string.IsNullOrWhiteSpace(filter.Grade) ? "" : "AND Grade = @grade")
             .Replace("{TASK_FILTER}", string.IsNullOrWhiteSpace(filter.TaskName) ? "" : "AND TaskName = @taskName")
             .Replace("{STATUS_FILTER}", string.IsNullOrWhiteSpace(filter.Status) ? "" : "AND [Status] = @status")
-            .Replace("{PROBLEM_FILTER}", useFullCte && !string.IsNullOrWhiteSpace(filter.ProblemType) ? "AND ProblemType = @problemType" : "")
+            .Replace("{PROBLEM_FILTER}", problemFilter)
             .Replace("{PRIORITY_FILTER}", string.IsNullOrWhiteSpace(filter.Priority) ? "" : "AND [Priority] = @priority");
 
         return (baseCte, filteredRows, parameters);
@@ -432,28 +438,6 @@ public class DailyReportService : IDailyReportService
         if (!string.IsNullOrWhiteSpace(filter.Priority)) parameters.Add("priority", filter.Priority);
 
         return parameters;
-    }
-
-    private static DynamicParameters CloneParameters(DynamicParameters source)
-    {
-        var clone = new DynamicParameters();
-        foreach (var name in source.ParameterNames)
-            clone.Add(name, source.Get<object>(name));
-        return clone;
-    }
-
-    private async Task<T> RunScalarAsync<T>(string sql, DynamicParameters parameters)
-    {
-        await using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync();
-        return await connection.ExecuteScalarAsync<T>(sql, parameters, commandTimeout: 60);
-    }
-
-    private async Task<T> RunQuerySingleAsync<T>(string sql, DynamicParameters parameters)
-    {
-        await using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync();
-        return await connection.QuerySingleAsync<T>(sql, parameters, commandTimeout: 60);
     }
 
     private async Task<List<T>> RunQueryAsync<T>(string sql, DynamicParameters parameters)
