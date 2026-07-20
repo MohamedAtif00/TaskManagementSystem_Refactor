@@ -6,7 +6,7 @@ export const STATUS_COLORS = {
 
 export const STATUS_OPTIONS = ["Approved", "Hold", "Rollback"] as const;
 
-export const PRIORITY_OPTIONS = ["High", "Medium", "Low"] as const;
+export const PRIORITY_OPTIONS = ["High", "Medium", "Low", "None"] as const;
 
 export const DEFAULT_PAGE_SIZE = 5;
 

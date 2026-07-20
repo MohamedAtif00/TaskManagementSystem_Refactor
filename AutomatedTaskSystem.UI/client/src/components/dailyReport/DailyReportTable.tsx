@@ -1,6 +1,13 @@
 import { useState, useCallback } from "react";
 import { STATUS_COLORS } from "./constants";
 
+const PRIORITY_STYLES: Record<string, string> = {
+    High: "bg-red-100 text-red-700",
+    Medium: "bg-amber-100 text-amber-700",
+    Low: "bg-sky-100 text-sky-700",
+    None: "bg-slate-100 text-slate-500",
+};
+
 interface Props {
     rows: DailyReportRow[];
     onUpdateNotes: (taskId: number, notes: string) => Promise<boolean>;
@@ -84,7 +91,15 @@ const DailyReportTable = ({ rows, onUpdateNotes }: Props) => {
                                 </span>
                             </td>
                             <td className="px-2 py-2 text-center">{row.problemType}</td>
-                            <td className="px-2 py-2 text-center">{row.priority}</td>
+                            <td className="px-2 py-2 text-center">
+                                <span
+                                    className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
+                                        PRIORITY_STYLES[row.priority] ?? PRIORITY_STYLES.None
+                                    }`}
+                                >
+                                    {row.priority || "None"}
+                                </span>
+                            </td>
                             <td className="px-2 py-2 text-center min-w-[140px]">
                                 <input
                                     type="text"

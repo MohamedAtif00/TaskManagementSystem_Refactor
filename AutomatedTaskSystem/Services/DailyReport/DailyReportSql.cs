@@ -52,7 +52,7 @@ internal static class DailyReportSql
                     WHEN @priorityHigh THEN 'High'
                     WHEN @priorityMedium THEN 'Medium'
                     WHEN @priorityLow THEN 'Low'
-                    ELSE ''
+                    ELSE 'None'
                 END AS [Priority]
             FROM Tasks t
             INNER JOIN Groups g ON g.Id = t.GroupId
@@ -182,7 +182,7 @@ internal static class DailyReportSql
                 WHEN @priorityHigh THEN 'High'
                 WHEN @priorityMedium THEN 'Medium'
                 WHEN @priorityLow THEN 'Low'
-                ELSE ''
+                ELSE 'None'
             END AS [Priority],
             COALESCE(NULLIF(notes.Notes, ''), lr.Clarification, '') AS Notes
         FROM Tasks t

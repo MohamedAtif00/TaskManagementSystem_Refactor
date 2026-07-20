@@ -21,7 +21,7 @@ public class DailyReportService : IDailyReportService
     private const int DefaultLookbackDays = 7;
 
     private static readonly string[] StaticSemesters = ["Term 1", "Term 2"];
-    private static readonly string[] StaticPriorities = ["High", "Medium", "Low"];
+    private static readonly string[] StaticPriorities = ["High", "Medium", "Low", "None"];
     private static readonly string[] StaticGrades =
         ["Kg1", "Kg2", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7"];
     private static readonly string[] StaticSubjects =
