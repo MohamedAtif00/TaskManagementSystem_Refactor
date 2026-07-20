@@ -30,6 +30,7 @@ using AutomatedTaskSystem.Services.Lesson;
 using AutomatedTaskSystem.Services.WorkFromHome;
 using AutomatedTaskSystem.Services.Leave.BackgroundService;
 using AutomatedTaskSystem.Services.DailyReport;
+using AutomatedTaskSystem.Services.TaskLogger;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -69,6 +70,7 @@ public static class DependancyInjections
         builder.Services.AddScoped<ISprintAnalyticsService, SprintAnalyticsService>();
         builder.Services.AddScoped<IProjectAnalyticsService, ProjectAnalyticsService>();
         builder.Services.AddScoped<IDailyReportService, DailyReportService>();
+        builder.Services.AddScoped<ITaskLoggerService, TaskLoggerService>();
 
 
         // seeder and email sender
