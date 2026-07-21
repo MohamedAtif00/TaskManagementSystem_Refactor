@@ -12,7 +12,7 @@ public class DailyReportFilterDto
     public string? Grade { get; set; }
     public string? TaskName { get; set; }
     public string? Status { get; set; }
-    public string? ProblemType { get; set; }
+    public List<string> ProblemTypes { get; set; } = new();
     public string? Priority { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 5;

@@ -13,7 +13,7 @@ const emptyLookups = (): TaskLoggerLookups => ({
     members: [],
     subjects: [],
     taskNames: [],
-    statuses: ["Approved", "Hold", "Rollback"],
+    statuses: ["Approved", "Hold", "Rollback", "Red Flag"],
 });
 
 function unwrapResponse<T>(raw: any): { error: boolean; message: string; data: T | null } {
@@ -71,7 +71,7 @@ function normalizeDashboard(raw: any): TaskLoggerDashboard | null {
             members: lookups.members ?? lookups.Members ?? [],
             subjects: lookups.subjects ?? lookups.Subjects ?? [],
             taskNames: lookups.taskNames ?? lookups.TaskNames ?? [],
-            statuses: lookups.statuses ?? lookups.Statuses ?? ["Approved", "Hold", "Rollback"],
+            statuses: lookups.statuses ?? lookups.Statuses ?? ["Approved", "Hold", "Rollback", "Red Flag"],
         },
     };
 }
@@ -94,6 +94,7 @@ export function useTaskLogger() {
     const [dupMode, setDupMode] = useState(false);
     const [dupOnly, setDupOnly] = useState(false);
     const [dupRows, setDupRows] = useState<TaskLoggerRow[] | null>(null);
+    const [dupLoading, setDupLoading] = useState(false);
 
     const fetchData = useCallback(async (activeFilters: TaskLoggerFilters) => {
         setLoading(true);
@@ -188,9 +189,14 @@ export function useTaskLogger() {
             setDupRows(null);
             return;
         }
-        const loaded = await fetchAllRowsForExport();
-        setDupRows(loaded);
-        setDupMode(true);
+        setDupLoading(true);
+        try {
+            const loaded = await fetchAllRowsForExport();
+            setDupRows(loaded);
+            setDupMode(true);
+        } finally {
+            setDupLoading(false);
+        }
     };
 
     const toggleShowDuplicatesOnly = () => {
@@ -249,6 +255,7 @@ export function useTaskLogger() {
         hasLoadedOnce,
         dupMode,
         dupOnly,
+        dupLoading,
         duplicateColorMap,
         updateFilter,
         setPage,

@@ -51,7 +51,7 @@ const TaskLoggerFilters = ({ filters, lookups, rowCount, onFilterChange, onReset
                         onChange={(e) => onFilterChange("status", e.target.value)}
                     >
                         <option value="">All</option>
-                        {STATUS_OPTIONS.map((v) => (
+                        {(lookups.statuses ?? STATUS_OPTIONS).map((v) => (
                             <option key={v} value={v}>{v}</option>
                         ))}
                     </select>

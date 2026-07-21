@@ -1,3 +1,5 @@
+import Loader from "../loader";
+
 interface Props {
     pagination: {
         page: number;
@@ -5,11 +7,12 @@ interface Props {
         totalCount: number;
         pageSize: number;
     };
+    loading?: boolean;
     onPageChange: (page: number) => void;
     onPageSizeChange: (pageSize: number) => void;
 }
 
-const TaskLoggerPagination = ({ pagination, onPageChange, onPageSizeChange }: Props) => {
+const TaskLoggerPagination = ({ pagination, loading = false, onPageChange, onPageSizeChange }: Props) => {
     const { page, totalPages, totalCount, pageSize } = pagination;
     if (totalCount === 0) return null;
 
@@ -24,8 +27,9 @@ const TaskLoggerPagination = ({ pagination, onPageChange, onPageSizeChange }: Pr
             <div className="flex items-center gap-2">
                 <select
                     value={pageSize}
+                    disabled={loading}
                     onChange={(e) => onPageSizeChange(Number(e.target.value))}
-                    className="px-2 py-1.5 rounded-full bg-white border border-slate-200 text-sm"
+                    className="px-2 py-1.5 rounded-full bg-white border border-slate-200 text-sm disabled:opacity-60"
                 >
                     {[5, 10, 25, 50, 100].map((n) => (
                         <option key={n} value={n}>
@@ -35,7 +39,7 @@ const TaskLoggerPagination = ({ pagination, onPageChange, onPageSizeChange }: Pr
                 </select>
                 <button
                     type="button"
-                    disabled={page <= 1}
+                    disabled={loading || page <= 1}
                     onClick={() => onPageChange(page - 1)}
                     className="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-sm font-semibold disabled:opacity-40"
                 >
@@ -46,12 +50,13 @@ const TaskLoggerPagination = ({ pagination, onPageChange, onPageSizeChange }: Pr
                 </span>
                 <button
                     type="button"
-                    disabled={page >= totalPages}
+                    disabled={loading || page >= totalPages}
                     onClick={() => onPageChange(page + 1)}
                     className="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-sm font-semibold disabled:opacity-40"
                 >
                     Next
                 </button>
+                {loading && <Loader />}
             </div>
         </div>
     );

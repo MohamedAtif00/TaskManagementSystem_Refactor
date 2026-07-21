@@ -49,7 +49,7 @@ const DailyReportTable = ({ rows, onUpdateNotes }: Props) => {
                             "Subjects",
                             "Grade",
                             "Task Name",
-                            "LO Code",
+                            "LO Name",
                             "LO Type",
                             "Assigned To",
                             "Status",
@@ -83,8 +83,8 @@ const DailyReportTable = ({ rows, onUpdateNotes }: Props) => {
                                     className="inline-block px-2 py-1 rounded-full text-xs font-semibold"
                                     style={{
                                         backgroundColor:
-                                            STATUS_COLORS[row.status as keyof typeof STATUS_COLORS] + "33",
-                                        color: STATUS_COLORS[row.status as keyof typeof STATUS_COLORS],
+                                            (STATUS_COLORS[row.status as keyof typeof STATUS_COLORS] ?? "#94a3b8") + "33",
+                                        color: STATUS_COLORS[row.status as keyof typeof STATUS_COLORS] ?? "#64748b",
                                     }}
                                 >
                                     {row.status}

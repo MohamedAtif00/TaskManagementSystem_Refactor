@@ -136,7 +136,13 @@ export function useDailyReport() {
             });
             setSummary(dashboard.summary);
             setCharts(dashboard.charts);
-            setLookups(dashboard.lookups);
+            setLookups({
+                ...dashboard.lookups,
+                problemTypes:
+                    dashboard.lookups.problemTypes?.length > 0
+                        ? dashboard.lookups.problemTypes
+                        : (dashboard.charts.problemTypes ?? []).map((p) => p.problemType).filter(Boolean),
+            });
         } catch (err) {
             console.error("Daily report fetch failed:", err);
             setError("Daily report request failed. Is the API running on the configured URL?");
@@ -154,6 +160,7 @@ export function useDailyReport() {
         setFilters((prev) => ({
             ...prev,
             [key]: value,
+            ...(key === "team" ? { taskName: "" } : {}),
             page: key === "page" ? Number(value) || 1 : 1,
         }));
     };
@@ -164,6 +171,10 @@ export function useDailyReport() {
 
     const setPageSize = (pageSize: number) => {
         setFilters((prev) => ({ ...prev, pageSize, page: 1 }));
+    };
+
+    const setProblemTypes = (problemTypes: string[]) => {
+        setFilters((prev) => ({ ...prev, problemTypes, page: 1 }));
     };
 
     const resetFilters = () => setFilters(createEmptyFilters());
@@ -207,6 +218,7 @@ export function useDailyReport() {
         updateFilter,
         setPage,
         setPageSize,
+        setProblemTypes,
         resetFilters,
         updateNotes,
         fetchAllRowsForExport,

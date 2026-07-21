@@ -1,4 +1,4 @@
-type DailyReportStatus = "Approved" | "Hold" | "Rollback";
+type DailyReportStatus = "Approved" | "Hold" | "Rollback" | "Red Flag";
 
 interface DailyReportFilters {
     from?: string;
@@ -9,7 +9,7 @@ interface DailyReportFilters {
     grade?: string;
     taskName?: string;
     status?: DailyReportStatus | "";
-    problemType?: string;
+    problemTypes?: string[];
     priority?: string;
     page?: number;
     pageSize?: number;

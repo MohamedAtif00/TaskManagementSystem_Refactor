@@ -2,9 +2,10 @@ export const STATUS_COLORS = {
     Approved: "#4ade80",
     Hold: "#f59e0b",
     Rollback: "#dc5e5e",
+    "Red Flag": "#ef4444",
 } as const;
 
-export const STATUS_OPTIONS = ["Approved", "Hold", "Rollback"] as const;
+export const STATUS_OPTIONS = ["Approved", "Hold", "Rollback", "Red Flag"] as const;
 
 export const PRIORITY_OPTIONS = ["High", "Medium", "Low", "None"] as const;
 
@@ -32,7 +33,7 @@ const buildDefaultFilters = (): DailyReportFilters => {
         grade: "",
         taskName: "",
         status: "",
-        problemType: "",
+        problemTypes: [],
         priority: "",
         page: 1,
         pageSize: DEFAULT_PAGE_SIZE,

@@ -21,7 +21,7 @@ public class TaskLoggerService : ITaskLoggerService
 
     private static readonly string[] StaticSubjects =
         ["Arabic", "English", "Math (A)", "Science (A)", "Social", "ICT (A)", "MUL (A)", "Religion", "Other"];
-    private static readonly string[] StaticStatuses = ["Approved", "Hold", "Rollback"];
+    private static readonly string[] StaticStatuses = ["Approved", "Hold", "Rollback", "Red Flag"];
 
     private readonly IAuthService _authService;
     private readonly string _connectionString;
@@ -213,9 +213,8 @@ public class TaskLoggerService : ITaskLoggerService
         AddDateParameters(filter.From, filter.To, parameters);
         var roleFilter = BuildRoleFilterSql(user, parameters);
 
-        var membersSql = TaskLoggerSql.LightLookupsMembers.Replace("{ROLE_FILTER}", roleFilter);
         var tasksSql = TaskLoggerSql.LightLookupsTaskNames.Replace("{ROLE_FILTER}", roleFilter);
-        var batchSql = membersSql + ";\n" + tasksSql;
+        var batchSql = TaskLoggerSql.LightLookupsMembers + ";\n" + tasksSql;
 
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();

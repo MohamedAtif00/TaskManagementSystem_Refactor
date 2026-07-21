@@ -21,6 +21,7 @@ const TaskLoggerPage = () => {
         hasLoadedOnce,
         dupMode,
         dupOnly,
+        dupLoading,
         duplicateColorMap,
         updateFilter,
         setPage,
@@ -82,23 +83,32 @@ const TaskLoggerPage = () => {
                         onReset={resetFilters}
                     />
 
-                    <TaskLoggerTable
-                        rows={rows}
-                        dupMode={dupMode}
-                        dupOnly={dupOnly}
-                        duplicateColorMap={duplicateColorMap}
-                        onDetectDuplicates={toggleDetectDuplicates}
-                        onShowDuplicatesOnly={toggleShowDuplicatesOnly}
-                        totalLabelCount={dupMode ? rows.length : pagination.totalCount}
-                    />
-
-                    {!dupMode && (
-                        <TaskLoggerPagination
-                            pagination={pagination}
-                            onPageChange={setPage}
-                            onPageSizeChange={setPageSize}
+                    <div className="relative">
+                        {loading && hasLoadedOnce && (
+                            <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center rounded-xl min-h-[200px]">
+                                <Loader />
+                            </div>
+                        )}
+                        <TaskLoggerTable
+                            rows={rows}
+                            dupMode={dupMode}
+                            dupOnly={dupOnly}
+                            dupLoading={dupLoading}
+                            duplicateColorMap={duplicateColorMap}
+                            onDetectDuplicates={toggleDetectDuplicates}
+                            onShowDuplicatesOnly={toggleShowDuplicatesOnly}
+                            totalLabelCount={dupMode ? rows.length : pagination.totalCount}
                         />
-                    )}
+
+                        {!dupMode && (
+                            <TaskLoggerPagination
+                                pagination={pagination}
+                                loading={loading}
+                                onPageChange={setPage}
+                                onPageSizeChange={setPageSize}
+                            />
+                        )}
+                    </div>
                 </>
             )}
         </div>

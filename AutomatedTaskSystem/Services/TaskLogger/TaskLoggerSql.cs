@@ -26,7 +26,7 @@ internal static class TaskLoggerSql
                 t.Id AS TaskId,
                 CAST(COALESCE(ad.ReportDate, t.CreatedAt) AS date) AS ReportDate,
                 usr.Name AS Member,
-                ISNULL(lo.Tag, '') AS LoCode,
+                ISNULL(lo.Name, '') AS LoCode,
                 CASE
                     WHEN s.Name LIKE 'ara[_]%' THEN 'Arabic'
                     WHEN s.Name LIKE 'eng[_]%' THEN 'English'
@@ -49,14 +49,15 @@ internal static class TaskLoggerSql
                             THEN 0
                         WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
                              < COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
-                            THEN 4
+                            THEN 3
                         WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
                              = COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
-                            THEN 3
-                        ELSE 1.5
+                            THEN 2
+                        ELSE 1
                     END
                 AS float) AS Points,
                 CASE
+                    WHEN t.Flagged = 1 THEN 'Red Flag'
                     WHEN t.Status = @taskRollback OR t.IsRollback = 1 THEN 'Rollback'
                     WHEN t.Status = @taskDone THEN 'Approved'
                     ELSE 'Hold'
@@ -103,11 +104,11 @@ internal static class TaskLoggerSql
                             THEN 0
                         WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
                              < COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
-                            THEN 4
+                            THEN 3
                         WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
                              = COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
-                            THEN 3
-                        ELSE 1.5
+                            THEN 2
+                        ELSE 1
                     END
                 AS float) AS Points
             FROM Tasks t
@@ -190,7 +191,7 @@ internal static class TaskLoggerSql
             t.Id AS TaskId,
             CONVERT(varchar(10), CAST(COALESCE(ad.ReportDate, t.CreatedAt) AS date), 23) AS [Date],
             usr.Name AS Member,
-            ISNULL(lo.Tag, '') AS LoCode,
+            ISNULL(lo.Name, '') AS LoCode,
             CASE
                 WHEN s.Name LIKE 'ara[_]%' THEN 'Arabic'
                 WHEN s.Name LIKE 'eng[_]%' THEN 'English'
@@ -213,14 +214,15 @@ internal static class TaskLoggerSql
                         THEN 0
                     WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
                          < COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
-                        THEN 4
+                        THEN 3
                     WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
                          = COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
-                        THEN 3
-                    ELSE 1.5
+                        THEN 2
+                    ELSE 1
                 END
             AS float) AS Points,
             CASE
+                WHEN t.Flagged = 1 THEN 'Red Flag'
                 WHEN t.Status = @taskRollback OR t.IsRollback = 1 THEN 'Rollback'
                 WHEN t.Status = @taskDone THEN 'Approved'
                 ELSE 'Hold'
@@ -242,15 +244,12 @@ internal static class TaskLoggerSql
         """;
 
     internal const string LightLookupsMembers = """
-        SELECT DISTINCT TOP 300 usr.Name AS Value
-        FROM Tasks t
-        INNER JOIN Users usr ON usr.Id = t.UserId AND usr.Archived = 0
-        WHERE t.Archived = 0
-          AND t.CreatedAt >= @fromDate
-          AND t.CreatedAt < DATEADD(DAY, 1, @toDate)
-          {ROLE_FILTER}
-          AND usr.Name <> ''
-        ORDER BY Value
+        SELECT usr.Name AS Value
+        FROM Users usr
+        WHERE usr.Archived = 0
+          AND usr.Name IS NOT NULL
+          AND LTRIM(RTRIM(usr.Name)) <> ''
+        ORDER BY usr.Name
         """;
 
     internal const string LightLookupsTaskNames = """

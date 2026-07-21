@@ -11,7 +11,11 @@ const buildQuery = (filters: DailyReportFilters = {}) => {
     if (filters.grade) params.set("grade", filters.grade);
     if (filters.taskName) params.set("taskName", filters.taskName);
     if (filters.status) params.set("status", filters.status);
-    if (filters.problemType) params.set("problemType", filters.problemType);
+    if (filters.problemTypes?.length) {
+        filters.problemTypes.forEach((p) => {
+            if (p) params.append("problemType", p);
+        });
+    }
     if (filters.priority) params.set("priority", filters.priority);
     if (filters.page) params.set("page", String(filters.page));
     if (filters.pageSize) params.set("pageSize", String(filters.pageSize));
