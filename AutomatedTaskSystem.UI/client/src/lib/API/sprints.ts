@@ -39,12 +39,20 @@ const SPRINTS = {
                             ...authHeader,
                         },
                     });
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({}));
+                        return {
+                            error: true,
+                            message: errorData.message || `Failed to fetch sprints (${res.status})`,
+                            data: undefined,
+                        };
+                    }
                     const data: ResponseService<GetAllSprintsResponse[]> = await res.json();
                     return data;
                 }
                 catch (err) {
                     console.error(err);
-                    return false;
+                    return { error: true, message: 'Failed to fetch sprints', data: undefined };
                 }
     },
     CREATE_SPRINT: async ({
