@@ -4,13 +4,14 @@ import API from "../../lib/API";
 import Loader from "../../components/loader";
 import TaskIcon from "../../assets/Icons/Task";
 import TaskSubjectsDataGrid from "../../components/tasks/TaskSubjectsDataGrid";
+import {
+    CURRICULUM_FOLDER_LEVELS,
+    CURRICULUM_ROOT_LEVEL,
+} from "../../lib/curriculumHierarchy";
 
 const fallbackLevelLabels = [
-    "Project Name",
-    "Year",
-    "Term",
-    "Subject",
-    "Grade",
+    CURRICULUM_ROOT_LEVEL,
+    ...CURRICULUM_FOLDER_LEVELS,
 ];
 
 const getPathParts = (subject: IProject) =>

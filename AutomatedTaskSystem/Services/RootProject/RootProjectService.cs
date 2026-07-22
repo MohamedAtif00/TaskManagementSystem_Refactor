@@ -68,7 +68,7 @@ public class FolderService(DataContext context) : IFolderService
             {
                 Name = name,
                 Description = description?.Trim(),
-                LevelNamesJson = SerializeLevelNames(levelNames),
+                LevelNamesJson = SerializeLevelNames(levelNames) ?? CurriculumHierarchy.DefaultLevelNamesJson,
             };
             context.Projects.Add(project);
             await context.SaveChangesAsync();
@@ -190,21 +190,27 @@ public class FolderService(DataContext context) : IFolderService
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .ToList();
 
-        return cleaned is { Count: > 0 } ? JsonSerializer.Serialize(cleaned) : null;
+        if (cleaned is { Count: > 0 })
+            return JsonSerializer.Serialize(cleaned);
+
+        return CurriculumHierarchy.DefaultLevelNamesJson;
     }
 
     private static List<string> DeserializeLevelNames(string? levelNamesJson)
     {
         if (string.IsNullOrWhiteSpace(levelNamesJson))
-            return new List<string>();
+            return CurriculumHierarchy.FolderLevelNames.ToList();
 
         try
         {
-            return JsonSerializer.Deserialize<List<string>>(levelNamesJson) ?? new List<string>();
+            var parsed = JsonSerializer.Deserialize<List<string>>(levelNamesJson);
+            return parsed is { Count: > 0 }
+                ? parsed
+                : CurriculumHierarchy.FolderLevelNames.ToList();
         }
         catch
         {
-            return new List<string>();
+            return CurriculumHierarchy.FolderLevelNames.ToList();
         }
     }
 

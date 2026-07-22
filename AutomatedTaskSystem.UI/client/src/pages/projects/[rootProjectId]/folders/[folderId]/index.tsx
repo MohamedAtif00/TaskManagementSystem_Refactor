@@ -3,6 +3,7 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { useAppSelector } from "../../../../../app/hooks";
 import API from "../../../../../lib/API";
+import { parseSeasonTerm } from "../../../../../lib/curriculumHierarchy";
 import Loader from "../../../../../components/loader";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import ProgressDonut from "../../../../../components/charts/ProgressDonut";
@@ -90,23 +91,11 @@ const LeafFolderSubjectsPage = () => {
         return "TMS - Subjects";
     }, [folder?.name]);
 
-    const parseYearTerm = (folderPath?: string) => {
-        if (!folderPath) return { year: "-", term: "-" };
-        const parts = folderPath
-            .split(">")
-            .map((x) => x.trim())
-            .filter(Boolean);
-        return {
-            year: parts[1] ?? "-",
-            term: parts[2] ?? "-",
-        };
-    };
-
     const activeColumns: GridColDef[] = [
         { field: "col0", headerName: "ID", width: 70 },
         { field: "col1", headerName: "Name", flex: 1, minWidth: 170 },
         { field: "col2", headerName: "Description", flex: 1, minWidth: 220 },
-        { field: "col3", headerName: "Year", width: 90 },
+        { field: "col3", headerName: "Season", width: 90 },
         { field: "col4", headerName: "Term", width: 90 },
         { field: "col5", headerName: "No of LO", width: 95 },
         {
@@ -186,7 +175,7 @@ const LeafFolderSubjectsPage = () => {
         { field: "col0", headerName: "ID", width: 70 },
         { field: "col1", headerName: "Name", flex: 1, minWidth: 170 },
         { field: "col2", headerName: "Description", flex: 1, minWidth: 220 },
-        { field: "col3", headerName: "Year", width: 90 },
+        { field: "col3", headerName: "Season", width: 90 },
         { field: "col4", headerName: "Term", width: 90 },
         { field: "col5", headerName: "No of LO", width: 95 },
         {
@@ -255,13 +244,13 @@ const LeafFolderSubjectsPage = () => {
     ];
 
     const rows = subjects.map((p) => {
-        const { year, term } = parseYearTerm(p.folderPath);
+        const { season, term } = parseSeasonTerm(p.folderPath);
         return {
             id: p.id,
             col0: p.id,
             col1: p.name,
             col2: p.description ?? "",
-            col3: year,
+            col3: season,
             col4: term,
             col5: p.count ?? 0,
             col6: "",

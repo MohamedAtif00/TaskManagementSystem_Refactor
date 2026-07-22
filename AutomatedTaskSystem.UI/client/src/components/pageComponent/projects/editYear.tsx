@@ -35,7 +35,7 @@ const EditYear = () => {
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError("");
-        if (!label.trim()) return setError("Please enter a year (e.g. 2026/2027)");
+        if (!label.trim()) return setError("Please enter a project name");
 
         API.PROJECTS.ROOT.UPDATE_YEAR(yearId, label.trim()).then((res) => {
             if (res && typeof res === "object" && "error" in res && !res.error) {
@@ -57,11 +57,11 @@ const EditYear = () => {
                 animate={{ opacity: 1 }}
                 className="bg-white px-5 py-4 basis-80 rounded-lg max-w-lg w-full"
             >
-                <h2 className="text-lg mb-5">Edit year</h2>
+                <h2 className="text-lg mb-5">Edit project</h2>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-8">
                     <div className="flex flex-col gap-2">
                         <div className="text-red-600">{error}</div>
-                        <InputTextField label="Year" value={label} handleChange={setLabel} />
+                        <InputTextField label="Project" value={label} handleChange={setLabel} />
                     </div>
                     <FormConclusion pathname={pathname} submittable={true} />
                 </form>

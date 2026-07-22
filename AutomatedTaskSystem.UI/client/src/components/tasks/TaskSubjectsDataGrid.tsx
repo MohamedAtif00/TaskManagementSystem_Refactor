@@ -12,6 +12,7 @@ import {
 } from "@mui/x-data-grid";
 import type { GridRowProps } from "@mui/x-data-grid";
 import PieChartIcon from "../../assets/Icons/PieChart";
+import { parseSeasonTerm } from "../../lib/curriculumHierarchy";
 import { useRouter } from "next/router";
 import ProgressDonut from "../charts/ProgressDonut";
 
@@ -247,7 +248,7 @@ export const taskSubjectColumns: GridColDef[] = [
         },
     },
     { field: "col2", headerName: "Description", description: "Description of the subject", flex: 1, minWidth: 120 },
-    { field: "col3", headerName: "Year", description: "Year", width: 88, minWidth: 72 },
+    { field: "col3", headerName: "Season", description: "Season", width: 88, minWidth: 72 },
     { field: "col4", headerName: "Term", description: "Term", width: 88, minWidth: 72 },
     { field: "col5", headerName: "Tasks Num", description: "Number of tasks", width: 96, minWidth: 88 },
     {
@@ -289,27 +290,15 @@ type Props = {
     subjects: IProject[];
 };
 
-const parseYearTerm = (folderPath?: string) => {
-    const parts = (folderPath ?? "")
-        .split(">")
-        .map((x) => x.trim())
-        .filter(Boolean);
-
-    return {
-        year: parts[1] ?? "",
-        term: parts[2] ?? "",
-    };
-};
-
 const TaskSubjectsDataGrid = ({ subjects }: Props) => {
     const rows: TaskSubjectRow[] = subjects.map((p) => {
-        const { year, term } = parseYearTerm(p.folderPath);
+        const { season, term } = parseSeasonTerm(p.folderPath);
         return {
             id: p.id,
             col0: p.id,
             col1: p.name,
             col2: p.description,
-            col3: year,
+            col3: season,
             col4: term,
             col5: p.count || 0,
             col6: "",

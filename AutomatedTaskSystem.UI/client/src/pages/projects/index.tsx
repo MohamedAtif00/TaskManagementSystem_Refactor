@@ -3,6 +3,12 @@ import { useRouter } from "next/router";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import Loader from "../../components/loader";
+import {
+    CURRICULUM_FOLDER_LEVELS,
+    CURRICULUM_STRUCTURE_PATH,
+    curriculumFolderLevels,
+    curriculumLevelLabel,
+} from "../../lib/curriculumHierarchy";
 
 type FolderDto = {
     id: number;
@@ -21,9 +27,8 @@ type SetupSubject = {
     status?: number;
 };
 
-const STEP_TITLES = ["Create Project", "Configure Levels", "Setup Folders"] as const;
-
-const LEVEL_TITLE_PLACEHOLDER = "Please add level title";
+const STEP_TITLES = ["Create Season", "Setup Folders"] as const;
+const FOLDER_LEVEL_COUNT = CURRICULUM_FOLDER_LEVELS.length;
 const levelStorageKey = (rootId: number) => `project-level-names:${rootId}`;
 
 const singularLevelName = (levelName: string) =>
@@ -77,10 +82,9 @@ const ProjectsIndex = () => {
     const [step, setStep] = useState(1);
     const [existingRoots, setExistingRoots] = useState<FolderDto[]>([]);
 
-    const [projectName, setProjectName] = useState("Selah Eltelmeez");
+    const [projectName, setProjectName] = useState("2026/2027");
     const [description, setDescription] = useState("");
-    const [numberOfLevels, setNumberOfLevels] = useState("");
-    const [levelNames, setLevelNames] = useState<string[]>([]);
+    const [levelNames, setLevelNames] = useState<string[]>(curriculumFolderLevels());
 
     const [rootFolder, setRootFolder] = useState<FolderDto | null>(null);
     const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
@@ -194,13 +198,10 @@ const ProjectsIndex = () => {
         return subjects;
     };
 
-    const goToStepTwo = async () => {
+    const goToSetupFolders = async () => {
         if (!projectName.trim()) return;
-        const parsedLevelCount = Number(numberOfLevels);
-        if (!Number.isInteger(parsedLevelCount) || parsedLevelCount < 1 || parsedLevelCount > 20) {
-            setErrorMessage("Please enter a valid number of levels between 1 and 20 before continuing.");
-            return;
-        }
+        const fixedLevelNames = curriculumFolderLevels();
+        setLevelNames(fixedLevelNames);
         setBusy(true);
         setErrorMessage("");
         try {
@@ -213,27 +214,28 @@ const ProjectsIndex = () => {
                     ) ?? null;
 
                 if (!root) {
-                const createRes = await API.PROJECTS.ROOT.CREATE(projectName.trim(), description.trim(), levelNames);
+                const createRes = await API.PROJECTS.ROOT.CREATE(projectName.trim(), description.trim(), fixedLevelNames);
                     if (createRes && !createRes.error && createRes.data) {
                         root = createRes.data as FolderDto;
                     } else {
-                        setErrorMessage(createRes?.message ?? "Could not create project. Please try again.");
+                        setErrorMessage(createRes?.message ?? "Could not create season. Please try again.");
                         return;
                     }
                 }
             }
             if (!root) {
-                setErrorMessage("Could not prepare the project hierarchy.");
+                setErrorMessage("Could not prepare the season hierarchy.");
                 return;
             }
             setRootFolder(root);
             if (typeof window !== "undefined") {
-                window.localStorage.setItem(levelStorageKey(root.id), JSON.stringify(levelNames));
+                window.localStorage.setItem(levelStorageKey(root.id), JSON.stringify(fixedLevelNames));
             }
-            await API.PROJECTS.ROOT.UPDATE(root.id, root.name, description.trim(), levelNames);
+            await API.PROJECTS.ROOT.UPDATE(root.id, root.name, description.trim(), fixedLevelNames);
             setFolderById((prev) => ({ ...prev, [root!.id]: root! }));
             setFolderParentById((prev) => ({ ...prev, [root!.id]: null }));
             setSelectedFolderId(root.id);
+            setExpandedFolderIds(new Set([root.id]));
             await loadChildren(root.id);
             await refreshSubjectsCount();
             setStep(2);
@@ -244,27 +246,6 @@ const ProjectsIndex = () => {
             });
         } finally {
             setBusy(false);
-        }
-    };
-
-    const goToStepThree = async () => {
-        const cleanedLevelNames = levelNames.map((level) => level.trim());
-        const expectedLevelCount = Number(numberOfLevels);
-        if (
-            cleanedLevelNames.length !== expectedLevelCount ||
-            cleanedLevelNames.some((level) => !level)
-        ) {
-            setErrorMessage("Please add a title for each level before continuing.");
-            return;
-        }
-        setErrorMessage("");
-        setLevelNames(cleanedLevelNames);
-        setStep(3);
-        if (rootFolder) {
-            setExpandedFolderIds(new Set([rootFolder.id]));
-            const children = await loadChildren(rootFolder.id);
-            await Promise.all(children.map((child) => loadChildren(child.id)));
-            await refreshSubjectsCount();
         }
     };
 
@@ -541,22 +522,21 @@ const ProjectsIndex = () => {
                     <button
                         type="button"
                         onClick={() => {
-                            setNumberOfLevels("");
-                            setLevelNames([]);
+                            setLevelNames(curriculumFolderLevels());
                             setErrorMessage("");
                             setIsCreating(true);
                         }}
                         className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg"
                     >
-                        Create Project
+                        Create Season
                     </button>
                 </div>
 
                 <div className="p-6">
                     <div className="bg-white border border-slate-200 rounded-xl p-4">
-                        <h2 className="text-xl font-semibold mb-3">Existing Projects</h2>
+                        <h2 className="text-xl font-semibold mb-3">Existing Seasons</h2>
                         {existingRoots.length === 0 ? (
-                            <p className="text-slate-500">No projects found. Click Create Project to start.</p>
+                            <p className="text-slate-500">No seasons found. Click Create Season to start.</p>
                         ) : (
                             <div className="space-y-2">
                                 {existingRoots.map((root) => (
@@ -577,17 +557,11 @@ const ProjectsIndex = () => {
         );
     }
 
-    const parsedNumberOfLevels = Number(numberOfLevels);
-    const hasValidLevelCount =
-        Number.isInteger(parsedNumberOfLevels) && parsedNumberOfLevels >= 1 && parsedNumberOfLevels <= 20;
-    const hasValidLevelTitles =
-        levelNames.length === parsedNumberOfLevels && levelNames.every((level) => level.trim().length > 0);
-    const canAddFolder = selectedDepth < parsedNumberOfLevels;
-    const canAddSubject = selectedDepth === parsedNumberOfLevels;
-    const nextLevelName = levelNames[selectedDepth] ?? `Level ${selectedDepth + 1}`;
+    const canAddFolder = selectedDepth < FOLDER_LEVEL_COUNT;
+    const canAddSubject = selectedDepth === FOLDER_LEVEL_COUNT;
+    const nextLevelName = levelNames[selectedDepth] ?? CURRICULUM_FOLDER_LEVELS[selectedDepth] ?? `Level ${selectedDepth + 1}`;
     const nextSingularLevelName = singularLevelName(nextLevelName);
-    const currentLevelLabel =
-        selectedDepth === 0 ? "Project" : levelNames[selectedDepth - 1] ?? `Level ${selectedDepth}`;
+    const currentLevelLabel = curriculumLevelLabel(selectedDepth);
     const currentSingularLabel = singularLevelName(currentLevelLabel);
     const selectedChildCount = selectedFolder ? foldersByParent[selectedFolder.id]?.length ?? 0 : 0;
     const isFolderEmpty = !!selectedFolder && selectedChildCount === 0;
@@ -631,17 +605,19 @@ const ProjectsIndex = () => {
                         </div>
                     )}
 
-                    {(step === 1 || step === 2) && (
+                    {step === 1 && (
                         <div className="bg-white rounded-2xl shadow p-8 w-full max-w-4xl mx-auto">
-                            {step === 1 ? (
-                                <>
-                                    <h2 className="font-bold text-4xl mb-3">Start a New Project</h2>
+                                    <h2 className="font-bold text-4xl mb-3">Start a New Season</h2>
                                     <p className="text-slate-500 mb-6">
-                                        Set the foundation for your educational structure.
+                                        A season is the top of the project tree. Projects, terms, and subject folders are organized beneath it.
                                     </p>
+                                    <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                        <span className="font-semibold text-slate-800">Structure: </span>
+                                        {CURRICULUM_STRUCTURE_PATH}
+                                    </div>
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="block text-sm font-semibold mb-1">Project Name</label>
+                                            <label className="block text-sm font-semibold mb-1">Season Name</label>
                                             <input
                                                 className="w-full border rounded-lg px-3 py-2"
                                                 value={projectName}
@@ -654,28 +630,6 @@ const ProjectsIndex = () => {
                                                 className="w-full border rounded-lg px-3 py-2 min-h-[90px]"
                                                 value={description}
                                                 onChange={(e) => setDescription(e.target.value)}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold mb-1">Number of Levels</label>
-                                            <input
-                                                type="number"
-                                                min={1}
-                                                max={20}
-                                                className="w-full border rounded-lg px-3 py-2"
-                                                value={numberOfLevels}
-                                                onChange={(e) => {
-                                                    const rawValue = e.target.value;
-                                                    setNumberOfLevels(rawValue);
-                                                    if (!rawValue) {
-                                                        setLevelNames([]);
-                                                        return;
-                                                    }
-                                                    const next = Math.max(1, Math.min(20, Number(rawValue) || 1));
-                                                    setLevelNames((prev) => {
-                                                        return Array.from({ length: next }, (_, index) => prev[index] ?? "");
-                                                    });
-                                                }}
                                             />
                                         </div>
                                     </div>
@@ -692,66 +646,17 @@ const ProjectsIndex = () => {
                                         </button>
                                         <button
                                             type="button"
-                                            disabled={
-                                                busy ||
-                                                !projectName.trim() ||
-                                                !hasValidLevelCount
-                                            }
-                                            onClick={goToStepTwo}
+                                            disabled={busy || !projectName.trim()}
+                                            onClick={goToSetupFolders}
                                             className="bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white px-5 py-2 rounded-lg"
                                         >
                                             Save & Continue
                                         </button>
                                     </div>
-                                </>
-                            ) : (
-                                <>
-                                    <h2 className="font-bold text-4xl mb-3">Configure Your Levels</h2>
-                                    <p className="text-slate-500 mb-6">
-                                        Rename each level to match your project&apos;s structure.
-                                    </p>
-                                    <div className="space-y-3">
-                                        {levelNames.map((level, index) => (
-                                            <div key={index} className="flex items-center gap-4">
-                                                <span className="w-20 text-slate-500 text-sm font-semibold">
-                                                    {`Level ${index + 1}`}
-                                                </span>
-                                                <input
-                                                    className="flex-1 border rounded-lg px-3 py-2"
-                                                    placeholder={LEVEL_TITLE_PLACEHOLDER}
-                                                    value={level}
-                                                    onChange={(e) =>
-                                                        setLevelNames((prev) =>
-                                                            prev.map((v, i) => (i === index ? e.target.value : v))
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="flex justify-between mt-8">
-                                        <button
-                                            type="button"
-                                            onClick={() => setStep(1)}
-                                            className="px-5 py-2 rounded-lg border border-slate-300"
-                                        >
-                                            Back
-                                        </button>
-                                        <button
-                                            type="button"
-                                            disabled={busy || !hasValidLevelTitles}
-                                            onClick={goToStepThree}
-                                            className="bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white px-5 py-2 rounded-lg"
-                                        >
-                                            Save & Continue
-                                        </button>
-                                    </div>
-                                </>
-                            )}
                         </div>
                     )}
 
-                    {step === 3 && (
+                    {step === 2 && (
                         <div className="bg-white rounded-xl overflow-hidden shadow">
                             <div className="grid grid-cols-12 min-h-[560px]">
                                 <div className="col-span-4 border-r p-4 bg-slate-50 overflow-auto">
@@ -934,7 +839,7 @@ const ProjectsIndex = () => {
                             <div className="border-t px-6 py-4 flex justify-between">
                                 <button
                                     type="button"
-                                    onClick={() => setStep(2)}
+                                    onClick={() => setStep(1)}
                                     className="px-5 py-2 rounded-lg border border-slate-300"
                                 >
                                     Back

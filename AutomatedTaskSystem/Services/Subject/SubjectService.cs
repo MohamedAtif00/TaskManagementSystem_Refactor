@@ -164,15 +164,18 @@ public class SubjectService(
     private static List<string> DeserializeLevelNames(string? levelNamesJson)
     {
         if (string.IsNullOrWhiteSpace(levelNamesJson))
-            return new List<string>();
+            return CurriculumHierarchy.FolderLevelNames.ToList();
 
         try
         {
-            return JsonSerializer.Deserialize<List<string>>(levelNamesJson) ?? new List<string>();
+            var parsed = JsonSerializer.Deserialize<List<string>>(levelNamesJson);
+            return parsed is { Count: > 0 }
+                ? parsed
+                : CurriculumHierarchy.FolderLevelNames.ToList();
         }
         catch
         {
-            return new List<string>();
+            return CurriculumHierarchy.FolderLevelNames.ToList();
         }
     }
 

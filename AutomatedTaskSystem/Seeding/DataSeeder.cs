@@ -26,7 +26,7 @@ namespace AutomatedTaskSystem.Seeding
 
 
         public const string RootFolderName = "Selah Eltelmeez";
-        public const string FallbackYearLabel = "2026/2027";
+        public const string FallbackSeasonLabel = "2026/2027";
 
 
 
@@ -122,17 +122,17 @@ namespace AutomatedTaskSystem.Seeding
 
         /// <summary>
 
-        /// Ensures Selah Eltelmeez -> 2026/2027 -> Term -> Subject
-        /// and assigns all subjects by parsed subject/term.
+        /// Ensures Season (root) -> Project -> Term -> Subject
+        /// and assigns orphan subjects into term/family folders by parsed name.
 
         /// </summary>
 
         private async System.Threading.Tasks.Task SeedDefaultFolderHierarchyAsync()
 
         {
-            var root = await EnsureFolderAsync(RootFolderName, null);
-            var year = await EnsureFolderAsync(FallbackYearLabel, root.Id);
-            var assigned = await AssignSubjectsByGradeAndTermAsync(year.Id);
+            var season = await EnsureFolderAsync(FallbackSeasonLabel, null);
+            var project = await EnsureFolderAsync(RootFolderName, season.Id);
+            var assigned = await AssignSubjectsByGradeAndTermAsync(project.Id);
 
             if (assigned > 0)
 
@@ -171,7 +171,12 @@ namespace AutomatedTaskSystem.Seeding
             int projectId;
             if (parentFolderId is null)
             {
-                var project = new Project { Name = name, Description = "Auto-created during seeding" };
+                var project = new Project
+                {
+                    Name = name,
+                    Description = "Auto-created during seeding",
+                    LevelNamesJson = CurriculumHierarchy.DefaultLevelNamesJson,
+                };
                 _context.Projects.Add(project);
                 await _context.SaveChangesAsync();
                 projectId = project.Id;
@@ -190,7 +195,7 @@ namespace AutomatedTaskSystem.Seeding
             return folder;
         }
 
-        private async Task<int> AssignSubjectsByGradeAndTermAsync(int yearFolderId)
+        private async Task<int> AssignSubjectsByGradeAndTermAsync(int projectFolderId)
 
         {
             var existingFolderIds = await _context.Folders
@@ -208,7 +213,7 @@ namespace AutomatedTaskSystem.Seeding
             foreach (var subject in subjects)
             {
                 var termNumber = ResolveTermNumber(subject.Name);
-                var termFolder = await EnsureFolderAsync($"Term {termNumber}", yearFolderId);
+                var termFolder = await EnsureFolderAsync($"Term {termNumber}", projectFolderId);
 
                 var subjectFolderName = ResolveSubjectFolderName(subject.Name);
                 var subjectFolder = await EnsureFolderAsync(subjectFolderName, termFolder.Id);

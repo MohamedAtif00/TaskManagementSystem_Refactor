@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { useAppSelector } from "../../../app/hooks";
 import API from "../../../lib/API";
 import Loader from "../../../components/loader";
+import { CURRICULUM_FOLDER_LEVELS, curriculumFolderLevels, curriculumLevelLabel } from "../../../lib/curriculumHierarchy";
 
 type FolderDto = {
     id: number;
@@ -16,10 +17,9 @@ type FolderDto = {
 const levelStorageKey = (rootId: number) => `project-level-names:${rootId}`;
 
 const cleanLevelNames = (levels: unknown): string[] => {
-    if (!Array.isArray(levels)) return [];
-    return levels
-        .map((x) => String(x ?? "").trim())
-        .filter((x) => x.length > 0);
+    if (!Array.isArray(levels)) return curriculumFolderLevels();
+    const cleaned = levels.map((x) => String(x ?? "").trim()).filter((x) => x.length > 0);
+    return cleaned.length > 0 ? cleaned : curriculumFolderLevels();
 };
 
 const singularLevelName = (levelName: string) =>
@@ -56,7 +56,7 @@ const ProjectTreePage = () => {
     const [parentById, setParentById] = useState<Record<number, number | null>>({});
     const [childrenByParent, setChildrenByParent] = useState<Record<number, FolderDto[]>>({});
     const [subjectCountByFolder, setSubjectCountByFolder] = useState<Record<number, number>>({});
-    const [levelNames, setLevelNames] = useState<string[]>([]);
+    const [levelNames, setLevelNames] = useState<string[]>(curriculumFolderLevels());
     const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
     const [expandedFolderIds, setExpandedFolderIds] = useState<Set<number>>(new Set());
     const [addModal, setAddModal] = useState<{ parentFolderId: number; label: string } | null>(null);
@@ -323,7 +323,7 @@ const ProjectTreePage = () => {
         const isSelected = selectedFolderId === folder.id;
         const isInSelectedPath = selectedPathIds.has(folder.id);
         const isExpanded = expandedFolderIds.has(folder.id);
-        const childLevelName = levelNames[depth] ?? `Level ${depth + 1}`;
+        const childLevelName = levelNames[depth] ?? CURRICULUM_FOLDER_LEVELS[depth] ?? `Level ${depth + 1}`;
         const childSingularName = singularLevelName(childLevelName);
         const canAddChild = depth < levelNames.length;
         return (
@@ -400,7 +400,7 @@ const ProjectTreePage = () => {
                         <div className="col-span-8 p-6">
                             <h2 className="text-2xl font-semibold mb-2">{selectedFolder?.name ?? rootFolder.name}</h2>
                             <p className="text-slate-500">
-                                Level: {selectedDepth === 0 ? "Project" : levelNames[selectedDepth - 1] ?? `Level ${selectedDepth}`}
+                                Level: {curriculumLevelLabel(selectedDepth)}
                             </p>
                             <p className="text-slate-500 mt-2">
                                 Children: {selectedFolder ? (childrenByParent[selectedFolder.id]?.length ?? 0) : 0}
