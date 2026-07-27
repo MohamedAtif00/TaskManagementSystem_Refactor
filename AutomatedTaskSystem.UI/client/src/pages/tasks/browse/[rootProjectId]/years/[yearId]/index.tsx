@@ -95,7 +95,7 @@ const TaskTermsPage = () => {
             showAdd={false}
             breadcrumbs={[
                 { label: "Tasks", href: "/tasks" },
-                { label: rootName || `Season #${rootProjectId}`, href: browseBase },
+                { label: rootName || `Year #${rootProjectId}`, href: browseBase },
                 { label: projectName || `Project #${yearId}` },
             ]}
             rows={terms.map((t) => ({

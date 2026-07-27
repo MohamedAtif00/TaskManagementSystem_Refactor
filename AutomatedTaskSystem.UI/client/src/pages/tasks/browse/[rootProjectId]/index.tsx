@@ -61,7 +61,7 @@ const TaskProjectsPage = () => {
     }
 
     if (Number.isNaN(rootProjectId)) {
-        return <div className="p-6">Invalid season.</div>;
+        return <div className="p-6">Invalid year.</div>;
     }
 
     return (
@@ -72,7 +72,7 @@ const TaskProjectsPage = () => {
             showAdd={false}
             breadcrumbs={[
                 { label: "Tasks", href: "/tasks" },
-                { label: rootName || `Season #${rootProjectId}` },
+                { label: rootName || `Year #${rootProjectId}` },
             ]}
             rows={projects.map((project) => ({
                 id: project.id,

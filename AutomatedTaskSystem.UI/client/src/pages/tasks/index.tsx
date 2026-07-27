@@ -5,27 +5,15 @@ import Loader from "../../components/loader";
 import TaskIcon from "../../assets/Icons/Task";
 import TaskSubjectsDataGrid from "../../components/tasks/TaskSubjectsDataGrid";
 import {
-    CURRICULUM_FOLDER_LEVELS,
     CURRICULUM_ROOT_LEVEL,
+    curriculumLevelLabel,
 } from "../../lib/curriculumHierarchy";
-
-const fallbackLevelLabels = [
-    CURRICULUM_ROOT_LEVEL,
-    ...CURRICULUM_FOLDER_LEVELS,
-];
 
 const getPathParts = (subject: IProject) =>
     String((subject as any).folderPath ?? "")
         .split(">")
         .map((x) => x.trim())
         .filter(Boolean);
-
-const getSubjectLevelNames = (subject: IProject) =>
-    Array.isArray((subject as any).levelNames)
-        ? (subject as any).levelNames
-            .map((x: unknown) => String(x).trim())
-            .filter(Boolean)
-        : [];
 
 const TasksIndex = () => {
     const [subjects, setSubjects] = useState<IProject[]>([]);
@@ -43,40 +31,20 @@ const TasksIndex = () => {
         });
     }, []);
 
-    const maxDepth = useMemo(
-        () => subjects.reduce((max, subject) => Math.max(max, getPathParts(subject).length), 0),
-        [subjects]
-    );
-
     const filterLabels = useMemo(() => {
-        const selectedProject = filters[0];
-        if (!selectedProject) {
-            return [fallbackLevelLabels[0]];
+        const selectedYear = filters[0];
+        if (!selectedYear) {
+            return [CURRICULUM_ROOT_LEVEL];
         }
 
-        const scopedSubjects = subjects.filter((subject) => getPathParts(subject)[0] === selectedProject);
-
-        const configuredLevelNames = scopedSubjects.reduce<string[]>((longest, subject) => {
-            const levelNames = getSubjectLevelNames(subject);
-            return levelNames.length > longest.length ? levelNames : longest;
-        }, []);
-
-        const fallbackDepth = Math.max(
-            0,
-            scopedSubjects.reduce(
-                (max, subject) => Math.max(max, getPathParts(subject).length - 1),
-                maxDepth - 1
-            )
+        const scopedSubjects = subjects.filter((subject) => getPathParts(subject)[0] === selectedYear);
+        const pathDepth = scopedSubjects.reduce(
+            (max, subject) => Math.max(max, getPathParts(subject).length),
+            1
         );
-        const folderLevelLabels = configuredLevelNames.length > 0
-            ? configuredLevelNames
-            : Array.from(
-                { length: fallbackDepth },
-                (_, index) => fallbackLevelLabels[index + 1] ?? `Level ${index + 1}`
-            );
 
-        return [fallbackLevelLabels[0], ...folderLevelLabels];
-    }, [filters, maxDepth, subjects]);
+        return Array.from({ length: pathDepth }, (_, index) => curriculumLevelLabel(index));
+    }, [filters, subjects]);
 
     const filterOptions = useMemo(() => {
         return Array.from({ length: filterLabels.length }, (_, index) => {
@@ -131,11 +99,11 @@ const TasksIndex = () => {
     }
 
     return (
-        <div className="mx-auto relative max-h-screen overflow-y-auto pr-4">
+        <div className="relative w-full min-w-0 max-h-screen overflow-y-auto overflow-x-hidden box-border">
             <Head>
                 <title>TMS - Tasks</title>
             </Head>
-            <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
+            <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between w-full">
                 <div className="flex gap-3 items-center min-w-0">
                     <div className="w-6 h-6 shrink-0">
                         <TaskIcon className="stroke-black" />
@@ -144,8 +112,8 @@ const TasksIndex = () => {
                 </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-slate-200 bg-white p-4">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-4 w-full rounded-lg border border-slate-200 bg-white p-4 box-border">
+                <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
                     {filterOptions.map((options, index) => (
                         <label key={index} className="block text-sm font-medium text-slate-700">
                             {filterLabels[index] ?? `Level ${index + 1}`}

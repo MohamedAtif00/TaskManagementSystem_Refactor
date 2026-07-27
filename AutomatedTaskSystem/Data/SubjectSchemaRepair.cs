@@ -55,15 +55,26 @@ public static class SubjectSchemaRepair
                 FOREIGN KEY (UsersId) REFERENCES dbo.Users(Id) ON DELETE NO ACTION;
 
         IF OBJECT_ID(N'dbo.Subjects', N'U') IS NOT NULL
+           AND COL_LENGTH(N'dbo.Subjects', N'SubjectGroupId') IS NULL
            AND COL_LENGTH(N'dbo.Subjects', N'FolderId') IS NOT NULL
-           AND OBJECT_ID(N'dbo.Folders', N'U') IS NOT NULL
-           AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Subjects_Folders_FolderId')
-            ALTER TABLE dbo.Subjects ADD CONSTRAINT FK_Subjects_Folders_FolderId
-                FOREIGN KEY (FolderId) REFERENCES dbo.Folders(Id) ON DELETE NO ACTION;
+            ALTER TABLE dbo.Subjects ADD SubjectGroupId INT NULL;
 
         IF OBJECT_ID(N'dbo.Subjects', N'U') IS NOT NULL
-           AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Subjects_FolderId' AND object_id = OBJECT_ID(N'dbo.Subjects'))
-            CREATE INDEX IX_Subjects_FolderId ON dbo.Subjects(FolderId);
+           AND COL_LENGTH(N'dbo.Subjects', N'SubjectGroupId') IS NULL
+           AND COL_LENGTH(N'dbo.Subjects', N'FolderId') IS NULL
+            ALTER TABLE dbo.Subjects ADD SubjectGroupId INT NOT NULL CONSTRAINT DF_Subjects_SubjectGroupId DEFAULT 0;
+
+        IF OBJECT_ID(N'dbo.Subjects', N'U') IS NOT NULL
+           AND COL_LENGTH(N'dbo.Subjects', N'SubjectGroupId') IS NOT NULL
+           AND OBJECT_ID(N'dbo.SubjectGroups', N'U') IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Subjects_SubjectGroups_SubjectGroupId')
+            ALTER TABLE dbo.Subjects ADD CONSTRAINT FK_Subjects_SubjectGroups_SubjectGroupId
+                FOREIGN KEY (SubjectGroupId) REFERENCES dbo.SubjectGroups(Id) ON DELETE NO ACTION;
+
+        IF OBJECT_ID(N'dbo.Subjects', N'U') IS NOT NULL
+           AND COL_LENGTH(N'dbo.Subjects', N'SubjectGroupId') IS NOT NULL
+           AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Subjects_SubjectGroupId' AND object_id = OBJECT_ID(N'dbo.Subjects'))
+            CREATE INDEX IX_Subjects_SubjectGroupId ON dbo.Subjects(SubjectGroupId);
         """;
 
     public static async Task ApplyAsync(DataContext context, CancellationToken cancellationToken = default)

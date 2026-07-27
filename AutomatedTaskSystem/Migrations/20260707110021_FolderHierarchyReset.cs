@@ -107,7 +107,6 @@ namespace AutomatedTaskSystem.Migrations
                         WHEN 'ict' THEN N'ICT'
                         WHEN 'mul' THEN N'Multimedia'
                         WHEN 'rel' THEN N'Religion'
-                        WHEN 'tsk' THEN N'Tokkatsu'
                         ELSE N'Other'
                     END
                 FROM [Subjects] s

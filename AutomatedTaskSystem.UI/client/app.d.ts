@@ -247,6 +247,9 @@ interface ProjectDetails {
     description: string;
     units: Unit[];
     status: number;
+    folderId?: number;
+    yearId?: number;
+    folderPath?: string;
 }
 
 type CommentInfo = {

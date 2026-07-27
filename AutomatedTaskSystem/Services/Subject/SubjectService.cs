@@ -4,6 +4,7 @@ using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
+using AutomatedTaskSystem.Services.CurriculumService;
 using AutomatedTaskSystem.Services.LearningObjectiveService;
 using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.ProjectAssignmentService;
@@ -28,7 +29,8 @@ public class SubjectService(
     IUnitService unitService,
     ILearningObjectiveService learningObjectiveService,
     ITokenService tokenService,
-    INotificationService notificationService) : ISubjectService
+    INotificationService notificationService,
+    ICurriculumService curriculumService) : ISubjectService
 {
     private async Task<DbConnection> GetOpenConnectionAsync()
     {
@@ -126,7 +128,7 @@ public class SubjectService(
             Id = s.Id,
             Name = s.Name,
             Description = s.Description,
-            FolderId = s.FolderId,
+            FolderId = s.SubjectGroupId,
             FolderPath = folderPath,
             Status = s.Status,
             ProgressPercent = progressPercent,
@@ -134,77 +136,18 @@ public class SubjectService(
         };
     }
 
-    private async Task<string> BuildFolderPathAsync(int folderId)
-    {
-        var parts = new List<string>();
-        var current = await context.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        while (current is not null)
-        {
-            parts.Add(current.Name);
-            current = current.ParentFolderId.HasValue
-                ? await context.Folders.FirstOrDefaultAsync(f => f.Id == current.ParentFolderId.Value)
-                : null;
-        }
-
-        parts.Reverse();
-        return string.Join(" > ", parts);
-    }
-
-    private async Task<Dictionary<int, string>> BuildFolderPathsAsync(IEnumerable<int> folderIds)
+    private async Task<Dictionary<int, string>> BuildSubjectGroupPathsAsync(IEnumerable<int> subjectGroupIds)
     {
         var result = new Dictionary<int, string>();
-        foreach (var folderId in folderIds.Distinct())
-        {
-            result[folderId] = await BuildFolderPathAsync(folderId);
-        }
-
+        foreach (var groupId in subjectGroupIds.Distinct())
+            result[groupId] = await curriculumService.BuildSubjectPathAsync(groupId);
         return result;
     }
 
-    private static List<string> DeserializeLevelNames(string? levelNamesJson)
-    {
-        if (string.IsNullOrWhiteSpace(levelNamesJson))
-            return CurriculumHierarchy.FolderLevelNames.ToList();
+    private static List<string> DefaultLevelNames() => CurriculumHierarchy.AllLevelNames.ToList();
 
-        try
-        {
-            var parsed = JsonSerializer.Deserialize<List<string>>(levelNamesJson);
-            return parsed is { Count: > 0 }
-                ? parsed
-                : CurriculumHierarchy.FolderLevelNames.ToList();
-        }
-        catch
-        {
-            return CurriculumHierarchy.FolderLevelNames.ToList();
-        }
-    }
-
-    private async Task<List<string>> BuildFolderLevelNamesAsync(int folderId)
-    {
-        var current = await context.Folders
-            .Include(f => f.Project)
-            .FirstOrDefaultAsync(f => f.Id == folderId);
-
-        while (current?.ParentFolderId is not null)
-        {
-            current = await context.Folders
-                .Include(f => f.Project)
-                .FirstOrDefaultAsync(f => f.Id == current.ParentFolderId.Value);
-        }
-
-        return DeserializeLevelNames(current?.Project?.LevelNamesJson);
-    }
-
-    private async Task<Dictionary<int, List<string>>> BuildFolderLevelNamesMapAsync(IEnumerable<int> folderIds)
-    {
-        var result = new Dictionary<int, List<string>>();
-        foreach (var folderId in folderIds.Distinct())
-        {
-            result[folderId] = await BuildFolderLevelNamesAsync(folderId);
-        }
-
-        return result;
-    }
+    private async Task<Dictionary<int, List<string>>> BuildLevelNamesMapAsync(IEnumerable<int> subjectGroupIds) =>
+        subjectGroupIds.Distinct().ToDictionary(id => id, _ => DefaultLevelNames());
 
     private async Task<Dictionary<int, int>> GetProgressBySubjectIdAsync(IEnumerable<int> subjectIds)
     {
@@ -319,18 +262,18 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
         string Description,
         int folderId)
     {
-        var folder = await context.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null)
+        var group = await context.SubjectGroups.FirstOrDefaultAsync(g => g.Id == folderId);
+        if (group is null)
             return new NotFoundObjectResult(
-                new BaseResponseService { Error = true, Message = "Invalid folder" }
+                new BaseResponseService { Error = true, Message = "Invalid subject group" }
             );
 
         var subject = new Subject
         {
             Name = Name,
             Description = Description,
-            FolderId = folderId,
-            Folder = folder,
+            SubjectGroupId = folderId,
+            SubjectGroup = group,
             Status = ProjectStatusEnum.Active
         };
 
@@ -338,7 +281,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
         await context.SaveChangesAsync();
 
         InvalidateAllSubjectsCache();
-        var folderPath = await BuildFolderPathAsync(subject.FolderId);
+        var folderPath = await curriculumService.BuildSubjectPathAsync(subject.SubjectGroupId);
 
         return new ResponseService<SubjectDTO>
         {
@@ -394,23 +337,23 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
     {
         var subject = await context.Subjects
             .Where(p => p.Id == id && !p.Archived)
-            .Include(p => p.Folder)
+            .Include(p => p.SubjectGroup)
             .FirstOrDefaultAsync();
 
         if (subject is null)
             return new NotFoundResult();
 
-        if (folderId != subject.FolderId)
+        if (folderId != subject.SubjectGroupId)
         {
-            var folder = await context.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
+            var group = await context.SubjectGroups.FirstOrDefaultAsync(g => g.Id == folderId);
 
-            if (folder is null)
+            if (group is null)
                 return new BadRequestObjectResult(
-                    new BaseResponseService { Error = true, Message = "Invalid folder" }
+                    new BaseResponseService { Error = true, Message = "Invalid subject group" }
                 );
 
-            subject.Folder = folder;
-            subject.FolderId = folderId;
+            subject.SubjectGroup = group;
+            subject.SubjectGroupId = folderId;
         }
 
         subject.Name = Name;
@@ -418,7 +361,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
 
         await context.SaveChangesAsync();
         InvalidateAllSubjectsCache();
-        var folderPath = await BuildFolderPathAsync(subject.FolderId);
+        var folderPath = await curriculumService.BuildSubjectPathAsync(subject.SubjectGroupId);
 
         return new ResponseService<SubjectDTO>
         {
@@ -437,21 +380,21 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
         if (userError is not null)
             return userError;
 
-        var folder = await context.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        if (folder is null)
+        var group = await context.SubjectGroups.FirstOrDefaultAsync(g => g.Id == folderId);
+        if (group is null)
             return new NotFoundObjectResult(
-                new BaseResponseService { Error = true, Message = $"Folder {folderId} not found" }
+                new BaseResponseService { Error = true, Message = $"Subject group {folderId} not found" }
             );
 
         var subjects = await context.Subjects
-            .Where(s => !s.Archived && s.FolderId == folderId)
-            .Include(s => s.Folder)
+            .Where(s => !s.Archived && s.SubjectGroupId == folderId)
+            .Include(s => s.SubjectGroup)
             .ToListAsync();
 
         var visible = FilterSubjectsByUserRole(user!, subjects, includeInactiveStatuses);
 
         var progressById = await GetProgressBySubjectIdAsync(visible.Select(s => s.Id));
-        var paths = await BuildFolderPathsAsync(visible.Select(s => s.FolderId));
+        var paths = await BuildSubjectGroupPathsAsync(visible.Select(s => s.SubjectGroupId));
 
         return new ResponseService<List<SubjectDTO>>
         {
@@ -461,7 +404,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
                     s =>
                         MapSubjectDto(
                             s,
-                            paths.GetValueOrDefault(s.FolderId, s.Folder?.Name ?? string.Empty),
+                            paths.GetValueOrDefault(s.SubjectGroupId, s.SubjectGroup?.Name ?? string.Empty),
                             progressById.GetValueOrDefault(s.Id)
                         )
                 )
@@ -479,18 +422,18 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
 
         var subjects = await context.Subjects
             .Where(p => !p.Archived)
-            .Include(p => p.Folder)
+            .Include(p => p.SubjectGroup)
             .ToListAsync();
 
         var progressById = await GetProgressBySubjectIdAsync(subjects.Select(p => p.Id));
-        var paths = await BuildFolderPathsAsync(subjects.Select(s => s.FolderId));
+        var paths = await BuildSubjectGroupPathsAsync(subjects.Select(s => s.SubjectGroupId));
 
         var list = subjects
             .Select(
                 s =>
                     MapSubjectDto(
                         s,
-                        paths.GetValueOrDefault(s.FolderId, s.Folder?.Name ?? string.Empty),
+                        paths.GetValueOrDefault(s.SubjectGroupId, s.SubjectGroup?.Name ?? string.Empty),
                         progressById.GetValueOrDefault(s.Id)
                     )
             )
@@ -508,11 +451,11 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
     {
         var subjects = await context.Subjects
             .Where(p => !p.Archived && p.Status != ProjectStatusEnum.Hold && p.Status != ProjectStatusEnum.Closed)
-            .Include(p => p.Folder)
+            .Include(p => p.SubjectGroup)
             .ToListAsync();
 
         var progressById = await GetProgressBySubjectIdAsync(subjects.Select(p => p.Id));
-        var paths = await BuildFolderPathsAsync(subjects.Select(s => s.FolderId));
+        var paths = await BuildSubjectGroupPathsAsync(subjects.Select(s => s.SubjectGroupId));
 
         return new ResponseService<List<SubjectDTO>>
         {
@@ -522,7 +465,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
                     s =>
                         MapSubjectDto(
                             s,
-                            paths.GetValueOrDefault(s.FolderId, s.Folder?.Name ?? string.Empty),
+                            paths.GetValueOrDefault(s.SubjectGroupId, s.SubjectGroup?.Name ?? string.Empty),
                             progressById.GetValueOrDefault(s.Id)
                         )
                 )
@@ -589,7 +532,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
 
         var subject = await context.Subjects
             .Where(p => p.Id == Id && !p.Archived)
-            .Include(p => p.Folder)
+            .Include(p => p.SubjectGroup)
             .FirstOrDefaultAsync();
 
         if (subject is null || !UserCanAccessSubject(user!, subject))
@@ -599,7 +542,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
 
         return new ResponseService<SubjectDTO>
         {
-            Data = MapSubjectDto(subject, await BuildFolderPathAsync(subject.FolderId)),
+            Data = MapSubjectDto(subject, await curriculumService.BuildSubjectPathAsync(subject.SubjectGroupId)),
             Error = false,
             Message = "Subject found"
         };
@@ -613,6 +556,9 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
 
         var subject = await context.Subjects
             .Where(p => p.Id == Id && !p.Archived)
+            .Include(p => p.SubjectGroup)
+            .ThenInclude(g => g.Term)
+            .ThenInclude(t => t.Project)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
             .ThenInclude(l => l.LearningObjectives)
@@ -632,6 +578,9 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
                 Name = subject.Name,
                 Description = subject.Description,
                 Status = subject.Status,
+                FolderId = subject.SubjectGroupId,
+                YearId = subject.SubjectGroup.Term.Project.YearId,
+                FolderPath = await curriculumService.BuildSubjectPathAsync(subject.SubjectGroupId),
                 Units = subject.Units
                     .Where(u => !u.Archived)
                     .Select(
@@ -750,7 +699,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
         user = await context.Users
             .Where(u => u.Id == user!.Id)
             .Include(u => u.Subjects)
-            .ThenInclude(p => p.Folder)
+            .ThenInclude(p => p.SubjectGroup)
             .FirstOrDefaultAsync();
 
         if (user is null)
@@ -767,7 +716,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
                         && p.Status != ProjectStatusEnum.Hold
                         && p.Status != ProjectStatusEnum.Closed
                 )
-                .Include(p => p.Folder)
+                .Include(p => p.SubjectGroup)
                 .ToListAsync();
 
             var subjectIds = allSubjects.Select(p => p.Id).ToList();
@@ -789,15 +738,15 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
             var data = allSubjects
                 .Select(p =>
                 {
-                    var dto = MapSubjectDto(p, p.Folder.Name);
+                    var dto = MapSubjectDto(p, p.SubjectGroup?.Name ?? string.Empty);
                     dto.Count = taskCounts.FirstOrDefault(tc => tc.SubjectId == p.Id)?.Count ?? 0;
                     return dto;
                 })
                 .ToList();
 
             var progressById = await GetProgressBySubjectIdAsync(allSubjects.Select(p => p.Id));
-            var paths = await BuildFolderPathsAsync(allSubjects.Select(p => p.FolderId));
-            var levelNamesByFolderId = await BuildFolderLevelNamesMapAsync(allSubjects.Select(p => p.FolderId));
+            var paths = await BuildSubjectGroupPathsAsync(allSubjects.Select(p => p.SubjectGroupId));
+            var levelNamesByFolderId = await BuildLevelNamesMapAsync(allSubjects.Select(p => p.SubjectGroupId));
             foreach (var dto in data)
             {
                 dto.ProgressPercent = progressById.GetValueOrDefault(dto.Id);
@@ -894,15 +843,15 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
         var listOfSubjects = userSubjects
             .Select(s =>
             {
-                var dto = MapSubjectDto(s, s.Folder?.Name ?? string.Empty);
+                var dto = MapSubjectDto(s, s.SubjectGroup?.Name ?? string.Empty);
                 dto.Count = userTaskCounts.FirstOrDefault(tc => tc.SubjectId == s.Id)?.Count ?? 0;
                 return dto;
             })
             .ToList();
 
         var progressByIdForUser = await GetProgressBySubjectIdAsync(userSubjects.Select(p => p.Id));
-        var pathsForUser = await BuildFolderPathsAsync(userSubjects.Select(p => p.FolderId));
-        var levelNamesByFolderIdForUser = await BuildFolderLevelNamesMapAsync(userSubjects.Select(p => p.FolderId));
+        var pathsForUser = await BuildSubjectGroupPathsAsync(userSubjects.Select(p => p.SubjectGroupId));
+        var levelNamesByFolderIdForUser = await BuildLevelNamesMapAsync(userSubjects.Select(p => p.SubjectGroupId));
         foreach (var dto in listOfSubjects)
         {
             dto.ProgressPercent = progressByIdForUser.GetValueOrDefault(dto.Id);
@@ -945,7 +894,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
     {
         var subject = await context.Subjects
             .Where(p => !p.Archived && p.Id == id)
-            .Include(p => p.Folder)
+            .Include(p => p.SubjectGroup)
             .FirstOrDefaultAsync();
 
         if (subject is null)
@@ -1005,7 +954,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
         {
             Message = "Subject status is updated",
             Error = false,
-            Data = MapSubjectDto(subject, await BuildFolderPathAsync(subject.FolderId))
+            Data = MapSubjectDto(subject, await curriculumService.BuildSubjectPathAsync(subject.SubjectGroupId))
         };
     }
 

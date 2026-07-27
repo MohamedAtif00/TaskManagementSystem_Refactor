@@ -2,19 +2,15 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.Report;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
+using AutomatedTaskSystem.Services.CurriculumService;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Services.ReportService;
 
-public class ReportService : IReportService
+public class ReportService(DataContext context, ICurriculumService curriculumService) : IReportService
 {
-    private readonly DataContext _context;
-
-    public ReportService(DataContext context)
-    {
-        _context = context;
-    }
+    private readonly DataContext _context = context;
 
     public async Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllProjectsReports(DateTime? start, DateTime? end)
     {
@@ -25,7 +21,7 @@ public class ReportService : IReportService
                     && p.Status != ProjectStatusEnum.Closed
                     && p.Status != ProjectStatusEnum.Hold
             )
-            .Include(p => p.Folder)
+            .Include(p => p.SubjectGroup)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
             .ThenInclude(l => l.LearningObjectives)
@@ -63,7 +59,7 @@ public class ReportService : IReportService
                     && p.Status != ProjectStatusEnum.Closed
                     && p.Status != ProjectStatusEnum.Hold
             )
-            .Include(p => p.Folder)
+            .Include(p => p.SubjectGroup)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
             .ThenInclude(l => l.LearningObjectives)
@@ -80,8 +76,8 @@ public class ReportService : IReportService
             Id = project.Id,
             Name = project.Name,
             Description = project.Description,
-            Term = project.Folder?.Name ?? string.Empty,
-            Year = await BuildFolderPathAsync(project.FolderId)
+            Term = project.SubjectGroup?.Name ?? string.Empty,
+            Year = await curriculumService.BuildSubjectPathAsync(project.SubjectGroupId)
         };
 
         foreach (var unit in project.Units)
@@ -139,8 +135,8 @@ public class ReportService : IReportService
             Id = project.Id,
             Name = project.Name,
             Description = project.Description,
-            Year = await BuildFolderPathAsync(project.FolderId),
-            Term = project.Folder?.Name ?? string.Empty,
+            Year = await curriculumService.BuildSubjectPathAsync(project.SubjectGroupId),
+            Term = project.SubjectGroup?.Name ?? string.Empty,
         };
 
         foreach (var unit in project.Units)
@@ -172,22 +168,6 @@ public class ReportService : IReportService
         }
 
         return report;
-    }
-
-    private async Task<string> BuildFolderPathAsync(int folderId)
-    {
-        var parts = new List<string>();
-        var current = await _context.Folders.FirstOrDefaultAsync(f => f.Id == folderId);
-        while (current is not null)
-        {
-            parts.Add(current.Name);
-            current = current.ParentFolderId.HasValue
-                ? await _context.Folders.FirstOrDefaultAsync(f => f.Id == current.ParentFolderId.Value)
-                : null;
-        }
-
-        parts.Reverse();
-        return string.Join("/", parts);
     }
 
     private void handleNoDate(GetReportDto report, LearningObjective lo)

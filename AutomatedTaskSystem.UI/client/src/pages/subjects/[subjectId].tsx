@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import PlusIcon from "../../assets/Icons/Plus";
 import QueryButton from "../../components/button/queryButton";
 import API from "../../lib/API";
+import { markProjectTreeSubjectGroup } from "../../lib/projectTreeState";
 import AddUnit from "../../components/forms/projects/addUnit";
 import AddLesson from "../../components/forms/projects/addLesson";
 import AddLearningObjective from "../../components/forms/projects/addLearningObjective";
@@ -228,6 +229,15 @@ const Project = () => {
     const [activeLesson, setActiveLesson] = useState<Lesson>();
     const [activeLO, setActiveLO] = useState<LearningObjective>();
 
+    const backToFolderTreeHref = useMemo(() => {
+        const rawYear = router.query.rootProjectId;
+        const yearFromQuery = rawYear
+            ? Number(Array.isArray(rawYear) ? rawYear[0] : rawYear)
+            : NaN;
+        const yearId = !Number.isNaN(yearFromQuery) ? yearFromQuery : project?.yearId;
+        return !Number.isNaN(yearId) && yearId > 0 ? `/projects/${yearId}` : null;
+    }, [project?.yearId, router.query.rootProjectId]);
+
     if (!auth.isAuth || (auth.role !== 0 && auth.role !== 4)) router.replace("/");
 
     useEffect(() => {
@@ -238,6 +248,11 @@ const Project = () => {
                 }
             );
     }, [router.query]);
+
+    useEffect(() => {
+        if (!project?.yearId || !project?.folderId) return;
+        markProjectTreeSubjectGroup(project.yearId, project.folderId);
+    }, [project?.yearId, project?.folderId]);
 
     useEffect(() => {
         if (!project) return;
@@ -636,6 +651,15 @@ const Project = () => {
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    {backToFolderTreeHref && (
+                        <button
+                            type="button"
+                            className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50"
+                            onClick={() => router.push(backToFolderTreeHref)}
+                        >
+                            Back to folder tree
+                        </button>
+                    )}
                     <QueryButton
                         icon={<PlusIcon />}
                         text="Remove Users"

@@ -12,7 +12,7 @@ import {
 } from "@mui/x-data-grid";
 import type { GridRowProps } from "@mui/x-data-grid";
 import PieChartIcon from "../../assets/Icons/PieChart";
-import { parseSeasonTerm } from "../../lib/curriculumHierarchy";
+import { parseYearTerm } from "../../lib/curriculumHierarchy";
 import { useRouter } from "next/router";
 import ProgressDonut from "../charts/ProgressDonut";
 
@@ -248,7 +248,7 @@ export const taskSubjectColumns: GridColDef[] = [
         },
     },
     { field: "col2", headerName: "Description", description: "Description of the subject", flex: 1, minWidth: 120 },
-    { field: "col3", headerName: "Season", description: "Season", width: 88, minWidth: 72 },
+    { field: "col3", headerName: "Year", description: "Year", width: 88, minWidth: 72 },
     { field: "col4", headerName: "Term", description: "Term", width: 88, minWidth: 72 },
     { field: "col5", headerName: "Tasks Num", description: "Number of tasks", width: 96, minWidth: 88 },
     {
@@ -292,13 +292,13 @@ type Props = {
 
 const TaskSubjectsDataGrid = ({ subjects }: Props) => {
     const rows: TaskSubjectRow[] = subjects.map((p) => {
-        const { season, term } = parseSeasonTerm(p.folderPath);
+        const { year, term } = parseYearTerm(p.folderPath);
         return {
             id: p.id,
             col0: p.id,
             col1: p.name,
             col2: p.description,
-            col3: season,
+            col3: year,
             col4: term,
             col5: p.count || 0,
             col6: "",
@@ -308,7 +308,7 @@ const TaskSubjectsDataGrid = ({ subjects }: Props) => {
     });
 
     return (
-        <div className="pb-4 mt-4 w-full min-w-0">
+        <div className="pb-4 mt-4 w-full min-w-0 box-border">
             <DataGrid
                 className="bg-white relative h-full w-full min-w-0"
                 initialState={{
@@ -322,10 +322,14 @@ const TaskSubjectsDataGrid = ({ subjects }: Props) => {
                 rows={rows}
                 columns={taskSubjectColumns}
                 autoHeight
+                disableColumnMenu
                 sx={{
                     width: "100%",
                     minWidth: 0,
+                    border: 0,
                     "& .MuiDataGrid-main": { width: "100%" },
+                    "& .MuiDataGrid-root": { width: "100%" },
+                    "& .MuiDataGrid-columnHeaders": { width: "100%" },
                     "& .MuiDataGrid-virtualScroller": {
                         overflowX: "hidden",
                     },

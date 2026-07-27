@@ -3,7 +3,8 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { useAppSelector } from "../../../../../app/hooks";
 import API from "../../../../../lib/API";
-import { parseSeasonTerm } from "../../../../../lib/curriculumHierarchy";
+import { parseYearTerm } from "../../../../../lib/curriculumHierarchy";
+import { markProjectTreeSubjectGroup } from "../../../../../lib/projectTreeState";
 import Loader from "../../../../../components/loader";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import ProgressDonut from "../../../../../components/charts/ProgressDonut";
@@ -86,6 +87,11 @@ const LeafFolderSubjectsPage = () => {
         })();
     }, [auth.isAuth, auth.role, router, router.isReady, router.asPath, folderId, loadPageData]);
 
+    useEffect(() => {
+        if (Number.isNaN(rootProjectId) || Number.isNaN(folderId)) return;
+        markProjectTreeSubjectGroup(rootProjectId, folderId);
+    }, [rootProjectId, folderId]);
+
     const title = useMemo(() => {
         if (folder?.name) return `TMS - Subjects - ${folder.name}`;
         return "TMS - Subjects";
@@ -95,7 +101,7 @@ const LeafFolderSubjectsPage = () => {
         { field: "col0", headerName: "ID", width: 70 },
         { field: "col1", headerName: "Name", flex: 1, minWidth: 170 },
         { field: "col2", headerName: "Description", flex: 1, minWidth: 220 },
-        { field: "col3", headerName: "Season", width: 90 },
+        { field: "col3", headerName: "Year", width: 90 },
         { field: "col4", headerName: "Term", width: 90 },
         { field: "col5", headerName: "No of LO", width: 95 },
         {
@@ -130,7 +136,7 @@ const LeafFolderSubjectsPage = () => {
             width: 250,
             renderCell: (c) => (
                 <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                    <TableAction text="View" url={{ pathname: `/subjects/${c.id}` }} type="eye" />
+                    <TableAction text="View" url={{ pathname: `/subjects/${c.id}`, query: { rootProjectId } }} type="eye" />
                     <TableAction
                         text="Edit"
                         url={{
@@ -175,7 +181,7 @@ const LeafFolderSubjectsPage = () => {
         { field: "col0", headerName: "ID", width: 70 },
         { field: "col1", headerName: "Name", flex: 1, minWidth: 170 },
         { field: "col2", headerName: "Description", flex: 1, minWidth: 220 },
-        { field: "col3", headerName: "Season", width: 90 },
+        { field: "col3", headerName: "Year", width: 90 },
         { field: "col4", headerName: "Term", width: 90 },
         { field: "col5", headerName: "No of LO", width: 95 },
         {
@@ -210,7 +216,7 @@ const LeafFolderSubjectsPage = () => {
             width: 220,
             renderCell: (c) => (
                 <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                    <TableAction text="View" url={{ pathname: `/subjects/${c.id}` }} type="eye" />
+                    <TableAction text="View" url={{ pathname: `/subjects/${c.id}`, query: { rootProjectId } }} type="eye" />
                     <TableAction
                         text="Edit"
                         url={{
@@ -244,13 +250,13 @@ const LeafFolderSubjectsPage = () => {
     ];
 
     const rows = subjects.map((p) => {
-        const { season, term } = parseSeasonTerm(p.folderPath);
+        const { year, term } = parseYearTerm(p.folderPath);
         return {
             id: p.id,
             col0: p.id,
             col1: p.name,
             col2: p.description ?? "",
-            col3: season,
+            col3: year,
             col4: term,
             col5: p.count ?? 0,
             col6: "",

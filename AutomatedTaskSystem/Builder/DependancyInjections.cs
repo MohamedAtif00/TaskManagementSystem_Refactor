@@ -17,7 +17,7 @@ using AutomatedTaskSystem.Services.DashboardService;
 using AutomatedTaskSystem.Services.RollbackService;
 using AutomatedTaskSystem.Services.UserTask;
 using AutomatedTaskSystem.Services.Project;
-using AutomatedTaskSystem.Services.RootProjectService;
+using AutomatedTaskSystem.Services.CurriculumService;
 using AutomatedTaskSystem.Services.Sprint;
 using AutomatedTaskSystem.Services.Leave;
 using AutomatedTaskSystem.Services.Permission;
@@ -38,7 +38,7 @@ public static class DependancyInjections
     {
         builder.Services.AddMemoryCache();
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddScoped<IFolderService, FolderService>();
+        builder.Services.AddScoped<ICurriculumService, CurriculumService>();
         builder.Services.AddScoped<IUserTaskService, UserTaskService>();
         builder.Services.AddScoped<IRollbackService, RollbackService>();
         builder.Services.AddScoped<IDashboardService, DashboardService>();

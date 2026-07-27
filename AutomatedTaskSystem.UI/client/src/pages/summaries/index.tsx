@@ -7,7 +7,7 @@ import Link from "next/link";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import Head from "next/head";
 import Loader from "../../components/loader";
-import { parseSeasonTerm } from "../../lib/curriculumHierarchy";
+import { parseYearTerm } from "../../lib/curriculumHierarchy";
 
 const columns: GridColDef[] = [
     { field: "col0", headerName: "ID", width: 90 },
@@ -22,7 +22,7 @@ const columns: GridColDef[] = [
         },
     },
     { field: "col2", headerName: "Description", width: 300 },
-    { field: "col3", headerName: "Season", width: 100 },
+    { field: "col3", headerName: "Year", width: 100 },
     { field: "col4", headerName: "Term", width: 100 },
 ];
 
@@ -118,13 +118,13 @@ const Projects = () => {
                             },
                         }}
                         rows={projects.map((p) => {
-                            const { season, term } = parseSeasonTerm(p.folderPath);
+                            const { year, term } = parseYearTerm(p.folderPath);
                             return {
                                 id: p.id,
                                 col0: p.id,
                                 col1: p.name,
                                 col2: p.description,
-                                col3: season,
+                                col3: year,
                                 col4: term,
                             };
                         })}
