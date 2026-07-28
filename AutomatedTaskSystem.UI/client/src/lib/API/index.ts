@@ -9,6 +9,7 @@ import PERMISSION from "./Permission";
 import WORK_FROM_HOME from "./workFromHome";
 import NOTIFICATIONS from "./Notifications";
 import DAILY_REPORT from "./dailyReport";
+import TASK_LOGGER from "./taskLogger";
 
 
 // export const url = "/api";
@@ -41,7 +42,8 @@ const API = {
     PERMISSION,
 	    WORK_FROM_HOME,
 	    NOTIFICATIONS,
-    DAILY_REPORT
+    DAILY_REPORT,
+    TASK_LOGGER,
 };
 
 export default API;

@@ -22,6 +22,7 @@ const DailyReportPage = () => {
         updateFilter,
         setPage,
         setPageSize,
+        setProblemTypes,
         resetFilters,
         updateNotes,
         fetchAllRowsForExport,
@@ -70,23 +71,24 @@ const DailyReportPage = () => {
                         lookups={lookups}
                         rowCount={pagination.totalCount}
                         onFilterChange={updateFilter}
+                        onProblemTypesChange={setProblemTypes}
                         onReset={resetFilters}
                     />
 
-                    {loading && hasLoadedOnce ? (
-                        <div className="flex justify-center py-12">
-                            <Loader />
-                        </div>
-                    ) : (
-                        <>
-                            <DailyReportTable rows={rows} onUpdateNotes={updateNotes} />
-                            <DailyReportPagination
-                                pagination={pagination}
-                                onPageChange={setPage}
-                                onPageSizeChange={setPageSize}
-                            />
-                        </>
-                    )}
+                    <div className="relative">
+                        {loading && hasLoadedOnce && (
+                            <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center rounded-3xl min-h-[200px]">
+                                <Loader />
+                            </div>
+                        )}
+                        <DailyReportTable rows={rows} onUpdateNotes={updateNotes} />
+                        <DailyReportPagination
+                            pagination={pagination}
+                            loading={loading}
+                            onPageChange={setPage}
+                            onPageSizeChange={setPageSize}
+                        />
+                    </div>
                 </>
             )}
         </div>

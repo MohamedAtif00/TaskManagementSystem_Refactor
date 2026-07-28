@@ -2,17 +2,17 @@ import Loader from "../loader";
 
 interface Props {
     pagination: {
-        totalCount: number;
         page: number;
-        pageSize: number;
         totalPages: number;
+        totalCount: number;
+        pageSize: number;
     };
     loading?: boolean;
     onPageChange: (page: number) => void;
     onPageSizeChange: (pageSize: number) => void;
 }
 
-const DailyReportPagination = ({ pagination, loading = false, onPageChange, onPageSizeChange }: Props) => {
+const TaskLoggerPagination = ({ pagination, loading = false, onPageChange, onPageSizeChange }: Props) => {
     const { page, totalPages, totalCount, pageSize } = pagination;
     if (totalCount === 0) return null;
 
@@ -20,20 +20,21 @@ const DailyReportPagination = ({ pagination, loading = false, onPageChange, onPa
     const end = Math.min(page * pageSize, totalCount);
 
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-4 px-2">
-            <span className="text-sm text-slate-600">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+            <div className="text-sm text-slate-600">
                 Showing {start}–{end} of {totalCount}
-            </span>
+            </div>
             <div className="flex items-center gap-2">
-                <label className="text-sm text-slate-600">Per page</label>
                 <select
-                    className="px-2 py-1 rounded-full border border-slate-200 text-sm disabled:opacity-60"
                     value={pageSize}
                     disabled={loading}
                     onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                    className="px-2 py-1.5 rounded-full bg-white border border-slate-200 text-sm disabled:opacity-60"
                 >
                     {[5, 10, 25, 50, 100].map((n) => (
-                        <option key={n} value={n}>{n}</option>
+                        <option key={n} value={n}>
+                            {n} / page
+                        </option>
                     ))}
                 </select>
                 <button
@@ -44,8 +45,8 @@ const DailyReportPagination = ({ pagination, loading = false, onPageChange, onPa
                 >
                     Previous
                 </button>
-                <span className="text-sm font-semibold text-slate-700">
-                    Page {page} of {Math.max(totalPages, 1)}
+                <span className="text-sm font-semibold">
+                    {page} / {Math.max(1, totalPages)}
                 </span>
                 <button
                     type="button"
@@ -61,4 +62,4 @@ const DailyReportPagination = ({ pagination, loading = false, onPageChange, onPa
     );
 };
 
-export default DailyReportPagination;
+export default TaskLoggerPagination;

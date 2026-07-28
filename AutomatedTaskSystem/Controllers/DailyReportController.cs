@@ -28,12 +28,12 @@ public class DailyReportController : ControllerBase
         [FromQuery] string? grade,
         [FromQuery(Name = "taskName")] string? taskName,
         [FromQuery] string? status,
-        [FromQuery(Name = "problemType")] string? problemType,
+        [FromQuery(Name = "problemType")] List<string>? problemTypes,
         [FromQuery] string? priority,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 5) =>
         await _dailyReportService.GetDashboardAsync(
-            BuildFilter(from, to, team, semester, subject, grade, taskName, status, problemType, priority, page, pageSize));
+            BuildFilter(from, to, team, semester, subject, grade, taskName, status, problemTypes, priority, page, pageSize));
 
     [Authorize]
     [HttpGet]
@@ -46,11 +46,11 @@ public class DailyReportController : ControllerBase
         [FromQuery] string? grade,
         [FromQuery(Name = "taskName")] string? taskName,
         [FromQuery] string? status,
-        [FromQuery(Name = "problemType")] string? problemType,
+        [FromQuery(Name = "problemType")] List<string>? problemTypes,
         [FromQuery] string? priority,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 5) =>
-        await _dailyReportService.GetRowsAsync(BuildFilter(from, to, team, semester, subject, grade, taskName, status, problemType, priority, page, pageSize));
+        await _dailyReportService.GetRowsAsync(BuildFilter(from, to, team, semester, subject, grade, taskName, status, problemTypes, priority, page, pageSize));
 
     [Authorize]
     [HttpGet("summary")]
@@ -63,9 +63,9 @@ public class DailyReportController : ControllerBase
         [FromQuery] string? grade,
         [FromQuery(Name = "taskName")] string? taskName,
         [FromQuery] string? status,
-        [FromQuery(Name = "problemType")] string? problemType,
+        [FromQuery(Name = "problemType")] List<string>? problemTypes,
         [FromQuery] string? priority) =>
-        await _dailyReportService.GetSummaryAsync(BuildFilter(from, to, team, semester, subject, grade, taskName, status, problemType, priority));
+        await _dailyReportService.GetSummaryAsync(BuildFilter(from, to, team, semester, subject, grade, taskName, status, problemTypes, priority));
 
     [Authorize]
     [HttpGet("charts")]
@@ -78,9 +78,9 @@ public class DailyReportController : ControllerBase
         [FromQuery] string? grade,
         [FromQuery(Name = "taskName")] string? taskName,
         [FromQuery] string? status,
-        [FromQuery(Name = "problemType")] string? problemType,
+        [FromQuery(Name = "problemType")] List<string>? problemTypes,
         [FromQuery] string? priority) =>
-        await _dailyReportService.GetChartsAsync(BuildFilter(from, to, team, semester, subject, grade, taskName, status, problemType, priority));
+        await _dailyReportService.GetChartsAsync(BuildFilter(from, to, team, semester, subject, grade, taskName, status, problemTypes, priority));
 
     [Authorize]
     [HttpGet("lookups")]
@@ -103,7 +103,7 @@ public class DailyReportController : ControllerBase
         string? grade,
         string? taskName,
         string? status,
-        string? problemType,
+        List<string>? problemTypes,
         string? priority,
         int page = 1,
         int pageSize = 5) =>
@@ -117,7 +117,11 @@ public class DailyReportController : ControllerBase
             Grade = grade,
             TaskName = taskName,
             Status = status,
-            ProblemType = problemType,
+            ProblemTypes = problemTypes?
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList() ?? new List<string>(),
             Priority = priority,
             Page = page,
             PageSize = pageSize

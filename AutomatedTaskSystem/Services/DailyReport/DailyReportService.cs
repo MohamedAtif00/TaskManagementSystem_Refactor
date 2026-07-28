@@ -21,7 +21,7 @@ public class DailyReportService : IDailyReportService
     private const int DefaultLookbackDays = 7;
 
     private static readonly string[] StaticSemesters = ["Term 1", "Term 2"];
-    private static readonly string[] StaticPriorities = ["High", "Medium", "Low"];
+    private static readonly string[] StaticPriorities = ["High", "Medium", "Low", "None"];
     private static readonly string[] StaticGrades =
         ["Kg1", "Kg2", "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5", "Grade 6", "Grade 7"];
     private static readonly string[] StaticSubjects =
@@ -311,7 +311,11 @@ public class DailyReportService : IDailyReportService
         var roleFilter = BuildRoleFilterSql(user, parameters);
 
         var teamsSql = DailyReportSql.LightLookupsTeams.Replace("{ROLE_FILTER}", roleFilter);
-        var tasksSql = DailyReportSql.LightLookupsTaskNames.Replace("{ROLE_FILTER}", roleFilter);
+        var tasksSql = DailyReportSql.LightLookupsTaskNames
+            .Replace("{TEAM_FILTER}", string.IsNullOrWhiteSpace(filter.Team)
+                ? ""
+                : "AND t.GroupId IN (SELECT Id FROM Groups WHERE Name = @team)")
+            .Replace("{ROLE_FILTER}", roleFilter);
 
         var batchSql = teamsSql + ";\n" + tasksSql;
 
@@ -350,7 +354,7 @@ public class DailyReportService : IDailyReportService
             .Replace("{ROLE_FILTER}", roleFilter)
             .Replace("{DATE_FILTER_BASE}", dateFilterBase);
 
-        var problemFilter = string.IsNullOrWhiteSpace(filter.ProblemType)
+        var problemFilter = filter.ProblemTypes.Count == 0
             ? ""
             : DailyReportSql.ProblemTypeExistsFilter;
 
@@ -378,7 +382,7 @@ public class DailyReportService : IDailyReportService
             Grade = filter.Grade,
             TaskName = filter.TaskName,
             Status = filter.Status,
-            ProblemType = filter.ProblemType,
+            ProblemTypes = filter.ProblemTypes?.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string>(),
             Priority = filter.Priority,
             Page = Math.Max(1, filter.Page),
             PageSize = Math.Clamp(filter.PageSize <= 0 ? DefaultPageSize : filter.PageSize, 1, MaxPageSize)
@@ -436,7 +440,7 @@ public class DailyReportService : IDailyReportService
         if (!string.IsNullOrWhiteSpace(filter.Grade)) parameters.Add("grade", filter.Grade);
         if (!string.IsNullOrWhiteSpace(filter.TaskName)) parameters.Add("taskName", filter.TaskName);
         if (!string.IsNullOrWhiteSpace(filter.Status)) parameters.Add("status", filter.Status);
-        if (!string.IsNullOrWhiteSpace(filter.ProblemType)) parameters.Add("problemType", filter.ProblemType);
+        if (filter.ProblemTypes.Count > 0) parameters.Add("problemTypes", filter.ProblemTypes);
         if (!string.IsNullOrWhiteSpace(filter.Priority)) parameters.Add("priority", filter.Priority);
 
         return parameters;

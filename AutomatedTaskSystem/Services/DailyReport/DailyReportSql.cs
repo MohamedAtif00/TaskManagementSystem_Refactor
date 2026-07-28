@@ -44,6 +44,7 @@ internal static class DailyReportSql
                 END AS Grade,
                 COALESCE(NULLIF(tb.Name, ''), t.Name) AS TaskName,
                 CASE
+                    WHEN t.Flagged = 1 THEN 'Red Flag'
                     WHEN t.Status = @taskRollback OR t.IsRollback = 1 THEN 'Rollback'
                     WHEN t.Status = @taskDone THEN 'Approved'
                     ELSE 'Hold'
@@ -52,7 +53,7 @@ internal static class DailyReportSql
                     WHEN @priorityHigh THEN 'High'
                     WHEN @priorityMedium THEN 'Medium'
                     WHEN @priorityLow THEN 'Low'
-                    ELSE ''
+                    ELSE 'None'
                 END AS [Priority]
             FROM Tasks t
             INNER JOIN Groups g ON g.Id = t.GroupId
@@ -123,14 +124,18 @@ internal static class DailyReportSql
             WHERE r.TaskId IN @taskIds
         ),
         RollbackProblem AS (
-            SELECT r.TaskId,
-                COALESCE(NULLIF(LTRIM(RTRIM(ri.Note)), ''), tb.Name, '') AS ProblemType,
-                ROW_NUMBER() OVER (PARTITION BY r.TaskId ORDER BY ri.Id) AS rn
-            FROM Rollbacks r
-            INNER JOIN RollbackIssues ri ON ri.RollbackId = r.Id
-            LEFT JOIN Steps st ON st.Id = ri.StepId
-            LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
-            WHERE r.TaskId IN @taskIds
+            SELECT agg.TaskId,
+                STRING_AGG(agg.ProblemType, ', ') WITHIN GROUP (ORDER BY agg.ProblemType) AS ProblemType
+            FROM (
+                SELECT DISTINCT r.TaskId, ISNULL(tb.Name, '') AS ProblemType
+                FROM Rollbacks r
+                INNER JOIN RollbackIssues ri ON ri.RollbackId = r.Id
+                LEFT JOIN Steps st ON st.Id = ri.StepId
+                LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
+                WHERE r.TaskId IN @taskIds
+                  AND ISNULL(tb.Name, '') <> ''
+            ) agg
+            GROUP BY agg.TaskId
         ),
         ActivityDates AS (
             SELECT TaskId, MAX(TimeStamp) AS ReportDate
@@ -169,10 +174,11 @@ internal static class DailyReportSql
                 ELSE parsed.GradeCode
             END AS Grade,
             COALESCE(NULLIF(tb.Name, ''), t.Name) AS TaskName,
-            ISNULL(lo.Tag, '') AS LoCode,
+            ISNULL(lo.Name, '') AS LoCode,
             ISNULL(lo.Template, '') AS LoType,
             COALESCE(NULLIF(usr.Name, ''), NULLIF(lr.ToGroupName, ''), g.Name, '') AS AssignedTo,
             CASE
+                WHEN t.Flagged = 1 THEN 'Red Flag'
                 WHEN t.Status = @taskRollback OR t.IsRollback = 1 THEN 'Rollback'
                 WHEN t.Status = @taskDone THEN 'Approved'
                 ELSE 'Hold'
@@ -182,7 +188,7 @@ internal static class DailyReportSql
                 WHEN @priorityHigh THEN 'High'
                 WHEN @priorityMedium THEN 'Medium'
                 WHEN @priorityLow THEN 'Low'
-                ELSE ''
+                ELSE 'None'
             END AS [Priority],
             COALESCE(NULLIF(notes.Notes, ''), lr.Clarification, '') AS Notes
         FROM Tasks t
@@ -197,7 +203,7 @@ internal static class DailyReportSql
         LEFT JOIN ActivityDates ad ON ad.TaskId = t.Id
         LEFT JOIN DailyReportNoteOverrides notes ON notes.TaskId = t.Id
         LEFT JOIN LatestRollback lr ON lr.TaskId = t.Id AND lr.rn = 1
-        LEFT JOIN RollbackProblem rp ON rp.TaskId = t.Id AND rp.rn = 1
+        LEFT JOIN RollbackProblem rp ON rp.TaskId = t.Id
         CROSS APPLY (SELECT FirstUnderScore = CHARINDEX('_', s.Name)) firstPosition
         CROSS APPLY (
             SELECT SecondUnderScore = CHARINDEX('_', s.Name, firstPosition.FirstUnderScore + 1)
@@ -245,13 +251,13 @@ internal static class DailyReportSql
             LEFT JOIN Steps pst ON pst.Id = ri.StepId
             LEFT JOIN TaskBank ptb ON ptb.Id = pst.TaskBankId
             WHERE r.TaskId = TaskId
-              AND COALESCE(NULLIF(LTRIM(RTRIM(ri.Note)), ''), ptb.Name, '') = @problemType
+              AND ISNULL(ptb.Name, '') IN @problemTypes
         )
         """;
 
     /// <summary>Problem-type chart — only rollback tasks, no full report CTE.</summary>
     internal const string ProblemTypesDirect = """
-        SELECT COALESCE(NULLIF(LTRIM(RTRIM(ri.Note)), ''), tb.Name, '') AS ProblemType,
+        SELECT ISNULL(tb.Name, '') AS ProblemType,
                COUNT(1) AS [Count]
         FROM Tasks t
         INNER JOIN Rollbacks r ON r.TaskId = t.Id
@@ -263,8 +269,8 @@ internal static class DailyReportSql
           AND t.CreatedAt >= @fromDate
           AND t.CreatedAt < DATEADD(DAY, 1, @toDate)
           {ROLE_FILTER}
-        GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(ri.Note)), ''), tb.Name, '')
-        HAVING COALESCE(NULLIF(LTRIM(RTRIM(ri.Note)), ''), tb.Name, '') <> ''
+        GROUP BY ISNULL(tb.Name, '')
+        HAVING ISNULL(tb.Name, '') <> ''
         ORDER BY COUNT(1) DESC
         """;
 
@@ -287,6 +293,7 @@ internal static class DailyReportSql
         WHERE t.Archived = 0
           AND t.CreatedAt >= @fromDate
           AND t.CreatedAt < DATEADD(DAY, 1, @toDate)
+          {TEAM_FILTER}
           {ROLE_FILTER}
         ORDER BY Value
         """;

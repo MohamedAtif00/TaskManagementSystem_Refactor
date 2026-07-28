@@ -7,11 +7,8 @@ export const STATUS_COLORS = {
 
 export const STATUS_OPTIONS = ["Approved", "Hold", "Rollback", "Red Flag"] as const;
 
-export const PRIORITY_OPTIONS = ["High", "Medium", "Low", "None"] as const;
-
 export const DEFAULT_PAGE_SIZE = 5;
 
-/** Local calendar date as YYYY-MM-DD (avoid UTC shift from toISOString). */
 const formatLocalDate = (date: Date) => {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, "0");
@@ -19,7 +16,7 @@ const formatLocalDate = (date: Date) => {
     return `${y}-${m}-${d}`;
 };
 
-const buildDefaultFilters = (): DailyReportFilters => {
+export const createEmptyFilters = (): TaskLoggerFilters => {
     const today = new Date();
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(today.getDate() - 7);
@@ -27,19 +24,13 @@ const buildDefaultFilters = (): DailyReportFilters => {
     return {
         from: formatLocalDate(sevenDaysAgo),
         to: formatLocalDate(today),
-        team: "",
-        semester: "",
+        search: "",
+        member: "",
         subject: "",
-        grade: "",
-        taskName: "",
         status: "",
-        problemTypes: [],
-        priority: "",
+        taskName: "",
+        rankingRange: "all",
         page: 1,
         pageSize: DEFAULT_PAGE_SIZE,
     };
 };
-
-export const EMPTY_FILTERS: DailyReportFilters = buildDefaultFilters();
-
-export const createEmptyFilters = () => buildDefaultFilters();
