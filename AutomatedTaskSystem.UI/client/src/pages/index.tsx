@@ -3,6 +3,7 @@ import Head from "next/head";
 import { useAppSelector } from "../app/hooks";
 import ProjectManagerDashboard from "../components/dashboardComponents/ProjectMangerDashboards";
 import TeamLeaderDashboard from "../components/dashboardComponents/TeamLeaderDashboard";
+import MemberDashboard from "../components/dashboardComponents/MemberDashboard";
 
 const Home: NextPage = () => {
     const { role } = useAppSelector((s) => s.authSlice);
@@ -21,6 +22,8 @@ const Home: NextPage = () => {
                 <ProjectManagerDashboard />
             ) : role === 2? (
                 <TeamLeaderDashboard />
+            ) : role === 3 ? (
+                <MemberDashboard />
             ) : (
                 ""
             )}

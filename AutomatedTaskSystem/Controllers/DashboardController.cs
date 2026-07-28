@@ -1,3 +1,4 @@
+using AutomatedTaskSystem.Dtos.Dashboard.GetMemberDashboard;
 using AutomatedTaskSystem.Dtos.Dashboard.GetProjectManagerDashboard;
 using AutomatedTaskSystem.Dtos.Dashboard.GetTeamLeaderDashboard;
 using AutomatedTaskSystem.Services.DashboardService;
@@ -25,4 +26,9 @@ public class DashboardContoller : ControllerBase
     [HttpGet("team-leader")]
     public async Task<ActionResult<ResponseService<GetTeamLeaderDashboardDto>>> GetTLDB() =>
         await _dashboardService.GetTeamLeaderDashboard();
+
+    [Authorize]
+    [HttpGet("member")]
+    public async Task<ActionResult<ResponseService<GetMemberDashboardDto>>> GetMemberDB() =>
+        await _dashboardService.GetMemberDashboard();
 }
