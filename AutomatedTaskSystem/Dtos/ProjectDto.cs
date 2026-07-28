@@ -24,6 +24,9 @@ namespace AutomatedTaskSystem.DTO
             public string Description { get; set; } = "";
             public List<ProjectUnitDTO> Units { get; set; } = new List<ProjectUnitDTO> { };
             public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
+            public int FolderId { get; set; }
+            public int YearId { get; set; }
+            public string FolderPath { get; set; } = "";
         }
 
         public class ProjectUnitDTO

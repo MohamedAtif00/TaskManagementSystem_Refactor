@@ -3,14 +3,28 @@ import { useRouter } from "next/router";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import Loader from "../../components/loader";
+import ConfirmDeleteModal from "../../components/ConfirmDeleteModal";
+import {
+    CURRICULUM_CHILD_LEVELS,
+    CURRICULUM_STRUCTURE_PATH,
+    curriculumLevelLabel,
+} from "../../lib/curriculumHierarchy";
 
-type FolderDto = {
+type TreeNode = {
+    /** Unique across levels (ids can collide between tables). */
+    key: number;
+    /** Real database id, used for API calls. */
     id: number;
     name: string;
-    parentFolderId?: number | null;
-    level?: number;
+    level: number;
     path?: string;
-    levelNames?: string[];
+    nodeType?: string;
+    parentKey: number | null;
+};
+
+type YearListItem = {
+    id: number;
+    name: string;
 };
 
 type SetupSubject = {
@@ -21,10 +35,29 @@ type SetupSubject = {
     status?: number;
 };
 
-const STEP_TITLES = ["Create Project", "Configure Levels", "Setup Folders"] as const;
+const STEP_TITLES = ["Create Year", "Setup Structure"] as const;
+const FOLDER_LEVEL_COUNT = CURRICULUM_CHILD_LEVELS.length;
 
-const LEVEL_TITLE_PLACEHOLDER = "Please add level title";
-const levelStorageKey = (rootId: number) => `project-level-names:${rootId}`;
+const nodeKey = (level: number, id: number) => level * 10_000_000 + id;
+
+const parentTypeForDepth = (depth: number): "year" | "project" | "term" => {
+    if (depth <= 0) return "year";
+    if (depth === 1) return "project";
+    return "term";
+};
+
+const deleteNodeTypeForLevel = (level: number): "year" | "project" | "term" | "subjectGroup" => {
+    if (level <= 0) return "year";
+    if (level <= 1) return "project";
+    if (level === 2) return "term";
+    return "subjectGroup";
+};
+
+const nodeTypeForLevel = (level: number): "project" | "term" | "subjectGroup" => {
+    if (level <= 1) return "project";
+    if (level === 2) return "term";
+    return "subjectGroup";
+};
 
 const singularLevelName = (levelName: string) =>
     levelName.endsWith("s") ? levelName.slice(0, -1) : levelName;
@@ -75,32 +108,46 @@ const ProjectsIndex = () => {
     const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [step, setStep] = useState(1);
-    const [existingRoots, setExistingRoots] = useState<FolderDto[]>([]);
+    const [existingRoots, setExistingRoots] = useState<YearListItem[]>([]);
 
-    const [projectName, setProjectName] = useState("Selah Eltelmeez");
+    const [projectName, setProjectName] = useState("2026/2027");
     const [description, setDescription] = useState("");
-    const [numberOfLevels, setNumberOfLevels] = useState("");
-    const [levelNames, setLevelNames] = useState<string[]>([]);
-
-    const [rootFolder, setRootFolder] = useState<FolderDto | null>(null);
-    const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
-    const [foldersByParent, setFoldersByParent] = useState<Record<number, FolderDto[]>>({});
-    const [folderById, setFolderById] = useState<Record<number, FolderDto>>({});
-    const [folderParentById, setFolderParentById] = useState<Record<number, number | null>>({});
-    const [subjectCountByFolder, setSubjectCountByFolder] = useState<Record<number, number>>({});
-    const [subjectsByFolder, setSubjectsByFolder] = useState<Record<number, SetupSubject[]>>({});
+    const [rootNode, setRootNode] = useState<TreeNode | null>(null);
+    const [selectedKey, setSelectedKey] = useState<number | null>(null);
+    const [childrenByParentKey, setChildrenByParentKey] = useState<Record<number, TreeNode[]>>({});
+    const [nodeByKey, setNodeByKey] = useState<Record<number, TreeNode>>({});
+    const [subjectCountByGroupId, setSubjectCountByGroupId] = useState<Record<number, number>>({});
+    const [subjectsByGroupId, setSubjectsByGroupId] = useState<Record<number, SetupSubject[]>>({});
     const [newSubjectName, setNewSubjectName] = useState("");
     const [newSubjectDescription, setNewSubjectDescription] = useState("");
     const [showAddSubjectBox, setShowAddSubjectBox] = useState(false);
     const [busy, setBusy] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
-    const [expandedFolderIds, setExpandedFolderIds] = useState<Set<number>>(new Set());
-    const [addModal, setAddModal] = useState<{ parentFolderId: number; label: string } | null>(null);
+    const [expandedKeys, setExpandedKeys] = useState<Set<number>>(new Set());
+    const [addModal, setAddModal] = useState<{ parentKey: number; label: string } | null>(null);
     const [addName, setAddName] = useState("");
     const [addSubmitting, setAddSubmitting] = useState(false);
-    const [editModal, setEditModal] = useState<{ folderId: number; label: string; name: string } | null>(null);
+    const [editModal, setEditModal] = useState<{ nodeKey: number; label: string; isYear?: boolean } | null>(null);
     const [editName, setEditName] = useState("");
+    const [editDescription, setEditDescription] = useState("");
     const [editSubmitting, setEditSubmitting] = useState(false);
+    const [yearEditModal, setYearEditModal] = useState<{
+        id: number;
+        name: string;
+        description: string;
+    } | null>(null);
+    const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+    const [deleteModal, setDeleteModal] = useState<{
+        nodeKey: number;
+        label: string;
+        name: string;
+        description: string;
+    } | null>(null);
+    const [yearDeleteModal, setYearDeleteModal] = useState<{
+        id: number;
+        name: string;
+        description: string;
+    } | null>(null);
 
     useEffect(() => {
         if (!auth.isAuth || (auth.role !== 0 && auth.role !== 4)) {
@@ -114,57 +161,63 @@ const ProjectsIndex = () => {
         if (loading) return;
         API.PROJECTS.ROOT.LIST().then((res) => {
             if (res && !res.error && Array.isArray(res.data)) {
-                setExistingRoots((res.data as FolderDto[]).filter((f) => !f.parentFolderId));
+                setExistingRoots(res.data as YearListItem[]);
             } else {
                 setExistingRoots([]);
             }
         });
     }, [loading, isCreating]);
 
-    const selectedFolder = selectedFolderId ? folderById[selectedFolderId] ?? null : null;
-
-    const selectedDepth = useMemo(() => {
-        if (!selectedFolderId) return 0;
-        let depth = 0;
-        let current = selectedFolderId;
-        while (folderParentById[current] != null) {
-            depth += 1;
-            const parentId = folderParentById[current];
-            if (!parentId) break;
-            current = parentId;
-        }
-        return depth;
-    }, [folderParentById, selectedFolderId]);
+    const selectedNode = selectedKey != null ? nodeByKey[selectedKey] ?? null : null;
+    const selectedDepth = selectedNode?.level ?? 0;
 
     const folderPath = useMemo(() => {
-        if (!selectedFolderId) return "";
+        if (!selectedNode) return "";
         const parts: string[] = [];
-        let current: number | null = selectedFolderId;
-        while (current != null) {
-            const folder = folderById[current];
-            if (!folder) break;
-            parts.push(folder.name);
-            current = folderParentById[current] ?? null;
+        let current: TreeNode | null = selectedNode;
+        while (current) {
+            parts.push(current.name);
+            current = current.parentKey != null ? nodeByKey[current.parentKey] ?? null : null;
         }
         return parts.reverse().join(" > ");
-    }, [folderById, folderParentById, selectedFolderId]);
+    }, [nodeByKey, selectedNode]);
 
-    const loadChildren = async (parentId: number) => {
-        const res = await API.PROJECTS.ROOT.TERMS(parentId);
-        if (!res || res.error || !Array.isArray(res.data)) return [] as FolderDto[];
-        const children = (res.data as FolderDto[]).sort((a, b) => a.name.localeCompare(b.name));
-        setFoldersByParent((prev) => ({ ...prev, [parentId]: children }));
-        setFolderById((prev) => {
-            const next = { ...prev };
-            for (const child of children) next[child.id] = child;
-            return next;
-        });
-        setFolderParentById((prev) => {
-            const next = { ...prev };
-            for (const child of children) next[child.id] = parentId;
-            return next;
-        });
-        return children;
+    /** Loads the whole year hierarchy with a single request. */
+    const loadTree = async (root: TreeNode) => {
+        const res = await API.PROJECTS.ROOT.TREE(root.id);
+        const flat: any[] = res && !res.error && Array.isArray(res.data) ? res.data : [];
+
+        const nextNodeByKey: Record<number, TreeNode> = { [root.key]: root };
+        const nextChildren: Record<number, TreeNode[]> = { [root.key]: [] };
+
+        const nodes = flat
+            .map((n) => ({
+                key: nodeKey(n.depth, n.id),
+                id: n.id,
+                name: String(n.name ?? ""),
+                level: Number(n.depth ?? 0),
+                path: n.path,
+                nodeType: n.nodeType,
+                parentKey:
+                    n.depth === 1
+                        ? root.key
+                        : n.parentId != null
+                          ? nodeKey(n.depth - 1, n.parentId)
+                          : null,
+            }))
+            .sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+
+        for (const node of nodes) {
+            nextNodeByKey[node.key] = node;
+            if (node.level < FOLDER_LEVEL_COUNT) nextChildren[node.key] ??= [];
+            if (node.parentKey != null) {
+                nextChildren[node.parentKey] ??= [];
+                nextChildren[node.parentKey].push(node);
+            }
+        }
+
+        setNodeByKey(nextNodeByKey);
+        setChildrenByParentKey(nextChildren);
     };
 
     const refreshSubjectsCount = async () => {
@@ -173,104 +226,85 @@ const ProjectsIndex = () => {
         const counts: Record<number, number> = {};
         for (const subject of all.data as any[]) {
             if (subject.status !== 0 && subject.status !== 3) continue;
-            const folderId = Number(subject.folderId);
-            if (!Number.isNaN(folderId)) {
-                counts[folderId] = (counts[folderId] ?? 0) + 1;
+            const groupId = Number(subject.folderId);
+            if (!Number.isNaN(groupId)) {
+                counts[groupId] = (counts[groupId] ?? 0) + 1;
             }
         }
-        setSubjectCountByFolder(counts);
+        setSubjectCountByGroupId(counts);
     };
 
-    const loadSubjectsForFolder = async (folderId: number) => {
-        const res = await API.PROJECTS.GET_BY_FOLDER(folderId, { includeInactive: true });
+    const loadSubjectsForGroup = async (groupId: number) => {
+        const res = await API.PROJECTS.GET_BY_FOLDER(groupId, { includeInactive: true });
         if (!res || res.error || !Array.isArray(res.data)) {
-            setSubjectsByFolder((prev) => ({ ...prev, [folderId]: [] }));
+            setSubjectsByGroupId((prev) => ({ ...prev, [groupId]: [] }));
             return [] as SetupSubject[];
         }
         const subjects = (res.data as SetupSubject[])
             .filter((s) => s.status === undefined || s.status === 0 || s.status === 3)
             .sort((a, b) => a.name.localeCompare(b.name));
-        setSubjectsByFolder((prev) => ({ ...prev, [folderId]: subjects }));
+        setSubjectsByGroupId((prev) => ({ ...prev, [groupId]: subjects }));
         return subjects;
     };
 
-    const goToStepTwo = async () => {
+    const goToSetupFolders = async () => {
         if (!projectName.trim()) return;
-        const parsedLevelCount = Number(numberOfLevels);
-        if (!Number.isInteger(parsedLevelCount) || parsedLevelCount < 1 || parsedLevelCount > 20) {
-            setErrorMessage("Please enter a valid number of levels between 1 and 20 before continuing.");
-            return;
-        }
         setBusy(true);
         setErrorMessage("");
         try {
-            let root = rootFolder;
+            let root = rootNode;
             if (!root) {
-                root =
-                    existingRoots.find(
-                        (existing) =>
-                            existing.name.trim().toLowerCase() === projectName.trim().toLowerCase()
-                    ) ?? null;
+                const existing = existingRoots.find(
+                    (item) => item.name.trim().toLowerCase() === projectName.trim().toLowerCase()
+                );
+                if (existing) {
+                    root = {
+                        key: nodeKey(0, existing.id),
+                        id: existing.id,
+                        name: existing.name,
+                        level: 0,
+                        nodeType: "year",
+                        parentKey: null,
+                    };
+                }
 
                 if (!root) {
-                const createRes = await API.PROJECTS.ROOT.CREATE(projectName.trim(), description.trim(), levelNames);
+                    const createRes = await API.PROJECTS.ROOT.CREATE(projectName.trim(), description.trim());
                     if (createRes && !createRes.error && createRes.data) {
-                        root = createRes.data as FolderDto;
+                        root = {
+                            key: nodeKey(0, createRes.data.id),
+                            id: createRes.data.id,
+                            name: createRes.data.name,
+                            level: 0,
+                            path: createRes.data.path,
+                            nodeType: "year",
+                            parentKey: null,
+                        };
                     } else {
-                        setErrorMessage(createRes?.message ?? "Could not create project. Please try again.");
+                        setErrorMessage(createRes?.message ?? "Could not create year. Please try again.");
                         return;
                     }
                 }
             }
             if (!root) {
-                setErrorMessage("Could not prepare the project hierarchy.");
+                setErrorMessage("Could not prepare the year hierarchy.");
                 return;
             }
-            setRootFolder(root);
-            if (typeof window !== "undefined") {
-                window.localStorage.setItem(levelStorageKey(root.id), JSON.stringify(levelNames));
-            }
-            await API.PROJECTS.ROOT.UPDATE(root.id, root.name, description.trim(), levelNames);
-            setFolderById((prev) => ({ ...prev, [root!.id]: root! }));
-            setFolderParentById((prev) => ({ ...prev, [root!.id]: null }));
-            setSelectedFolderId(root.id);
-            await loadChildren(root.id);
+            setRootNode(root);
+            await API.PROJECTS.ROOT.UPDATE(root.id, root.name, description.trim());
+            setSelectedKey(root.key);
+            setExpandedKeys(new Set([root.key]));
+            await loadTree(root);
             await refreshSubjectsCount();
             setStep(2);
-            API.PROJECTS.ROOT.LIST().then((res) => {
-                if (res && !res.error && Array.isArray(res.data)) {
-                    setExistingRoots((res.data as FolderDto[]).filter((f) => !f.parentFolderId));
-                }
-            });
         } finally {
             setBusy(false);
         }
     };
 
-    const goToStepThree = async () => {
-        const cleanedLevelNames = levelNames.map((level) => level.trim());
-        const expectedLevelCount = Number(numberOfLevels);
-        if (
-            cleanedLevelNames.length !== expectedLevelCount ||
-            cleanedLevelNames.some((level) => !level)
-        ) {
-            setErrorMessage("Please add a title for each level before continuing.");
-            return;
-        }
-        setErrorMessage("");
-        setLevelNames(cleanedLevelNames);
-        setStep(3);
-        if (rootFolder) {
-            setExpandedFolderIds(new Set([rootFolder.id]));
-            const children = await loadChildren(rootFolder.id);
-            await Promise.all(children.map((child) => loadChildren(child.id)));
-            await refreshSubjectsCount();
-        }
-    };
-
-    const openAddModal = (parentFolderId: number, label: string) => {
+    const openAddModal = (parentKey: number, label: string) => {
         setAddName("");
-        setAddModal({ parentFolderId, label });
+        setAddModal({ parentKey, label });
     };
 
     const closeAddModal = () => {
@@ -279,30 +313,39 @@ const ProjectsIndex = () => {
         setAddName("");
     };
 
-    const openEditModal = (folder: FolderDto, label: string) => {
-        setEditName(folder.name);
-        setEditModal({ folderId: folder.id, label, name: folder.name });
+    const openEditModal = async (node: TreeNode, label: string) => {
+        setEditName(node.name);
+        setEditDescription("");
+        if (node.level === 0) {
+            const res = await API.PROJECTS.ROOT.GET(node.id);
+            if (res && !res.error && res.data) {
+                setEditDescription(String(res.data.description ?? ""));
+            }
+        }
+        setEditModal({ nodeKey: node.key, label, isYear: node.level === 0 });
     };
 
     const closeEditModal = () => {
         if (editSubmitting) return;
         setEditModal(null);
         setEditName("");
+        setEditDescription("");
     };
 
     const addFolderFromModal = async () => {
-        if (!addModal || !addName.trim()) return;
+        if (!addModal || !addName.trim() || !rootNode) return;
+        const parent = nodeByKey[addModal.parentKey];
+        if (!parent) return;
         setAddSubmitting(true);
         try {
-            const parentFolderId = addModal.parentFolderId;
-            const res = await API.PROJECTS.ROOT.CREATE_TERM(parentFolderId, {
+            const res = await API.PROJECTS.ROOT.CREATE_TERM(parent.id, {
                 name: addName.trim(),
+                parentType: parentTypeForDepth(parent.level),
             });
             if (res && !res.error) {
-                const children = await loadChildren(parentFolderId);
-                await Promise.all(children.map((child) => loadChildren(child.id)));
-                setExpandedFolderIds((prev) => new Set(prev).add(parentFolderId));
-                setSelectedFolderId(parentFolderId);
+                await loadTree(rootNode);
+                setExpandedKeys((prev) => new Set(prev).add(parent.key));
+                setSelectedKey(parent.key);
                 setAddModal(null);
                 setAddName("");
             }
@@ -312,125 +355,274 @@ const ProjectsIndex = () => {
     };
 
     const saveEditedFolder = async () => {
-        if (!editModal || !editName.trim()) return;
+        if (!editModal || !editName.trim() || !rootNode) return;
+        const node = nodeByKey[editModal.nodeKey];
+        if (!node) return;
         setEditSubmitting(true);
         try {
-            const res = await API.PROJECTS.ROOT.UPDATE_TERM(editModal.folderId, {
-                name: editName.trim(),
-            });
+            const res =
+                node.level === 0
+                    ? await API.PROJECTS.ROOT.UPDATE(node.id, editName.trim(), editDescription.trim())
+                    : await API.PROJECTS.ROOT.UPDATE_TERM(node.id, {
+                          name: editName.trim(),
+                          nodeType: nodeTypeForLevel(node.level),
+                      });
             if (res && !res.error) {
-                const parentId = folderParentById[editModal.folderId];
-                if (parentId != null) {
-                    await loadChildren(parentId);
+                await loadTree(rootNode);
+                if (node.level === 0) {
+                    setProjectName(editName.trim());
+                    setDescription(editDescription.trim());
+                    setRootNode({ ...rootNode, name: editName.trim() });
                 }
-                setFolderById((prev) => ({
-                    ...prev,
-                    [editModal.folderId]: {
-                        ...(prev[editModal.folderId] ?? { id: editModal.folderId, name: editName.trim() }),
-                        name: editName.trim(),
-                    },
-                }));
                 setEditModal(null);
                 setEditName("");
+                setEditDescription("");
             }
         } finally {
             setEditSubmitting(false);
         }
     };
 
-    const selectFolderInSetup = async (folder: FolderDto) => {
-        setSelectedFolderId(folder.id);
-        setShowAddSubjectBox(false);
-        setExpandedFolderIds((prev) => new Set(prev).add(folder.id));
-        const children = await loadChildren(folder.id);
-        await Promise.all(children.map((child) => loadChildren(child.id)));
-        if (children.length === 0) {
-            await loadSubjectsForFolder(folder.id);
-        }
-    };
+    const levelLabelForNode = (node: TreeNode) =>
+        singularLevelName(curriculumLevelLabel(node.level) ?? "Folder");
 
-    const countSubjectsUnder = (folderId: number): number => {
-        let total = subjectCountByFolder[folderId] ?? 0;
-        for (const child of foldersByParent[folderId] ?? []) {
-            total += countSubjectsUnder(child.id);
+    const countSubjectsUnder = (node: TreeNode): number => {
+        if (node.level >= FOLDER_LEVEL_COUNT) {
+            return subjectCountByGroupId[node.id] ?? 0;
+        }
+        let total = 0;
+        for (const child of childrenByParentKey[node.key] ?? []) {
+            total += countSubjectsUnder(child);
         }
         return total;
     };
 
+    const cascadeDeleteDescription = (node: TreeNode) => {
+        const nestedFolders = (childrenByParentKey[node.key] ?? []).length;
+        const subjects = countSubjectsUnder(node);
+        const parts = [`Are you sure you want to delete "${node.name}"?`];
+        if (node.level === 0) {
+            parts.push(
+                "All projects, terms, subject groups, and subjects in this year will also be deleted."
+            );
+        } else {
+            parts.push("All nested folders and subjects will also be deleted.");
+        }
+        if (nestedFolders > 0 || subjects > 0) {
+            const details: string[] = [];
+            if (nestedFolders > 0) {
+                details.push(`${nestedFolders} nested folder${nestedFolders === 1 ? "" : "s"}`);
+            }
+            if (subjects > 0) {
+                details.push(`${subjects} subject${subjects === 1 ? "" : "s"}`);
+            }
+            parts.push(`This includes ${details.join(" and ")}.`);
+        }
+        parts.push("This cannot be undone.");
+        return parts.join(" ");
+    };
+
+    const openDeleteModal = (node: TreeNode) => {
+        const label = levelLabelForNode(node);
+        setErrorMessage("");
+        setDeleteModal({
+            nodeKey: node.key,
+            label,
+            name: node.name,
+            description: cascadeDeleteDescription(node),
+        });
+    };
+
+    const closeDeleteModal = () => {
+        if (deleteSubmitting) return;
+        setDeleteModal(null);
+    };
+
+    const confirmDeleteFolder = async () => {
+        if (!deleteModal || !rootNode) return;
+        const node = nodeByKey[deleteModal.nodeKey];
+        if (!node) return;
+
+        setDeleteSubmitting(true);
+        setErrorMessage("");
+        try {
+            const res = await API.PROJECTS.ROOT.DELETE_TERM(node.id, {
+                nodeType: deleteNodeTypeForLevel(node.level),
+            });
+            if (res && !res.error) {
+                if (node.level === 0) {
+                    setDeleteModal(null);
+                    setIsCreating(false);
+                    setRootNode(null);
+                    setStep(1);
+                    const listRes = await API.PROJECTS.ROOT.LIST();
+                    if (listRes && !listRes.error && Array.isArray(listRes.data)) {
+                        setExistingRoots(listRes.data as YearListItem[]);
+                    }
+                    return;
+                }
+                const parentKey = node.parentKey;
+                await loadTree(rootNode);
+                if (parentKey != null) setSelectedKey(parentKey);
+                await refreshSubjectsCount();
+                setDeleteModal(null);
+            } else {
+                setErrorMessage(res?.message ?? "Could not delete folder.");
+                setDeleteModal(null);
+            }
+        } finally {
+            setDeleteSubmitting(false);
+        }
+    };
+
+    const openEditYearFromList = async (year: YearListItem) => {
+        const res = await API.PROJECTS.ROOT.GET(year.id);
+        const description =
+            res && !res.error && res.data ? String(res.data.description ?? "") : "";
+        setYearEditModal({ id: year.id, name: year.name, description });
+    };
+
+    const closeYearEditModal = () => {
+        if (editSubmitting) return;
+        setYearEditModal(null);
+    };
+
+    const saveYearEditFromList = async () => {
+        if (!yearEditModal || !yearEditModal.name.trim()) return;
+        setEditSubmitting(true);
+        setErrorMessage("");
+        try {
+            const res = await API.PROJECTS.ROOT.UPDATE(
+                yearEditModal.id,
+                yearEditModal.name.trim(),
+                yearEditModal.description.trim()
+            );
+            if (res && !res.error) {
+                setYearEditModal(null);
+                const listRes = await API.PROJECTS.ROOT.LIST();
+                if (listRes && !listRes.error && Array.isArray(listRes.data)) {
+                    setExistingRoots(listRes.data as YearListItem[]);
+                }
+            } else {
+                setErrorMessage(res?.message ?? "Could not update year.");
+            }
+        } finally {
+            setEditSubmitting(false);
+        }
+    };
+
+    const openDeleteYearFromList = (year: YearListItem) => {
+        setYearDeleteModal({
+            id: year.id,
+            name: year.name,
+            description: `Are you sure you want to delete "${year.name}"? All projects, terms, subject groups, and subjects in this year will also be deleted. This cannot be undone.`,
+        });
+    };
+
+    const closeYearDeleteModal = () => {
+        if (deleteSubmitting) return;
+        setYearDeleteModal(null);
+    };
+
+    const confirmDeleteYearFromList = async () => {
+        if (!yearDeleteModal) return;
+        setDeleteSubmitting(true);
+        setErrorMessage("");
+        try {
+            const res = await API.PROJECTS.ROOT.DELETE_TERM(yearDeleteModal.id, { nodeType: "year" });
+            if (res && !res.error) {
+                setYearDeleteModal(null);
+                const listRes = await API.PROJECTS.ROOT.LIST();
+                if (listRes && !listRes.error && Array.isArray(listRes.data)) {
+                    setExistingRoots(listRes.data as YearListItem[]);
+                } else {
+                    setExistingRoots([]);
+                }
+            } else {
+                setErrorMessage(res?.message ?? "Could not delete year.");
+                setYearDeleteModal(null);
+            }
+        } finally {
+            setDeleteSubmitting(false);
+        }
+    };
+
+    const selectFolderInSetup = async (node: TreeNode) => {
+        setSelectedKey(node.key);
+        setShowAddSubjectBox(false);
+        setExpandedKeys((prev) => new Set(prev).add(node.key));
+        if (node.level >= FOLDER_LEVEL_COUNT) {
+            await loadSubjectsForGroup(node.id);
+        }
+    };
+
     const addSubjectToLeaf = async () => {
-        if (!selectedFolderId || !newSubjectName.trim()) return;
+        if (!selectedNode || selectedNode.level < FOLDER_LEVEL_COUNT || !newSubjectName.trim()) return;
         setBusy(true);
         try {
             const res = await API.PROJECTS.CREATE({
                 name: newSubjectName.trim(),
                 description: newSubjectDescription.trim(),
-                folderId: selectedFolderId,
+                folderId: selectedNode.id,
             });
             if (res && !res.error) {
                 setNewSubjectName("");
                 setNewSubjectDescription("");
                 setShowAddSubjectBox(false);
                 await refreshSubjectsCount();
-                await loadSubjectsForFolder(selectedFolderId);
+                await loadSubjectsForGroup(selectedNode.id);
             }
         } finally {
             setBusy(false);
         }
     };
 
-    const persistLevelNames = () => {
-        if (rootFolder && typeof window !== "undefined") {
-            window.localStorage.setItem(levelStorageKey(rootFolder.id), JSON.stringify(levelNames));
-        }
-    };
-
-    const persistLevelNamesAsync = async () => {
-        persistLevelNames();
-        if (rootFolder) {
-            await API.PROJECTS.ROOT.UPDATE(rootFolder.id, rootFolder.name, description.trim(), levelNames);
+    const persistRootAsync = async () => {
+        if (rootNode) {
+            await API.PROJECTS.ROOT.UPDATE(rootNode.id, rootNode.name, description.trim());
         }
     };
 
     const refreshProjectRoots = async () => {
         const res = await API.PROJECTS.ROOT.LIST();
         if (res && !res.error && Array.isArray(res.data)) {
-            setExistingRoots((res.data as FolderDto[]).filter((f) => !f.parentFolderId));
+            setExistingRoots(res.data as YearListItem[]);
         }
     };
 
     const saveProjectDraft = async () => {
-        await persistLevelNamesAsync();
+        await persistRootAsync();
         await refreshProjectRoots();
         setIsCreating(false);
         setStep(1);
     };
 
     const finishProjectSetup = async () => {
-        await persistLevelNamesAsync();
-        if (rootFolder) {
-            router.push(`/projects/${rootFolder.id}`);
+        await persistRootAsync();
+        if (rootNode) {
+            router.push(`/projects/${rootNode.id}`);
             return;
         }
         setIsCreating(false);
         setStep(1);
     };
 
-    const renderEmptyLevelScaffold = (parentFolderId: number, depth: number, canAddAtThisLevel = true) => {
-        const levelName = levelNames[depth];
-        if (!levelName) return null;
+    const renderEmptyLevelScaffold = (parentKey: number, depth: number, canAddAtThisLevel = true) => {
+        if (depth >= FOLDER_LEVEL_COUNT) return null;
 
+        const levelName = curriculumLevelLabel(depth + 1);
         const singularName = singularLevelName(levelName);
 
         return (
             <div
-                key={`empty-${parentFolderId}-${depth}`}
+                key={`empty-${parentKey}-${depth}`}
                 className="mt-2 border-l-2 border-slate-200 pl-4"
                 style={{ marginLeft: `${depth === 0 ? 24 : 14}px` }}
             >
                 <div className="text-xs uppercase tracking-wide text-slate-400 mb-1">
                     {levelName}
                 </div>
-                {renderEmptyLevelScaffold(parentFolderId, depth + 1, false)}
+                {renderEmptyLevelScaffold(parentKey, depth + 1, false)}
                 <button
                     type="button"
                     disabled={!canAddAtThisLevel}
@@ -443,7 +635,7 @@ const ProjectsIndex = () => {
                     onClick={(e) => {
                         e.stopPropagation();
                         if (!canAddAtThisLevel) return;
-                        openAddModal(parentFolderId, singularName);
+                        openAddModal(parentKey, singularName);
                     }}
                 >
                     + Add {singularName}
@@ -452,18 +644,20 @@ const ProjectsIndex = () => {
         );
     };
 
-    const renderFolderNode = (folder: FolderDto, depth: number) => {
-        const isSelected = selectedFolderId === folder.id;
-        const children = foldersByParent[folder.id] ?? [];
-        const subjectCount = subjectCountByFolder[folder.id] ?? 0;
-        const badgeCount = children.length > 0 ? children.length : subjectCount;
-        const isExpanded = expandedFolderIds.has(folder.id);
-        const childLevelName = levelNames[depth] ?? `Level ${depth + 1}`;
+    const renderFolderNode = (node: TreeNode, depth: number) => {
+        const isSelected = selectedKey === node.key;
+        const children = childrenByParentKey[node.key] ?? [];
+        const badgeCount =
+            depth >= FOLDER_LEVEL_COUNT
+                ? subjectCountByGroupId[node.id] ?? 0
+                : children.length;
+        const isExpanded = expandedKeys.has(node.key);
+        const childLevelName = curriculumLevelLabel(depth + 1);
         const childSingularName = singularLevelName(childLevelName);
-        const canAddChild = depth < levelNames.length;
+        const canAddChild = depth < FOLDER_LEVEL_COUNT;
 
         return (
-            <div key={folder.id} className="mb-2">
+            <div key={node.key} className="mb-2">
                 <button
                     type="button"
                     aria-current={isSelected ? "true" : "false"}
@@ -474,20 +668,15 @@ const ProjectsIndex = () => {
                     }`}
                     style={{ paddingLeft: `${depth * 14 + 10}px` }}
                     onClick={async () => {
-                        const willExpand = !expandedFolderIds.has(folder.id);
-                        setSelectedFolderId(folder.id);
-                        setExpandedFolderIds((prev) => {
+                        setSelectedKey(node.key);
+                        setExpandedKeys((prev) => {
                             const next = new Set(prev);
-                            if (next.has(folder.id)) next.delete(folder.id);
-                            else next.add(folder.id);
+                            if (next.has(node.key)) next.delete(node.key);
+                            else next.add(node.key);
                             return next;
                         });
-                        if (willExpand || foldersByParent[folder.id] === undefined) {
-                            const children = await loadChildren(folder.id);
-                            await Promise.all(children.map((child) => loadChildren(child.id)));
-                            if (children.length === 0) {
-                                await loadSubjectsForFolder(folder.id);
-                            }
+                        if (depth >= FOLDER_LEVEL_COUNT) {
+                            await loadSubjectsForGroup(node.id);
                         }
                     }}
                 >
@@ -495,7 +684,7 @@ const ProjectsIndex = () => {
                         <span className="shrink-0">
                             <FolderIcon />
                         </span>
-                        <span className="truncate">{folder.name}</span>
+                        <span className="truncate">{node.name}</span>
                     </span>
                     <span className="text-xs bg-slate-200 rounded-full px-2 py-0.5">{badgeCount}</span>
                 </button>
@@ -513,14 +702,14 @@ const ProjectsIndex = () => {
                             className={`text-sm mt-1 ${addActionColor(depth)}`}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                openAddModal(folder.id, childSingularName || "Folder");
+                                openAddModal(node.key, childSingularName || "Folder");
                             }}
                         >
                             + Add {childSingularName}
                         </button>
                     </div>
                 )}
-                {isExpanded && children.length === 0 && canAddChild && renderEmptyLevelScaffold(folder.id, depth)}
+                {isExpanded && children.length === 0 && canAddChild && renderEmptyLevelScaffold(node.key, depth)}
             </div>
         );
     };
@@ -541,57 +730,148 @@ const ProjectsIndex = () => {
                     <button
                         type="button"
                         onClick={() => {
-                            setNumberOfLevels("");
-                            setLevelNames([]);
                             setErrorMessage("");
                             setIsCreating(true);
                         }}
                         className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg"
                     >
-                        Create Project
+                        Create Year
                     </button>
                 </div>
 
                 <div className="p-6">
                     <div className="bg-white border border-slate-200 rounded-xl p-4">
-                        <h2 className="text-xl font-semibold mb-3">Existing Projects</h2>
+                        <h2 className="text-xl font-semibold mb-3">Existing Years</h2>
                         {existingRoots.length === 0 ? (
-                            <p className="text-slate-500">No projects found. Click Create Project to start.</p>
+                            <p className="text-slate-500">No years found. Click Create Year to start.</p>
                         ) : (
                             <div className="space-y-2">
                                 {existingRoots.map((root) => (
-                                    <button
+                                    <div
                                         key={root.id}
-                                        type="button"
-                                        className="w-full text-left border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50"
-                                        onClick={() => router.push(`/projects/${root.id}`)}
+                                        className="flex items-center justify-between gap-3 border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50"
                                     >
-                                        <div className="font-medium">{root.name}</div>
-                                    </button>
+                                        <button
+                                            type="button"
+                                            className="min-w-0 flex-1 text-left"
+                                            onClick={() => router.push(`/projects/${root.id}`)}
+                                        >
+                                            <div className="font-medium">{root.name}</div>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="shrink-0 rounded-md p-2 text-blue-600 hover:bg-blue-50"
+                                            aria-label={`Edit ${root.name}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                void openEditYearFromList(root);
+                                            }}
+                                            disabled={editSubmitting}
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                <path d="M0 12.7928V15.0858C0 15.2184 0.0526785 15.3456 0.146447 15.4393C0.240215 15.5331 0.367392 15.5858 0.5 15.5858H2.798C2.93035 15.5858 3.05729 15.5333 3.151 15.4398L12.599 5.99179L9.599 2.99179L0.147 12.4398C0.0531646 12.5333 0.000293383 12.6603 0 12.7928ZM10.837 1.75279L13.837 4.75279L15.297 3.29279C15.4845 3.10526 15.5898 2.85095 15.5898 2.58579C15.5898 2.32062 15.4845 2.06631 15.297 1.87879L13.712 0.292786C13.5245 0.105315 13.2702 0 13.005 0C12.7398 0 12.4855 0.105315 12.298 0.292786L10.837 1.75279Z" fill="currentColor"/>
+                                            </svg>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="shrink-0 rounded-md p-2 text-red-600 hover:bg-red-50"
+                                            aria-label={`Delete ${root.name}`}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                void openDeleteYearFromList(root);
+                                            }}
+                                            disabled={deleteSubmitting}
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                <path d="M5.5 1.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V2h3.25a.75.75 0 0 1 0 1.5H2.25a.75.75 0 0 1 0-1.5H5.5V1.5zM3.5 4.5v8.75A2.25 2.25 0 0 0 5.75 15.5h4.5a2.25 2.25 0 0 0 2.25-2.25V4.5H3.5zm2.25 1.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75zm3.5 0a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75z" fill="currentColor"/>
+                                            </svg>
+                                        </button>
+                                    </div>
                                 ))}
                             </div>
                         )}
                     </div>
                 </div>
+                {yearEditModal && (
+                    <div
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="edit-year-list-title"
+                        onClick={closeYearEditModal}
+                    >
+                        <form
+                            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+                            onClick={(e) => e.stopPropagation()}
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                await saveYearEditFromList();
+                            }}
+                        >
+                            <h2 id="edit-year-list-title" className="text-xl font-bold text-slate-900">
+                                Edit Year
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-500">
+                                Update the year name and description.
+                            </p>
+                            <label className="mt-5 block text-sm font-semibold text-slate-700">Year Name</label>
+                            <input
+                                autoFocus
+                                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                value={yearEditModal.name}
+                                onChange={(e) =>
+                                    setYearEditModal({ ...yearEditModal, name: e.target.value })
+                                }
+                            />
+                            <label className="mt-4 block text-sm font-semibold text-slate-700">Description</label>
+                            <textarea
+                                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 min-h-[90px] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                value={yearEditModal.description}
+                                onChange={(e) =>
+                                    setYearEditModal({ ...yearEditModal, description: e.target.value })
+                                }
+                            />
+                            <div className="mt-6 flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    className="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+                                    onClick={closeYearEditModal}
+                                    disabled={editSubmitting}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-60"
+                                    disabled={editSubmitting || !yearEditModal.name.trim()}
+                                >
+                                    {editSubmitting ? "Saving..." : "Save"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+                <ConfirmDeleteModal
+                    open={yearDeleteModal != null}
+                    title="Delete year?"
+                    description={yearDeleteModal?.description ?? ""}
+                    submitting={deleteSubmitting}
+                    onClose={closeYearDeleteModal}
+                    onConfirm={confirmDeleteYearFromList}
+                />
             </div>
         );
     }
 
-    const parsedNumberOfLevels = Number(numberOfLevels);
-    const hasValidLevelCount =
-        Number.isInteger(parsedNumberOfLevels) && parsedNumberOfLevels >= 1 && parsedNumberOfLevels <= 20;
-    const hasValidLevelTitles =
-        levelNames.length === parsedNumberOfLevels && levelNames.every((level) => level.trim().length > 0);
-    const canAddFolder = selectedDepth < parsedNumberOfLevels;
-    const canAddSubject = selectedDepth === parsedNumberOfLevels;
-    const nextLevelName = levelNames[selectedDepth] ?? `Level ${selectedDepth + 1}`;
+    const canAddFolder = selectedDepth < FOLDER_LEVEL_COUNT;
+    const canAddSubject = selectedDepth === FOLDER_LEVEL_COUNT;
+    const nextLevelName = curriculumLevelLabel(selectedDepth + 1);
     const nextSingularLevelName = singularLevelName(nextLevelName);
-    const currentLevelLabel =
-        selectedDepth === 0 ? "Project" : levelNames[selectedDepth - 1] ?? `Level ${selectedDepth}`;
+    const currentLevelLabel = curriculumLevelLabel(selectedDepth);
     const currentSingularLabel = singularLevelName(currentLevelLabel);
-    const selectedChildCount = selectedFolder ? foldersByParent[selectedFolder.id]?.length ?? 0 : 0;
-    const isFolderEmpty = !!selectedFolder && selectedChildCount === 0;
-    const selectedSubjects = selectedFolder ? subjectsByFolder[selectedFolder.id] ?? [] : [];
+    const selectedChildren = selectedNode ? childrenByParentKey[selectedNode.key] ?? [] : [];
+    const isFolderEmpty = !!selectedNode && selectedChildren.length === 0;
+    const selectedSubjects = selectedNode && canAddSubject ? subjectsByGroupId[selectedNode.id] ?? [] : [];
     const isSubjectsEmpty = canAddSubject && selectedSubjects.length === 0;
     const emptyStateTitle = canAddSubject ? "No Subjects Found" : `No ${nextLevelName} Found`;
     const emptyStateMessage = canAddSubject
@@ -631,17 +911,19 @@ const ProjectsIndex = () => {
                         </div>
                     )}
 
-                    {(step === 1 || step === 2) && (
+                    {step === 1 && (
                         <div className="bg-white rounded-2xl shadow p-8 w-full max-w-4xl mx-auto">
-                            {step === 1 ? (
-                                <>
-                                    <h2 className="font-bold text-4xl mb-3">Start a New Project</h2>
+                                    <h2 className="font-bold text-4xl mb-3">Start a New Year</h2>
                                     <p className="text-slate-500 mb-6">
-                                        Set the foundation for your educational structure.
+                                        A year is the top of the hierarchy. Projects, terms, and subject groups are organized beneath it.
                                     </p>
+                                    <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                        <span className="font-semibold text-slate-800">Structure: </span>
+                                        {CURRICULUM_STRUCTURE_PATH}
+                                    </div>
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="block text-sm font-semibold mb-1">Project Name</label>
+                                            <label className="block text-sm font-semibold mb-1">Year Name</label>
                                             <input
                                                 className="w-full border rounded-lg px-3 py-2"
                                                 value={projectName}
@@ -654,28 +936,6 @@ const ProjectsIndex = () => {
                                                 className="w-full border rounded-lg px-3 py-2 min-h-[90px]"
                                                 value={description}
                                                 onChange={(e) => setDescription(e.target.value)}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-semibold mb-1">Number of Levels</label>
-                                            <input
-                                                type="number"
-                                                min={1}
-                                                max={20}
-                                                className="w-full border rounded-lg px-3 py-2"
-                                                value={numberOfLevels}
-                                                onChange={(e) => {
-                                                    const rawValue = e.target.value;
-                                                    setNumberOfLevels(rawValue);
-                                                    if (!rawValue) {
-                                                        setLevelNames([]);
-                                                        return;
-                                                    }
-                                                    const next = Math.max(1, Math.min(20, Number(rawValue) || 1));
-                                                    setLevelNames((prev) => {
-                                                        return Array.from({ length: next }, (_, index) => prev[index] ?? "");
-                                                    });
-                                                }}
                                             />
                                         </div>
                                     </div>
@@ -692,72 +952,23 @@ const ProjectsIndex = () => {
                                         </button>
                                         <button
                                             type="button"
-                                            disabled={
-                                                busy ||
-                                                !projectName.trim() ||
-                                                !hasValidLevelCount
-                                            }
-                                            onClick={goToStepTwo}
+                                            disabled={busy || !projectName.trim()}
+                                            onClick={goToSetupFolders}
                                             className="bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white px-5 py-2 rounded-lg"
                                         >
                                             Save & Continue
                                         </button>
                                     </div>
-                                </>
-                            ) : (
-                                <>
-                                    <h2 className="font-bold text-4xl mb-3">Configure Your Levels</h2>
-                                    <p className="text-slate-500 mb-6">
-                                        Rename each level to match your project&apos;s structure.
-                                    </p>
-                                    <div className="space-y-3">
-                                        {levelNames.map((level, index) => (
-                                            <div key={index} className="flex items-center gap-4">
-                                                <span className="w-20 text-slate-500 text-sm font-semibold">
-                                                    {`Level ${index + 1}`}
-                                                </span>
-                                                <input
-                                                    className="flex-1 border rounded-lg px-3 py-2"
-                                                    placeholder={LEVEL_TITLE_PLACEHOLDER}
-                                                    value={level}
-                                                    onChange={(e) =>
-                                                        setLevelNames((prev) =>
-                                                            prev.map((v, i) => (i === index ? e.target.value : v))
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="flex justify-between mt-8">
-                                        <button
-                                            type="button"
-                                            onClick={() => setStep(1)}
-                                            className="px-5 py-2 rounded-lg border border-slate-300"
-                                        >
-                                            Back
-                                        </button>
-                                        <button
-                                            type="button"
-                                            disabled={busy || !hasValidLevelTitles}
-                                            onClick={goToStepThree}
-                                            className="bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white px-5 py-2 rounded-lg"
-                                        >
-                                            Save & Continue
-                                        </button>
-                                    </div>
-                                </>
-                            )}
                         </div>
                     )}
 
-                    {step === 3 && (
+                    {step === 2 && (
                         <div className="bg-white rounded-xl overflow-hidden shadow">
                             <div className="grid grid-cols-12 min-h-[560px]">
                                 <div className="col-span-4 border-r p-4 bg-slate-50 overflow-auto">
                                     <h3 className="font-semibold mb-3">{projectName}</h3>
                                     <div className="min-w-max pr-4">
-                                        {rootFolder ? renderFolderNode(rootFolder, 0) : <div>No root folder</div>}
+                                        {rootNode ? renderFolderNode(rootNode, 0) : <div>No root folder</div>}
                                     </div>
                                 </div>
                                 <div className="col-span-8 p-6">
@@ -781,18 +992,27 @@ const ProjectsIndex = () => {
                                                         </span>
                                                     ))}
                                             </div>
-                                            <h2 className="text-4xl font-bold">{selectedFolder?.name ?? "Select a folder"}</h2>
+                                            <h2 className="text-4xl font-bold">{selectedNode?.name ?? "Select a folder"}</h2>
                                         </div>
-                                        {selectedFolder && canAddFolder && (
+                                        {selectedNode && selectedNode.level === 0 && (
+                                            <button
+                                                type="button"
+                                                className="border border-slate-300 text-slate-700 hover:bg-slate-50 px-4 py-2 mt-10 rounded-lg whitespace-nowrap"
+                                                onClick={() => void openEditModal(selectedNode, "Year")}
+                                            >
+                                                Edit Year
+                                            </button>
+                                        )}
+                                        {selectedNode && canAddFolder && (
                                             <button
                                                 type="button"
                                                 className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 mt-10 rounded-lg whitespace-nowrap"
-                                                onClick={() => openAddModal(selectedFolder.id, nextSingularLevelName)}
+                                                onClick={() => openAddModal(selectedNode.key, nextSingularLevelName)}
                                             >
                                                 Add {nextSingularLevelName} +
                                             </button>
                                         )}
-                                        {selectedFolder && canAddSubject && (
+                                        {selectedNode && canAddSubject && (
                                             <button
                                                 type="button"
                                                 className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 mt-10 rounded-lg whitespace-nowrap"
@@ -803,7 +1023,7 @@ const ProjectsIndex = () => {
                                         )}
                                     </div>
                                     <div className="border-t border-slate-200 pt-6">
-                                        {selectedFolder && (
+                                        {selectedNode && (
                                             <div className="space-y-6">
                                                 {isFolderEmpty && canAddFolder && (
                                                     <div className="flex flex-col items-center justify-center text-center py-10">
@@ -813,7 +1033,7 @@ const ProjectsIndex = () => {
                                                         <button
                                                             type="button"
                                                             className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg"
-                                                            onClick={() => openAddModal(selectedFolder.id, nextSingularLevelName)}
+                                                            onClick={() => openAddModal(selectedNode.key, nextSingularLevelName)}
                                                         >
                                                             Add {nextSingularLevelName} +
                                                         </button>
@@ -822,11 +1042,11 @@ const ProjectsIndex = () => {
 
                                                 {!isFolderEmpty && canAddFolder && (
                                                     <div className="space-y-3">
-                                                        {(foldersByParent[selectedFolder.id] ?? []).map((child) => {
-                                                            const subjectCount = countSubjectsUnder(child.id);
+                                                        {selectedChildren.map((child) => {
+                                                            const subjectCount = countSubjectsUnder(child);
                                                             return (
                                                                 <div
-                                                                    key={child.id}
+                                                                    key={child.key}
                                                                     className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm hover:border-slate-300"
                                                                 >
                                                                     <button
@@ -850,11 +1070,25 @@ const ProjectsIndex = () => {
                                                                             e.stopPropagation();
                                                                             openEditModal(child, nextSingularLevelName);
                                                                         }}
+                                                                        disabled={editSubmitting || deleteSubmitting}
                                                                     >
                                                                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                                                                             <path d="M0 12.7928V15.0858C0 15.2184 0.0526785 15.3456 0.146447 15.4393C0.240215 15.5331 0.367392 15.5858 0.5 15.5858H2.798C2.93035 15.5858 3.05729 15.5333 3.151 15.4398L12.599 5.99179L9.599 2.99179L0.147 12.4398C0.0531646 12.5333 0.000293383 12.6603 0 12.7928ZM10.837 1.75279L13.837 4.75279L15.297 3.29279C15.4845 3.10526 15.5898 2.85095 15.5898 2.58579C15.5898 2.32062 15.4845 2.06631 15.297 1.87879L13.712 0.292786C13.5245 0.105315 13.2702 0 13.005 0C12.7398 0 12.4855 0.105315 12.298 0.292786L10.837 1.75279Z" fill="#3B82F6"/>
                                                                         </svg>
-
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="shrink-0 rounded-md p-2 text-red-600 hover:bg-red-50"
+                                                                        aria-label={`Delete ${child.name}`}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            void openDeleteModal(child);
+                                                                        }}
+                                                                        disabled={editSubmitting || deleteSubmitting}
+                                                                    >
+                                                                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                                                            <path d="M5.5 1.5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V2h3.25a.75.75 0 0 1 0 1.5H2.25a.75.75 0 0 1 0-1.5H5.5V1.5zM3.5 4.5v8.75A2.25 2.25 0 0 0 5.75 15.5h4.5a2.25 2.25 0 0 0 2.25-2.25V4.5H3.5zm2.25 1.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75zm3.5 0a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-1.5 0v-5.5a.75.75 0 0 1 .75-.75z" fill="currentColor"/>
+                                                                        </svg>
                                                                     </button>
                                                                 </div>
                                                             );
@@ -934,7 +1168,7 @@ const ProjectsIndex = () => {
                             <div className="border-t px-6 py-4 flex justify-between">
                                 <button
                                     type="button"
-                                    onClick={() => setStep(2)}
+                                    onClick={() => setStep(1)}
                                     className="px-5 py-2 rounded-lg border border-slate-300"
                                 >
                                     Back
@@ -1047,10 +1281,12 @@ const ProjectsIndex = () => {
                         <div className="flex items-start justify-between gap-4">
                             <div>
                                 <h2 id="setup-edit-folder-title" className="text-xl font-bold text-slate-900">
-                                    Edit {editModal.label}
+                                    {editModal.isYear ? "Edit Year" : `Edit ${editModal.label}`}
                                 </h2>
                                 <p className="mt-1 text-sm text-slate-500">
-                                    Update the {editModal.label.toLowerCase()} name.
+                                    {editModal.isYear
+                                        ? "Update the year name and description."
+                                        : `Update the ${editModal.label.toLowerCase()} name.`}
                                 </p>
                             </div>
                             <button
@@ -1074,6 +1310,20 @@ const ProjectsIndex = () => {
                             onChange={(e) => setEditName(e.target.value)}
                         />
 
+                        {editModal.isYear && (
+                            <>
+                                <label className="mt-4 block text-sm font-semibold text-slate-700">
+                                    Description
+                                </label>
+                                <textarea
+                                    className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 min-h-[90px] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                    placeholder="Enter year description"
+                                    value={editDescription}
+                                    onChange={(e) => setEditDescription(e.target.value)}
+                                />
+                            </>
+                        )}
+
                         <div className="mt-6 flex justify-end gap-3">
                             <button
                                 type="button"
@@ -1094,6 +1344,14 @@ const ProjectsIndex = () => {
                     </form>
                 </div>
             )}
+            <ConfirmDeleteModal
+                open={deleteModal != null}
+                title={`Delete ${deleteModal?.label ?? "folder"}?`}
+                description={deleteModal?.description ?? ""}
+                submitting={deleteSubmitting}
+                onClose={closeDeleteModal}
+                onConfirm={confirmDeleteFolder}
+            />
         </div>
     );
 };

@@ -684,100 +684,151 @@ const PROJECTS = {
     },
     ROOT: {
         LIST: async () => {
-            const res = await fetch(`${url}/folders`);
+            const res = await fetch(`${url}/curriculum/years`);
             return res.json();
         },
         WITH_SUBJECTS: async () => {
-            const res = await fetch(`${url}/folders/with-subjects`);
+            const res = await fetch(`${url}/curriculum/subject-groups/with-subjects`);
             return res.json();
         },
-        GET: async (folderId: number) => {
-            const res = await fetch(`${url}/folders/${folderId}`);
+        GET: async (yearId: number) => {
+            const res = await fetch(`${url}/curriculum/years/${yearId}`);
             return res.json();
         },
-        CREATE: async (name: string, description?: string, levelNames?: string[]) => {
-            const res = await fetch(`${url}/folders`, {
+        TREE: async (yearId: number) => {
+            const res = await fetch(`${url}/curriculum/years/${yearId}/tree`);
+            return res.json();
+        },
+        CREATE: async (name: string, description?: string) => {
+            const res = await fetch(`${url}/curriculum/years`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, description: description ?? "", parentFolderId: null, levelNames }),
+                body: JSON.stringify({ name, description: description ?? "" }),
             });
             return res.json();
         },
-        UPDATE: async (folderId: number, name: string, description?: string, levelNames?: string[]) => {
-            const res = await fetch(`${url}/folders/${folderId}`, {
+        UPDATE: async (yearId: number, name: string, description?: string) => {
+            const res = await fetch(`${url}/curriculum/years/${yearId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, description: description ?? "", levelNames }),
+                body: JSON.stringify({ name, description: description ?? "" }),
             });
             return res.json();
         },
-        YEARS: async (folderId: number) => {
-            const res = await fetch(`${url}/folders/${folderId}/children`);
+        YEARS: async (yearId: number) => {
+            const res = await fetch(`${url}/curriculum/years/${yearId}/projects`);
             return res.json();
         },
-        GET_YEAR: async (folderId: number) => {
-            const res = await fetch(`${url}/folders/${folderId}`);
+        GET_YEAR: async (projectId: number) => {
+            const res = await fetch(`${url}/curriculum/projects/${projectId}`);
             return res.json();
         },
-        CREATE_YEAR: async (parentFolderId: number, label: string) => {
-            const res = await fetch(`${url}/folders`, {
+        CREATE_YEAR: async (yearId: number, label: string) => {
+            const res = await fetch(`${url}/curriculum/years/${yearId}/projects`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: label, parentFolderId }),
+                body: JSON.stringify({ name: label }),
             });
             return res.json();
         },
-        UPDATE_YEAR: async (folderId: number, label: string) => {
-            const res = await fetch(`${url}/folders/${folderId}`, {
+        UPDATE_YEAR: async (projectId: number, label: string) => {
+            const res = await fetch(`${url}/curriculum/projects/${projectId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: label }),
             });
             return res.json();
         },
-        TERMS: async (folderId: number) => {
-            const res = await fetch(`${url}/folders/${folderId}/children`);
+        TERMS: async (parentId: number, parentType: "year" | "project" | "term" = "year") => {
+            const path =
+                parentType === "year"
+                    ? `${url}/curriculum/years/${parentId}/projects`
+                    : parentType === "project"
+                      ? `${url}/curriculum/projects/${parentId}/terms`
+                      : `${url}/curriculum/terms/${parentId}/subject-groups`;
+            const res = await fetch(path);
             return res.json();
         },
-        GET_TERM: async (folderId: number) => {
-            const res = await fetch(`${url}/folders/${folderId}`);
+        GET_TERM: async (nodeId: number, nodeType: "project" | "term" | "subjectGroup" = "term") => {
+            const path =
+                nodeType === "project"
+                    ? `${url}/curriculum/projects/${nodeId}`
+                    : nodeType === "term"
+                      ? `${url}/curriculum/terms/${nodeId}`
+                      : `${url}/curriculum/subject-groups/${nodeId}`;
+            const res = await fetch(path);
             return res.json();
         },
         CREATE_TERM: async (
-            parentFolderId: number,
+            parentId: number,
             body: {
                 name: string;
+                parentType?: "year" | "project" | "term";
                 order?: number;
                 startDate?: string | null;
                 endDate?: string | null;
             }
         ) => {
-            const res = await fetch(`${url}/folders`, {
+            const parentType = body.parentType ?? "project";
+            const path =
+                parentType === "year"
+                    ? `${url}/curriculum/years/${parentId}/projects`
+                    : parentType === "project"
+                      ? `${url}/curriculum/projects/${parentId}/terms`
+                      : `${url}/curriculum/terms/${parentId}/subject-groups`;
+            const res = await fetch(path, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: body.name,
-                    parentFolderId,
+                    startDate: body.startDate,
+                    endDate: body.endDate,
                 }),
             });
             return res.json();
         },
         UPDATE_TERM: async (
-            folderId: number,
+            nodeId: number,
             body: {
                 name: string;
+                nodeType?: "project" | "term" | "subjectGroup";
                 order?: number;
                 startDate?: string | null;
                 endDate?: string | null;
             }
         ) => {
-            const res = await fetch(`${url}/folders/${folderId}`, {
+            const nodeType = body.nodeType ?? "term";
+            const path =
+                nodeType === "project"
+                    ? `${url}/curriculum/projects/${nodeId}`
+                    : nodeType === "term"
+                      ? `${url}/curriculum/terms/${nodeId}`
+                      : `${url}/curriculum/subject-groups/${nodeId}`;
+            const res = await fetch(path, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: body.name,
+                    startDate: body.startDate,
+                    endDate: body.endDate,
                 }),
             });
+            return res.json();
+        },
+        DELETE_TERM: async (
+            nodeId: number,
+            body: { nodeType?: "year" | "project" | "term" | "subjectGroup" } = {}
+        ) => {
+            const nodeType = body.nodeType ?? "term";
+            const path =
+                nodeType === "year"
+                    ? `${url}/curriculum/years/${nodeId}`
+                    : nodeType === "project"
+                      ? `${url}/curriculum/projects/${nodeId}`
+                      : nodeType === "term"
+                        ? `${url}/curriculum/terms/${nodeId}`
+                        : `${url}/curriculum/subject-groups/${nodeId}`;
+            const res = await fetch(path, { method: "DELETE" });
             return res.json();
         },
     },

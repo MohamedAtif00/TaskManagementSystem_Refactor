@@ -7,6 +7,7 @@ public class FolderDto
     public int ProjectId { get; set; }
     public int? ParentFolderId { get; set; }
     public int Level { get; set; }
+    public string LevelName { get; set; } = "";
     public string Path { get; set; } = "";
     public List<string> LevelNames { get; set; } = new();
 }

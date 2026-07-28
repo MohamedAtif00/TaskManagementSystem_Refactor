@@ -176,6 +176,7 @@ try
             var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
             await dbContext.Database.MigrateAsync();
             await SubjectSchemaRepair.ApplyAsync(dbContext);
+            await CurriculumHierarchyRepair.ApplyAsync(dbContext);
             var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
             await seeder.Seed();
         }

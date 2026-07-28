@@ -7,18 +7,18 @@ import HierarchyListPage from "../../../../components/curriculum/HierarchyListPa
 
 type IdName = { id: number; name: string };
 
-const yearColumns: GridColDef[] = [
+const projectColumns: GridColDef[] = [
     { field: "col0", headerName: "ID", width: 90 },
-    { field: "col1", headerName: "Year", width: 400 },
+    { field: "col1", headerName: "Project", width: 400 },
 ];
 
-const TaskYearsPage = () => {
+const TaskProjectsPage = () => {
     const router = useRouter();
     const raw = router.query.rootProjectId;
     const rootProjectId = raw ? Number(Array.isArray(raw) ? raw[0] : raw) : NaN;
 
     const [rootName, setRootName] = useState("");
-    const [years, setYears] = useState<IdName[]>([]);
+    const [projects, setProjects] = useState<IdName[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -38,16 +38,16 @@ const TaskYearsPage = () => {
                 if (r) setRootName(r.name);
             }
         });
-        API.PROJECTS.ROOT.YEARS(rootProjectId).then((yearsRes) => {
+        API.PROJECTS.ROOT.YEARS(rootProjectId).then((projectsRes) => {
             if (
-                yearsRes &&
-                typeof yearsRes === "object" &&
-                "error" in yearsRes &&
-                !yearsRes.error &&
-                "data" in yearsRes
+                projectsRes &&
+                typeof projectsRes === "object" &&
+                "error" in projectsRes &&
+                !projectsRes.error &&
+                "data" in projectsRes
             ) {
-                setYears((yearsRes as { data: IdName[] }).data);
-            } else setYears([]);
+                setProjects((projectsRes as { data: IdName[] }).data);
+            } else setProjects([]);
             setLoading(false);
         });
     }, [router.isReady, rootProjectId, router.asPath]);
@@ -61,28 +61,28 @@ const TaskYearsPage = () => {
     }
 
     if (Number.isNaN(rootProjectId)) {
-        return <div className="p-6">Invalid project.</div>;
+        return <div className="p-6">Invalid year.</div>;
     }
 
     return (
         <HierarchyListPage
-            title="Years"
-            pageTitle={`${rootName} — Years`}
+            title="Projects"
+            pageTitle={`${rootName} — Projects`}
             icon="task"
             showAdd={false}
             breadcrumbs={[
                 { label: "Tasks", href: "/tasks" },
-                { label: rootName || `Project #${rootProjectId}` },
+                { label: rootName || `Year #${rootProjectId}` },
             ]}
-            rows={years.map((y) => ({
-                id: y.id,
-                col0: y.id,
-                col1: y.name,
+            rows={projects.map((project) => ({
+                id: project.id,
+                col0: project.id,
+                col1: project.name,
             }))}
-            columns={yearColumns}
-            rowHref={(yearId) => `/tasks/browse/${rootProjectId}/years/${yearId}`}
+            columns={projectColumns}
+            rowHref={(projectId) => `/tasks/browse/${rootProjectId}/years/${projectId}`}
         />
     );
 };
 
-export default TaskYearsPage;
+export default TaskProjectsPage;

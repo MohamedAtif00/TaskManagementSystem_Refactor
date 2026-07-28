@@ -431,123 +431,123 @@ public class TaskService : ITaskService
     /// <param name="sprintId">The ID of the Sprint.</param>
 	    /// <returns>A ResponseService containing a list of GetTaskCardDto if successful, otherwise an error response.</returns>
 	public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksBySprintId(int sprintId)
+	{
+	    var user = await _authService.GetAuthedUser();
+	    if (user is null)
 	    {
-	        var user = await _authService.GetAuthedUser();
-	        if (user is null)
+	        return new UnauthorizedObjectResult(
+	            new BaseResponseService { Error = false, Message = "Invalid auth" }
+	        );
+	    }
+	
+	    var sprint = await _context.Sprints
+	        .Where(s => s.Id == sprintId)
+	        .FirstOrDefaultAsync();
+	
+	    if (sprint is null)
+	    {
+	        return new NotFoundObjectResult(
+	            new BaseResponseService { Error = true, Message = "Sprint not found" }
+	        );
+	    }
+	
+	    // Define sprint start and end dates for comparison
+	    var sprintStartDate = sprint.StartDate.Date;
+	    var sprintEndDate = sprint.EndDate.Date;
+	
+	    // Base query: tasks in this sprint (via LO association) and not archived
+	    IQueryable<Models.Task> tasksQuery = _context.Tasks
+	        .Where(t => !t.Archived && t.LearningObjective.SprintLearningObjectives.Any(slo => slo.SprintId == sprintId))
+	        .Include(t => t.LearningObjective)
+	        .Include(t => t.User);
+	
+	    // NOTE: Role-based filtering for sprint tasks can be added here similar to
+	    // GetTasksByLearningObjectiveId if/when requirements are clarified.
+	
+	    var tasks = await tasksQuery.ToListAsync();
+	    var taskIds = tasks.Select(t => t.Id).ToList();
+	
+	    // Preload activity ranges for all tasks in a single query
+	    var activityLookup = await _context.TaskActivities
+	        .Where(ta => taskIds.Contains(ta.TaskId))
+	        .GroupBy(ta => ta.TaskId)
+	        .Select(g => new
 	        {
-	            return new UnauthorizedObjectResult(
-	                new BaseResponseService { Error = false, Message = "Invalid auth" }
-	            );
-	        }
+	            TaskId = g.Key,
+	            Earliest = g.Min(ta => ta.TimeStamp),
+	            Latest = g.Max(ta => ta.TimeStamp)
+	        })
+	        .ToDictionaryAsync(x => x.TaskId);
 	
-	        var sprint = await _context.Sprints
-	            .Where(s => s.Id == sprintId)
-	            .FirstOrDefaultAsync();
-	
-	        if (sprint is null)
+	    // Preload work time durations for all tasks
+	    var durationLookup = await _context.TaskWorkTimes
+	        .Where(twt => taskIds.Contains(twt.TaskId))
+	        .GroupBy(twt => twt.TaskId)
+	        .Select(g => new
 	        {
-	            return new NotFoundObjectResult(
-	                new BaseResponseService { Error = true, Message = "Sprint not found" }
-	            );
-	        }
+	            TaskId = g.Key,
+	            Duration = g.Sum(twt => twt.Duration)
+	        })
+	        .ToDictionaryAsync(x => x.TaskId);
 	
-	        // Define sprint start and end dates for comparison
-	        var sprintStartDate = sprint.StartDate.Date;
-	        var sprintEndDate = sprint.EndDate.Date;
+	    var result = tasks
+	        .Select(task =>
+	        {
+	            activityLookup.TryGetValue(task.Id, out var activityInfo);
+	            var latestTimestamp = activityInfo?.Latest ?? DateTime.MinValue;
 	
-	        // Base query: tasks in this sprint (via LO association) and not archived
-	        IQueryable<Models.Task> tasksQuery = _context.Tasks
-	            .Where(t => !t.Archived && t.LearningObjective.SprintLearningObjectives.Any(slo => slo.SprintId == sprintId))
-	            .Include(t => t.LearningObjective)
-	            .Include(t => t.User);
+	            var taskOriginalStart = task.CreatedAt.Date;
+	            var taskOriginalEnd = latestTimestamp != DateTime.MinValue
+	                ? latestTimestamp.Date
+	                : task.CreatedAt.Date;
 	
-	        // NOTE: Role-based filtering for sprint tasks can be added here similar to
-	        // GetTasksByLearningObjectiveId if/when requirements are clarified.
+	            // Clip to sprint window
+	            var effectiveStartDate = taskOriginalStart < sprintStartDate ? sprintStartDate : taskOriginalStart;
+	            var effectiveEndDate = taskOriginalEnd > sprintEndDate ? sprintEndDate : taskOriginalEnd;
 	
-	        var tasks = await tasksQuery.ToListAsync();
-	        var taskIds = tasks.Select(t => t.Id).ToList();
+	            durationLookup.TryGetValue(task.Id, out var durationInfo);
+	            var duration = durationInfo?.Duration ?? 0;
 	
-	        // Preload activity ranges for all tasks in a single query
-	        var activityLookup = await _context.TaskActivities
-	            .Where(ta => taskIds.Contains(ta.TaskId))
-	            .GroupBy(ta => ta.TaskId)
-	            .Select(g => new
+	            return new GetTaskCardDto
 	            {
-	                TaskId = g.Key,
-	                Earliest = g.Min(ta => ta.TimeStamp),
-	                Latest = g.Max(ta => ta.TimeStamp)
-	            })
-	            .ToDictionaryAsync(x => x.TaskId);
-	
-	        // Preload work time durations for all tasks
-	        var durationLookup = await _context.TaskWorkTimes
-	            .Where(twt => taskIds.Contains(twt.TaskId))
-	            .GroupBy(twt => twt.TaskId)
-	            .Select(g => new
-	            {
-	                TaskId = g.Key,
-	                Duration = g.Sum(twt => twt.Duration)
-	            })
-	            .ToDictionaryAsync(x => x.TaskId);
-	
-	        var result = tasks
-	            .Select(task =>
-	            {
-	                activityLookup.TryGetValue(task.Id, out var activityInfo);
-	                var latestTimestamp = activityInfo?.Latest ?? DateTime.MinValue;
-	
-	                var taskOriginalStart = task.CreatedAt.Date;
-	                var taskOriginalEnd = latestTimestamp != DateTime.MinValue
-	                    ? latestTimestamp.Date
-	                    : task.CreatedAt.Date;
-	
-	                // Clip to sprint window
-	                var effectiveStartDate = taskOriginalStart < sprintStartDate ? sprintStartDate : taskOriginalStart;
-	                var effectiveEndDate = taskOriginalEnd > sprintEndDate ? sprintEndDate : taskOriginalEnd;
-	
-	                durationLookup.TryGetValue(task.Id, out var durationInfo);
-	                var duration = durationInfo?.Duration ?? 0;
-	
-	                return new GetTaskCardDto
+	                Paused = task.Pause,
+	                Attention = task.Attention,
+	                Flagged = task.Flagged,
+	                From = task.From == null ? "" : task.From.Name,
+	                Id = task.Id,
+	                IsReview = task.IsReview,
+	                IsRollback = task.IsRollback,
+	                LearningObjective = new BasicInfoDto
 	                {
-	                    Paused = task.Pause,
-	                    Attention = task.Attention,
-	                    Flagged = task.Flagged,
-	                    From = task.From == null ? "" : task.From.Name,
-	                    Id = task.Id,
-	                    IsReview = task.IsReview,
-	                    IsRollback = task.IsRollback,
-	                    LearningObjective = new BasicInfoDto
+	                    Id = task.LearningObjective.Id,
+	                    Name = task.LearningObjective.Name
+	                },
+	                Name = task.Name,
+	                Priority = task.Priority,
+	                RollbackCount = task.RollbackCount,
+	                Status = task.Status,
+	                User = task.User == null
+	                    ? null
+	                    : new BasicInfoDto
 	                    {
-	                        Id = task.LearningObjective.Id,
-	                        Name = task.LearningObjective.Name
+	                        Name = task.User.Name,
+	                        Id = task.User.Id
 	                    },
-	                    Name = task.Name,
-	                    Priority = task.Priority,
-	                    RollbackCount = task.RollbackCount,
-	                    Status = task.Status,
-	                    User = task.User == null
-	                        ? null
-	                        : new BasicInfoDto
-	                        {
-	                            Name = task.User.Name,
-	                            Id = task.User.Id
-	                        },
-	                    baseDuration = task.Duration,
-	                    duration = (decimal?)duration / 60000,
-	                    AdjustedStartDate = effectiveStartDate,
-	                    AdjustedEndDate = effectiveEndDate
-	                };
-	            })
-	            .ToList();
+	                baseDuration = task.Duration,
+	                duration = (decimal?)duration / 60000,
+	                AdjustedStartDate = effectiveStartDate,
+	                AdjustedEndDate = effectiveEndDate
+	            };
+	        })
+	        .ToList();
 	
-	        return new ResponseService<List<GetTaskCardDto>>
-	        {
-	            Data = result,
-	            Error = false,
-	            Message = $"Successfully retrieved tasks for sprint ID: {sprintId}."
-	        };
-		    }
+	    return new ResponseService<List<GetTaskCardDto>>
+	    {
+	        Data = result,
+	        Error = false,
+	        Message = $"Successfully retrieved tasks for sprint ID: {sprintId}."
+	    };
+    }
 
 	/// <summary>
 	    /// Streaming version of GetTasksBySprintId that yields task cards in batches

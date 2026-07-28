@@ -23,6 +23,7 @@ import { useAppSelector } from "../../app/hooks";
 
 const Sprints = () => {
     const [sprints, setSprints] = useState<GetAllSprintsResponse[]>();
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
     const router = useRouter();
     const { role } = useAppSelector((s) => s.authSlice);
@@ -35,12 +36,15 @@ const Sprints = () => {
 
     // Fetch Sprints based on active tab
     const fetchSprints = (archived: boolean) => {
+        setFetchError(null);
         API.SPRINTS.GET_ALL_SPRINTS(archived).then((res) => {
             if (res && !res.error && res.data) {
                 setSprints(res.data);
             } else {
-                console.error("Error fetching sprints:", (res) ? res.message : "Unknown error");
-                setSprints([]); // Set to empty array on error to stop loading
+                const message = res && "message" in res && res.message ? res.message : "Unknown error";
+                console.error("Error fetching sprints:", message);
+                setFetchError(message);
+                setSprints([]);
             }
         });
     };
@@ -248,6 +252,11 @@ const Sprints = () => {
                     )}
                 </div>
                 <div className="pb-4 mt-4">
+                    {fetchError && (
+                        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                            Failed to load sprints: {fetchError}
+                        </div>
+                    )}
                     <DataGrid
                         className="bg-white relative h-full"
                         initialState={{

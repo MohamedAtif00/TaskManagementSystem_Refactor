@@ -7,6 +7,7 @@ import Link from "next/link";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import Head from "next/head";
 import Loader from "../../components/loader";
+import { parseYearTerm } from "../../lib/curriculumHierarchy";
 
 const columns: GridColDef[] = [
     { field: "col0", headerName: "ID", width: 90 },
@@ -24,18 +25,6 @@ const columns: GridColDef[] = [
     { field: "col3", headerName: "Year", width: 100 },
     { field: "col4", headerName: "Term", width: 100 },
 ];
-
-const parseYearTerm = (folderPath?: string) => {
-    const parts = (folderPath ?? "")
-        .split(">")
-        .map((x) => x.trim())
-        .filter(Boolean);
-
-    return {
-        year: parts[1] ?? "",
-        term: parts[2] ?? "",
-    };
-};
 
 const Projects = () => {
     const projects = useAppSelector((states) => states.projectSlice);

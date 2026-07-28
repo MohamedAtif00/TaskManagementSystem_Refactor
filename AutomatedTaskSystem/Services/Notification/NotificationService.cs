@@ -362,7 +362,7 @@ using Microsoft.AspNetCore.SignalR;
 	                    subjectId = project.Id,
 	                    projectName = project.Name,
 	                    description = project.Description,
-	                    folderId = project.FolderId,
+	                    subjectGroupId = project.SubjectGroupId,
 	                    status = project.Status.ToString(),
 	                    closedManually
 	                });
@@ -434,7 +434,7 @@ using Microsoft.AspNetCore.SignalR;
 	                    subjectId = project.Id,
 	                    projectName = project.Name,
 	                    description = project.Description,
-	                    folderId = project.FolderId,
+	                    subjectGroupId = project.SubjectGroupId,
 	                    status = project.Status.ToString(),
 	                    totalTasks,
 	                    completedTasks,

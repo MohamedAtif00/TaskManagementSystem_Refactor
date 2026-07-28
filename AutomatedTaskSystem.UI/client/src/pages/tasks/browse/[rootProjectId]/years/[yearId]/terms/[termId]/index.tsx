@@ -14,7 +14,7 @@ type FolderDto = { id: number; name: string; parentFolderId?: number | null; pat
 
 const folderColumns: GridColDef[] = [
     { field: "col0", headerName: "ID", width: 90 },
-    { field: "col1", headerName: "Folder", flex: 1, minWidth: 260 },
+    { field: "col1", headerName: "Subject", flex: 1, minWidth: 260 },
     { field: "col2", headerName: "Items", width: 120 },
 ];
 
@@ -28,7 +28,7 @@ const TaskTermSubjectsPage = () => {
     const folderId = rawTerm ? Number(Array.isArray(rawTerm) ? rawTerm[0] : rawTerm) : NaN;
 
     const [rootName, setRootName] = useState("");
-    const [yearName, setYearName] = useState("");
+    const [projectName, setProjectName] = useState("");
     const [folder, setFolder] = useState<FolderDto | null>(null);
     const [children, setChildren] = useState<FolderDto[]>([]);
     const [subjects, setSubjects] = useState<IProject[]>();
@@ -58,7 +58,7 @@ const TaskTermSubjectsPage = () => {
                 "data" in yearsRes
             ) {
                 const y = (yearsRes as { data: IdName[] }).data.find((x) => x.id === yearId);
-                if (y) setYearName(y.name);
+                if (y) setProjectName(y.name);
             }
             const folderRes = await API.PROJECTS.ROOT.GET_TERM(folderId);
             if (
@@ -115,7 +115,7 @@ const TaskTermSubjectsPage = () => {
     }
 
     const browseBase = `/tasks/browse/${rootProjectId}`;
-    const yearHref = `${browseBase}/years/${yearId}`;
+    const projectHref = `${browseBase}/years/${yearId}`;
     const currentName = folder?.name ?? `Folder #${folderId}`;
 
     if (children.length > 0) {
@@ -127,8 +127,8 @@ const TaskTermSubjectsPage = () => {
                 showAdd={false}
                 breadcrumbs={[
                     { label: "Tasks", href: "/tasks" },
-                    { label: rootName || `Project #${rootProjectId}`, href: browseBase },
-                    { label: yearName || `Year #${yearId}`, href: yearHref },
+                    { label: rootName || `Year #${rootProjectId}`, href: browseBase },
+                    { label: projectName || `Project #${yearId}`, href: projectHref },
                     { label: currentName },
                 ]}
                 rows={children.map((child) => ({
@@ -155,7 +155,7 @@ const TaskTermSubjectsPage = () => {
                     items={[
                         { label: "Tasks", href: "/tasks" },
                         { label: rootName, href: browseBase },
-                        { label: yearName, href: yearHref },
+                        { label: projectName, href: projectHref },
                         { label: currentName },
                     ]}
                 />

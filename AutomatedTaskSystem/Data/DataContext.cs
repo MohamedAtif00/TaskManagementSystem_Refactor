@@ -254,28 +254,35 @@ public class DataContext : DbContext
             .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<Subject>().ToTable("Subjects");
-        modelBuilder.Entity<Project>().ToTable("FolderProjects");
-        modelBuilder.Entity<Folder>().ToTable("Folders");
 
-        modelBuilder
-            .Entity<Project>()
-            .HasMany(p => p.Folders)
-            .WithOne(f => f.Project)
-            .HasForeignKey(f => f.ProjectId)
+        modelBuilder.Entity<AcademicYear>().ToTable("AcademicYears");
+        modelBuilder.Entity<CurriculumProject>().ToTable("CurriculumProjects");
+        modelBuilder.Entity<CurriculumTerm>().ToTable("CurriculumTerms");
+        modelBuilder.Entity<SubjectGroup>().ToTable("SubjectGroups");
+
+        modelBuilder.Entity<CurriculumProject>()
+            .HasOne(p => p.Year)
+            .WithMany(y => y.Projects)
+            .HasForeignKey(p => p.YearId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        modelBuilder
-            .Entity<Folder>()
-            .HasOne(f => f.ParentFolder)
-            .WithMany(f => f.Children)
-            .HasForeignKey(f => f.ParentFolderId)
+        modelBuilder.Entity<CurriculumTerm>()
+            .HasOne(t => t.Project)
+            .WithMany(p => p.Terms)
+            .HasForeignKey(t => t.ProjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<SubjectGroup>()
+            .HasOne(g => g.Term)
+            .WithMany(t => t.SubjectGroups)
+            .HasForeignKey(g => g.TermId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder
             .Entity<Subject>()
-            .HasOne(s => s.Folder)
-            .WithMany(f => f.Subjects)
-            .HasForeignKey(s => s.FolderId)
+            .HasOne(s => s.SubjectGroup)
+            .WithMany(g => g.Subjects)
+            .HasForeignKey(s => s.SubjectGroupId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder
@@ -315,8 +322,10 @@ public class DataContext : DbContext
     public DbSet<Year> Years => Set<Year>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
-    public DbSet<Project> Projects => Set<Project>();
-    public DbSet<Folder> Folders => Set<Folder>();
+    public DbSet<AcademicYear> AcademicYears => Set<AcademicYear>();
+    public DbSet<CurriculumProject> CurriculumProjects => Set<CurriculumProject>();
+    public DbSet<CurriculumTerm> CurriculumTerms => Set<CurriculumTerm>();
+    public DbSet<SubjectGroup> SubjectGroups => Set<SubjectGroup>();
     public DbSet<Subject> Subjects => Set<Subject>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<Schema> Schemas => Set<Schema>();

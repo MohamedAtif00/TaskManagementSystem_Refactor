@@ -17,11 +17,9 @@ const AddUnit = ({
 	const router = useRouter();
 
 	useEffect(() => {
-		if (router.query.projectId) {
-			const _active = router.query.form === "unit";
-			setActive(_active);
-			if (!_active) setName("");
-		}
+		const _active = router.query.form === "unit";
+		setActive(_active);
+		if (!_active) setName("");
 	}, [router]);
 
 	useEffect(() => {

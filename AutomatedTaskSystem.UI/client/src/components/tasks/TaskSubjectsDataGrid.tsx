@@ -12,6 +12,7 @@ import {
 } from "@mui/x-data-grid";
 import type { GridRowProps } from "@mui/x-data-grid";
 import PieChartIcon from "../../assets/Icons/PieChart";
+import { parseYearTerm } from "../../lib/curriculumHierarchy";
 import { useRouter } from "next/router";
 import ProgressDonut from "../charts/ProgressDonut";
 
@@ -289,18 +290,6 @@ type Props = {
     subjects: IProject[];
 };
 
-const parseYearTerm = (folderPath?: string) => {
-    const parts = (folderPath ?? "")
-        .split(">")
-        .map((x) => x.trim())
-        .filter(Boolean);
-
-    return {
-        year: parts[1] ?? "",
-        term: parts[2] ?? "",
-    };
-};
-
 const TaskSubjectsDataGrid = ({ subjects }: Props) => {
     const rows: TaskSubjectRow[] = subjects.map((p) => {
         const { year, term } = parseYearTerm(p.folderPath);
@@ -319,7 +308,7 @@ const TaskSubjectsDataGrid = ({ subjects }: Props) => {
     });
 
     return (
-        <div className="pb-4 mt-4 w-full min-w-0">
+        <div className="pb-4 mt-4 w-full min-w-0 box-border">
             <DataGrid
                 className="bg-white relative h-full w-full min-w-0"
                 initialState={{
@@ -333,10 +322,14 @@ const TaskSubjectsDataGrid = ({ subjects }: Props) => {
                 rows={rows}
                 columns={taskSubjectColumns}
                 autoHeight
+                disableColumnMenu
                 sx={{
                     width: "100%",
                     minWidth: 0,
+                    border: 0,
                     "& .MuiDataGrid-main": { width: "100%" },
+                    "& .MuiDataGrid-root": { width: "100%" },
+                    "& .MuiDataGrid-columnHeaders": { width: "100%" },
                     "& .MuiDataGrid-virtualScroller": {
                         overflowX: "hidden",
                     },

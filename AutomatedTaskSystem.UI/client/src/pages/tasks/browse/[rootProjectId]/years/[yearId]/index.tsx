@@ -29,7 +29,7 @@ const TaskTermsPage = () => {
     const yearId = rawYear ? Number(Array.isArray(rawYear) ? rawYear[0] : rawYear) : NaN;
 
     const [rootName, setRootName] = useState("");
-    const [yearName, setYearName] = useState("");
+    const [projectName, setProjectName] = useState("");
     const [terms, setTerms] = useState<TermRow[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -57,7 +57,7 @@ const TaskTermsPage = () => {
                 "data" in yearsRes
             ) {
                 const y = (yearsRes as { data: IdName[] }).data.find((x) => x.id === yearId);
-                if (y) setYearName(y.name);
+                if (y) setProjectName(y.name);
             }
             const termsRes = await API.PROJECTS.ROOT.TERMS(yearId);
             if (
@@ -90,13 +90,13 @@ const TaskTermsPage = () => {
     return (
         <HierarchyListPage
             title="Terms"
-            pageTitle={`${yearName} — Terms`}
+            pageTitle={`${projectName} — Terms`}
             icon="task"
             showAdd={false}
             breadcrumbs={[
                 { label: "Tasks", href: "/tasks" },
-                { label: rootName || `Project #${rootProjectId}`, href: browseBase },
-                { label: yearName || `Year #${yearId}` },
+                { label: rootName || `Year #${rootProjectId}`, href: browseBase },
+                { label: projectName || `Project #${yearId}` },
             ]}
             rows={terms.map((t) => ({
                 id: t.id,

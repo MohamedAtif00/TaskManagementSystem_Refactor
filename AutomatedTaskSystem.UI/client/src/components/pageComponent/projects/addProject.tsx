@@ -8,8 +8,12 @@ import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
 import { add } from "../../../slices/projectSlice";
 import Dropdown from "../../formComponents/DropDown";
+import {
+    mapSubjectGroupNodesToOptions,
+    type SubjectGroupPickerOption,
+} from "../../../lib/curriculumHierarchy";
 
-type IdName = { id: number; name: string };
+const SUBJECT_GROUP_HINT = "Year › Project › Term › Subject group";
 
 const presetFolderId = (query: ReturnType<typeof useRouter>["query"]) => {
     const raw = query.folderId ?? query.termId;
@@ -26,8 +30,8 @@ const AddProject = () => {
     const [active, setActive] = useState<boolean>(false);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
-    const [folder, setFolder] = useState<IdName | null>(null);
-    const [folders, setFolders] = useState<IdName[]>([]);
+    const [folder, setFolder] = useState<SubjectGroupPickerOption | null>(null);
+    const [folders, setFolders] = useState<SubjectGroupPickerOption[]>([]);
     const [error, setError] = useState("");
 
     useEffect(() => {
@@ -35,7 +39,7 @@ const AddProject = () => {
             if (lockedFolderId === null) {
                 API.PROJECTS.ROOT.WITH_SUBJECTS().then((res) => {
                     if (res && typeof res === "object" && "error" in res && !res.error && "data" in res) {
-                        setFolders((res as { data: IdName[] }).data);
+                        setFolders(mapSubjectGroupNodesToOptions((res as { data: unknown[] }).data));
                     }
                 });
             }
@@ -57,7 +61,7 @@ const AddProject = () => {
             lockedFolderId !== null ? lockedFolderId : folder === null ? null : folder.id;
 
         if (folderId === null) {
-            return setError("Please select a folder");
+            return setError("Please select a subject group location");
         }
 
         API.PROJECTS.CREATE({
@@ -99,7 +103,8 @@ const AddProject = () => {
                                     <Dropdown
                                         value={folder}
                                         handleChange={setFolder}
-                                        label="Folder"
+                                        label="Subject group location"
+                                        hint={SUBJECT_GROUP_HINT}
                                         options={folders}
                                     />
                                 </div>

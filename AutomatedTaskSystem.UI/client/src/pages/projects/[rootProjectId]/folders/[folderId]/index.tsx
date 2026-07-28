@@ -3,6 +3,8 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { useAppSelector } from "../../../../../app/hooks";
 import API from "../../../../../lib/API";
+import { parseYearTerm } from "../../../../../lib/curriculumHierarchy";
+import { markProjectTreeSubjectGroup } from "../../../../../lib/projectTreeState";
 import Loader from "../../../../../components/loader";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import ProgressDonut from "../../../../../components/charts/ProgressDonut";
@@ -85,22 +87,15 @@ const LeafFolderSubjectsPage = () => {
         })();
     }, [auth.isAuth, auth.role, router, router.isReady, router.asPath, folderId, loadPageData]);
 
+    useEffect(() => {
+        if (Number.isNaN(rootProjectId) || Number.isNaN(folderId)) return;
+        markProjectTreeSubjectGroup(rootProjectId, folderId);
+    }, [rootProjectId, folderId]);
+
     const title = useMemo(() => {
         if (folder?.name) return `TMS - Subjects - ${folder.name}`;
         return "TMS - Subjects";
     }, [folder?.name]);
-
-    const parseYearTerm = (folderPath?: string) => {
-        if (!folderPath) return { year: "-", term: "-" };
-        const parts = folderPath
-            .split(">")
-            .map((x) => x.trim())
-            .filter(Boolean);
-        return {
-            year: parts[1] ?? "-",
-            term: parts[2] ?? "-",
-        };
-    };
 
     const activeColumns: GridColDef[] = [
         { field: "col0", headerName: "ID", width: 70 },
@@ -141,7 +136,7 @@ const LeafFolderSubjectsPage = () => {
             width: 250,
             renderCell: (c) => (
                 <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                    <TableAction text="View" url={{ pathname: `/subjects/${c.id}` }} type="eye" />
+                    <TableAction text="View" url={{ pathname: `/subjects/${c.id}`, query: { rootProjectId } }} type="eye" />
                     <TableAction
                         text="Edit"
                         url={{
@@ -221,7 +216,7 @@ const LeafFolderSubjectsPage = () => {
             width: 220,
             renderCell: (c) => (
                 <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                    <TableAction text="View" url={{ pathname: `/subjects/${c.id}` }} type="eye" />
+                    <TableAction text="View" url={{ pathname: `/subjects/${c.id}`, query: { rootProjectId } }} type="eye" />
                     <TableAction
                         text="Edit"
                         url={{

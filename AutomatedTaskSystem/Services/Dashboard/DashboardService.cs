@@ -161,7 +161,7 @@ public class DashboardService : IDashboardService
         if (user.Role != UserRoleEnum.TeamLeader)
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
-            );
+            );  
 
         var members = await _context.Users
             .Where(u => u.GroupId == user.GroupId && !u.Archived && u.Role == UserRoleEnum.Member)

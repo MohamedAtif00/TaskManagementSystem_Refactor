@@ -8,8 +8,13 @@ import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
 import { edit } from "../../../slices/projectSlice";
 import Dropdown from "../../formComponents/DropDown";
+import {
+    mapSubjectGroupNodesToOptions,
+    subjectLocationLabel,
+    type SubjectGroupPickerOption,
+} from "../../../lib/curriculumHierarchy";
 
-type IdName = { id: number; name: string };
+const SUBJECT_GROUP_HINT = "Year › Project › Term › Subject group";
 
 const subjectIdFromQuery = (query: ReturnType<typeof useRouter>["query"]) => {
     const s = query.subjectId ?? query.projectId;
@@ -24,8 +29,8 @@ const EditProject = () => {
     const [active, setActive] = useState<boolean>(false);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
-    const [folder, setFolder] = useState<IdName | null>(null);
-    const [folders, setFolders] = useState<IdName[]>([]);
+    const [folder, setFolder] = useState<SubjectGroupPickerOption | null>(null);
+    const [folders, setFolders] = useState<SubjectGroupPickerOption[]>([]);
     const [error, setError] = useState("");
 
     useEffect(() => {
@@ -40,12 +45,14 @@ const EditProject = () => {
                 setDescription(s.description);
                 const foldersRes = await API.PROJECTS.ROOT.WITH_SUBJECTS();
                 if (!cancelled && foldersRes && typeof foldersRes === "object" && "error" in foldersRes && !foldersRes.error && "data" in foldersRes) {
-                    setFolders((foldersRes as { data: IdName[] }).data);
+                    setFolders(mapSubjectGroupNodesToOptions((foldersRes as { data: unknown[] }).data));
                 }
                 if (!cancelled) {
                     const folderId = Number((s as any).folderId);
                     if (!Number.isNaN(folderId)) {
-                        setFolder({ id: folderId, name: (s as any).folderPath ?? `Folder #${folderId}` });
+                        const location =
+                            subjectLocationLabel((s as any).folderPath) || `Subject group #${folderId}`;
+                        setFolder({ id: folderId, name: location });
                     }
                 }
             })();
@@ -62,7 +69,7 @@ const EditProject = () => {
         if (!sid) return setError("Missing subject");
 
         if (name === "") return setError("Please enter name");
-        if (folder === null) return setError("Please select a folder");
+        if (folder === null) return setError("Please select a subject group location");
 
         API.PROJECTS.EDIT({
             id: sid,
@@ -110,7 +117,8 @@ const EditProject = () => {
                                 <Dropdown
                                     value={folder}
                                     handleChange={setFolder}
-                                    label="Folder"
+                                    label="Subject group location"
+                                    hint={SUBJECT_GROUP_HINT}
                                     options={folders}
                                 />
                             </div>
