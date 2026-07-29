@@ -18,6 +18,8 @@ public class CurriculumProject
 
     public string? Description { get; set; }
 
+    public bool Archived { get; set; }
+
     public List<CurriculumTerm> Terms { get; set; } = new();
 
 }

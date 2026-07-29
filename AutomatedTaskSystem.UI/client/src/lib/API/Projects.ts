@@ -251,7 +251,7 @@ const PROJECTS = {
             message: string;
         } = await res.json();
         return data;
-    }    ,
+    },
     GET_ANALYTICS_OVERVIEW: async (projectId: number | string | string[], timePeriod?: number) => {
         try {
             const pid = projectAnalyticsPathId(projectId);
@@ -829,6 +829,30 @@ const PROJECTS = {
                         ? `${url}/curriculum/terms/${nodeId}`
                         : `${url}/curriculum/subject-groups/${nodeId}`;
             const res = await fetch(path, { method: "DELETE" });
+            return res.json();
+        },
+        ARCHIVED_LIST: async () => {
+            const res = await fetch(`${url}/curriculum/archived`);
+            return res.json();
+        },
+        RESTORE: async (
+            nodeType: "year" | "project" | "term" | "subjectGroup",
+            id: number,
+            subjectIds?: number[]
+        ) => {
+            const path =
+                nodeType === "year"
+                    ? `${url}/curriculum/years/${id}/restore`
+                    : nodeType === "project"
+                      ? `${url}/curriculum/projects/${id}/restore`
+                      : nodeType === "term"
+                        ? `${url}/curriculum/terms/${id}/restore`
+                        : `${url}/curriculum/subject-groups/${id}/restore`;
+            const res = await fetch(path, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ subjectIds: subjectIds ?? [] }),
+            });
             return res.json();
         },
     },

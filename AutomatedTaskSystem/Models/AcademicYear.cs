@@ -14,6 +14,8 @@ public class AcademicYear
 
     public string? Description { get; set; }
 
+    public bool Archived { get; set; }
+
     public List<CurriculumProject> Projects { get; set; } = new();
 
 }

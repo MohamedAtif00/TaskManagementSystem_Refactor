@@ -75,6 +75,26 @@ public static class SubjectSchemaRepair
            AND COL_LENGTH(N'dbo.Subjects', N'SubjectGroupId') IS NOT NULL
            AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Subjects_SubjectGroupId' AND object_id = OBJECT_ID(N'dbo.Subjects'))
             CREATE INDEX IX_Subjects_SubjectGroupId ON dbo.Subjects(SubjectGroupId);
+
+        IF OBJECT_ID(N'dbo.Subjects', N'U') IS NOT NULL
+           AND COL_LENGTH(N'dbo.Subjects', N'ArchivedWithFolder') IS NULL
+            ALTER TABLE dbo.Subjects ADD ArchivedWithFolder BIT NOT NULL CONSTRAINT DF_Subjects_ArchivedWithFolder DEFAULT 0;
+
+        IF OBJECT_ID(N'dbo.AcademicYears', N'U') IS NOT NULL
+           AND COL_LENGTH(N'dbo.AcademicYears', N'Archived') IS NULL
+            ALTER TABLE dbo.AcademicYears ADD Archived BIT NOT NULL CONSTRAINT DF_AcademicYears_Archived DEFAULT 0;
+
+        IF OBJECT_ID(N'dbo.CurriculumProjects', N'U') IS NOT NULL
+           AND COL_LENGTH(N'dbo.CurriculumProjects', N'Archived') IS NULL
+            ALTER TABLE dbo.CurriculumProjects ADD Archived BIT NOT NULL CONSTRAINT DF_CurriculumProjects_Archived DEFAULT 0;
+
+        IF OBJECT_ID(N'dbo.CurriculumTerms', N'U') IS NOT NULL
+           AND COL_LENGTH(N'dbo.CurriculumTerms', N'Archived') IS NULL
+            ALTER TABLE dbo.CurriculumTerms ADD Archived BIT NOT NULL CONSTRAINT DF_CurriculumTerms_Archived DEFAULT 0;
+
+        IF OBJECT_ID(N'dbo.SubjectGroups', N'U') IS NOT NULL
+           AND COL_LENGTH(N'dbo.SubjectGroups', N'Archived') IS NULL
+            ALTER TABLE dbo.SubjectGroups ADD Archived BIT NOT NULL CONSTRAINT DF_SubjectGroups_Archived DEFAULT 0;
         """;
 
     public static async Task ApplyAsync(DataContext context, CancellationToken cancellationToken = default)

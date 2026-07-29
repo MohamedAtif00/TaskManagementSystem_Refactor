@@ -28,6 +28,9 @@ public class Subject
 
     public bool Archived { get; set; } = false;
 
+    /// <summary>True when archived as part of a folder (curriculum) delete, not direct subject delete.</summary>
+    public bool ArchivedWithFolder { get; set; } = false;
+
     [Range(0, 3)]
 
     public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;

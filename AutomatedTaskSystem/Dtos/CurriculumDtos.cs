@@ -59,3 +59,26 @@ public class UpdateSubjectGroupDto
 {
     public string Name { get; set; } = "";
 }
+
+public class ArchivedSubjectDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+}
+
+public class ArchivedCurriculumTreeNodeDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string NodeType { get; set; } = "";
+    public string Path { get; set; } = "";
+    public int Depth { get; set; }
+    public bool Archived { get; set; }
+    public List<ArchivedSubjectDto> Subjects { get; set; } = new();
+    public List<ArchivedCurriculumTreeNodeDto> Children { get; set; } = new();
+}
+
+public class RestoreCurriculumDto
+{
+    public List<int>? SubjectIds { get; set; }
+}

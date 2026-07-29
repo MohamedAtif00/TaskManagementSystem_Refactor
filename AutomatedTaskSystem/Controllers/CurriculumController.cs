@@ -93,6 +93,26 @@ public class CurriculumController(ICurriculumService curriculumService) : Contro
     public async Task<ActionResult<ResponseService<bool>>> DeleteSubjectGroup(int subjectGroupId) =>
         ToActionResult(await curriculumService.DeleteSubjectGroupAsync(subjectGroupId));
 
+    [HttpGet("archived")]
+    public async Task<ActionResult<ResponseService<List<ArchivedCurriculumTreeNodeDto>>>> GetArchived() =>
+        ToActionResult(await curriculumService.GetArchivedCurriculumAsync());
+
+    [HttpPost("years/{yearId:int}/restore")]
+    public async Task<ActionResult<ResponseService<bool>>> RestoreYear(int yearId, [FromBody] RestoreCurriculumDto? body) =>
+        ToActionResult(await curriculumService.RestoreYearAsync(yearId, body?.SubjectIds));
+
+    [HttpPost("projects/{projectId:int}/restore")]
+    public async Task<ActionResult<ResponseService<bool>>> RestoreProject(int projectId, [FromBody] RestoreCurriculumDto? body) =>
+        ToActionResult(await curriculumService.RestoreProjectAsync(projectId, body?.SubjectIds));
+
+    [HttpPost("terms/{termId:int}/restore")]
+    public async Task<ActionResult<ResponseService<bool>>> RestoreTerm(int termId, [FromBody] RestoreCurriculumDto? body) =>
+        ToActionResult(await curriculumService.RestoreTermAsync(termId, body?.SubjectIds));
+
+    [HttpPost("subject-groups/{subjectGroupId:int}/restore")]
+    public async Task<ActionResult<ResponseService<bool>>> RestoreSubjectGroup(int subjectGroupId, [FromBody] RestoreCurriculumDto? body) =>
+        ToActionResult(await curriculumService.RestoreSubjectGroupAsync(subjectGroupId, body?.SubjectIds));
+
     [HttpGet("subject-groups/with-subjects")]
     public async Task<ActionResult<ResponseService<List<CurriculumNodeDto>>>> GetSubjectGroupsWithSubjects() =>
         ToActionResult(await curriculumService.GetSubjectGroupNodesWithSubjectsAsync());

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import Loader from "../../components/loader";
@@ -403,10 +404,10 @@ const ProjectsIndex = () => {
         const parts = [`Are you sure you want to delete "${node.name}"?`];
         if (node.level === 0) {
             parts.push(
-                "All projects, terms, subject groups, and subjects in this year will also be deleted."
+                "All projects, terms, subject groups, and subjects in this year will also be archived."
             );
         } else {
-            parts.push("All nested folders and subjects will also be deleted.");
+            parts.push("All nested folders and subjects will also be archived.");
         }
         if (nestedFolders > 0 || subjects > 0) {
             const details: string[] = [];
@@ -418,7 +419,7 @@ const ProjectsIndex = () => {
             }
             parts.push(`This includes ${details.join(" and ")}.`);
         }
-        parts.push("This cannot be undone.");
+        parts.push("You can restore them later from Archived Folders.");
         return parts.join(" ");
     };
 
@@ -515,7 +516,7 @@ const ProjectsIndex = () => {
         setYearDeleteModal({
             id: year.id,
             name: year.name,
-            description: `Are you sure you want to delete "${year.name}"? All projects, terms, subject groups, and subjects in this year will also be deleted. This cannot be undone.`,
+            description: `Are you sure you want to delete "${year.name}"? All projects, terms, subject groups, and subjects in this year will also be archived. You can restore them later from Archived Folders.`,
         });
     };
 
@@ -727,16 +728,26 @@ const ProjectsIndex = () => {
             <div className="w-full max-h-screen overflow-y-auto">
                 <div className="bg-white border border-gray-300 rounded-b-md px-6 py-4 sticky top-0 z-10 flex items-center justify-between">
                     <h1 className="font-bold text-3xl">Projects</h1>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setErrorMessage("");
-                            setIsCreating(true);
-                        }}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg"
-                    >
-                        Create Year
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <Link href="/projects/archived">
+                            <button
+                                type="button"
+                                className="bg-gray-700 hover:bg-gray-800 text-white px-5 py-2 rounded-lg"
+                            >
+                                Archived Folders
+                            </button>
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setErrorMessage("");
+                                setIsCreating(true);
+                            }}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg"
+                        >
+                            Create Year
+                        </button>
+                    </div>
                 </div>
 
                 <div className="p-6">

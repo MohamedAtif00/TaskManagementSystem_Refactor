@@ -15,6 +15,22 @@ export const curriculumLevelLabel = (depth: number): string => {
 
 export type CurriculumNodeType = "year" | "project" | "term" | "subjectGroup";
 
+export type ArchivedSubjectSummary = {
+    id: number;
+    name: string;
+};
+
+export type ArchivedCurriculumTreeNode = {
+    id: number;
+    name: string;
+    nodeType: CurriculumNodeType;
+    path: string;
+    depth: number;
+    archived: boolean;
+    subjects: ArchivedSubjectSummary[];
+    children: ArchivedCurriculumTreeNode[];
+};
+
 export type CurriculumNode = {
     id: number;
     name: string;

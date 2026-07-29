@@ -16,6 +16,8 @@ public class SubjectGroup
 
     public string Name { get; set; } = "";
 
+    public bool Archived { get; set; }
+
     public List<Subject> Subjects { get; set; } = new();
 
 }

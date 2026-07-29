@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { useAppSelector } from "../../../app/hooks";
 import API from "../../../lib/API";
 import Loader from "../../../components/loader";
@@ -383,10 +384,10 @@ const ProjectTreePage = () => {
         const parts = [`Are you sure you want to delete "${node.name}"?`];
         if (node.level === 0) {
             parts.push(
-                "All projects, terms, subject groups, and subjects in this year will also be deleted."
+                "All projects, terms, subject groups, and subjects in this year will also be archived."
             );
         } else {
-            parts.push("All nested folders and subjects will also be deleted.");
+            parts.push("All nested folders and subjects will also be archived.");
         }
         if (nestedFolders > 0 || subjects > 0) {
             const details: string[] = [];
@@ -398,7 +399,7 @@ const ProjectTreePage = () => {
             }
             parts.push(`This includes ${details.join(" and ")}.`);
         }
-        parts.push("This cannot be undone.");
+        parts.push("You can restore them later from Archived Folders.");
         return parts.join(" ");
     };
 
@@ -553,13 +554,20 @@ const ProjectTreePage = () => {
         <div className="w-full max-h-screen overflow-y-auto">
             <div className="bg-white border w-full border-gray-300 rounded-b-md px-6 py-4 sticky top-0 z-10 flex items-center justify-between">
                 <h1 className="font-bold text-3xl">{rootNode.name}</h1>
-                <button
-                    type="button"
-                    className="px-4 py-2 border border-slate-300 rounded-lg"
-                    onClick={() => router.push("/projects")}
-                >
-                    Back to Projects
-                </button>
+                <div className="flex items-center gap-2">
+                    <Link href="/projects/archived">
+                        <button type="button" className="px-4 py-2 rounded-lg bg-gray-700 text-white hover:bg-gray-800">
+                            Archived Folders
+                        </button>
+                    </Link>
+                    <button
+                        type="button"
+                        className="px-4 py-2 border border-slate-300 rounded-lg"
+                        onClick={() => router.push("/projects")}
+                    >
+                        Back to Projects
+                    </button>
+                </div>
             </div>
             <div className="p-6 w-full">
                 <div className="bg-white border w-full border-slate-200 rounded-xl overflow-hidden">

@@ -323,6 +323,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
             unit.Archived = true;
         }
         subject.Archived = true;
+        subject.ArchivedWithFolder = false;
 
         await context.SaveChangesAsync();
 

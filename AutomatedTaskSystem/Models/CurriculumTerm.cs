@@ -20,6 +20,8 @@ public class CurriculumTerm
 
     public DateTime? EndDate { get; set; }
 
+    public bool Archived { get; set; }
+
     public List<SubjectGroup> SubjectGroups { get; set; } = new();
 
 }
