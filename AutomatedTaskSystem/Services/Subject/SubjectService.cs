@@ -10,6 +10,7 @@ using AutomatedTaskSystem.Services.Notification;
 using AutomatedTaskSystem.Services.ProjectAssignmentService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
+using ILessonService = AutomatedTaskSystem.Services.Lesson.ILessonService;
 using AutomatedTaskSystem.Services.UnitService;
 using AutomatedTaskSystem.Helper;
 using Dapper;
@@ -28,6 +29,7 @@ public class SubjectService(
     IProjectAssignmentService projectAssignmentService,
     IUnitService unitService,
     ILearningObjectiveService learningObjectiveService,
+    ILessonService lessonService,
     ITokenService tokenService,
     INotificationService notificationService,
     ICurriculumService curriculumService) : ISubjectService
@@ -288,6 +290,200 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
             Data = MapSubjectDto(subject, folderPath),
             Error = false,
             Message = $"Subject {Name} is created.",
+        };
+    }
+
+    private static bool IsActiveLearningObjective(Models.LearningObjective lo) =>
+        !lo.Archived
+        && (lo.Name == null
+            || !lo.Name.Contains("old", StringComparison.OrdinalIgnoreCase));
+
+    public async Task<ActionResult<ResponseService<SubjectDTO>>> CopyProject(
+        int sourceId,
+        Requests.CopySubjectRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Name))
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Name is required" }
+            );
+
+        var (user, userError) = await ResolveCurrentUserAsync();
+        if (userError is not null)
+            return userError;
+
+        var source = await context.Subjects
+            .Where(p => p.Id == sourceId && !p.Archived)
+            .Include(p => p.SubjectGroup)
+            .Include(p => p.Units)
+                .ThenInclude(u => u.Lessons)
+                    .ThenInclude(l => l.LearningObjectives)
+                        .ThenInclude(lo => lo.Schema)
+            .FirstOrDefaultAsync();
+
+        if (source is null || !UserCanAccessSubject(user!, source))
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "Subject is not found" }
+            );
+
+        var sourceLos = source.Units
+            .Where(u => !u.Archived)
+            .SelectMany(u => u.Lessons.Where(l => !l.Archived))
+            .SelectMany(l => l.LearningObjectives.Where(IsActiveLearningObjective))
+            .ToList();
+
+        if (sourceLos.Count == 0)
+            return new BadRequestObjectResult(
+                new BaseResponseService
+                {
+                    Error = true,
+                    Message = "Cannot copy a subject with no learning objectives"
+                }
+            );
+
+        var sourceLoIds = sourceLos.Select(lo => lo.Id).ToHashSet();
+        var overrideMap = new Dictionary<int, int>();
+        var overrideSchemaIds = new HashSet<int>();
+
+        foreach (var group in req.SchemaOverrides ?? [])
+        {
+            if (group.SchemaId <= 0
+                || group.SourceLearningObjectiveIds is null
+                || group.SourceLearningObjectiveIds.Count == 0)
+                continue;
+
+            overrideSchemaIds.Add(group.SchemaId);
+
+            foreach (var loId in group.SourceLearningObjectiveIds)
+            {
+                if (!sourceLoIds.Contains(loId))
+                    return new BadRequestObjectResult(
+                        new BaseResponseService
+                        {
+                            Error = true,
+                            Message = $"Learning objective {loId} does not belong to this subject"
+                        }
+                    );
+
+                if (overrideMap.ContainsKey(loId))
+                    return new BadRequestObjectResult(
+                        new BaseResponseService
+                        {
+                            Error = true,
+                            Message = $"Learning objective {loId} has duplicate schema overrides"
+                        }
+                    );
+
+                overrideMap[loId] = group.SchemaId;
+            }
+        }
+
+        if (overrideSchemaIds.Count > 0)
+        {
+            var validSchemaCount = await context.Schemas
+                .Where(s => overrideSchemaIds.Contains(s.Id) && !s.Archived)
+                .CountAsync();
+
+            if (validSchemaCount != overrideSchemaIds.Count)
+                return new BadRequestObjectResult(
+                    new BaseResponseService { Error = true, Message = "One or more schemas are invalid" }
+                );
+        }
+
+        Subject newSubject = null!;
+        var strategy = context.Database.CreateExecutionStrategy();
+        try
+        {
+            await strategy.ExecuteAsync(async () =>
+            {
+                await using var transaction = await context.Database.BeginTransactionAsync();
+                try
+                {
+                    newSubject = new Subject
+                    {
+                        Name = req.Name.Trim(),
+                        Description = source.Description,
+                        SubjectGroupId = source.SubjectGroupId,
+                        SubjectGroup = source.SubjectGroup,
+                        Status = ProjectStatusEnum.Active
+                    };
+
+                    context.Subjects.Add(newSubject);
+                    await context.SaveChangesAsync();
+
+                    foreach (var unit in source.Units.Where(u => !u.Archived))
+                    {
+                        var newUnit = new Models.Unit
+                        {
+                            Archived = false,
+                            Name = unit.Name,
+                            Subject = newSubject,
+                            SubjectId = newSubject.Id
+                        };
+
+                        context.Units.Add(newUnit);
+                        newSubject.Units.Add(newUnit);
+                        await context.SaveChangesAsync();
+
+                        foreach (var lesson in unit.Lessons.Where(l => !l.Archived))
+                        {
+                            var newLesson = new Models.Lesson
+                            {
+                                Unit = newUnit,
+                                UnitId = newUnit.Id,
+                                Name = lesson.Name
+                            };
+
+                            context.Lessons.Add(newLesson);
+                            newUnit.Lessons.Add(newLesson);
+                            await context.SaveChangesAsync();
+
+                            foreach (var lo in lesson.LearningObjectives.Where(IsActiveLearningObjective))
+                            {
+                                var schemaId = overrideMap.TryGetValue(lo.Id, out var overrideSchemaId)
+                                    ? overrideSchemaId
+                                    : lo.SchemaId;
+
+                                await lessonService.CreateLO(
+                                    newLesson.Id,
+                                    new Requests.LearningObjectiveDTO
+                                    {
+                                        Name = lo.Name,
+                                        Tag = lo.Tag,
+                                        Template = lo.Template,
+                                        Environment = lo.Environment,
+                                        SchemaId = schemaId
+                                    });
+                            }
+                        }
+                    }
+
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
+        catch (Exception)
+        {
+            return new ObjectResult(
+                new BaseResponseService { Error = true, Message = "Subject copy failed" }
+            )
+            {
+                StatusCode = StatusCodes.Status500InternalServerError
+            };
+        }
+
+        InvalidateAllSubjectsCache();
+        var folderPath = await curriculumService.BuildSubjectPathAsync(newSubject.SubjectGroupId);
+
+        return new ResponseService<SubjectDTO>
+        {
+            Data = MapSubjectDto(newSubject, folderPath),
+            Error = false,
+            Message = $"Subject {newSubject.Name} was copied successfully."
         };
     }
 

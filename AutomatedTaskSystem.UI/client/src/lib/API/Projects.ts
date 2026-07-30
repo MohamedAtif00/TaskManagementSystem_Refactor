@@ -186,6 +186,38 @@ const PROJECTS = {
             return false;
         }
     },
+    COPY: async ({
+        id,
+        name,
+        schemaOverrides,
+    }: {
+        id: string | string[] | number;
+        name: string;
+        schemaOverrides: {
+            schemaId: number;
+            sourceLearningObjectiveIds: number[];
+        }[];
+    }) => {
+        try {
+            const res = await fetch(`${url}/subjects/${id}/copy`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...authService.authHeader(),
+                },
+                body: JSON.stringify({ name, schemaOverrides }),
+            });
+            const data: {
+                data: IProject;
+                error: boolean;
+                message: string;
+            } = await res.json();
+            return data;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
     DELETE: async (id: string | string[] | number) => {
         try {
             const res = await fetch(`${url}/subjects/${id}`, {

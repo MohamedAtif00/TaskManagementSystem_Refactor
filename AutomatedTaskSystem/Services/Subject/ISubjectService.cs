@@ -19,6 +19,10 @@ public interface ISubjectService
         string Description,
         int folderId
     );
+    Task<ActionResult<ResponseService<SubjectDTO>>> CopyProject(
+        int sourceId,
+        Requests.CopySubjectRequest req
+    );
     Task<ActionResult<ResponseService<SubjectDTO>>> EditProject(
         int id,
         string Name,

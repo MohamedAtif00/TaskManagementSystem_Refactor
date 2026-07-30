@@ -91,6 +91,12 @@ public class SubjectController : ControllerBase
         Requests.SubjectWriteDTO req
     ) => await _subjectService.CreateProject(req.Name, req.Description, req.FolderId);
 
+    [HttpPost("{id}/copy")]
+    public async Task<ActionResult<ResponseService<SubjectDTO>>> CopySubject(
+        int id,
+        Requests.CopySubjectRequest req
+    ) => await _subjectService.CopyProject(id, req);
+
     [HttpPost("{id}/units")]
     public async Task<ActionResult<ResponseService<ProjectUnitDTO>>> AddUnit(
         int id,

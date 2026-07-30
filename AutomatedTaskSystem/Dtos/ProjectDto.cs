@@ -100,5 +100,17 @@ namespace AutomatedTaskSystem.DTO
         {
             public string Comment { get; set; } = "";
         }
+
+        public class CopySubjectRequest
+        {
+            public string Name { get; set; } = "";
+            public List<LoSchemaOverrideGroup> SchemaOverrides { get; set; } = new();
+        }
+
+        public class LoSchemaOverrideGroup
+        {
+            public int SchemaId { get; set; }
+            public List<int> SourceLearningObjectiveIds { get; set; } = new();
+        }
     }
 }

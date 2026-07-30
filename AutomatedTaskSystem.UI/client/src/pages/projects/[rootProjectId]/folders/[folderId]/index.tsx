@@ -14,6 +14,7 @@ import HoldProject from "../../../../../components/pageComponent/projects/holdPr
 import CloseProject from "../../../../../components/pageComponent/projects/closeProject";
 import ActivateProject from "../../../../../components/pageComponent/projects/activeProject";
 import RemoveProject from "../../../../../components/pageComponent/projects/removeProject";
+import CopyProject from "../../../../../components/pageComponent/projects/copyProject";
 import TableAction from "../../../../../components/TableComponents/TableActionButton";
 
 type FolderDto = {
@@ -133,10 +134,18 @@ const LeafFolderSubjectsPage = () => {
         {
             field: "colActions",
             headerName: "Actions",
-            width: 250,
+            width: 300,
             renderCell: (c) => (
                 <div className="flex justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                     <TableAction text="View" url={{ pathname: `/subjects/${c.id}`, query: { rootProjectId } }} type="eye" />
+                    <TableAction
+                        text="Copy"
+                        url={{
+                            pathname: router.pathname,
+                            query: { ...router.query, form: "copy-project", subjectId: c.id },
+                        }}
+                        type="duplicate"
+                    />
                     <TableAction
                         text="Edit"
                         url={{
@@ -354,6 +363,7 @@ const LeafFolderSubjectsPage = () => {
             <ActivateProject />
             <CloseProject />
             <RemoveProject />
+            <CopyProject onSuccess={loadPageData} />
         </div>
     );
 };
