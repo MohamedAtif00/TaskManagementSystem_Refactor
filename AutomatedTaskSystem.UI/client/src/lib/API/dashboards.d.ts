@@ -90,6 +90,75 @@ interface TeamLeaderActivity {
     createdAt: string;
 }
 
+interface SectionHeadDashboard {
+    projects: number;
+    sprints: number;
+    learningObjectives: number;
+    users: number;
+    teams: number;
+    teamsWorkload: SectionHeadTeamWorkload[];
+    learningObjectivesOverview: {
+        completed: number;
+        uncompleted: number;
+        total: number;
+    };
+    tasksOverview: {
+        toDo: number;
+        doing: number;
+        rollback: number;
+        flagged: number;
+        done: number;
+        total: number;
+    };
+    projectsTable: SectionHeadProjectRow[];
+    flaggedRollbackTasks: SectionHeadFlaggedRollback[];
+    sprintsTable: SectionHeadSprintRow[];
+    activityLog: SectionHeadActivity[];
+}
+
+interface SectionHeadTeamWorkload {
+    id: number;
+    name: string;
+    taskCount: number;
+    workloadPercent: number;
+}
+
+interface SectionHeadProjectRow {
+    id: number;
+    name: string;
+    year: string;
+    status: "on_track" | "completed" | "at_risk";
+    progressPercent: number;
+    deadline: string;
+}
+
+interface SectionHeadSprintRow {
+    id: number;
+    name: string;
+    projectName: string;
+    year: string;
+    status: "on_track" | "completed" | "at_risk";
+    progressPercent: number;
+    deadline: string;
+}
+
+interface SectionHeadFlaggedRollback {
+    taskId: number;
+    projectId: number;
+    userName: string;
+    taskName: string;
+    type: "flagged" | "rollback";
+    timestamp: string;
+}
+
+interface SectionHeadActivity {
+    id: number;
+    userName: string;
+    initials: string;
+    message: string;
+    createdAt: string;
+}
+
 interface MemberDashboard {
     projects: number;
     activeProjects: number;

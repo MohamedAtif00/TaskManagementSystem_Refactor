@@ -1,6 +1,7 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.Dashboard.GetMemberDashboard;
 using AutomatedTaskSystem.Dtos.Dashboard.GetProjectManagerDashboard;
+using AutomatedTaskSystem.Dtos.Dashboard.GetSectionHeadDashboard;
 using AutomatedTaskSystem.Dtos.Dashboard.GetTeamLeaderDashboard;
 using AutomatedTaskSystem.Models.Enums.NotificationCategory;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
@@ -455,6 +456,387 @@ public class DashboardService : IDashboardService
                     Total = learningObjectiveRows.Count,
                 },
                 TasksOverview = new TeamLeaderTasksOverviewDto
+                {
+                    ToDo = toDoCount,
+                    Doing = doingCount,
+                    Rollback = rollbackCount,
+                    Flagged = flaggedCount,
+                    Done = doneCount,
+                    Total = totalTasks,
+                },
+                ProjectsTable = projectsTable,
+                FlaggedRollbackTasks = flaggedRollbackTasks,
+                SprintsTable = sprintsTable,
+                ActivityLog = activityLog,
+            },
+        };
+    }
+
+    public async Task<
+        ActionResult<ResponseService<GetSectionHeadDashboardDto>>
+    > GetSectionHeadDashboard()
+    {
+        var authRes = _tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = authRes.Message }
+            );
+
+        var statusUid = Int32.TryParse(authRes.Data, out int uid);
+        if (!statusUid)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid Request" }
+            );
+
+        var user = await _context.Users
+            .Where(u => u.Id == uid && !u.Archived)
+            .Include(u => u.Group)
+            .Include(u => u.Subjects)
+                .ThenInclude(s => s.SubjectGroup)
+                    .ThenInclude(sg => sg.Term)
+                        .ThenInclude(t => t.Project)
+                            .ThenInclude(p => p.Year)
+            .FirstOrDefaultAsync();
+        if (user is null)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = false, Message = "Invalid auth" }
+            );
+        if (user.Role != UserRoleEnum.SectionHead)
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = false, Message = "Invalid auth" }
+            );
+
+        var sectionGroupIds = await (
+            from sg in _context.SectionGroups
+            join section in _context.Sections on sg.SectionId equals section.Id
+            where section.HeadId == uid && !section.Archived
+            select sg.GroupId
+        )
+            .Distinct()
+            .ToListAsync();
+
+        if (user.GroupId.HasValue && !sectionGroupIds.Contains(user.GroupId.Value))
+            sectionGroupIds.Add(user.GroupId.Value);
+
+        var groups = sectionGroupIds.Any()
+            ? await _context.Groups
+                .Where(g => sectionGroupIds.Contains(g.Id) && !g.Archived)
+                .ToListAsync()
+            : new List<Models.Group>();
+
+        var sectionUsers = sectionGroupIds.Any()
+            ? await _context.Users
+                .Where(
+                    u =>
+                        !u.Archived
+                        && sectionGroupIds.Contains(u.GroupId ?? 0)
+                        && u.Role != UserRoleEnum.ProjectManger
+                        && u.Role != UserRoleEnum.SectionHead
+                )
+                .ToListAsync()
+            : new List<Models.User>();
+
+        var sectionTasks = sectionGroupIds.Any()
+            ? await _context.Tasks
+                .Where(
+                    t =>
+                        !t.Archived
+                        && sectionGroupIds.Contains(t.GroupId)
+                        && t.LearningObjective.Lesson.Unit.Subject.Status
+                            != ProjectStatusEnum.Closed
+                        && t.LearningObjective.Lesson.Unit.Subject.Status
+                            != ProjectStatusEnum.Hold
+                )
+                .Include(t => t.User)
+                .Include(t => t.LearningObjective)
+                    .ThenInclude(lo => lo.Lesson)
+                        .ThenInclude(l => l.Unit)
+                            .ThenInclude(u => u.Subject)
+                .AsSplitQuery()
+                .ToListAsync()
+            : new List<Models.Task>();
+
+        var activeSubjects = user.Subjects
+            .Where(
+                s =>
+                    !s.Archived
+                    && s.Status != ProjectStatusEnum.Closed
+                    && s.Status != ProjectStatusEnum.Hold
+            )
+            .ToList();
+
+        if (!activeSubjects.Any())
+        {
+            var taskSubjectIds = sectionTasks
+                .Select(t => t.LearningObjective.Lesson.Unit.SubjectId)
+                .Distinct()
+                .ToList();
+
+            activeSubjects = taskSubjectIds.Any()
+                ? await _context.Subjects
+                    .Where(
+                        s =>
+                            !s.Archived
+                            && taskSubjectIds.Contains(s.Id)
+                            && s.Status != ProjectStatusEnum.Closed
+                            && s.Status != ProjectStatusEnum.Hold
+                    )
+                    .Include(s => s.SubjectGroup)
+                        .ThenInclude(sg => sg.Term)
+                            .ThenInclude(t => t.Project)
+                                .ThenInclude(p => p.Year)
+                    .ToListAsync()
+                : new List<Models.Subject>();
+        }
+
+        var subjectIds = activeSubjects.Select(s => s.Id).ToList();
+
+        var learningObjectiveRows = await _context.LearningObjectives
+            .Where(
+                lo =>
+                    !lo.Archived
+                    && subjectIds.Contains(lo.Lesson.Unit.SubjectId)
+            )
+            .Select(
+                lo =>
+                    new
+                    {
+                        lo.Id,
+                        lo.DoneAt,
+                        SubjectId = lo.Lesson.Unit.SubjectId,
+                    }
+            )
+            .ToListAsync();
+
+        var loCompleted = learningObjectiveRows.Count(lo => lo.DoneAt.HasValue);
+        var loUncompleted = learningObjectiveRows.Count - loCompleted;
+
+        var toDoCount = sectionTasks.Count(
+            t => t.Status == TaskStatusEnum.Backlog || t.Status == TaskStatusEnum.ToDo
+        );
+        var doingCount = sectionTasks.Count(t => t.Status == TaskStatusEnum.Doing);
+        var rollbackCount = sectionTasks.Count(t => t.Status == TaskStatusEnum.Rollback);
+        var flaggedCount = sectionTasks.Count(
+            t => t.Flagged && t.Status != TaskStatusEnum.Done
+        );
+        var doneCount = sectionTasks.Count(t => t.Status == TaskStatusEnum.Done);
+        var totalTasks = sectionTasks.Count;
+
+        var activeGroupTasks = sectionTasks
+            .Where(
+                t =>
+                    t.Status != TaskStatusEnum.Done
+                    && t.Status != TaskStatusEnum.Rollback
+            )
+            .ToList();
+        var totalActiveGroupWorkload = activeGroupTasks.Count;
+
+        var teamsWorkload = groups
+            .Select(
+                g =>
+                {
+                    var groupActiveCount = activeGroupTasks.Count(t => t.GroupId == g.Id);
+                    var percent = totalActiveGroupWorkload > 0
+                        ? Math.Round(
+                            (double)groupActiveCount / totalActiveGroupWorkload * 100,
+                            0
+                        )
+                        : 0;
+                    return new SectionHeadTeamWorkloadDto
+                    {
+                        Id = g.Id,
+                        Name = g.Name,
+                        TaskCount = groupActiveCount,
+                        WorkloadPercent = percent,
+                    };
+                }
+            )
+            .OrderByDescending(g => g.WorkloadPercent)
+            .ToList();
+
+        string MapProjectStatus(ProjectStatusEnum status)
+        {
+            if (status == ProjectStatusEnum.Closed)
+                return "completed";
+            if (status == ProjectStatusEnum.Hold)
+                return "at_risk";
+            return "on_track";
+        }
+
+        var projectsTable = new List<SectionHeadProjectRowDto>();
+        foreach (var project in activeSubjects.OrderBy(p => p.Name))
+        {
+            var projectLos = learningObjectiveRows
+                .Where(lo => lo.SubjectId == project.Id)
+                .ToList();
+            var projectDone = projectLos.Count(lo => lo.DoneAt.HasValue);
+            var projectTotal = projectLos.Count;
+            var progress = projectTotal > 0
+                ? Math.Round((double)projectDone / projectTotal * 100, 0)
+                : 0;
+
+            var yearName = project.SubjectGroup?.Term?.Project?.Year?.Name ?? "";
+            var deadline = project.SubjectGroup?.Term?.EndDate;
+
+            projectsTable.Add(
+                new SectionHeadProjectRowDto
+                {
+                    Id = project.Id,
+                    Name = project.Name,
+                    Year = yearName,
+                    Status = MapProjectStatus(project.Status),
+                    ProgressPercent = progress,
+                    Deadline = deadline.HasValue
+                        ? deadline.Value.ToString("MMM dd, yyyy")
+                        : "",
+                }
+            );
+        }
+
+        var sectionLoIds = learningObjectiveRows.Select(lo => lo.Id).ToList();
+        var sprintLinks = await _context.SprintLearningObjectives
+            .Where(
+                slo =>
+                    sectionLoIds.Contains(slo.LearningObjectiveId)
+                    && slo.Sprint != null
+                    && !slo.Sprint.IsArchived
+            )
+            .Include(slo => slo.Sprint)
+            .Include(slo => slo.LearningObjective)
+                .ThenInclude(lo => lo.Lesson)
+                    .ThenInclude(l => l.Unit)
+            .AsSplitQuery()
+            .ToListAsync();
+
+        var sprintIds = sprintLinks.Select(slo => slo.SprintId).Distinct().ToList();
+        var today = DateTime.Today;
+
+        var sprintsTable = new List<SectionHeadSprintRowDto>();
+        foreach (
+            var sprintGroup in sprintLinks
+                .GroupBy(slo => slo.Sprint!)
+                .OrderBy(g => g.Key.EndDate)
+                .Take(6)
+        )
+        {
+            var sprint = sprintGroup.Key;
+            var sprintLoIds = sprintGroup.Select(slo => slo.LearningObjectiveId).ToList();
+            var sprintTasks = sectionTasks
+                .Where(t => sprintLoIds.Contains(t.LearningObjectiveId))
+                .ToList();
+            var sprintDone = sprintTasks.Count(t => t.Status == TaskStatusEnum.Done);
+            var sprintTotal = sprintTasks.Count;
+            var progress = sprintTotal > 0
+                ? Math.Round((double)sprintDone / sprintTotal * 100, 0)
+                : 0;
+
+            var firstLo = sprintGroup.First().LearningObjective;
+            var subjectId = firstLo?.Lesson?.Unit?.SubjectId;
+            var subject = activeSubjects.FirstOrDefault(s => s.Id == subjectId);
+            var yearName = subject?.SubjectGroup?.Term?.Project?.Year?.Name ?? "";
+
+            var daysLeft = (sprint.EndDate.Date - today).Days;
+            var sprintStatus =
+                daysLeft < 0 && progress < 100
+                    ? "at_risk"
+                    : progress >= 100
+                    ? "completed"
+                    : "on_track";
+
+            sprintsTable.Add(
+                new SectionHeadSprintRowDto
+                {
+                    Id = sprint.Id,
+                    Name = sprint.Name,
+                    ProjectName = subject?.Name ?? sprint.Description,
+                    Year = yearName,
+                    Status = sprintStatus,
+                    ProgressPercent = progress,
+                    Deadline = sprint.EndDate.ToString("MMM dd, yyyy"),
+                }
+            );
+        }
+
+        var flaggedRollbackTasks = sectionTasks
+            .Where(
+                t =>
+                    t.Flagged
+                    || t.IsRollback
+                    || t.Status == TaskStatusEnum.Rollback
+            )
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(8)
+            .Select(
+                t =>
+                    new SectionHeadFlaggedRollbackDto
+                    {
+                        TaskId = t.Id,
+                        ProjectId = t.LearningObjective.Lesson.Unit.Subject.Id,
+                        UserName = t.User?.Name ?? "Unassigned",
+                        TaskName = t.Name,
+                        Type =
+                            t.Flagged && t.Status != TaskStatusEnum.Rollback
+                                ? "flagged"
+                                : "rollback",
+                        Timestamp = t.CreatedAt.ToString("O"),
+                    }
+            )
+            .ToList();
+
+        var sectionTaskIds = sectionTasks.Select(t => t.Id).ToList();
+        var activities = await _context.TaskActivities
+            .Where(a => sectionTaskIds.Contains(a.TaskId))
+            .Include(a => a.ActorOne)
+            .Include(a => a.Task)
+            .OrderByDescending(a => a.TimeStamp)
+            .Take(8)
+            .ToListAsync();
+
+        var activityLog = activities
+            .Select(
+                a =>
+                {
+                    var actorName = a.ActorOne?.Name ?? "System";
+                    var initials = string.Join(
+                        "",
+                        actorName
+                            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                            .Take(2)
+                            .Select(part => part[0])
+                    )
+                        .ToUpper();
+                    var message = BuildActivityMessage(a.Type, actorName, a.Task.Name);
+                    return new SectionHeadActivityDto
+                    {
+                        Id = a.Id,
+                        UserName = actorName,
+                        Initials = initials,
+                        Message = message,
+                        CreatedAt = a.TimeStamp.ToString("O"),
+                    };
+                }
+            )
+            .ToList();
+
+        return new ResponseService<GetSectionHeadDashboardDto>
+        {
+            Message = "Section Head Dashboard",
+            Error = false,
+            Data = new GetSectionHeadDashboardDto
+            {
+                Projects = activeSubjects.Count,
+                Sprints = sprintIds.Count,
+                LearningObjectives = learningObjectiveRows.Count,
+                Users = sectionUsers.Count,
+                Teams = groups.Count,
+                TeamsWorkload = teamsWorkload,
+                LearningObjectivesOverview = new SectionHeadLearningObjectivesOverviewDto
+                {
+                    Completed = loCompleted,
+                    Uncompleted = loUncompleted,
+                    Total = learningObjectiveRows.Count,
+                },
+                TasksOverview = new SectionHeadTasksOverviewDto
                 {
                     ToDo = toDoCount,
                     Doing = doingCount,
