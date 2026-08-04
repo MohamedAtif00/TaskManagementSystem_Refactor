@@ -250,6 +250,13 @@ public class DataContext : DbContext
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder
+            .Entity<Subject>()
+            .HasOne(s => s.CopiedFromSubject)
+            .WithMany(s => s.Copies)
+            .HasForeignKey(s => s.CopiedFromSubjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder
             .Entity<Unit>()
             .HasOne(u => u.Subject)
             .WithMany(s => s.Units)

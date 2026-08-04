@@ -72,6 +72,12 @@ public class SubjectController : ControllerBase
         [FromQuery] bool includeInactive = false
     ) => await _subjectService.GetSubjectsByFolder(folderId, includeInactive);
 
+    [Authorize]
+    [HttpGet("by-folder/{folderId:int}/copy-lineage")]
+    public async Task<ActionResult<ResponseService<List<SubjectCopyLineageChainDTO>>>> GetCopyLineagesByFolder(
+        int folderId
+    ) => await _subjectService.GetCopyLineagesByFolder(folderId);
+
     [HttpGet("GetAllForSprint")]
     public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetSubjectsForSprint() =>
         await _subjectService.GetAllProjectsForSprint();

@@ -162,6 +162,7 @@ const CopyProject = ({ onSuccess }: { onSuccess?: () => void }) => {
             });
             return next;
         });
+        setSelectedLoIds(new Set());
     };
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {

@@ -200,6 +200,52 @@ interface IProject {
     progressPercent?: number;
 }
 
+interface SubjectCopyLineageNode {
+    id: number;
+    name: string;
+    status: ProjectStatus;
+    progressPercent?: number;
+    learningObjectives: SubjectCopyLineageLo[];
+    schemaNodes: SubjectCopyLineageSchemaNodes[];
+}
+
+interface SubjectCopyLineageSchemaNodes {
+    schemaId: number;
+    schemaName: string;
+    nodes: SubjectCopyLineageNodeStatus[];
+}
+
+interface SubjectCopyLineageNodeStatus {
+    nodeId: number;
+    nodeName: string;
+    order: number;
+    isComplete: boolean;
+    status: string;
+}
+
+interface SubjectCopyLineageLo {
+    id: number;
+    name: string;
+    title: string;
+    stage: string;
+    progressPercent: number;
+    tasks: SubjectCopyLineageLoTask[];
+}
+
+interface SubjectCopyLineageLoTask {
+    taskId?: number | null;
+    nodeName: string;
+    stepName: string;
+    status: TaskStatus;
+    isComplete: boolean;
+    hasTask: boolean;
+    order: number;
+}
+
+interface SubjectCopyLineageChain {
+    subjects: SubjectCopyLineageNode[];
+}
+
 
 interface ISprint{
     id:number,

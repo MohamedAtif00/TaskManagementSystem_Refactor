@@ -57,7 +57,7 @@ const LeafFolderSubjectsPage = () => {
 
     const loadPageData = useCallback(async () => {
         const [folderRes, subjectsRes] = await Promise.all([
-            API.PROJECTS.ROOT.GET(folderId),
+            API.PROJECTS.ROOT.GET_TERM(folderId, "subjectGroup"),
             API.PROJECTS.GET_BY_FOLDER(folderId, { includeInactive: true }),
         ]);
 
@@ -305,6 +305,15 @@ const LeafFolderSubjectsPage = () => {
                     <p className="text-slate-500 text-sm mt-1">{folder?.path ?? folder?.name ?? "Folder"}</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        className="px-4 py-2 border border-cyan-600 text-cyan-700 rounded-lg hover:bg-cyan-50"
+                        onClick={() =>
+                            router.push(`/projects/${rootProjectId}/folders/${folderId}/copy-lineage`)
+                        }
+                    >
+                        Copy Storyline
+                    </button>
                     <button
                         type="button"
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

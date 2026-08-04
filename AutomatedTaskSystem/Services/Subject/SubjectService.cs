@@ -164,40 +164,40 @@ public class SubjectService(
         // Pass IDs as JSON once instead of expanding IN (@p0, @p1, ...) which is slow for large lists.
         // Drive both aggregates from the ID set so SQL Server starts at Units by SubjectId.
         const string progressSql = """
-WITH SubjectIds AS (
-    SELECT DISTINCT CAST([value] AS INT) AS Id
-    FROM OPENJSON(@subjectIdsJson)
-),
-Expected AS (
-    SELECT
-        u.SubjectId,
-        ExpectedTasks = COUNT(1)
-    FROM SubjectIds sid
-    INNER JOIN Units u ON u.SubjectId = sid.Id AND u.Archived = 0
-    INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
-    INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
-    INNER JOIN Nodes n ON n.SchemaId = lo.SchemaId AND n.Archived = 0
-    INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
-    GROUP BY u.SubjectId
-),
-Completed AS (
-    SELECT
-        u.SubjectId,
-        CompletedTasks = COUNT(1)
-    FROM SubjectIds sid
-    INNER JOIN Units u ON u.SubjectId = sid.Id AND u.Archived = 0
-    INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
-    INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
-    INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id AND t.Archived = 0 AND t.Status = @done
-    GROUP BY u.SubjectId
-)
-SELECT
-    SubjectId = COALESCE(e.SubjectId, c.SubjectId),
-    ExpectedTasks = ISNULL(e.ExpectedTasks, 0),
-    CompletedTasks = ISNULL(c.CompletedTasks, 0)
-FROM Expected e
-FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
-""";
+            WITH SubjectIds AS (
+                SELECT DISTINCT CAST([value] AS INT) AS Id
+                FROM OPENJSON(@subjectIdsJson)
+            ),
+            Expected AS (
+                SELECT
+                    u.SubjectId,
+                    ExpectedTasks = COUNT(1)
+                FROM SubjectIds sid
+                INNER JOIN Units u ON u.SubjectId = sid.Id AND u.Archived = 0
+                INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
+                INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
+                INNER JOIN Nodes n ON n.SchemaId = lo.SchemaId AND n.Archived = 0
+                INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
+                GROUP BY u.SubjectId
+            ),
+            Completed AS (
+                SELECT
+                    u.SubjectId,
+                    CompletedTasks = COUNT(1)
+                FROM SubjectIds sid
+                INNER JOIN Units u ON u.SubjectId = sid.Id AND u.Archived = 0
+                INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
+                INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
+                INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id AND t.Archived = 0 AND t.Status = @done
+                GROUP BY u.SubjectId
+            )
+            SELECT
+                SubjectId = COALESCE(e.SubjectId, c.SubjectId),
+                ExpectedTasks = ISNULL(e.ExpectedTasks, 0),
+                CompletedTasks = ISNULL(c.CompletedTasks, 0)
+            FROM Expected e
+            FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
+            """;
 
         var rows = await connection.QueryAsync<SubjectProgressRow>(
             progressSql,
@@ -297,6 +297,198 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
         !lo.Archived
         && (lo.Name == null
             || !lo.Name.Contains("old", StringComparison.OrdinalIgnoreCase));
+
+    private sealed record LoStepEntry(Models.Node Node, Models.Step Step, Models.Task? Task);
+
+    private static List<LoStepEntry> GetLoStepEntries(Models.LearningObjective lo)
+    {
+        var nodes = (lo.Schema?.Nodes ?? new List<Models.Node>())
+            .Where(n => !n.Archived)
+            .OrderBy(n => n.Order)
+            .ToList();
+
+        var tasksByStepId = (lo.Tasks ?? new List<Models.Task>())
+            .Where(t => !t.Archived && t.StepId.HasValue)
+            .GroupBy(t => t.StepId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(t => t.Id).First());
+
+        var entries = new List<LoStepEntry>();
+        foreach (var node in nodes)
+        {
+            foreach (var step in node.Steps.Where(s => !s.Archived).OrderBy(s => s.Order))
+            {
+                tasksByStepId.TryGetValue(step.Id, out var task);
+                entries.Add(new LoStepEntry(node, step, task));
+            }
+        }
+
+        return entries;
+    }
+
+    private static (string Stage, int ProgressPercent) GetLoTracking(Models.LearningObjective lo)
+    {
+        var entries = GetLoStepEntries(lo);
+        var totalExpected = entries.Count;
+        var completed = entries.Count(e => e.Task?.Status == TaskStatusEnum.Done);
+        var progress = CalculateProgressPercent(completed, totalExpected);
+
+        if (totalExpected == 0)
+            return ("—", progress);
+
+        if (entries.All(e => e.Task is null))
+            return ("Not started", 0);
+
+        Models.Node? stageNode = null;
+        var nodesInOrder = entries
+            .GroupBy(e => e.Node.Id)
+            .Select(g => g.First().Node)
+            .OrderBy(n => n.Order)
+            .ToList();
+
+        foreach (var node in nodesInOrder)
+        {
+            var nodeEntries = entries.Where(e => e.Node.Id == node.Id).ToList();
+            if (nodeEntries.All(e => e.Task is null))
+                break;
+
+            var nodeComplete = nodeEntries.All(e =>
+                e.Task is not null && e.Task.Status == TaskStatusEnum.Done);
+
+            stageNode = node;
+            if (!nodeComplete)
+                break;
+        }
+
+        var stage = stageNode?.Name ?? (progress >= 100 ? "Complete" : "Not started");
+        return (stage, progress);
+    }
+
+    private static string ResolveLoTitle(Models.LearningObjective lo)
+    {
+        if (!string.IsNullOrWhiteSpace(lo.Template))
+            return lo.Template.Trim();
+        if (!string.IsNullOrWhiteSpace(lo.Tag))
+            return lo.Tag.Trim();
+        return lo.Name;
+    }
+
+    private static List<SubjectCopyLineageLoTaskDTO> MapLoTasks(Models.LearningObjective lo)
+    {
+        var order = 0;
+        return GetLoStepEntries(lo)
+            .Select(entry =>
+            {
+                order++;
+                var stepName = entry.Step.TaskBank?.Name ?? entry.Task?.Name ?? "";
+                return new SubjectCopyLineageLoTaskDTO
+                {
+                    TaskId = entry.Task?.Id,
+                    NodeName = entry.Node.Name,
+                    StepName = stepName,
+                    Status = entry.Task is not null
+                        ? (int)entry.Task.Status
+                        : (int)TaskStatusEnum.Backlog,
+                    IsComplete = entry.Task?.Status == TaskStatusEnum.Done,
+                    HasTask = entry.Task is not null,
+                    Order = order
+                };
+            })
+            .ToList();
+    }
+
+    private static List<SubjectCopyLineageLoDTO> MapLineageLearningObjectives(Subject subject) =>
+        subject.Units
+            .Where(u => !u.Archived)
+            .SelectMany(
+                u => u.Lessons.Where(l => !l.Archived),
+                (unit, lesson) => new { unit, lesson })
+            .SelectMany(
+                x => x.lesson.LearningObjectives.Where(IsActiveLearningObjective),
+                (x, lo) =>
+                {
+                    var (stage, progress) = GetLoTracking(lo);
+                    return new SubjectCopyLineageLoDTO
+                    {
+                        Id = lo.Id,
+                        Name = lo.Name,
+                        Title = ResolveLoTitle(lo),
+                        Stage = stage,
+                        ProgressPercent = progress,
+                        Tasks = MapLoTasks(lo)
+                    };
+                })
+            .ToList();
+
+    private static List<SubjectCopyLineageSchemaNodesDTO> MapSubjectSchemaNodeCompletion(Subject subject)
+    {
+        var los = subject.Units
+            .Where(u => !u.Archived)
+            .SelectMany(u => u.Lessons.Where(l => !l.Archived))
+            .SelectMany(l => l.LearningObjectives.Where(IsActiveLearningObjective))
+            .Where(lo => lo.Schema is not null)
+            .ToList();
+
+        return los
+            .GroupBy(lo => lo.SchemaId)
+            .Select(group =>
+            {
+                var schema = group.First().Schema!;
+                var nodes = schema.Nodes
+                    .Where(n => !n.Archived)
+                    .OrderBy(n => n.Order)
+                    .ToList();
+
+                var nodeStatuses = nodes
+                    .Select(node =>
+                    {
+                        var expectedSteps = node.Steps.Count(s => !s.Archived);
+                        var loStatuses = group
+                            .Select(lo =>
+                            {
+                                var nodeTasks = lo.Tasks
+                                    .Where(t => !t.Archived && t.Step is not null && t.Step.NodeId == node.Id)
+                                    .ToList();
+
+                                if (expectedSteps == 0 || nodeTasks.Count == 0)
+                                    return "not_started";
+
+                                if (nodeTasks.Count >= expectedSteps
+                                    && nodeTasks.All(t => t.Status == TaskStatusEnum.Done))
+                                    return "complete";
+
+                                return "in_progress";
+                            })
+                            .ToList();
+
+                        var allComplete = loStatuses.Count > 0 && loStatuses.All(s => s == "complete");
+                        var anyStarted = loStatuses.Any(s => s != "not_started");
+                        var status = allComplete
+                            ? "Complete"
+                            : anyStarted
+                                ? "In Progress"
+                                : "Not started";
+
+                        return new SubjectCopyLineageNodeStatusDTO
+                        {
+                            NodeId = node.Id,
+                            NodeName = node.Name,
+                            Order = node.Order,
+                            IsComplete = allComplete,
+                            Status = status
+                        };
+                    })
+                    .ToList();
+
+                return new SubjectCopyLineageSchemaNodesDTO
+                {
+                    SchemaId = schema.Id,
+                    SchemaName = schema.Name,
+                    Nodes = nodeStatuses
+                };
+            })
+            .OrderBy(s => s.SchemaName)
+            .ToList();
+    }
 
     public async Task<ActionResult<ResponseService<SubjectDTO>>> CopyProject(
         int sourceId,
@@ -404,7 +596,8 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
                         Description = source.Description,
                         SubjectGroupId = source.SubjectGroupId,
                         SubjectGroup = source.SubjectGroup,
-                        Status = ProjectStatusEnum.Active
+                        Status = ProjectStatusEnum.Active,
+                        CopiedFromSubjectId = sourceId
                     };
 
                     context.Subjects.Add(newSubject);
@@ -492,9 +685,9 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
         var subject = await context.Subjects
             .Where(p => p.Id == Id && !p.Archived)
             .Include(p => p.Units)
-            .ThenInclude(u => u.Lessons)
-            .ThenInclude(l => l.LearningObjectives)
-            .ThenInclude(lo => lo.Tasks)
+                .ThenInclude(u => u.Lessons)
+                    .ThenInclude(l => l.LearningObjectives)
+                        .ThenInclude(lo => lo.Tasks)
             .FirstOrDefaultAsync();
 
         if (subject is null)
@@ -607,6 +800,139 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
                 )
                 .ToList(),
             Message = "Subjects for folder",
+        };
+    }
+
+    public async Task<ActionResult<ResponseService<List<SubjectCopyLineageChainDTO>>>> GetCopyLineagesByFolder(
+        int folderId)
+    {
+        var (user, userError) = await ResolveCurrentUserAsync();
+        if (userError is not null)
+            return userError;
+
+        var group = await context.SubjectGroups.AsNoTracking()
+            .FirstOrDefaultAsync(g => g.Id == folderId);
+        if (group is null)
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = $"Subject group {folderId} not found" }
+            );
+
+        var folderSubjects = await context.Subjects
+            .AsNoTracking()
+            .Where(s => !s.Archived && s.SubjectGroupId == folderId)
+            .Select(s => new Subject
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Status = s.Status,
+                CopiedFromSubjectId = s.CopiedFromSubjectId,
+                SubjectGroupId = s.SubjectGroupId
+            })
+            .ToListAsync();
+
+        var visible = FilterSubjectsByUserRole(user!, folderSubjects, includeInactiveStatuses: true);
+        var visibleIds = visible.Select(s => s.Id).ToHashSet();
+        var parentIdsWithCopyChild = visible
+            .Where(s => s.CopiedFromSubjectId.HasValue)
+            .Select(s => s.CopiedFromSubjectId!.Value)
+            .ToHashSet();
+
+        var involved = visible
+            .Where(s =>
+                (s.CopiedFromSubjectId.HasValue && visibleIds.Contains(s.CopiedFromSubjectId.Value))
+                || parentIdsWithCopyChild.Contains(s.Id))
+            .ToList();
+
+        if (involved.Count == 0)
+        {
+            return new ResponseService<List<SubjectCopyLineageChainDTO>>
+            {
+                Error = false,
+                Data = new List<SubjectCopyLineageChainDTO>(),
+                Message = "No copy lineages in this folder"
+            };
+        }
+
+        var involvedIds = involved.Select(s => s.Id).ToList();
+        var detailedById = await context.Subjects
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Where(s => involvedIds.Contains(s.Id))
+            .Include(s => s.Units.Where(u => !u.Archived))
+                .ThenInclude(u => u.Lessons.Where(l => !l.Archived))
+                    .ThenInclude(l => l.LearningObjectives.Where(lo => !lo.Archived))
+                        .ThenInclude(lo => lo.Schema)
+                            .ThenInclude(schema => schema.Nodes.Where(n => !n.Archived))
+                                .ThenInclude(node => node.Steps.Where(step => !step.Archived))
+                                    .ThenInclude(step => step.TaskBank)
+            .Include(s => s.Units.Where(u => !u.Archived))
+                .ThenInclude(u => u.Lessons.Where(l => !l.Archived))
+                    .ThenInclude(l => l.LearningObjectives.Where(lo => !lo.Archived))
+                        .ThenInclude(lo => lo.Tasks.Where(t => !t.Archived))
+                            .ThenInclude(t => t.Step)
+            .ToDictionaryAsync(s => s.Id);
+
+        var involvedIdsSet = involvedIds.ToHashSet();
+        var childrenByParent = involved
+            .Where(s => s.CopiedFromSubjectId.HasValue && involvedIdsSet.Contains(s.CopiedFromSubjectId.Value))
+            .GroupBy(s => s.CopiedFromSubjectId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.Id).ToList());
+
+        var roots = involved
+            .Where(s => !s.CopiedFromSubjectId.HasValue || !involvedIdsSet.Contains(s.CopiedFromSubjectId.Value))
+            .OrderBy(s => s.Id)
+            .ToList();
+
+        var progressById = await GetProgressBySubjectIdAsync(involvedIds);
+        var chains = new List<SubjectCopyLineageChainDTO>();
+
+        void Walk(Subject current, List<Subject> path)
+        {
+            path.Add(current);
+
+            if (!childrenByParent.TryGetValue(current.Id, out var children) || children.Count == 0)
+            {
+                if (path.Count >= 2)
+                {
+                    chains.Add(
+                        new SubjectCopyLineageChainDTO
+                        {
+                            Subjects = path
+                                .Select(s =>
+                                {
+                                    var detailed = detailedById[s.Id];
+                                    return new SubjectCopyLineageNodeDTO
+                                    {
+                                        Id = s.Id,
+                                        Name = s.Name,
+                                        Status = s.Status,
+                                        ProgressPercent = progressById.GetValueOrDefault(s.Id),
+                                        LearningObjectives = MapLineageLearningObjectives(detailed),
+                                        SchemaNodes = MapSubjectSchemaNodeCompletion(detailed)
+                                    };
+                                })
+                                .ToList()
+                        });
+                }
+
+                path.RemoveAt(path.Count - 1);
+                return;
+            }
+
+            foreach (var child in children)
+                Walk(child, path);
+
+            path.RemoveAt(path.Count - 1);
+        }
+
+        foreach (var root in roots)
+            Walk(root, new List<Subject>());
+
+        return new ResponseService<List<SubjectCopyLineageChainDTO>>
+        {
+            Error = false,
+            Data = chains.OrderBy(c => c.Subjects[0].Id).ToList(),
+            Message = "Copy lineages for folder"
         };
     }
 

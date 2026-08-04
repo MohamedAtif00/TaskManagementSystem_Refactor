@@ -35,6 +35,13 @@ public class Subject
 
     public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
 
+    /// <summary>When set, this subject was created by copying the referenced subject.</summary>
+    public int? CopiedFromSubjectId { get; set; }
+
+    public Subject? CopiedFromSubject { get; set; }
+
+    public List<Subject> Copies { get; set; } = new();
+
 }
 
 

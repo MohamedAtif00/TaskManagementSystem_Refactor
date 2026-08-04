@@ -1,4 +1,5 @@
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 
 namespace AutomatedTaskSystem.DTO
 {
@@ -65,6 +66,58 @@ namespace AutomatedTaskSystem.DTO
         {
             public List<User> Assigned { get; set; } = new List<User> { };
             public List<User> Unassigned { get; set; } = new List<User> { };
+        }
+
+        public class SubjectCopyLineageNodeStatusDTO
+        {
+            public int NodeId { get; set; }
+            public string NodeName { get; set; } = "";
+            public int Order { get; set; }
+            public bool IsComplete { get; set; }
+            public string Status { get; set; } = "";
+        }
+
+        public class SubjectCopyLineageSchemaNodesDTO
+        {
+            public int SchemaId { get; set; }
+            public string SchemaName { get; set; } = "";
+            public List<SubjectCopyLineageNodeStatusDTO> Nodes { get; set; } = new();
+        }
+
+        public class SubjectCopyLineageLoTaskDTO
+        {
+            public int? TaskId { get; set; }
+            public string NodeName { get; set; } = "";
+            public string StepName { get; set; } = "";
+            public int Status { get; set; }
+            public bool IsComplete { get; set; }
+            public bool HasTask { get; set; }
+            public int Order { get; set; }
+        }
+
+        public class SubjectCopyLineageLoDTO
+        {
+            public int Id { get; set; }
+            public string Name { get; set; } = "";
+            public string Title { get; set; } = "";
+            public string Stage { get; set; } = "";
+            public int ProgressPercent { get; set; }
+            public List<SubjectCopyLineageLoTaskDTO> Tasks { get; set; } = new();
+        }
+
+        public class SubjectCopyLineageNodeDTO
+        {
+            public int Id { get; set; }
+            public string Name { get; set; } = "";
+            public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
+            public int? ProgressPercent { get; set; }
+            public List<SubjectCopyLineageLoDTO> LearningObjectives { get; set; } = new();
+            public List<SubjectCopyLineageSchemaNodesDTO> SchemaNodes { get; set; } = new();
+        }
+
+        public class SubjectCopyLineageChainDTO
+        {
+            public List<SubjectCopyLineageNodeDTO> Subjects { get; set; } = new();
         }
     }
 

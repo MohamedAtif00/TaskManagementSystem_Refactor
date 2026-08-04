@@ -41,6 +41,9 @@ public interface ISubjectService
         int folderId,
         bool includeInactiveStatuses = false
     );
+    Task<ActionResult<ResponseService<List<SubjectCopyLineageChainDTO>>>> GetCopyLineagesByFolder(
+        int folderId
+    );
     Task<ActionResult<ResponseService<List<IDName>>>> GetProjectLearningObjectives(
         int Id
     );
