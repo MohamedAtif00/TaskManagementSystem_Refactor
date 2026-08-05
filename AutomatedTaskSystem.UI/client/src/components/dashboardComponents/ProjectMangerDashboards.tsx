@@ -1,46 +1,34 @@
-import {
-    Chart as ChartJS,
-    ArcElement,
-    Tooltip,
-    Legend,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    Title,
-} from "chart.js";
 import { useEffect, useState } from "react";
-import { Pie, Bar } from "react-chartjs-2";
+import Head from "next/head";
+import Link from "next/link";
+import { formatDistanceToNow } from "date-fns";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
 import API from "../../lib/API";
 import Loader from "../loader";
-import Head from "next/head";
-import DashboardCard from "./card";
+import {
+    DashboardHeader,
+    DonutChart,
+    ProgressBar,
+    StatCard,
+    StatusPill,
+} from "./dashboardShared";
+
+const WORKLOAD_COLORS = ["#3B82F6", "#F59E0B"];
 
 const ProjectManagerDashboard = () => {
     const [dashboard, setDashboard] = useState<ProjectManagerDashboard>();
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        API.DASHBOARDS.GET_PM_DB().then(
-            (res) => res && !res.error && setDashboard(res.data)
-        );
+        API.DASHBOARDS.GET_PM_DB().then((res) => {
+            if (res && !res.error) setDashboard(res.data);
+            setLoading(false);
+        });
     }, []);
 
-    let done = 0,
-        idle = 0,
-        running = 0;
-
-    ChartJS.register(
-        CategoryScale,
-        LinearScale,
-        BarElement,
-        ArcElement,
-        Title,
-        Tooltip,
-        Legend
-    );
-
-    if (dashboard === undefined) {
+    if (loading) {
         return (
-            <div className="flex items-center justify-center mx-auto h-full">
+            <div className="flex items-center justify-center mx-auto h-full min-h-screen">
                 <Head>
                     <title>TMS - Loading</title>
                 </Head>
@@ -49,179 +37,340 @@ const ProjectManagerDashboard = () => {
         );
     }
 
-    dashboard.projectsReport.forEach((p) => {
-        done += p.doneLearningObjectives;
-        idle += p.idleLearningObjectives;
-        running += p.runningLearningObjectives;
-    });
+    if (!dashboard) {
+        return (
+            <div className="min-h-screen text-[#29313D] p-6 pl-8">
+                <Head>
+                    <title>TMS - Dashboard</title>
+                </Head>
+                <DashboardHeader
+                    title="Dashboard"
+                    subtitle="Unable to load dashboard data."
+                />
+            </div>
+        );
+    }
+
+    const loOverview = dashboard.learningObjectivesOverview;
+    const tasksOverview = dashboard.tasksOverview;
 
     return (
-        <div className="grid grid-cols-12 gap-8 p-8 w-full">
-            <DashboardCard label="Users" value={dashboard.numberOfUsers} />
-            <DashboardCard label="Projects" value={dashboard.numberOfProject} />
-            <DashboardCard label="Schemas" value={dashboard.numberOfSchemas} />
-            <DashboardCard
-                label="Active Tasks"
-                value={dashboard.numberOfActiveTasks}
+        <div className="min-h-screen text-[#29313D] p-6 pl-8">
+            <Head>
+                <title>TMS - Dashboard</title>
+            </Head>
+
+            <DashboardHeader
+                title="Dashboard"
+                subtitle="High-level operational stats and system health monitors."
             />
-            <div className="col-span-4 p-4 bg-white rounded">
-                <Pie
-                    options={{
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: "Learning Objective Statuses",
-                                font: {
-                                    size: 20,
-                                },
-                            },
-                        },
-                    }}
-                    data={{
-                        labels: ["Idle", "Running", "Done"],
-                        datasets: [
-                            {
-                                label: "Projects",
-                                data: [idle, running, done],
-                                backgroundColor: [
-                                    "#f59e0b",
-                                    "#2563eb",
-                                    "#22c55e",
-                                ],
-                                borderWidth: 2,
-                            },
-                        ],
-                    }}
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <StatCard label="Projects" value={dashboard.projects} />
+                <StatCard label="Sprints" value={dashboard.sprints} />
+                <StatCard
+                    label="Learning Objectives"
+                    value={dashboard.learningObjectives}
                 />
-                <div className="text-sm font-bold flex gap-4 justify-center">
-                    <div className="flex gap-1">
-                        <div className="flex items-center">
-                            <div
-                                style={{ backgroundColor: "#f59e0b" }}
-                                className="p-1 rounded-full"
-                            ></div>
-                        </div>
-                        <div
-                            style={{
-                                color: "#f59e0b",
-                            }}
-                        >
-                            {idle}
-                        </div>
+                <StatCard label="Users" value={dashboard.users} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white rounded-xl p-6 border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-base font-bold text-[#29313D]">
+                            Teams Workload
+                        </h3>
+                        <span className="text-xs text-gray-400">
+                            Per Learning Objectives
+                        </span>
                     </div>
-                    <div className="flex gap-1">
-                        <div className="flex items-center">
-                            <div
-                                style={{ backgroundColor: "#2563eb" }}
-                                className="p-1 rounded-full"
-                            ></div>
-                        </div>
-                        <div
-                            style={{
-                                color: "#2563eb",
-                            }}
-                        >
-                            {running}
-                        </div>
+                    <div className="flex flex-col gap-3">
+                        {dashboard.teamsWorkload.length === 0 ? (
+                            <p className="text-sm text-gray-400">No teams</p>
+                        ) : (
+                            dashboard.teamsWorkload.map((team, index) => (
+                                <div key={team.id} className="flex items-center gap-3">
+                                    <span className="text-sm text-gray-700 w-28 shrink-0 truncate">
+                                        {team.name}
+                                    </span>
+                                    <div className="flex-1 bg-gray-100 rounded-full h-2">
+                                        <div
+                                            className="h-2 rounded-full"
+                                            style={{
+                                                width: `${team.workloadPercent}%`,
+                                                backgroundColor:
+                                                    WORKLOAD_COLORS[
+                                                        index % WORKLOAD_COLORS.length
+                                                    ],
+                                            }}
+                                        />
+                                    </div>
+                                    <span className="text-xs font-semibold text-gray-500 w-8 text-right">
+                                        {team.workloadPercent}%
+                                    </span>
+                                </div>
+                            ))
+                        )}
                     </div>
-                    <div className="flex gap-1">
-                        <div className="flex items-center">
-                            <div
-                                style={{ backgroundColor: "#22c55e" }}
-                                className="p-1 rounded-full"
-                            ></div>
-                        </div>
-                        <div className="text-[#22c55e]">{done}</div>
+                </div>
+
+                <DonutChart
+                    title="Learning Objectives Overview"
+                    segments={[
+                        {
+                            label: "Uncompleted",
+                            color: "#D1D5DB",
+                            value: loOverview.uncompleted,
+                        },
+                        {
+                            label: "Completed",
+                            color: "#10B981",
+                            value: loOverview.completed,
+                        },
+                    ]}
+                    centerValue={loOverview.total}
+                    centerSubLabel="TOTAL LO"
+                />
+
+                <DonutChart
+                    title="Tasks Overview"
+                    segments={[
+                        { label: "To Do", color: "#D1D5DB", value: tasksOverview.toDo },
+                        { label: "Doing", color: "#3B82F6", value: tasksOverview.doing },
+                        { label: "Rollback", color: "#F59E0B", value: tasksOverview.rollback },
+                        { label: "Flag", color: "#EF4444", value: tasksOverview.flagged },
+                        { label: "Done", color: "#10B981", value: tasksOverview.done },
+                    ]}
+                    centerValue={tasksOverview.total}
+                    centerSubLabel="TOTAL TASKS"
+                />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">
+                            Projects Overview
+                        </h3>
+                        <Link
+                            href="/tasks"
+                            className="text-sm text-blue-600 hover:underline font-medium"
+                        >
+                            See All
+                        </Link>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="text-left text-gray-400 text-xs border-b border-gray-100">
+                                    <th className="pb-3 pr-4">Project Name</th>
+                                    <th className="pb-3 pr-4">Year</th>
+                                    <th className="pb-3 pr-4">Status</th>
+                                    <th className="pb-3 pr-4">Progress</th>
+                                    <th className="pb-3">Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {dashboard.projectsTable.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={5}
+                                            className="py-4 text-gray-400 text-center"
+                                        >
+                                            No projects
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    dashboard.projectsTable.map((project) => (
+                                        <tr
+                                            key={project.id}
+                                            className="border-b border-gray-50 last:border-0"
+                                        >
+                                            <td className="py-3 pr-4">
+                                                <Link
+                                                    href={`/tasks/${project.id}`}
+                                                    className="font-medium text-gray-800 hover:text-blue-600"
+                                                >
+                                                    {project.name}
+                                                </Link>
+                                            </td>
+                                            <td className="py-3 pr-4 text-gray-500">
+                                                {project.year}
+                                            </td>
+                                            <td className="py-3 pr-4">
+                                                <StatusPill status={project.status} />
+                                            </td>
+                                            <td className="py-3 pr-4 w-32">
+                                                <ProgressBar
+                                                    percent={project.progressPercent}
+                                                    status={project.status}
+                                                />
+                                            </td>
+                                            <td className="py-3 text-gray-500">
+                                                {project.deadline}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-xl p-6 border border-gray-100">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">
+                        Tasks Flagged & Rollbacked
+                    </h3>
+                    <div className="flex flex-col gap-3">
+                        {dashboard.flaggedRollbackTasks.length === 0 ? (
+                            <p className="text-sm text-gray-400">
+                                No flagged or rollback tasks
+                            </p>
+                        ) : (
+                            dashboard.flaggedRollbackTasks.map((task) => (
+                                <Link
+                                    key={`${task.taskId}-${task.type}`}
+                                    href={`/tasks/${task.projectId}/board?taskId=${task.taskId}`}
+                                    className={`flex items-start gap-3 p-3 rounded-lg hover:opacity-80 transition-opacity ${
+                                        task.type === "flagged"
+                                            ? "bg-red-50"
+                                            : "bg-yellow-50"
+                                    }`}
+                                >
+                                    <ExclamationTriangleIcon
+                                        className={`w-4 h-4 shrink-0 mt-0.5 ${
+                                            task.type === "flagged"
+                                                ? "text-red-500"
+                                                : "text-orange-500"
+                                        }`}
+                                    />
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-800">
+                                            {task.userName} — {task.taskName}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                            {task.type === "flagged"
+                                                ? "Flagged"
+                                                : "Rollbacked"}{" "}
+                                            ·{" "}
+                                            {formatDistanceToNow(
+                                                new Date(task.timestamp),
+                                                { addSuffix: true }
+                                            )}
+                                        </p>
+                                    </div>
+                                </Link>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
-            <div className="bg-white col-span-8 rounded">
-                <Bar
-                    data={{
-                        labels: dashboard.groupsCount.map((g) => g.name),
-                        datasets: [
-                            {
-                                data: dashboard.groupsCount.map(
-                                    (g) => g.usersCount
-                                ),
-                                backgroundColor: "rgb(53, 162, 235)",
-                            },
-                        ],
-                    }}
-                    height={500}
-                    width={1000}
-                    options={{
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                display: false,
-                            },
-                            title: {
-                                display: true,
-                                text: "User count in Group",
-                                font: {
-                                    size: 20,
-                                },
-                            },
-                        },
-                    }}
-                />
-            </div>
-            <div className="bg-white rounded col-span-12 overflow-x-auto flex justify-center">
-                <div className="overflow-x-auto w-full p-4">
-                    <Bar
-                        data={{
-                            labels: dashboard.projectsReport.map((r) => r.name),
-                            datasets: [
-                                {
-                                    label: "Idle",
-                                    data: dashboard.projectsReport.map(
-                                        (r) => r.idleLearningObjectives
-                                    ),
-                                    backgroundColor: "#f59e0b",
-                                },
-                                {
-                                    label: "Running",
-                                    data: dashboard.projectsReport.map(
-                                        (r) => r.runningLearningObjectives
-                                    ),
-                                    backgroundColor: "rgb(255, 99, 150)",
-                                },
-                                {
-                                    label: "Done",
-                                    data: dashboard.projectsReport.map(
-                                        (r) => r.doneLearningObjectives
-                                    ),
-                                    backgroundColor: "rgb(53, 162, 235)",
-                                },
-                            ],
-                        }}
-                        height={500}
-                        width={1000}
-                        options={{
-                            plugins: {
-                                title: {
-                                    display: true,
-                                    text: "Learning Objective statuses in Project",
-                                    font: {
-                                        size: 20,
-                                    },
-                                },
-                            },
-                            interaction: {
-                                mode: "index" as const,
-                                intersect: false,
-                            },
-                            scales: {
-                                x: {
-                                    stacked: true,
-                                },
-                                y: {
-                                    stacked: true,
-                                },
-                            },
-                        }}
-                    />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-800">
+                            Sprints Overview
+                        </h3>
+                        <Link
+                            href="/sprints"
+                            className="text-sm text-blue-600 hover:underline font-medium"
+                        >
+                            See All
+                        </Link>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="text-left text-gray-400 text-xs border-b border-gray-100">
+                                    <th className="pb-3 pr-4">Sprint Name</th>
+                                    <th className="pb-3 pr-4">Project Name</th>
+                                    <th className="pb-3 pr-4">Year</th>
+                                    <th className="pb-3 pr-4">Status</th>
+                                    <th className="pb-3 pr-4">Progress</th>
+                                    <th className="pb-3">Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {dashboard.sprintsTable.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={6}
+                                            className="py-4 text-gray-400 text-center"
+                                        >
+                                            No sprints
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    dashboard.sprintsTable.map((sprint) => (
+                                        <tr
+                                            key={sprint.id}
+                                            className="border-b border-gray-50 last:border-0"
+                                        >
+                                            <td className="py-3 pr-4">
+                                                <Link
+                                                    href={`/sprints/${sprint.id}`}
+                                                    className="font-medium text-gray-800 hover:text-blue-600"
+                                                >
+                                                    {sprint.name}
+                                                </Link>
+                                            </td>
+                                            <td className="py-3 pr-4 text-gray-600">
+                                                {sprint.projectName}
+                                            </td>
+                                            <td className="py-3 pr-4 text-gray-500">
+                                                {sprint.year}
+                                            </td>
+                                            <td className="py-3 pr-4">
+                                                <StatusPill status={sprint.status} />
+                                            </td>
+                                            <td className="py-3 pr-4 w-32">
+                                                <ProgressBar
+                                                    percent={sprint.progressPercent}
+                                                    status={sprint.status}
+                                                />
+                                            </td>
+                                            <td className="py-3 text-gray-500">
+                                                {sprint.deadline}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-xl p-6 border border-gray-100">
+                    <h3 className="text-lg font-bold text-gray-800 mb-4">Activity Log</h3>
+                    <div className="flex flex-col gap-4">
+                        {dashboard.activityLog.length === 0 ? (
+                            <p className="text-sm text-gray-400">No recent activity</p>
+                        ) : (
+                            dashboard.activityLog.map((activity) => (
+                                <div
+                                    key={activity.id}
+                                    className="flex items-start gap-3 border-b border-gray-50 pb-3 last:border-0 last:pb-0"
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold shrink-0">
+                                        {activity.initials}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm text-gray-700 leading-snug">
+                                            {activity.message}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            {formatDistanceToNow(
+                                                new Date(activity.createdAt),
+                                                { addSuffix: true }
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

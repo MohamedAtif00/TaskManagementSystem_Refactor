@@ -51,7 +51,6 @@ public class DashboardService : IDashboardService
 
         var user = await _context.Users
             .Where(u => u.Id == uid && !u.Archived)
-            .Include(u => u.Group)
             .FirstOrDefaultAsync();
         if (user is null)
             return new UnauthorizedObjectResult(
@@ -62,75 +61,324 @@ public class DashboardService : IDashboardService
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );
 
-        var users = await _context.Users.Where(u => !u.Archived).ToListAsync();
         var groups = await _context.Groups
             .Where(g => !g.Archived)
             .Include(g => g.Users)
             .ToListAsync();
-        var schemas = await _context.Schemas.Where(g => !g.Archived).ToListAsync();
-        var reports = await _reportService.GetAllProjectsReports(null, null);
-        var projects = await _context.Subjects
+        var activeGroups = groups
+            .Where(g => g.Users.Any(u => !u.Archived))
+            .ToList();
+
+        var orgUsers = await _context.Users
             .Where(
-                p =>
-                    !p.Archived
-                    && p.Status != ProjectStatusEnum.Closed
-                    && p.Status != ProjectStatusEnum.Hold
+                u =>
+                    !u.Archived
+                    && u.Role != UserRoleEnum.ProjectManger
+                    && u.Role != UserRoleEnum.Owner
             )
+            .CountAsync();
+
+        var activeSubjects = await _context.Subjects
+            .Where(
+                s =>
+                    !s.Archived
+                    && s.Status != ProjectStatusEnum.Closed
+                    && s.Status != ProjectStatusEnum.Hold
+            )
+            .Include(s => s.SubjectGroup)
+                .ThenInclude(sg => sg.Term)
+                    .ThenInclude(t => t.Project)
+                        .ThenInclude(p => p.Year)
             .ToListAsync();
-        var tasks = await _context.Tasks
+
+        var subjectIds = activeSubjects.Select(s => s.Id).ToList();
+
+        var allTasks = await _context.Tasks
             .Where(
                 t =>
                     !t.Archived
-                    && t.Status != TaskStatusEnum.Done
-                    && t.Status != TaskStatusEnum.Rollback
-                    && t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Closed
-                    && t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Hold
+                    && t.LearningObjective.Lesson.Unit.Subject.Status
+                        != ProjectStatusEnum.Closed
+                    && t.LearningObjective.Lesson.Unit.Subject.Status
+                        != ProjectStatusEnum.Hold
             )
+            .Include(t => t.User)
             .Include(t => t.LearningObjective)
                 .ThenInclude(lo => lo.Lesson)
                     .ThenInclude(l => l.Unit)
                         .ThenInclude(u => u.Subject)
+            .AsSplitQuery()
             .ToListAsync();
 
-        if (reports.Value is null || reports.Value.Data is null)
-            return new BadRequestObjectResult(
-                new BaseResponseService
+        var learningObjectiveRows = await _context.LearningObjectives
+            .Where(
+                lo =>
+                    !lo.Archived
+                    && subjectIds.Contains(lo.Lesson.Unit.SubjectId)
+            )
+            .Select(
+                lo =>
+                    new
+                    {
+                        lo.Id,
+                        lo.DoneAt,
+                        SubjectId = lo.Lesson.Unit.SubjectId,
+                    }
+            )
+            .ToListAsync();
+
+        var loCompleted = learningObjectiveRows.Count(lo => lo.DoneAt.HasValue);
+        var loUncompleted = learningObjectiveRows.Count - loCompleted;
+        var incompleteLoIds = learningObjectiveRows
+            .Where(lo => !lo.DoneAt.HasValue)
+            .Select(lo => lo.Id)
+            .ToHashSet();
+
+        var toDoCount = allTasks.Count(
+            t => t.Status == TaskStatusEnum.Backlog || t.Status == TaskStatusEnum.ToDo
+        );
+        var doingCount = allTasks.Count(t => t.Status == TaskStatusEnum.Doing);
+        var rollbackCount = allTasks.Count(t => t.Status == TaskStatusEnum.Rollback);
+        var flaggedCount = allTasks.Count(
+            t => t.Flagged && t.Status != TaskStatusEnum.Done
+        );
+        var doneCount = allTasks.Count(t => t.Status == TaskStatusEnum.Done);
+        var totalTasks = allTasks.Count;
+
+        var activeTasks = allTasks
+            .Where(
+                t =>
+                    t.Status != TaskStatusEnum.Done
+                    && t.Status != TaskStatusEnum.Rollback
+            )
+            .ToList();
+        var totalIncompleteLos = incompleteLoIds.Count;
+
+        var teamsWorkload = activeGroups
+            .Select(
+                g =>
                 {
-                    Error = false,
-                    Message = "Unable to fetch Project Reports"
+                    var groupLoCount = activeTasks
+                        .Where(
+                            t =>
+                                t.GroupId == g.Id
+                                && incompleteLoIds.Contains(t.LearningObjectiveId)
+                        )
+                        .Select(t => t.LearningObjectiveId)
+                        .Distinct()
+                        .Count();
+                    var percent = totalIncompleteLos > 0
+                        ? Math.Round((double)groupLoCount / totalIncompleteLos * 100, 0)
+                        : 0;
+                    return new ProjectManagerTeamWorkloadDto
+                    {
+                        Id = g.Id,
+                        Name = g.Name,
+                        TaskCount = groupLoCount,
+                        WorkloadPercent = percent,
+                    };
+                }
+            )
+            .Where(g => g.TaskCount > 0)
+            .OrderByDescending(g => g.WorkloadPercent)
+            .Take(10)
+            .ToList();
+
+        string MapProjectStatus(ProjectStatusEnum status)
+        {
+            if (status == ProjectStatusEnum.Closed)
+                return "completed";
+            if (status == ProjectStatusEnum.Hold)
+                return "at_risk";
+            return "on_track";
+        }
+
+        var projectsTable = new List<ProjectManagerProjectRowDto>();
+        foreach (var project in activeSubjects.OrderBy(p => p.Name).Take(8))
+        {
+            var projectLos = learningObjectiveRows
+                .Where(lo => lo.SubjectId == project.Id)
+                .ToList();
+            var projectDone = projectLos.Count(lo => lo.DoneAt.HasValue);
+            var projectTotal = projectLos.Count;
+            var progress = projectTotal > 0
+                ? Math.Round((double)projectDone / projectTotal * 100, 0)
+                : 0;
+
+            var yearName = project.SubjectGroup?.Term?.Project?.Year?.Name ?? "";
+            var deadline = project.SubjectGroup?.Term?.EndDate;
+
+            projectsTable.Add(
+                new ProjectManagerProjectRowDto
+                {
+                    Id = project.Id,
+                    Name = project.Name,
+                    Year = yearName,
+                    Status = MapProjectStatus(project.Status),
+                    ProgressPercent = progress,
+                    Deadline = deadline.HasValue
+                        ? deadline.Value.ToString("MMM dd, yyyy")
+                        : "",
                 }
             );
-
-        var GroupsCount = new List<GetGroupsWithUserCountDto> { };
-
-        foreach (var group in groups)
-        {
-            var dto = new GetGroupsWithUserCountDto
-            {
-                Id = group.Id,
-                Name = group.Name,
-                UsersCount = 0
-            };
-            foreach (var u in group.Users)
-                if (!u.Archived)
-                    dto.UsersCount++;
-            if (dto.UsersCount != 0)
-                GroupsCount.Add(dto);
         }
+
+        var allLoIds = learningObjectiveRows.Select(lo => lo.Id).ToList();
+        var sprintLinks = await _context.SprintLearningObjectives
+            .Where(
+                slo =>
+                    allLoIds.Contains(slo.LearningObjectiveId)
+                    && slo.Sprint != null
+                    && !slo.Sprint.IsArchived
+            )
+            .Include(slo => slo.Sprint)
+            .Include(slo => slo.LearningObjective)
+                .ThenInclude(lo => lo.Lesson)
+                    .ThenInclude(l => l.Unit)
+            .AsSplitQuery()
+            .ToListAsync();
+
+        var sprintIds = sprintLinks.Select(slo => slo.SprintId).Distinct().ToList();
+        var today = DateTime.Today;
+
+        var sprintsTable = new List<ProjectManagerSprintRowDto>();
+        foreach (
+            var sprintGroup in sprintLinks
+                .GroupBy(slo => slo.Sprint!)
+                .OrderBy(g => g.Key.EndDate)
+                .Take(6)
+        )
+        {
+            var sprint = sprintGroup.Key;
+            var sprintLoIds = sprintGroup.Select(slo => slo.LearningObjectiveId).ToList();
+            var sprintTasks = allTasks
+                .Where(t => sprintLoIds.Contains(t.LearningObjectiveId))
+                .ToList();
+            var sprintDone = sprintTasks.Count(t => t.Status == TaskStatusEnum.Done);
+            var sprintTotal = sprintTasks.Count;
+            var progress = sprintTotal > 0
+                ? Math.Round((double)sprintDone / sprintTotal * 100, 0)
+                : 0;
+
+            var firstLo = sprintGroup.First().LearningObjective;
+            var subjectId = firstLo?.Lesson?.Unit?.SubjectId;
+            var subject = activeSubjects.FirstOrDefault(s => s.Id == subjectId);
+            var yearName = subject?.SubjectGroup?.Term?.Project?.Year?.Name ?? "";
+
+            var daysLeft = (sprint.EndDate.Date - today).Days;
+            var sprintStatus =
+                daysLeft < 0 && progress < 100
+                    ? "at_risk"
+                    : progress >= 100
+                    ? "completed"
+                    : "on_track";
+
+            sprintsTable.Add(
+                new ProjectManagerSprintRowDto
+                {
+                    Id = sprint.Id,
+                    Name = sprint.Name,
+                    ProjectName = subject?.Name ?? sprint.Description,
+                    Year = yearName,
+                    Status = sprintStatus,
+                    ProgressPercent = progress,
+                    Deadline = sprint.EndDate.ToString("MMM dd, yyyy"),
+                }
+            );
+        }
+
+        var flaggedRollbackTasks = allTasks
+            .Where(
+                t =>
+                    t.Flagged
+                    || t.IsRollback
+                    || t.Status == TaskStatusEnum.Rollback
+            )
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(8)
+            .Select(
+                t =>
+                    new ProjectManagerFlaggedRollbackDto
+                    {
+                        TaskId = t.Id,
+                        ProjectId = t.LearningObjective.Lesson.Unit.Subject.Id,
+                        UserName = t.User?.Name ?? "Unassigned",
+                        TaskName = t.Name,
+                        Type =
+                            t.Flagged && t.Status != TaskStatusEnum.Rollback
+                                ? "flagged"
+                                : "rollback",
+                        Timestamp = t.CreatedAt.ToString("O"),
+                    }
+            )
+            .ToList();
+
+        var allTaskIds = allTasks.Select(t => t.Id).ToList();
+        var activities = await _context.TaskActivities
+            .Where(a => allTaskIds.Contains(a.TaskId))
+            .Include(a => a.ActorOne)
+            .Include(a => a.Task)
+            .OrderByDescending(a => a.TimeStamp)
+            .Take(8)
+            .ToListAsync();
+
+        var activityLog = activities
+            .Select(
+                a =>
+                {
+                    var actorName = a.ActorOne?.Name ?? "System";
+                    var initials = string.Join(
+                        "",
+                        actorName
+                            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                            .Take(2)
+                            .Select(part => part[0])
+                    )
+                        .ToUpper();
+                    var message = BuildActivityMessage(a.Type, actorName, a.Task.Name);
+                    return new ProjectManagerActivityDto
+                    {
+                        Id = a.Id,
+                        UserName = actorName,
+                        Initials = initials,
+                        Message = message,
+                        CreatedAt = a.TimeStamp.ToString("O"),
+                    };
+                }
+            )
+            .ToList();
 
         return new ResponseService<GetProjectManagerDashboardDto>
         {
             Error = false,
-            Message = "Project Manager Dashboard View",
+            Message = "Project Manager Dashboard",
             Data = new GetProjectManagerDashboardDto
             {
-                ProjectsReport = reports.Value.Data,
-                NumberOfUsers = users.Count,
-                NumberOfActiveTasks = tasks.Count,
-                NumberOfProject = projects.Count,
-                NumberOfSchemas = schemas.Count,
-                GroupsCount = GroupsCount
-            }
+                Projects = activeSubjects.Count,
+                Sprints = sprintIds.Count,
+                LearningObjectives = learningObjectiveRows.Count,
+                Users = orgUsers,
+                TeamsWorkload = teamsWorkload,
+                LearningObjectivesOverview = new ProjectManagerLearningObjectivesOverviewDto
+                {
+                    Completed = loCompleted,
+                    Uncompleted = loUncompleted,
+                    Total = learningObjectiveRows.Count,
+                },
+                TasksOverview = new ProjectManagerTasksOverviewDto
+                {
+                    ToDo = toDoCount,
+                    Doing = doingCount,
+                    Rollback = rollbackCount,
+                    Flagged = flaggedCount,
+                    Done = doneCount,
+                    Total = totalTasks,
+                },
+                ProjectsTable = projectsTable,
+                FlaggedRollbackTasks = flaggedRollbackTasks,
+                SprintsTable = sprintsTable,
+                ActivityLog = activityLog,
+            },
         };
     }
 

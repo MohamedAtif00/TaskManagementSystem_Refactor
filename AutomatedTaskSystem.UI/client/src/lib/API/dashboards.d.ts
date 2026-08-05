@@ -1,24 +1,69 @@
 interface ProjectManagerDashboard {
-    projectsReport: {
-        id: number;
-        name: string;
-        description: string;
-        term: string;
-        year: string;
-        idleLearningObjectives: number;
-        runningLearningObjectives: number;
-        doneLearningObjectives: number;
-        totalLearningObjectives: number;
-    }[];
-    groupsCount: {
-        id: number;
-        name: string;
-        usersCount: number;
-    }[];
-    numberOfProject: number;
-    numberOfUsers: number;
-    numberOfSchemas: number;
-    numberOfActiveTasks: number;
+    projects: number;
+    sprints: number;
+    learningObjectives: number;
+    users: number;
+    teamsWorkload: ProjectManagerTeamWorkload[];
+    learningObjectivesOverview: {
+        completed: number;
+        uncompleted: number;
+        total: number;
+    };
+    tasksOverview: {
+        toDo: number;
+        doing: number;
+        rollback: number;
+        flagged: number;
+        done: number;
+        total: number;
+    };
+    projectsTable: ProjectManagerProjectRow[];
+    flaggedRollbackTasks: ProjectManagerFlaggedRollback[];
+    sprintsTable: ProjectManagerSprintRow[];
+    activityLog: ProjectManagerActivity[];
+}
+
+interface ProjectManagerTeamWorkload {
+    id: number;
+    name: string;
+    taskCount: number;
+    workloadPercent: number;
+}
+
+interface ProjectManagerProjectRow {
+    id: number;
+    name: string;
+    year: string;
+    status: "on_track" | "completed" | "at_risk";
+    progressPercent: number;
+    deadline: string;
+}
+
+interface ProjectManagerSprintRow {
+    id: number;
+    name: string;
+    projectName: string;
+    year: string;
+    status: "on_track" | "completed" | "at_risk";
+    progressPercent: number;
+    deadline: string;
+}
+
+interface ProjectManagerFlaggedRollback {
+    taskId: number;
+    projectId: number;
+    userName: string;
+    taskName: string;
+    type: "flagged" | "rollback";
+    timestamp: string;
+}
+
+interface ProjectManagerActivity {
+    id: number;
+    userName: string;
+    initials: string;
+    message: string;
+    createdAt: string;
 }
 
 interface TeamLeaderDashboard {
