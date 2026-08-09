@@ -18,7 +18,7 @@ public class DailyReportService : IDailyReportService
 {
     private const int DefaultPageSize = 5;
     private const int MaxPageSize = 500;
-    private const int DefaultLookbackDays = 7;
+    private const int DefaultLookbackMonths = 1;
 
     private static readonly string[] StaticSemesters = ["Term 1", "Term 2"];
     private static readonly string[] StaticPriorities = ["High", "Medium", "Low", "None"];
@@ -159,7 +159,7 @@ public class DailyReportService : IDailyReportService
 
         var filter = new DailyReportFilterDto
         {
-            From = DateTime.Today.AddDays(-DefaultLookbackDays),
+            From = DateTime.Today.AddMonths(-DefaultLookbackMonths),
             To = DateTime.Today
         };
         var lookups = await QueryLightLookupsAsync(filter, user);
@@ -390,7 +390,7 @@ public class DailyReportService : IDailyReportService
 
     private static void AddDateParameters(DailyReportFilterDto filter, DynamicParameters parameters)
     {
-        parameters.Add("fromDate", filter.From?.Date ?? DateTime.Today.AddDays(-DefaultLookbackDays));
+        parameters.Add("fromDate", filter.From?.Date ?? DateTime.Today.AddMonths(-DefaultLookbackMonths));
         parameters.Add("toDate", filter.To?.Date ?? DateTime.Today);
     }
 

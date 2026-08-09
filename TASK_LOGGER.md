@@ -65,7 +65,7 @@ Time range for rankings (independent of the table date filters):
 | **Status** | Approved / Hold / Rollback |
 | **Note** | Latest rollback clarification (if any) |
 
-Default table window: **last 7 days**, **5 rows per page**.
+Default table window: **past month**, **5 rows per page**.
 
 ### 4. Duplicate LO tools (client-side)
 
@@ -119,9 +119,9 @@ Loads up to 500 filtered rows and highlights LO codes that appear more than once
 | Condition | Points |
 |-----------|--------|
 | No expected duration (`ExpectedMinutes <= 0`) | **0** |
-| Actual **&lt;** Expected | **3** |
-| Actual **=** Expected | **2** |
-| Actual **&gt;** Expected | **1** |
+| Before time (Actual **&lt;** Expected) | **3** |
+| In time (Actual **=** Expected) | **2** |
+| After time (Actual **&gt;** Expected) | **1** |
 
 ---
 
@@ -264,19 +264,19 @@ Work times first; else task duration; else 0.
 #### ExpectedMinutes
 
 ```sql
-COALESCE(NULLIF(tb.Duration, 0), NULLIF(t.Duration, 0), 0)
+COALESCE(NULLIF(st.Duration, 0), NULLIF(tb.Duration, 0), NULLIF(t.Duration, 0), 0)
 ```
 
-TaskBank duration first; else task duration; else 0 (unscored).
+Step duration first; else TaskBank; else task duration; else 0 (unscored).
 
 #### Points
 
 ```sql
 CASE
   WHEN ExpectedMinutes <= 0 THEN 0
-  WHEN Actual < Expected THEN 4
-  WHEN Actual = Expected THEN 3
-  ELSE 1.5
+  WHEN Actual < Expected THEN 3   -- before time
+  WHEN Actual = Expected THEN 2   -- in time
+  ELSE 1                          -- after time
 END
 ```
 

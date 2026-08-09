@@ -98,6 +98,9 @@ const TaskLoggerFilters = ({ filters, lookups, rowCount, onFilterChange, onReset
                     Reset Filters
                 </button>
             </div>
+            <p className="mt-2 text-sm text-red-700">
+                Showing data from the past month by default.
+            </p>
         </div>
     );
 };

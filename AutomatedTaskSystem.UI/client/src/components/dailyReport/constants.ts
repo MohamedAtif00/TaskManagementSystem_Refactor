@@ -21,11 +21,11 @@ const formatLocalDate = (date: Date) => {
 
 const buildDefaultFilters = (): DailyReportFilters => {
     const today = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(today.getDate() - 7);
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(today.getMonth() - 1);
 
     return {
-        from: formatLocalDate(sevenDaysAgo),
+        from: formatLocalDate(oneMonthAgo),
         to: formatLocalDate(today),
         team: "",
         semester: "",

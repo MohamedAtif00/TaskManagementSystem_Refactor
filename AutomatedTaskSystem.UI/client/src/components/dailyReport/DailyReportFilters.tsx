@@ -44,7 +44,8 @@ const DailyReportFilters = ({
         }
     };
     return (
-        <div className="bg-white rounded-3xl p-4 mb-6 flex flex-wrap gap-3 items-end shadow-sm">
+        <div className="bg-white rounded-3xl p-4 mb-6 shadow-sm">
+        <div className="flex flex-wrap gap-3 items-end">
             <div className="flex flex-col gap-1 min-w-[120px]">
                 <label className="text-[0.7rem] font-semibold text-slate-600 uppercase">Team</label>
                 <select
@@ -223,6 +224,10 @@ const DailyReportFilters = ({
             >
                 Clear Filters
             </button>
+        </div>
+        <p className="mt-3 text-sm text-red-700">
+            Showing data from the past month by default.
+        </p>
         </div>
     );
 };

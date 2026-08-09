@@ -17,7 +17,7 @@ public class TaskLoggerService : ITaskLoggerService
 {
     private const int DefaultPageSize = 5;
     private const int MaxPageSize = 500;
-    private const int DefaultLookbackDays = 7;
+    private const int DefaultLookbackMonths = 1;
 
     private static readonly string[] StaticSubjects =
         ["Arabic", "English", "Math (A)", "Science (A)", "Social", "ICT (A)", "MUL (A)", "Religion", "Other"];
@@ -105,7 +105,7 @@ public class TaskLoggerService : ITaskLoggerService
 
         var filter = new TaskLoggerFilterDto
         {
-            From = DateTime.Today.AddDays(-DefaultLookbackDays),
+            From = DateTime.Today.AddMonths(-DefaultLookbackMonths),
             To = DateTime.Today
         };
         var lookups = await QueryLightLookupsAsync(NormalizeFilter(filter), user);
@@ -268,7 +268,7 @@ public class TaskLoggerService : ITaskLoggerService
         }
         else
         {
-            fromDate = filter.From?.Date ?? DateTime.Today.AddDays(-DefaultLookbackDays);
+            fromDate = filter.From?.Date ?? DateTime.Today.AddMonths(-DefaultLookbackMonths);
             toDate = filter.To?.Date ?? DateTime.Today;
             parameters.Add("fromDate", fromDate);
             parameters.Add("toDate", toDate);
@@ -343,7 +343,7 @@ public class TaskLoggerService : ITaskLoggerService
 
     private static void AddDateParameters(DateTime? from, DateTime? to, DynamicParameters parameters)
     {
-        parameters.Add("fromDate", from?.Date ?? DateTime.Today.AddDays(-DefaultLookbackDays));
+        parameters.Add("fromDate", from?.Date ?? DateTime.Today.AddMonths(-DefaultLookbackMonths));
         parameters.Add("toDate", to?.Date ?? DateTime.Today);
     }
 
