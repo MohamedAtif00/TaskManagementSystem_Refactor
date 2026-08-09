@@ -305,6 +305,7 @@ const TASKS = {
 		stepId,
 		clarification,
 		logs,
+		attachments,
 	}: {
 		taskId: string | string[] | number;
 		stepId: number;
@@ -313,6 +314,7 @@ const TASKS = {
 			stepId: number;
 			note: string;
 		}[];
+		attachments?: File[];
 	}) => {
 		try {
 			const auth = authService.authHeader();
@@ -320,17 +322,21 @@ const TASKS = {
 				console.error("Unathorized");
 				return false;
 			}
+			const form = new FormData();
+			form.append("StepId", String(stepId));
+			if (clarification) form.append("Clarification", clarification);
+			logs.forEach((l, i) => {
+				form.append(`Logs[${i}].StepId`, String(l.stepId));
+				form.append(`Logs[${i}].Note`, l.note ?? "");
+			});
+			attachments?.forEach((f) => form.append("Attachments", f));
+
 			const res = await fetch(`${url}/tasks/rollback/${taskId}`, {
 				method: "POST",
 				headers: {
-					"Content-Type": "application/json",
 					...auth,
 				},
-				body: JSON.stringify({
-					stepId,
-					clarification,
-					logs,
-				}),
+				body: form,
 			});
 			const data: {
 				data: ITask;
@@ -533,6 +539,8 @@ const TASKS = {
 			return false;
 		}
 	},
+	GET_ROLLBACK_ATTACHMENT_URL: (attachmentId: number) =>
+		`${url}/tasks/rollback/attachment/${attachmentId}`,
 	GET_ROLLBACK_HISTORY: async (taskId: number) => {
 		try {
 			const res = await fetch(`${url}/tasks/${taskId}/history`);
@@ -542,6 +550,12 @@ const TASKS = {
 						id: number;
 						clarification?: string;
 						task: BasicInfo;
+						attachments: {
+							id: number;
+							fileName: string;
+							contentType: string;
+							fileSize: number;
+						}[];
 					}[];
 					issues: {
 						id: number;

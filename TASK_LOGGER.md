@@ -61,7 +61,7 @@ Time range for rankings (independent of the table date filters):
 | **Task** | `TaskBank.Name`, else `Tasks.Name` |
 | **Time** | Actual minutes (see scoring rules) |
 | **Expected** | Expected minutes for scoring |
-| **Points** | 4 / 3 / 1.5 / 0 (see below) |
+| **Points** | 3 / 2 / 1 / 0 (see below) |
 | **Status** | Approved / Hold / Rollback |
 | **Note** | Latest rollback clarification (if any) |
 
@@ -109,18 +109,19 @@ Loads up to 500 filtered rows and highlights LO codes that appear more than once
 
 ### Expected minutes (ExpectedMinutes)
 
-1. Prefer `TaskBank.Duration` if `> 0`  
-2. Else `Tasks.Duration` if `> 0`  
-3. Else `0` (cannot score)
+1. Prefer `Steps.Duration` if `> 0`  
+2. Else `TaskBank.Duration` if `> 0`  
+3. Else `Tasks.Duration` if `> 0`  
+4. Else `0` (cannot score)
 
 ### Points
 
 | Condition | Points |
 |-----------|--------|
 | No expected duration (`ExpectedMinutes <= 0`) | **0** |
-| Actual **&lt;** Expected | **4** |
-| Actual **=** Expected | **3** |
-| Actual **&gt;** Expected | **1.5** |
+| Actual **&lt;** Expected | **3** |
+| Actual **=** Expected | **2** |
+| Actual **&gt;** Expected | **1** |
 
 ---
 

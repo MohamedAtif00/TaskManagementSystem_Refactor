@@ -8,6 +8,10 @@ import CrossIcon from "../../../assets/Icons/Cross";
 import Link from "next/link";
 import CustomizedCombobox from "../../formComponents/Combobox";
 import useTaskPathHandler from "../../taskDetails/useTaskPathHandler.ts";
+import FileUpload from "../../pageComponent/leave/fileUpload";
+
+const ATTACHMENT_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
+const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024;
 
 interface Props {
 	update: (params: ITask) => void;
@@ -25,6 +29,7 @@ const RollbackForm = ({ taskId, update,type }: Props) => {
 	const [logs, setLogs] = useState<Log[]>([]);
 	const [step, setStep] = useState<BasicInfo>();
 	const [clarification, setClarification] = useState<string>();
+	const [attachments, setAttachments] = useState<File[]>([]);
 	const [rollbackPoints, setRollbackPoints] = useState<BasicInfo[]>();
 	const [review, setReview] = useState(false);
 	const [error, setError] = useState<string>();
@@ -75,8 +80,13 @@ const RollbackForm = ({ taskId, update,type }: Props) => {
 					stepId: l.step.id,
 				})),
 			clarification,
+			attachments,
 		}).then((res) => {
-			res && !res.error && update(res.data);
+			if (res && !res.error) return update(res.data);
+			setReview(false);
+			setError(
+				res && res.message ? res.message : "Could not roll back the task"
+			);
 		});
 	};
 
@@ -147,6 +157,20 @@ const RollbackForm = ({ taskId, update,type }: Props) => {
 									{clarification ? clarification : "None"}
 								</div>
 							</div>
+							<div className="px-4">
+								<div className="text-sm text-slate-700">
+									Attachments:
+								</div>
+								{attachments.length === 0 ? (
+									<div>None</div>
+								) : (
+									<div className="flex flex-col">
+										{attachments.map((f) => (
+											<div key={f.name}>{f.name}</div>
+										))}
+									</div>
+								)}
+							</div>
 							<div className="px-4 flex flex-col gap-2 pb-3 text-sm text-slate-700 max-h-60 overflow-hidden">
 								<div>Notes:</div>
 								<div className="overflow-y-auto flex flex-col gap-1">
@@ -171,8 +195,8 @@ const RollbackForm = ({ taskId, update,type }: Props) => {
 							</div>
 						</div>
 					) : (
-						<div className="flex items-center overflow-hidden">
-							<div className="w-80 py-4 px-6">
+						<div className="flex items-start overflow-hidden">
+							<div className="w-80 py-4 px-6 max-h-96 overflow-y-auto">
 								<div className="flex flex-col gap-4">
 									<div>
 										<div className="text-sm flex justify-between">
@@ -209,6 +233,21 @@ const RollbackForm = ({ taskId, update,type }: Props) => {
 												}}
 											/>
 										</label>
+									</div>
+									<div>
+										<div className="text-sm mb-1">
+											Attachments (Word, PDF, Excel,
+											PowerPoint):
+										</div>
+										<FileUpload
+											multiple
+											accept={ATTACHMENT_ACCEPT}
+											maxSize={ATTACHMENT_MAX_SIZE}
+											label="Select files"
+											currentFiles={attachments}
+											onMultipleFileChange={setAttachments}
+											onFileChange={() => {}}
+										/>
 									</div>
 								</div>
 							</div>

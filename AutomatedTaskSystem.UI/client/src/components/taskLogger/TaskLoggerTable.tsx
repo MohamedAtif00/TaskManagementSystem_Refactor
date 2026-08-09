@@ -104,7 +104,7 @@ const TaskLoggerTable = ({
                                     <td className="p-2 font-bold">{row.actualMinutes}</td>
                                     <td className="p-2">{row.expectedMinutes}</td>
                                     <td className="p-2 font-bold" style={{ color: "#4f46e5" }}>
-                                        {Math.round(row.points)}
+                                        {row.points.toFixed(1).replace(/\.0$/, "")}
                                     </td>
                                     <td className="p-2">
                                         <span className={`px-2 py-1 rounded-full text-xs ${statusClass(row.status)}`}>

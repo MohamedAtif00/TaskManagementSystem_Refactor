@@ -5,6 +5,7 @@ import API from "../../lib/API";
 import Head from "next/head";
 import Loader from "../loader";
 import useTaskPathHandler from "./useTaskPathHandler.ts";
+import { FileText } from "lucide-react";
 
 interface Props {
 	taskId: number;
@@ -17,6 +18,12 @@ interface History {
 		id: number;
 		clarification?: string;
 		task: BasicInfo;
+		attachments: {
+			id: number;
+			fileName: string;
+			contentType: string;
+			fileSize: number;
+		}[];
 	}[];
 	issues: {
 		id: number;
@@ -75,7 +82,29 @@ const RollbackHistory: React.FC<Props> = ({ taskId, isReview ,type}) => {
 								className="grid grid-cols-2 px-6 gap-3"
 							>
 								<div className="text-sm">{m.task.name}</div>
-								<div>{m.clarification}</div>
+								<div>
+									<div>{m.clarification}</div>
+									{m.attachments?.length > 0 && (
+										<div className="mt-1 flex flex-col gap-1">
+											{m.attachments.map((a) => (
+												<a
+													key={a.id}
+													href={API.TASKS.GET_ROLLBACK_ATTACHMENT_URL(
+														a.id
+													)}
+													target="_blank"
+													rel="noreferrer"
+													className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
+												>
+													<FileText className="h-4 w-4 shrink-0" />
+													<span className="truncate">
+														{a.fileName}
+													</span>
+												</a>
+											))}
+										</div>
+									)}
+								</div>
 							</div>
 						))}
 					</div>

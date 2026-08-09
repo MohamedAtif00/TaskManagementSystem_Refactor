@@ -81,5 +81,6 @@ public static class DependancyInjections
         builder.Services.AddScoped<LeaveRequestHelper>();
         builder.Services.AddScoped<PermissionRequestHelper>();
         builder.Services.AddScoped<WorkFromHomeHelper>();
+        builder.Services.AddScoped<RollbackAttachmentHelper>();
     }
 }

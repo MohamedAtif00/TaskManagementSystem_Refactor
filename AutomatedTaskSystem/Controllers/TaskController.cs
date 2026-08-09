@@ -12,6 +12,7 @@ using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Models.Enums.TaskBankType;
 using AutomatedTaskSystem.Services.RollbackService;
 using AutomatedTaskSystem.Dtos.Projects;
+using AutomatedTaskSystem.Helper;
 using System.Text.Json;
 
 namespace AutomatedTaskSystem.Controllers;
@@ -20,22 +21,31 @@ namespace AutomatedTaskSystem.Controllers;
 [ApiController]
 public class TaskController : ControllerBase
 {
+    // Fits RollbackAttachmentHelper's 5 files x 10 MB, above the default multipart limit.
+    private const long MaxRollbackRequestSize = 60 * 1024 * 1024;
+
     private readonly DataContext _context;
     private readonly ITokenService _tokenService;
     private readonly ITaskService _taskService;
     private readonly IRollbackService _rollbackService;
+    private readonly IWebHostEnvironment _webHostEnvironment;
+    private readonly RollbackAttachmentHelper _rollbackAttachmentHelper;
 
     public TaskController(
         DataContext context,
         ITokenService authService,
         ITaskService taskService,
-        IRollbackService rollbackService
+        IRollbackService rollbackService,
+        IWebHostEnvironment webHostEnvironment,
+        RollbackAttachmentHelper rollbackAttachmentHelper
     )
     {
         _context = context;
         _tokenService = authService;
         _taskService = taskService;
         _rollbackService = rollbackService;
+        _webHostEnvironment = webHostEnvironment;
+        _rollbackAttachmentHelper = rollbackAttachmentHelper;
     }
 
     [HttpGet("/creatables/{subjectId}")]
@@ -173,12 +183,15 @@ public class TaskController : ControllerBase
     // Rollback Task
     [Authorize]
     [HttpPost("rollback/{id}")]
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(int id, Requests.RollbackDTO req) =>
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxRollbackRequestSize)]
+    [RequestSizeLimit(MaxRollbackRequestSize)]
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(int id, [FromForm] Requests.RollbackDTO req) =>
         await _taskService.RollbackTask(
             taskId: id,
             stepId: req.StepId,
             logs: req.Logs,
-            clarification: req.Clarification
+            clarification: req.Clarification,
+            attachments: req.Attachments
         );
 
     // GET:
@@ -342,4 +355,28 @@ public class TaskController : ControllerBase
     [HttpGet("{id}/history")]
     public async Task<ActionResult<ResponseService<GetRollbackHistoryDto>>> GetHistory(int id) =>
         await _rollbackService.GetRollbackHistory(id);
+
+    // GET:
+    // Download a rollback attachment
+    [HttpGet("rollback/attachment/{attachmentId}")]
+    public async Task<IActionResult> GetRollbackAttachment(int attachmentId)
+    {
+        var attachment = await _context.RollbackAttachments
+            .Where(a => a.Id == attachmentId)
+            .FirstOrDefaultAsync();
+
+        if (attachment is null)
+            return NotFound("Attachment not found.");
+
+        var fullPath = Path.Combine(_webHostEnvironment.WebRootPath, attachment.FilePath);
+        if (!System.IO.File.Exists(fullPath))
+            return NotFound("File not found on server.");
+
+        var contentType = string.IsNullOrEmpty(attachment.ContentType)
+            ? _rollbackAttachmentHelper.GetContentType(fullPath)
+            : attachment.ContentType;
+
+        var fileStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
+        return File(fileStream, contentType, attachment.FileName);
+    }
 }

@@ -42,16 +42,16 @@ internal static class TaskLoggerSql
                 CAST(ROUND(
                     COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0)
                 , 0) AS float) AS ActualMinutes,
-                CAST(COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0) AS float) AS ExpectedMinutes,
+                CAST(COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0) AS float) AS ExpectedMinutes,
                 CAST(
                     CASE
-                        WHEN COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0) <= 0
+                        WHEN COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0) <= 0
                             THEN 0
                         WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
-                             < COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
+                             < COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
                             THEN 3
                         WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
-                             = COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
+                             = COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
                             THEN 2
                         ELSE 1
                     END
@@ -100,13 +100,13 @@ internal static class TaskLoggerSql
                 usr.Name AS Member,
                 CAST(
                     CASE
-                        WHEN COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0) <= 0
+                        WHEN COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0) <= 0
                             THEN 0
                         WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
-                             < COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
+                             < COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
                             THEN 3
                         WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
-                             = COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
+                             = COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
                             THEN 2
                         ELSE 1
                     END
@@ -207,16 +207,16 @@ internal static class TaskLoggerSql
             CAST(ROUND(
                 COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0)
             , 0) AS float) AS ActualMinutes,
-            CAST(COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0) AS float) AS ExpectedMinutes,
+            CAST(COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0) AS float) AS ExpectedMinutes,
             CAST(
                 CASE
-                    WHEN COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0) <= 0
+                    WHEN COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0) <= 0
                         THEN 0
                     WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
-                         < COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
+                         < COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
                         THEN 3
                     WHEN ROUND(COALESCE(NULLIF(wt.ActualMinutes, 0), NULLIF(CAST(t.Duration AS float), 0), 0), 0)
-                         = COALESCE(NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
+                         = COALESCE(NULLIF(CAST(st.Duration AS float), 0), NULLIF(CAST(tb.Duration AS float), 0), NULLIF(CAST(t.Duration AS float), 0), 0)
                         THEN 2
                     ELSE 1
                 END
