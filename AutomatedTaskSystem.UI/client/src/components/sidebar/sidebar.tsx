@@ -154,6 +154,14 @@ const Sidebar = () => {
                             icon="Sprint"
                             text="Sprints"
                         />
+                {(auth.role === 4) && (
+                    <Navlink
+                        activeCondition={path.includes("/sessions")}
+                        to="/sessions"
+                        icon="Resources"
+                        text="Sessions"
+                    />
+                )}
                 <Navlink
                     activeCondition={path.includes("/tasks") && !path.includes("/tasks/sprint/")}
                     to="/tasks"

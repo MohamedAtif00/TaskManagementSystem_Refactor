@@ -7,8 +7,8 @@ namespace AutomatedTaskSystem.Models
         [Key]
         public string Token { get; set; } = "";
         public bool Used { get; set; } = false;
-        public DateTime Created { get; set; } = DateTime.Now;
-        public DateTime Expires { get; set; } = DateTime.Now.AddDays(10);
+        public DateTime Created { get; set; } = DateTime.UtcNow;
+        public DateTime Expires { get; set; } = DateTime.UtcNow.AddMinutes(15);
         public User User { get; set; } = new User { };
         public int UserId { get; set; }
     }

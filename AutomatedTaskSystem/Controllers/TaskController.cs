@@ -255,11 +255,11 @@ public class TaskController : ControllerBase
 
         var schema = await _context.Schemas
             .Include(s => s.Nodes)
-            .ThenInclude(n => n.Steps)
-            .ThenInclude(s => s.TaskBank)
-            .ThenInclude(tb => tb.Group)
+                .ThenInclude(n => n.Steps)
+                    .ThenInclude(s => s.TaskBank)
+                        .ThenInclude(tb => tb.Group)
             .Include(s => s.Nodes)
-            .ThenInclude(n => n.Previous)
+                .ThenInclude(n => n.Previous)
             .Where(s => !s.Archived && s.Nodes.Any(n => !n.Archived && n.Id == task.Step.NodeId))
             .FirstOrDefaultAsync();
 

@@ -157,8 +157,8 @@ public class RollbackService : IRollbackService
                 .Include(r => r.ToTask)
                 .Include(r => r.Attachments)
                 .Include(r => r.RollbackIssues)
-                .ThenInclude(i => i.Step)
-                .ThenInclude(i => i.TaskBank)
+                    .ThenInclude(i => i.Step)
+                        .ThenInclude(i => i.TaskBank)
                 .ToListAsync();
 
             var issuesList = new List<GetIssueDto> { };
@@ -210,7 +210,7 @@ public class RollbackService : IRollbackService
         var issues = await _context.RollbackIssues
             .Where(i => i.StepId == task.StepId)
             .Include(i => i.Rollback)
-            .ThenInclude(r => r.Task)
+                .ThenInclude(r => r.Task)
             .ToListAsync();
 
         var res = new GetRollbackHistoryDto

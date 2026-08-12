@@ -1,11 +1,13 @@
 import React, { ReactNode, useCallback, useEffect, useRef, useState, createContext } from "react";
 import * as signalR from "@microsoft/signalr";
-import { useAppSelector } from "../../app/hooks";
+import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import API, { url } from "../../lib/API";
 import { toast } from "react-toastify";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import FlagNotificationContent from "../notifications/FlagNotificationContent";
+import authService from "../../lib/Auth";
+import { logout } from "../../slices/authSlice";
 
 		// Toast components
 		const NewLeaveRequestToast = ({ closeToast, leaveRequestId }: { closeToast: () => void; leaveRequestId: number }) => {
@@ -222,6 +224,7 @@ export const SignalRContext = createContext<SignalRContextType>({
 
 const SignalRProvider = ({ children }: { children: ReactNode }) => {
     const auth = useAppSelector((state) => state.authSlice);
+    const dispatch = useAppDispatch();
     const router = useRouter();
     const connectionRef = useRef<signalR.HubConnection | null>(null);
     const [connectionState, setConnectionState] = useState<"connected" | "connecting" | "disconnected">("disconnected");
@@ -484,6 +487,22 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 	            );
 	        };
 
+            const onForceLogout = (data: any) => {
+                const reason = data?.reason as string | undefined;
+                toast.warning(
+                    reason === "InactivityTimeout"
+                        ? "You were logged out by the system due to inactivity."
+                        : reason === "TokenExpired"
+                        ? "You were logged out by the system (session expired)."
+                        : "You were logged out by an administrator."
+                );
+                // Session is already closed server-side with the system reason —
+                // clear client state without calling manual logout.
+                void authService.endSessionExpired().then(() => {
+                    dispatch(logout());
+                });
+            };
+
 	        // Register all handlers
 			connection.on("LeaveRequestOpinion", (data) => onRequestOpinion(data, 'leave'));
 			connection.on("PermissionRequestOpinion", (data) => onRequestOpinion(data, 'permission'));
@@ -495,6 +514,7 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 			connection.on("ProjectAssigned",(data)=> onProjectAssignedd(data));
 			connection.on("ProjectCompleted", onProjectCompleted);
 			connection.on("ProjectClosed", onProjectClosed);
+            connection.on("ForceLogout", onForceLogout);
 	
 			return () => {
 				connection.off("LeaveRequestOpinion");
@@ -506,8 +526,9 @@ const SignalRProvider = ({ children }: { children: ReactNode }) => {
 				connection.off("TaskFlagged");
 				connection.off("ProjectCompleted");
 				connection.off("ProjectClosed");
+                connection.off("ForceLogout");
 			};
-    }, [connectionState, refreshUnreadNotificationCount]);
+    }, [connectionState, refreshUnreadNotificationCount, dispatch]);
 
     return (
         <SignalRContext.Provider

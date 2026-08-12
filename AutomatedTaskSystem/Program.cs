@@ -1,4 +1,5 @@
 global using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.HttpOverrides;
 using AutomatedTaskSystem.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -109,6 +110,15 @@ try
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<UserConnectionService>();
 
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        // App is typically behind IIS / local reverse proxy
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
+
     builder.Services.AddCors(options =>
     {
         options.AddPolicy(
@@ -136,6 +146,9 @@ try
     });
 
     var app = builder.Build();
+
+    // Must run before other middleware so RemoteIpAddress / scheme reflect the real client
+    app.UseForwardedHeaders();
 
     // 👇 Static files and CORS should come early in the pipeline
     app.UseStaticFiles();

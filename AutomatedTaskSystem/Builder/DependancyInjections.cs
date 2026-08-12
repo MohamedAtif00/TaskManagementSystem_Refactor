@@ -31,6 +31,7 @@ using AutomatedTaskSystem.Services.WorkFromHome;
 using AutomatedTaskSystem.Services.Leave.BackgroundService;
 using AutomatedTaskSystem.Services.DailyReport;
 using AutomatedTaskSystem.Services.TaskLogger;
+using AutomatedTaskSystem.Services.SessionTracking;
 
 namespace AutomatedTaskSystem.Builder.DependancyInjections;
 
@@ -48,6 +49,8 @@ public static class DependancyInjections
         builder.Services.AddScoped<IReportService, ReportService>();
         builder.Services.AddScoped<ITokenService, TokenService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IUserSessionService, UserSessionService>();
+        builder.Services.AddHostedService<SessionExpiryBackgroundService>();
         builder.Services.AddScoped<ISubjectService, SubjectService>();
         builder.Services.AddScoped<IProjectAssignmentService, ProjectAssignmentService>();
         builder.Services.AddScoped<IUnitService, UnitService>();

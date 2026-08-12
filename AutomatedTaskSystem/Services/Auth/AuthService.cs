@@ -1,10 +1,16 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
-using AutomatedTaskSystem.Dtos.NotificationDtos;
+using AutomatedTaskSystem.Helper;
+using AutomatedTaskSystem.Hub;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums;
+using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.TokenService;
+using AutomatedTaskSystem.Services.SessionTracking;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 
 namespace AutomatedTaskSystem.Services.AuthService;
 
@@ -12,11 +18,19 @@ public class AuthService : IAuthService
 {
     private readonly ITokenService _tokenService;
     private readonly DataContext _context;
+    private readonly IUserSessionService _sessionService;
+    private readonly IHubContext<UserHub> _hubContext;
 
-    public AuthService(ITokenService tokenService, DataContext context)
+    public AuthService(
+        ITokenService tokenService,
+        DataContext context,
+        IUserSessionService sessionService,
+        IHubContext<UserHub> hubContext)
     {
         _tokenService = tokenService;
         _context = context;
+        _sessionService = sessionService;
+        _hubContext = hubContext;
     }
 
     public async Task<ActionResult<ResponseService<Responses.AuthInfoDTO>>> AboutUser()
@@ -59,6 +73,7 @@ public class AuthService : IAuthService
 
     public async Task<ActionResult<ResponseService<string>>> Login(
         string Code,
+        HttpRequest request,
         HttpResponse response
     )
     {
@@ -75,6 +90,10 @@ public class AuthService : IAuthService
         var refreshToken = await generateRefreshToken(user);
 
         setTokenInCookie(refreshToken, response);
+
+        var ip = ClientIpHelper.GetClientIp(request.HttpContext);
+        var ua = request.Headers.UserAgent.ToString();
+        await _sessionService.StartSessionAsync(user.Id, refreshToken.Token, ip, ua);
 
         return new ResponseService<string>
         {
@@ -105,16 +124,89 @@ public class AuthService : IAuthService
                 new BaseResponseService { Error = true, Message = "Invalid refesh token" }
             );
 
-        if (token.Used && token.Expires < DateTime.Now)
-            return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = "Token expired" }
-            );
+        var now = DateTime.UtcNow;
+        var tokenExpired = AsUtc(token.Expires) <= now;
+        var reason = tokenExpired
+            ? SessionLogoutReason.TokenExpired
+            : SessionLogoutReason.Manual;
 
         token.Used = true;
-
         await _context.SaveChangesAsync();
 
-        return new BaseResponseService { Error = false, Message = "User logout" };
+        await _sessionService.EndSessionByRefreshTokenAsync(refreshToken, reason);
+
+        clearRefreshTokenCookie(response);
+
+        return new BaseResponseService
+        {
+            Error = false,
+            Message = reason == SessionLogoutReason.TokenExpired
+                ? "User logout (session expired)"
+                : "User logout"
+        };
+    }
+
+    public async Task<ActionResult<BaseResponseService>> EndSessionExpired(
+        HttpRequest request,
+        HttpResponse response)
+    {
+        var refreshToken = request.Cookies["refreshToken"];
+        if (!string.IsNullOrEmpty(refreshToken))
+        {
+            var token = await _context.RefreshTokens
+                .Where(t => t.Token == refreshToken)
+                .FirstOrDefaultAsync();
+
+            if (token is not null)
+            {
+                token.Used = true;
+                await _context.SaveChangesAsync();
+            }
+
+            await _sessionService.EndSessionByRefreshTokenAsync(
+                refreshToken,
+                SessionLogoutReason.TokenExpired);
+        }
+
+        clearRefreshTokenCookie(response);
+
+        return new BaseResponseService
+        {
+            Error = false,
+            Message = "Session expired — logged out by system"
+        };
+    }
+
+    public async Task<ActionResult<BaseResponseService>> ForceLogout(int userId)
+    {
+        var actor = await GetAuthedUser();
+        if (actor is null || actor.Role != UserRoleEnum.Owner)
+        {
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Owner access required" }
+            );
+        }
+
+        var target = await _context.Users
+            .Where(u => u.Id == userId && !u.Archived)
+            .FirstOrDefaultAsync();
+
+        if (target is null)
+        {
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = "User not found" }
+            );
+        }
+
+        await _sessionService.InvalidateRefreshTokensForUserAsync(userId);
+        await _sessionService.EndOpenSessionsForUserAsync(userId, SessionLogoutReason.ForcedByAdmin);
+
+        await _hubContext.Clients.User(userId.ToString()).SendAsync("ForceLogout", new
+        {
+            reason = nameof(SessionLogoutReason.ForcedByAdmin)
+        });
+
+        return new BaseResponseService { Error = false, Message = "User force-logged out" };
     }
 
     public async Task<ActionResult<ResponseService<string>>> RefreshToken(
@@ -139,14 +231,30 @@ public class AuthService : IAuthService
                 new BaseResponseService { Error = true, Message = "Invalid Refresh Token" }
             );
 
-        if (foundToken.Used && DateTime.Now > foundToken.Expires)
+        if (foundToken.Used || DateTime.UtcNow > AsUtc(foundToken.Expires))
+        {
+            await _sessionService.EndSessionByRefreshTokenAsync(
+                refreshToken,
+                SessionLogoutReason.TokenExpired);
+            clearRefreshTokenCookie(response);
             return new BadRequestObjectResult(
                 new BaseResponseService { Error = true, Message = "Token expired" }
             );
+        }
 
-        foundToken.Used = false;
-
+        foundToken.Used = true;
         var newToken = _tokenService.GenerateRefreshToken(foundToken.User);
+        _context.RefreshTokens.Add(newToken);
+        await _context.SaveChangesAsync();
+
+        // Keep the open UserSession linked to the active refresh token
+        var openSession = await _context.UserSessions
+            .Where(s => s.RefreshToken == refreshToken && s.LogoutAt == null)
+            .FirstOrDefaultAsync();
+        if (openSession is not null)
+            openSession.RefreshToken = newToken.Token;
+
+        await _context.SaveChangesAsync();
 
         setTokenInCookie(newToken, response);
 
@@ -158,11 +266,24 @@ public class AuthService : IAuthService
         };
     }
 
-    private void setTokenInCookie(RefreshToken token, HttpResponse request)
+    private void setTokenInCookie(RefreshToken token, HttpResponse response)
     {
         var opts = new CookieOptions { HttpOnly = true, Expires = token.Expires };
-        request.Cookies.Append("refreshToken", token.Token, opts);
+        response.Cookies.Append("refreshToken", token.Token, opts);
     }
+
+    private static void clearRefreshTokenCookie(HttpResponse response)
+    {
+        response.Cookies.Delete("refreshToken");
+        response.Cookies.Append("refreshToken", "", new CookieOptions
+        {
+            HttpOnly = true,
+            Expires = DateTimeOffset.UtcNow.AddDays(-1)
+        });
+    }
+
+    private static DateTime AsUtc(DateTime value)
+        => value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
 
     private async Task<RefreshToken> generateRefreshToken(User user)
     {

@@ -40,6 +40,7 @@
         [Range(0, 3)]
         public UserRoleEnum Role { get; set; } = UserRoleEnum.Member;
         public List<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken> { };
+        public List<UserSession> Sessions { get; set; } = new();
         public List<UserChanges> UserChanges { get; set; } = new();
         public List<UserChanges> ChangedByUser { get; set; } = new();
         public List<LeaveRequest>? vacations { get; set; }

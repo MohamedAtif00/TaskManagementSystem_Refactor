@@ -1,5 +1,9 @@
 ﻿using AutomatedTaskSystem.Dtos;
+using AutomatedTaskSystem.Hub;
+using AutomatedTaskSystem.Models.Enums;
 using AutomatedTaskSystem.Services.TaskService;
+using AutomatedTaskSystem.Services.SessionTracking;
+using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
 
 namespace AutomatedTaskSystem.Services
@@ -10,9 +14,11 @@ namespace AutomatedTaskSystem.Services
         private readonly Timer _cleanupTimer;
         private readonly IServiceScopeFactory _serviceScopeFactory;
 
+        private static readonly TimeSpan InactivityTimeout = TimeSpan.FromMinutes(10);
+
         public UserConnectionService(IServiceScopeFactory serviceScopeFactory)
         {
-            _cleanupTimer = new Timer(RemoveInactiveUsers, null, TimeSpan.Zero, TimeSpan.FromMinutes(30));
+            _cleanupTimer = new Timer(RemoveInactiveUsers, null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
             _serviceScopeFactory = serviceScopeFactory;
         }
 
@@ -47,7 +53,7 @@ namespace AutomatedTaskSystem.Services
             if (!_userStatuses.TryGetValue(userId, out var status))
                 return true;
 
-            return !status.IsConnected && DateTime.UtcNow - status.LastUpdated > TimeSpan.FromMinutes(30);
+            return !status.IsConnected && DateTime.UtcNow - status.LastUpdated > InactivityTimeout;
         }
 
         private void RemoveInactiveUsers(object? state)
@@ -55,14 +61,14 @@ namespace AutomatedTaskSystem.Services
             var now = DateTime.UtcNow;
 
             var usersToRemove =  _userStatuses
-                .Where(kvp => !kvp.Value.IsConnected && now - kvp.Value.LastUpdated > TimeSpan.FromMinutes(30))
+                .Where(kvp => !kvp.Value.IsConnected && now - kvp.Value.LastUpdated > InactivityTimeout)
                 .Select(kvp => kvp.Key)
                 .ToList();
 
             foreach (var userId in usersToRemove)
             {
-                // Pause tasks for the disconnected user
                 PauseUserTasks(userId);
+                EndSessionForInactivity(userId);
                 _userStatuses.TryRemove(userId, out _);
             }
 
@@ -71,7 +77,6 @@ namespace AutomatedTaskSystem.Services
         /// <summary>
         /// Gets the IDs of all users currently marked as connected.
         /// </summary>
-        /// <returns>A list of user IDs.</returns>
         public List<string> GetOnlineUserIds()
         {
             return _userStatuses
@@ -84,20 +89,40 @@ namespace AutomatedTaskSystem.Services
         {
             try
             {
-                // Create a scope and resolve ITaskService from the scoped provider
                 using (var scope = _serviceScopeFactory.CreateScope())
                 {
                     var taskService = scope.ServiceProvider.GetRequiredService<ITaskService>();
-
-                    // Call the task service to pause all tasks for this user
                     taskService.PauseAllTasksForUser(Convert.ToInt32(userId));
-                    //UserDisconnected(userId);
                 }
             }
             catch (Exception ex)
             {
-                // Log or handle exceptions gracefully
                 Console.WriteLine($"Error while pausing tasks for user {userId}: {ex.Message}");
+            }
+        }
+
+        private void EndSessionForInactivity(string userId)
+        {
+            try
+            {
+                if (!int.TryParse(userId, out int uid))
+                    return;
+
+                using var scope = _serviceScopeFactory.CreateScope();
+                var sessionService = scope.ServiceProvider.GetRequiredService<IUserSessionService>();
+                var hubContext = scope.ServiceProvider.GetRequiredService<IHubContext<UserHub>>();
+
+                sessionService.InvalidateRefreshTokensForUserAsync(uid).GetAwaiter().GetResult();
+                sessionService.EndOpenSessionsForUserAsync(uid, SessionLogoutReason.InactivityTimeout).GetAwaiter().GetResult();
+
+                hubContext.Clients.User(userId).SendAsync("ForceLogout", new
+                {
+                    reason = nameof(SessionLogoutReason.InactivityTimeout)
+                }).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error while ending session for inactive user {userId}: {ex.Message}");
             }
         }
     }

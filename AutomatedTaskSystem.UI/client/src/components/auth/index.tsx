@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { LockClosedIcon } from "@heroicons/react/24/solid";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import authService from "../../lib/Auth";
-import { login } from "../../slices/authSlice";
+import { login, logout } from "../../slices/authSlice";
 import Head from "next/head";
 import Loader from "../loader";
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
+import { useRouter } from "next/router";
 
 interface Props {
     children?: JSX.Element | JSX.Element[];
@@ -108,19 +109,109 @@ const Login = () => {
 
 const Auth = ({ children }: Props) => {
     const dispatch = useAppDispatch();
+    const router = useRouter();
     const [loading, setLoading] = useState(true);
-    const isAuth = useAppSelector((s) => s.authSlice);
+    const [tokenEpoch, setTokenEpoch] = useState(0);
+    const auth = useAppSelector((s) => s.authSlice);
 
+    const forceSessionExpired = useCallback(async () => {
+        await authService.endSessionExpired();
+        dispatch(logout());
+    }, [dispatch]);
+
+    const checkAuth = useCallback(async (): Promise<boolean> => {
+        const valid = await authService.ensureValidSession();
+        if (!valid) {
+            dispatch(logout());
+            return false;
+        }
+        setTokenEpoch((n) => n + 1);
+        return true;
+    }, [dispatch]);
+
+    // Initial bootstrap
     useEffect(() => {
         authService.getUser().then((res) => {
             if (res && !res.error) {
-                setLoading(false);
                 dispatch(login(res.data));
-                return;
+                setTokenEpoch((n) => n + 1);
+            } else {
+                dispatch(logout());
             }
             setLoading(false);
         });
-    }, [setLoading, dispatch]);
+    }, [dispatch]);
+
+    // On route change: silently refresh if needed; only block if refresh fails
+    useEffect(() => {
+        if (!auth.isAuth) return;
+
+        const onRouteChangeStart = () => {
+            // Kick off refresh early if near expiry (non-blocking for navigation)
+            if (authService.shouldRefreshAccessToken()) {
+                void authService.refreshAccessToken().then((ok) => {
+                    if (ok) setTokenEpoch((n) => n + 1);
+                });
+            }
+        };
+
+        const onRouteChangeComplete = () => {
+            void checkAuth().then((ok) => {
+                if (!ok) return;
+            });
+        };
+
+        router.events.on("routeChangeStart", onRouteChangeStart);
+        router.events.on("routeChangeComplete", onRouteChangeComplete);
+        return () => {
+            router.events.off("routeChangeStart", onRouteChangeStart);
+            router.events.off("routeChangeComplete", onRouteChangeComplete);
+        };
+    }, [auth.isAuth, router.events, checkAuth]);
+
+    // Silently renew access token before it expires while the user stays on a page
+    useEffect(() => {
+        if (!auth.isAuth) return;
+
+        let cancelled = false;
+        let timer: number | undefined;
+
+        const scheduleRefresh = () => {
+            const ms = authService.getMsUntilRefresh();
+            timer = window.setTimeout(async () => {
+                if (cancelled) return;
+                const ok = await authService.refreshAccessToken();
+                if (cancelled) return;
+                if (!ok) {
+                    await forceSessionExpired();
+                    return;
+                }
+                setTokenEpoch((n) => n + 1);
+                scheduleRefresh();
+            }, Math.max(ms, 1_000));
+        };
+
+        scheduleRefresh();
+
+        return () => {
+            cancelled = true;
+            if (timer !== undefined) window.clearTimeout(timer);
+        };
+    }, [auth.isAuth, auth.id, tokenEpoch, forceSessionExpired]);
+
+    // Re-check / refresh when the browser tab becomes visible again
+    useEffect(() => {
+        if (!auth.isAuth) return;
+
+        const onVisibility = () => {
+            if (document.visibilityState === "visible") {
+                void checkAuth();
+            }
+        };
+
+        document.addEventListener("visibilitychange", onVisibility);
+        return () => document.removeEventListener("visibilitychange", onVisibility);
+    }, [auth.isAuth, checkAuth]);
 
     if (loading)
         return (
@@ -132,7 +223,7 @@ const Auth = ({ children }: Props) => {
             </div>
         );
 
-    if (isAuth.isAuth) return <>{children}</>;
+    if (auth.isAuth) return <>{children}</>;
 
     return <Login />;
 };

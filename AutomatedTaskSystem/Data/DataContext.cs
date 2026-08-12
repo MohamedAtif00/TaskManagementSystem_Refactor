@@ -90,6 +90,18 @@ public class DataContext : DbContext
             .HasForeignKey(o => o.TaskId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<UserSession>()
+            .HasOne(s => s.User)
+            .WithMany(u => u.Sessions)
+            .HasForeignKey(s => s.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserSession>()
+            .HasIndex(s => s.RefreshToken);
+
+        modelBuilder.Entity<UserSession>()
+            .HasIndex(s => new { s.UserId, s.LogoutAt });
+
         // Daily Report hot-path indexes
         modelBuilder.Entity<TaskActivity>()
             .HasIndex(a => new { a.Type, a.TimeStamp })
@@ -329,6 +341,7 @@ public class DataContext : DbContext
     public DbSet<Year> Years => Set<Year>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<AcademicYear> AcademicYears => Set<AcademicYear>();
     public DbSet<CurriculumProject> CurriculumProjects => Set<CurriculumProject>();
     public DbSet<CurriculumTerm> CurriculumTerms => Set<CurriculumTerm>();

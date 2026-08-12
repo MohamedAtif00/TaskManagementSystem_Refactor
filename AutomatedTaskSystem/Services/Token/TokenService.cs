@@ -35,7 +35,7 @@ public class TokenService : ITokenService
 
         var token = new JwtSecurityToken(
             claims: claims,
-            expires: DateTime.Now.AddDays(2),
+            expires: DateTime.UtcNow.Add(AuthTokenLifetimes.AccessTokenLifetime),
             signingCredentials: creds
         );
 
@@ -47,8 +47,8 @@ public class TokenService : ITokenService
         var refreshToken = new RefreshToken
         {
             Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-            Expires = DateTime.Now.AddDays(10),
-            Created = DateTime.Now,
+            Expires = DateTime.UtcNow.Add(AuthTokenLifetimes.RefreshTokenLifetime),
+            Created = DateTime.UtcNow,
             User = user,
             UserId = user.Id
         };
