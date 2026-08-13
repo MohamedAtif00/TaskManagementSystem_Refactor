@@ -30,10 +30,34 @@ const SPRINTS = {
         return data;
 
     },
-    GET_ALL_SPRINTS:async (archived?: boolean)=>{
+    GET_ALL_SPRINTS:async (
+        archived?: boolean,
+        hierarchyFilter?: {
+            yearName?: string;
+            projectName?: string;
+            termName?: string;
+            subjectGroupName?: string;
+        }
+    )=>{
         try {
          const authHeader = authService.authHeader();
-                    const queryParam = archived !== undefined ? `?archived=${archived}` : '';
+                    const params = new URLSearchParams();
+                    if (archived !== undefined) {
+                        params.set("archived", String(archived));
+                    }
+                    if (hierarchyFilter?.yearName) {
+                        params.set("yearName", hierarchyFilter.yearName);
+                    }
+                    if (hierarchyFilter?.projectName) {
+                        params.set("projectName", hierarchyFilter.projectName);
+                    }
+                    if (hierarchyFilter?.termName) {
+                        params.set("termName", hierarchyFilter.termName);
+                    }
+                    if (hierarchyFilter?.subjectGroupName) {
+                        params.set("subjectGroupName", hierarchyFilter.subjectGroupName);
+                    }
+                    const queryParam = params.toString() ? `?${params.toString()}` : '';
                     const res = await fetch(`${url}/Sprint/get-all-sprint${queryParam}`, {
                         headers: {
                             ...authHeader,

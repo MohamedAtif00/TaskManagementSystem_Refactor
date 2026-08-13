@@ -1,43 +1,68 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import API from "../../lib/API";
-import Link from "next/link"; // Ensure Link is imported
+import Link from "next/link";
 import { DataGrid, GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
-import TaskIcon from "../../assets/Icons/Task"; // Adjust path as needed
+import TaskIcon from "../../assets/Icons/Task";
 import TrashIcon from "../../assets/Icons/Trash";
 import ArchiveIcon from "../../assets/Icons/Archive";
 import RotatingArrowsIcon from "../../assets/Icons/RotatingArrows";
 import Head from "next/head";
-import Loader from "../../components/loader"; // Adjust path as needed
-import CreateSprint from "../../components/sprintComponents/createSprint"; // Adjust path as needed
-import ProgressDonut from "../../components/charts/ProgressDonut"; // Adjust path as needed
+import Loader from "../../components/loader";
+import CreateSprint from "../../components/sprintComponents/createSprint";
+import ProgressDonut from "../../components/charts/ProgressDonut";
 import { format } from "date-fns";
 import SprintEye from "../../assets/Icons/SprintEye";
 import PieChartIcon from "../../assets/Icons/PieChart";
-import { PieChart } from '@mui/x-charts/PieChart';
-import { Box, Typography } from "@mui/material";
 import { useRouter } from "next/router";
 import { GetAllSprintsResponse } from "../../lib/API/Sprints.d";
 import { useAppSelector } from "../../app/hooks";
-
-
+import CurriculumPathFilters from "../../components/curriculum/CurriculumPathFilters";
+import { useCurriculumPathFilters } from "../../hooks/useCurriculumPathFilters";
 
 const Sprints = () => {
-    const [sprints, setSprints] = useState<GetAllSprintsResponse[]>();
+    const [sprints, setSprints] = useState<GetAllSprintsResponse[]>([]);
+    const [subjects, setSubjects] = useState<IProject[]>([]);
     const [fetchError, setFetchError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
     const router = useRouter();
     const { role } = useAppSelector((s) => s.authSlice);
-    // Add this state near your other useState declarations:
+    const {
+        filters,
+        filterLabels,
+        filterOptions,
+        updateFilter,
+    } = useCurriculumPathFilters(subjects);
+
+    const hierarchyFilter = useMemo(
+        () => ({
+            yearName: filters[0] || undefined,
+            projectName: filters[1] || undefined,
+            termName: filters[2] || undefined,
+            subjectGroupName: filters[3] || undefined,
+        }),
+        [filters]
+    );
+
     const [confirmModal, setConfirmModal] = useState<{
     open: boolean;
     sprintId: number | null;
     isArchived: boolean;
     } >({ open: false, sprintId: null, isArchived: false });
 
-    // Fetch Sprints based on active tab
-    const fetchSprints = (archived: boolean) => {
+    useEffect(() => {
+        API.PROJECTS.GET_ALL_FOR_SPRINT().then((res) => {
+            if (res && !res.error && Array.isArray(res.data)) {
+                setSubjects(res.data);
+            }
+        });
+    }, []);
+
+    const fetchSprints = useCallback(async (archived: boolean, filter = hierarchyFilter) => {
         setFetchError(null);
-        API.SPRINTS.GET_ALL_SPRINTS(archived).then((res) => {
+        setIsLoading(true);
+        try {
+            const res = await API.SPRINTS.GET_ALL_SPRINTS(archived, filter);
             if (res && !res.error && res.data) {
                 setSprints(res.data);
             } else {
@@ -46,30 +71,15 @@ const Sprints = () => {
                 setFetchError(message);
                 setSprints([]);
             }
-        });
-    };
+        } finally {
+            setIsLoading(false);
+        }
+    }, [hierarchyFilter]);
 
-    // Fetch Sprints when tab changes
     useEffect(() => {
-        setSprints(undefined); // Reset to show loading
         fetchSprints(activeTab === 'archived');
-    }, [activeTab]);
+    }, [activeTab, fetchSprints]);
 
-    // // Handle archive/unarchive action
-    // const handleArchiveToggle = async (sprintId: number, currentlyArchived: boolean) => {
-    //     const newArchivedState = !currentlyArchived;
-    //     const result = await API.SPRINTS.ARCHIVE_SPRINT(sprintId, newArchivedState);
-
-    //     if (result && !result.error) {
-    //         // Refresh the sprint list
-    //         fetchSprints(activeTab === 'archived');
-    //     } else {
-    //         console.error("Error archiving sprint:", result?.message || "Unknown error");
-    //         alert(`Failed to ${newArchivedState ? 'archive' : 'unarchive'} sprint`);
-    //     }
-    // };
-
-    // Replace handleArchiveToggle with this:
     const handleArchiveToggle = (sprintId: number, currentlyArchived: boolean) => {
         setConfirmModal({ open: true, sprintId, isArchived: currentlyArchived });
     };
@@ -99,11 +109,23 @@ const Sprints = () => {
         router.push(`/sprints/charts/${sprintChartId}`);
     }
 
+    const createSprintQuery = useMemo(() => {
+        const query: Record<string, string> = { form: "create-sprint" };
+        if (filters[0]) query.yearName = filters[0];
+        if (filters[1]) query.projectName = filters[1];
+        if (filters[2]) query.termName = filters[2];
+        if (filters[3]) query.subjectGroupName = filters[3];
+        return query;
+    }, [filters]);
 
-    // Columns for Sprints with Actions column
     const sprintColumns: GridColDef[] = [
         { field: "col0", headerName: "ID", width: 90 },
-        { field: "col1", headerName: "Name", width: 300 },
+        { field: "col1", headerName: "Name", width: 260 },
+        {
+            field: "colProject",
+            headerName: "Project",
+            width: 180,
+        },
         { field: "col2", headerName: "Start Date", width: 100 },
         { field: "col3", headerName: "End Date", width: 100 },
         { field: "col4", headerName: "Number of LO", width: 120 },
@@ -112,7 +134,6 @@ const Sprints = () => {
             headerName: "Progress",
             width: 100 ,
             renderCell: (params: GridRenderCellParams) => {
-            // Find the relevant sprint data
             const sprint = sprints?.find(s => s.id === params.row.id);
             const percentage = sprint?.completePercintag || 0;
 
@@ -182,11 +203,9 @@ const Sprints = () => {
         },
     ];
 
-    if (sprints === undefined)
+    if (isLoading && sprints.length === 0 && !fetchError)
         return (
             <div className="flex items-center justify-center mx-auto h-full">
-
-
                 <Head>
                     <title>TMS - Loading</title>
                 </Head>
@@ -205,14 +224,11 @@ const Sprints = () => {
                         <TaskIcon className="stroke-black" />
                         <h1 className="font-bold text-2xl">Sprints</h1>
                     </div>
-                    {/* Fixed: Link wrapping a button for navigation */}
                     {(role === 0 || role === 4) &&
                         <Link
                             href={{
                                 pathname: "/sprints",
-                                query: {
-                                    form: "create-sprint",
-                                },
+                                query: createSprintQuery,
                             }}
                         >
                             <button className="px-4 py-1 rounded bg-blue-600 text-white">
@@ -223,7 +239,6 @@ const Sprints = () => {
                     }
                 </div>
 
-                {/* Tabs for Active and Archived Sprints */}
                 <div className="flex gap-4 mt-4 mb-2 px-1">
                     {(role == 0 || role == 4) && (
                     <button
@@ -251,6 +266,16 @@ const Sprints = () => {
 
                     )}
                 </div>
+
+                <div className="mt-2 mb-4 rounded-lg border border-slate-200 bg-white p-4">
+                    <CurriculumPathFilters
+                        filterLabels={filterLabels}
+                        filterOptions={filterOptions}
+                        filters={filters}
+                        onFilterChange={updateFilter}
+                    />
+                </div>
+
                 <div className="pb-4 mt-4">
                     {fetchError && (
                         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700">
@@ -259,6 +284,7 @@ const Sprints = () => {
                     )}
                     <DataGrid
                         className="bg-white relative h-full"
+                        loading={isLoading}
                         initialState={{
                             sorting: {
                                 sortModel: [{ field: "col1", sort: "asc" }],
@@ -269,11 +295,12 @@ const Sprints = () => {
                                 id: s.id,
                                 col0: s.id,
                                 col1: s.name,
+                                colProject: (s.projectNames ?? []).join(", ") || "—",
                                 col2: format(new Date(s.startDate), 'yyyy-MM-dd'),
                                 col3: format(new Date(s.endDate), 'yyyy-MM-dd'),
                                 col4: s.loNumber,
                                 col5: s.completePercintag,
-                                actions: s.id, // Pass the id for the actions column
+                                actions: s.id,
                             };
                         })}
                         columns={sprintColumns}
@@ -298,7 +325,6 @@ const Sprints = () => {
             </div>
 
 
-            {/* Confirmation Modal */}
             {confirmModal.open && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                 <div className="bg-white rounded-2xl shadow-xl p-8 max-w-sm w-full mx-4 flex flex-col items-center gap-4">

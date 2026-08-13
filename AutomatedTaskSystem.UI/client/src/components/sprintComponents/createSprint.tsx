@@ -1,16 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
 import { addDays } from "date-fns";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import { IDName } from "../../lib/API/workFromHome";
+import CurriculumPathFilters from "../curriculum/CurriculumPathFilters";
+import { useCurriculumPathFilters } from "../../hooks/useCurriculumPathFilters";
+import {
+    formatCurriculumPathLabel,
+} from "../../lib/curriculumHierarchy";
 import SprintLoPicker from "./sprintLoPicker";
 
 const formatDateForInput = (date: Date): string => {
     const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
     return `${year}-${month}-${day}`;
 };
 
@@ -23,22 +28,28 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
     const { role } = useAppSelector((s) => s.authSlice);
 
     const [active, setActive] = useState(false);
-    // Form fields state
     const [sprintName, setSprintName] = useState('');
     const [description, setDescription] = useState('');
     const [startDate, setStartDate] = useState<string>(formatDateForInput(new Date()));
     const [endDate, setEndDate] = useState<string>(formatDateForInput(addDays(new Date(), 7)));
-    const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+    const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
 
-    // State for projects list
-    const [projects, setProjects] = useState<IProject[]>([]);
-    const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(false);
-    const [projectFetchError, setProjectFetchError] = useState<string>('');
+    const [subjects, setSubjects] = useState<IProject[]>([]);
+    const [isLoadingSubjects, setIsLoadingSubjects] = useState<boolean>(false);
+    const [subjectFetchError, setSubjectFetchError] = useState<string>('');
 
     const [selectedLos, setSelectedLos] = useState<IDName[]>([]);
-
-    // Error state for the form
     const [formError, setFormError] = useState('');
+
+    const {
+        filters,
+        filterLabels,
+        filterOptions,
+        filteredSubjects,
+        updateFilter,
+        applyFilters,
+        hasProjectSelected,
+    } = useCurriculumPathFilters(subjects);
 
     useEffect(() => {
         if (query.form === "create-sprint") return setActive(true);
@@ -46,27 +57,71 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
     }, [query]);
 
     useEffect(() => {
+        if (!active) return;
+
+        const next: Record<number, string> = {};
+        if (typeof query.yearName === "string") next[0] = query.yearName;
+        if (typeof query.projectName === "string") next[1] = query.projectName;
+        if (typeof query.termName === "string") next[2] = query.termName;
+        if (typeof query.subjectGroupName === "string") next[3] = query.subjectGroupName;
+
+        if (Object.keys(next).length > 0) {
+            applyFilters(next);
+        }
+    }, [active, applyFilters, query.yearName, query.projectName, query.termName, query.subjectGroupName]);
+
+    useEffect(() => {
         if (active) {
-            const fetchProjects = async () => {
-                setIsLoadingProjects(true);
-                setProjectFetchError('');
+            const fetchSubjects = async () => {
+                setIsLoadingSubjects(true);
+                setSubjectFetchError('');
                 try {
-                    const response = await API.PROJECTS.GET_ALL_FOR_SPRINT(); 
+                    const response = await API.PROJECTS.GET_ALL_FOR_SPRINT();
                     if (response && response.data && !response.error) {
-                        setProjects(response.data);
+                        setSubjects(response.data);
                     } else {
-                        setProjectFetchError( response?.message || "Failed to fetch projects.");
+                        setSubjectFetchError(response?.message || "Failed to fetch subjects.");
                     }
                 } catch (err) {
-                    console.error("Error fetching projects:", err);
-                    setProjectFetchError("An error occurred while fetching projects.");
+                    console.error("Error fetching subjects:", err);
+                    setSubjectFetchError("An error occurred while fetching subjects.");
                 } finally {
-                    setIsLoadingProjects(false);
+                    setIsLoadingSubjects(false);
                 }
             };
-            fetchProjects();
+            fetchSubjects();
         }
     }, [active]);
+
+    useEffect(() => {
+        if (!hasProjectSelected) {
+            setSelectedSubjectId('');
+            setSelectedLos([]);
+            return;
+        }
+
+        if (
+            selectedSubjectId &&
+            !filteredSubjects.some((subject) => String(subject.id) === selectedSubjectId)
+        ) {
+            setSelectedSubjectId('');
+        }
+    }, [filters, filteredSubjects, hasProjectSelected, selectedSubjectId]);
+
+    const scopeKey = useMemo(
+        () => [filters[0], filters[1], filters[2], filters[3]].join("|"),
+        [filters]
+    );
+
+    useEffect(() => {
+        setSelectedLos([]);
+        setSelectedSubjectId('');
+    }, [scopeKey]);
+
+    const selectedScopeLabel = useMemo(() => {
+        const parts = [filters[0], filters[1], filters[2], filters[3]].filter(Boolean);
+        return parts.join(" › ");
+    }, [filters]);
 
     const handleSelectLos = (los: IDName[]) => {
         setSelectedLos((prev) => {
@@ -83,27 +138,12 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
         setSelectedLos((prev) => prev.filter((selected) => selected.id !== lo.id));
     };
 
-    const resetForm = () => {
-        setSprintName('');
-        setDescription('');
-        setStartDate(formatDateForInput(new Date()));
-        setEndDate(formatDateForInput(addDays(new Date(), 7)));
-        setSelectedProjectId('');
-        setSelectedLos([]);
-        setFormError('');
-        setProjectFetchError('');
-    };
-
-    const closeModal = () => {
-        resetForm();
-        push(pathname);
-    };
-
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setFormError("");
 
         if (sprintName.trim() === "") return setFormError("Please enter a sprint name.");
+        if (!hasProjectSelected) return setFormError("Please select a project from the hierarchy filters.");
         if (selectedLos.length === 0) return setFormError("Please select at least one learning outcome.");
         if (!startDate) return setFormError("Please select a start date.");
         if (!endDate) return setFormError("Please select an end date.");
@@ -116,19 +156,17 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
         }
 
         try {
-            // IMPORTANT: Assume API.SPRINTS.CREATE_SPRINT now accepts projectId.
-            // Adjust the payload if your API expects a different structure.
             const response = await API.SPRINTS.CREATE_SPRINT({
                 name: sprintName,
                 description,
                 startDate: dStartDate.toISOString(),
                 endDate: dEndDate.toISOString(),
-                los: selectedLos
+                los: selectedLos,
             });
 
             if (response && !response.error) {
                 onSprintCreated?.();
-                closeModal();
+                push(pathname);
             } else if (response.error) {
                 setFormError(`Error: ${response.message}`);
             } else {
@@ -152,8 +190,7 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
                 initial={{ opacity: 0.1 }}
                 animate={{ opacity: 1 }}
                 className="bg-white w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-lg shadow relative flex flex-col"
->
-
+            >
                 <div className="sticky top-0 z-10 bg-white px-6 pt-6 pb-2 rounded-t-lg">
                     <h2 className="text-2xl font-semibold text-center">Create New Sprint</h2>
                     {formError && (
@@ -184,41 +221,66 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
                             placeholder="Enter description"
                             rows={3}
-                        />  
+                        />
                     </div>
-                    
+
                     <div>
-                        <label htmlFor="project" className="block text-gray-700 font-medium mb-1">Project</label>
-                        {isLoadingProjects && <p className="text-gray-500">Loading projects...</p>}
-                        {projectFetchError && <p className="text-red-500">{projectFetchError}</p>}
-                        {!isLoadingProjects && !projectFetchError && (
-                            <>
-                                <select
-                                    id="project"
-                                    value={selectedProjectId}
-                                    onChange={(e) => setSelectedProjectId(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
-                                >
-                                    <option value="" disabled>Select a project</option>
-                                    {projects.length === 0 && !isLoadingProjects && <option value="" disabled>No projects available</option>}
-                                    {projects.map((project) => (
-                                        <option key={project.id} value={project.id}>
-                                            {project.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="text-xs text-gray-500 mt-1">You can switch projects to add learning outcomes from multiple sources.</p>
-                            </>
+                        <label className="block text-gray-700 font-medium mb-2">Curriculum Scope</label>
+                        <p className="text-xs text-gray-500 mb-3">
+                            Select the project scope first. Learning outcomes can only be added from subjects within the selected project.
+                        </p>
+                        {isLoadingSubjects && <p className="text-gray-500">Loading curriculum...</p>}
+                        {subjectFetchError && <p className="text-red-500">{subjectFetchError}</p>}
+                        {!isLoadingSubjects && !subjectFetchError && (
+                            <CurriculumPathFilters
+                                filterLabels={filterLabels}
+                                filterOptions={filterOptions}
+                                filters={filters}
+                                onFilterChange={updateFilter}
+                            />
+                        )}
+                        {hasProjectSelected && (
+                            <p className="text-xs text-blue-700 mt-2">
+                                Selected scope: {selectedScopeLabel}
+                            </p>
                         )}
                     </div>
 
-                    <SprintLoPicker
-                        selectedLos={selectedLos}
-                        selectedProjectId={selectedProjectId}
-                        onSelectLos={handleSelectLos}
-                        onDeselectLo={handleDeselectLo}
-                        onImported={handleExcelImported}
-                    />
+                    {hasProjectSelected && (
+                        <div>
+                            <label htmlFor="subject" className="block text-gray-700 font-medium mb-1">Subject</label>
+                            <select
+                                id="subject"
+                                value={selectedSubjectId}
+                                onChange={(e) => setSelectedSubjectId(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
+                                required
+                            >
+                                <option value="" disabled>Select a subject</option>
+                                {filteredSubjects.length === 0 && (
+                                    <option value="" disabled>No subjects available in this scope</option>
+                                )}
+                                {filteredSubjects.map((subject) => (
+                                    <option key={subject.id} value={subject.id}>
+                                        {subject.name}
+                                        {subject.folderPath
+                                            ? ` (${formatCurriculumPathLabel(subject.folderPath)})`
+                                            : ""}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {selectedSubjectId && (
+                        <SprintLoPicker
+                            selectedLos={selectedLos}
+                            selectedProjectId={selectedSubjectId}
+                            onSelectLos={handleSelectLos}
+                            onDeselectLo={handleDeselectLo}
+                            onImported={handleExcelImported}
+                        />
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -247,7 +309,7 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
                         <div className="flex gap-4">
                             <button
                                 type="button"
-                                onClick={closeModal}
+                                onClick={() => push(pathname)}
                                 className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                             >
                                 Cancel
@@ -255,7 +317,6 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
                             <button
                                 type="submit"
                                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                                
                             >
                                 Create Sprint
                             </button>

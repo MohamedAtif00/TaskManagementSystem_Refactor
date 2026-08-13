@@ -20,11 +20,24 @@ namespace AutomatedTaskSystem.Controllers
 
 
         [HttpGet("get-all-sprint")]
-        public async Task<IActionResult> GetAllSprints([FromQuery] bool? archived = null)
+        public async Task<IActionResult> GetAllSprints(
+            [FromQuery] bool? archived = null,
+            [FromQuery] string? yearName = null,
+            [FromQuery] string? projectName = null,
+            [FromQuery] string? termName = null,
+            [FromQuery] string? subjectGroupName = null)
         {
             try
             {
-                var result = await sprintService.GetAllSprints(archived);
+                var hierarchyFilter = new Dtos.SprintDtos.SprintHierarchyFilter
+                {
+                    YearName = yearName,
+                    ProjectName = projectName,
+                    TermName = termName,
+                    SubjectGroupName = subjectGroupName,
+                };
+
+                var result = await sprintService.GetAllSprints(archived, hierarchyFilter);
 
                 return Ok(result);
             }

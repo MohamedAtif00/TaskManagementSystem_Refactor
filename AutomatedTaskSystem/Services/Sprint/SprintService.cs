@@ -31,12 +31,73 @@ namespace AutomatedTaskSystem.Services.Sprint
         }
 
         /// <summary>
-        /// Generates a cache key for all sprints based on archived filter
+        /// Generates a cache key for all sprints based on archived filter and hierarchy filters
         /// </summary>
-        private static string GetAllSprintsCacheKey(bool? archived)
+        private static string GetAllSprintsCacheKey(bool? archived, SprintHierarchyFilter? hierarchyFilter)
         {
-            if (archived == null) return $"{AllSprintsCacheKeyPrefix}All";
-            return archived.Value ? $"{AllSprintsCacheKeyPrefix}Archived" : $"{AllSprintsCacheKeyPrefix}Active";
+            var archivedKey = archived switch
+            {
+                null => "All",
+                true => "Archived",
+                false => "Active",
+            };
+
+            if (hierarchyFilter is null || !hierarchyFilter.HasAnyFilter)
+            {
+                return $"{AllSprintsCacheKeyPrefix}{archivedKey}";
+            }
+
+            var filterKey = string.Join(
+                "_",
+                new[]
+                {
+                    hierarchyFilter.YearName,
+                    hierarchyFilter.ProjectName,
+                    hierarchyFilter.TermName,
+                    hierarchyFilter.SubjectGroupName,
+                }.Select(v => string.IsNullOrWhiteSpace(v) ? "-" : v.Trim())
+            );
+
+            return $"{AllSprintsCacheKeyPrefix}{archivedKey}_{filterKey}";
+        }
+
+        private const string SprintHierarchyJoinSql = @"
+            INNER JOIN SprintLearningObjectives slo_filter ON slo_filter.SprintId = s.Id
+            INNER JOIN LearningObjectives lo_filter ON slo_filter.LearningObjectiveId = lo_filter.Id AND lo_filter.Archived = 0
+            INNER JOIN Lessons les_filter ON lo_filter.LessonId = les_filter.Id
+            INNER JOIN Units u_filter ON les_filter.UnitId = u_filter.Id
+            INNER JOIN Subjects sub_filter ON u_filter.SubjectId = sub_filter.Id
+            INNER JOIN SubjectGroups sg_filter ON sub_filter.SubjectGroupId = sg_filter.Id
+            INNER JOIN CurriculumTerms ct_filter ON sg_filter.TermId = ct_filter.Id
+            INNER JOIN CurriculumProjects cp_filter ON ct_filter.ProjectId = cp_filter.Id
+            INNER JOIN AcademicYears ay_filter ON cp_filter.YearId = ay_filter.Id";
+
+        private static IEnumerable<string> BuildHierarchyWhereClauses(SprintHierarchyFilter? hierarchyFilter)
+        {
+            if (hierarchyFilter is null || !hierarchyFilter.HasAnyFilter)
+            {
+                return Array.Empty<string>();
+            }
+
+            var clauses = new List<string>();
+            if (!string.IsNullOrWhiteSpace(hierarchyFilter.YearName))
+            {
+                clauses.Add("ay_filter.Name = @YearName");
+            }
+            if (!string.IsNullOrWhiteSpace(hierarchyFilter.ProjectName))
+            {
+                clauses.Add("cp_filter.Name = @ProjectName");
+            }
+            if (!string.IsNullOrWhiteSpace(hierarchyFilter.TermName))
+            {
+                clauses.Add("ct_filter.Name = @TermName");
+            }
+            if (!string.IsNullOrWhiteSpace(hierarchyFilter.SubjectGroupName))
+            {
+                clauses.Add("sg_filter.Name = @SubjectGroupName");
+            }
+
+            return clauses;
         }
 
         private void InvalidateAllSprintsCache()
@@ -51,12 +112,12 @@ namespace AutomatedTaskSystem.Services.Sprint
         /// Replaces EF Core with direct SQL queries to minimize database round trips.
         /// Results are cached for improved performance on subsequent calls.
         /// </summary>
-        public async Task<ResponseService<List<SprintDTO>>> GetAllSprints(bool? archived = null)
+        public async Task<ResponseService<List<SprintDTO>>> GetAllSprints(bool? archived = null, SprintHierarchyFilter? hierarchyFilter = null)
         {
             try
             {
                 // Try to get from cache first
-                var cacheKey = GetAllSprintsCacheKey(archived);
+                var cacheKey = GetAllSprintsCacheKey(archived, hierarchyFilter);
                 if (_cache.TryGetValue(cacheKey, out List<SprintDTO>? cachedData) && cachedData != null)
                 {
                     return new ResponseService<List<SprintDTO>>() { Data = cachedData };
@@ -65,9 +126,11 @@ namespace AutomatedTaskSystem.Services.Sprint
                 await using var connection = new SqlConnection(dataContext.Database.GetConnectionString());
                 await connection.OpenAsync();
 
+                var hierarchyWhereClauses = BuildHierarchyWhereClauses(hierarchyFilter).ToList();
+
                 // Query 1: Get all sprints with basic info and LO count
                 var sprintsSql = @"
-                    SELECT
+                    SELECT DISTINCT
                         s.Id,
                         s.Name,
                         s.Description,
@@ -80,14 +143,33 @@ namespace AutomatedTaskSystem.Services.Sprint
                          WHERE slo.SprintId = s.Id AND lo.Archived = 0 AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%') AS LoNumber
                     FROM Sprints s";
 
+                if (hierarchyWhereClauses.Count > 0)
+                {
+                    sprintsSql += SprintHierarchyJoinSql;
+                }
+
+                var whereClauses = new List<string>();
                 if (archived.HasValue)
                 {
-                    sprintsSql += " WHERE s.IsArchived = @Archived";
+                    whereClauses.Add("s.IsArchived = @Archived");
+                }
+                whereClauses.AddRange(hierarchyWhereClauses);
+
+                if (whereClauses.Count > 0)
+                {
+                    sprintsSql += " WHERE " + string.Join(" AND ", whereClauses);
                 }
 
                 var sprintRows = (await connection.QueryAsync<SprintBasicRow>(
                     sprintsSql,
-                    new { Archived = archived ?? false })).ToList();
+                    new
+                    {
+                        Archived = archived ?? false,
+                        hierarchyFilter?.YearName,
+                        hierarchyFilter?.ProjectName,
+                        hierarchyFilter?.TermName,
+                        hierarchyFilter?.SubjectGroupName,
+                    })).ToList();
 
                 if (sprintRows.Count == 0)
                 {
@@ -103,6 +185,7 @@ namespace AutomatedTaskSystem.Services.Sprint
 
                 var sprintIds = sprintRows.Select(s => s.Id).ToList();
                 var (expectedTasksDict, completedTasksDict) = await GetSprintProgressAsync(connection, sprintIds);
+                var projectNamesBySprint = await GetSprintProjectNamesAsync(connection, sprintIds);
 
                 // Build the result list
                 var sprintDtos = sprintRows.Select(sprint =>
@@ -121,7 +204,10 @@ namespace AutomatedTaskSystem.Services.Sprint
                         LoNumber = sprint.LoNumber,
                         CompletePercintag = totalExpectedTasks > 0
                             ? Math.Round((double)completedCount / totalExpectedTasks * 100, 2)
-                            : 0
+                            : 0,
+                        ProjectNames = projectNamesBySprint.TryGetValue(sprint.Id, out var names)
+                            ? names
+                            : new List<string>()
                     };
                 }).ToList();
 
@@ -138,6 +224,41 @@ namespace AutomatedTaskSystem.Services.Sprint
                 Console.WriteLine(ex.StackTrace);
                 return new ResponseService<List<SprintDTO>>() { Error = true, Message = "Unexpected error" };
             }
+        }
+
+        private async Task<Dictionary<int, List<string>>> GetSprintProjectNamesAsync(
+            SqlConnection connection,
+            List<int> sprintIds)
+        {
+            if (sprintIds.Count == 0)
+            {
+                return new Dictionary<int, List<string>>();
+            }
+
+            const string sql = @"
+                SELECT DISTINCT
+                    slo.SprintId,
+                    cp.Name AS ProjectName
+                FROM SprintLearningObjectives slo
+                INNER JOIN LearningObjectives lo ON slo.LearningObjectiveId = lo.Id AND lo.Archived = 0
+                INNER JOIN Lessons les ON lo.LessonId = les.Id
+                INNER JOIN Units u ON les.UnitId = u.Id
+                INNER JOIN Subjects sub ON u.SubjectId = sub.Id
+                INNER JOIN SubjectGroups sg ON sub.SubjectGroupId = sg.Id
+                INNER JOIN CurriculumTerms ct ON sg.TermId = ct.Id
+                INNER JOIN CurriculumProjects cp ON ct.ProjectId = cp.Id
+                WHERE slo.SprintId IN @SprintIds
+                  AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'";
+
+            var rows = await connection.QueryAsync<SprintProjectNameRow>(
+                sql,
+                new { SprintIds = sprintIds });
+
+            return rows
+                .GroupBy(row => row.SprintId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(row => row.ProjectName).Distinct().OrderBy(name => name).ToList());
         }
 
         private async Task<(Dictionary<int, int> Expected, Dictionary<int, int> Completed)> GetSprintProgressAsync(
@@ -229,6 +350,12 @@ namespace AutomatedTaskSystem.Services.Sprint
             public int CompletedCount { get; set; }
         }
 
+        private class SprintProjectNameRow
+        {
+            public int SprintId { get; set; }
+            public string ProjectName { get; set; } = "";
+        }
+
         public async Task<ResponseService<SprintDTO>> GetSingleSprintAsync(int id)
         {
             var response = new ResponseService<SprintDTO>();
@@ -249,6 +376,33 @@ namespace AutomatedTaskSystem.Services.Sprint
                     return response;
                 }
 
+                var loIds = sprint.SprintLearningObjectives
+                    .Select(slo => slo.LearningObjectiveId)
+                    .ToList();
+
+                var scopePaths = loIds.Count == 0
+                    ? new List<string>()
+                    : await dataContext.LearningObjectives
+                        .AsNoTracking()
+                        .Where(lo => loIds.Contains(lo.Id))
+                        .Select(lo =>
+                            lo.Lesson.Unit.Subject.SubjectGroup.Term.Project.Year.Name + " > " +
+                            lo.Lesson.Unit.Subject.SubjectGroup.Term.Project.Name + " > " +
+                            lo.Lesson.Unit.Subject.SubjectGroup.Term.Name + " > " +
+                            lo.Lesson.Unit.Subject.SubjectGroup.Name)
+                        .Distinct()
+                        .ToListAsync();
+
+                var projectNames = loIds.Count == 0
+                    ? new List<string>()
+                    : await dataContext.LearningObjectives
+                        .AsNoTracking()
+                        .Where(lo => loIds.Contains(lo.Id))
+                        .Select(lo => lo.Lesson.Unit.Subject.SubjectGroup.Term.Project.Name)
+                        .Distinct()
+                        .OrderBy(name => name)
+                        .ToListAsync();
+
                 // Map the sprint and its associated learning objectives to the DTO
                 response.Data = new SprintDTO
                 {
@@ -258,6 +412,8 @@ namespace AutomatedTaskSystem.Services.Sprint
                     StartDate = sprint.StartDate,
                     EndDate = sprint.EndDate,
                     IsArchived = sprint.IsArchived,
+                    ProjectNames = projectNames,
+                    ScopeFolderPath = scopePaths.Count == 1 ? scopePaths[0] : null,
                     // Project the LearningObjectives from the join table
                     // This is safer than assuming a direct `sprint.LearningObjectives` if not explicitly configured as a skip navigation.
                     learningObjects = sprint.SprintLearningObjectives
