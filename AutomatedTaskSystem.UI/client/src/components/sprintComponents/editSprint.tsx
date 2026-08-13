@@ -1,21 +1,16 @@
 import { motion } from "framer-motion";
 import { useRouter } from "next/router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
-import { IDName } from "../../lib/API/workFromHome"; // Assuming IDName is defined here
+import { IDName } from "../../lib/API/workFromHome";
+import CurriculumPathFilters from "../curriculum/CurriculumPathFilters";
+import { useCurriculumPathFilters } from "../../hooks/useCurriculumPathFilters";
+import { formatCurriculumPathLabel, getCurriculumPathParts, parseCurriculumPath } from "../../lib/curriculumHierarchy";
 
-// Define IProject interface if it's not already globally available
-interface IProject {
-    id: number;
-    name: string;
-    // Add other project properties as needed
-}
-
-// Helper function to format date for input type="date"
 const formatDateForInput = (date: Date): string => {
     const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // getMonth() is zero-based
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
     return `${year}-${month}-${day}`;
 };
@@ -30,29 +25,35 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
     const { role } = useAppSelector((s) => s.authSlice);
 
     const [active, setActive] = useState(false);
-    // Form fields state
     const [sprintName, setSprintName] = useState('');
     const [description, setDescription] = useState('');
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
-    const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+    const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
+    const [scopeLocked, setScopeLocked] = useState(false);
 
-    // State for projects list
-    const [projects, setProjects] = useState<IProject[]>([]);
-    const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(false);
-    const [projectFetchError, setProjectFetchError] = useState<string>('');
+    const [subjects, setSubjects] = useState<IProject[]>([]);
+    const [isLoadingSubjects, setIsLoadingSubjects] = useState<boolean>(false);
+    const [subjectFetchError, setSubjectFetchError] = useState<string>('');
 
-    // State for Learning Outcomes list
     const [learningOutcomes, setLearningOutcomes] = useState<IDName[]>([]);
     const [isLoadingLOs, setIsLoadingLOs] = useState<boolean>(false);
     const [loFetchError, setLoFetchError] = useState<string>('');
-
-    // ⭐ FIX: Change selectedLos type back to IDName[]
-    // This state will hold the full LO objects (id and name) for display and selection logic
     const [selectedLos, setSelectedLos] = useState<IDName[]>([]);
-
-    // Error state for the form
     const [formError, setFormError] = useState('');
+    const [pendingScopePath, setPendingScopePath] = useState<string | null>(null);
+    const [pendingProjectName, setPendingProjectName] = useState<string | null>(null);
+
+    const {
+        filters,
+        filterLabels,
+        filterOptions,
+        filteredSubjects,
+        updateFilter,
+        setFiltersFromPath,
+        applyFilters,
+        hasProjectSelected,
+    } = useCurriculumPathFilters(subjects);
 
     useEffect(() => {
         if (query.form === "edit-sprint") {
@@ -62,7 +63,6 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
         }
     }, [query]);
 
-    // Fetch existing sprint data when modal becomes active
     useEffect(() => {
         if (active && sprintId) {
             API.SPRINTS.GET_ONE(sprintId).then(res => {
@@ -72,8 +72,14 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
                     setDescription(sprint.description || '');
                     setStartDate(formatDateForInput(new Date(sprint.startDate)));
                     setEndDate(formatDateForInput(new Date(sprint.endDate)));
-                    // This assignment is now correct as selectedLos is IDName[]
                     setSelectedLos(sprint.learningObjects || []);
+                    if (sprint.scopeFolderPath) {
+                        setPendingScopePath(sprint.scopeFolderPath);
+                        setScopeLocked(true);
+                    } else if (sprint.projectNames?.length === 1) {
+                        setPendingProjectName(sprint.projectNames[0]);
+                        setScopeLocked(true);
+                    }
                 } else {
                     setFormError(res?.message || "Failed to load sprint data.");
                 }
@@ -81,41 +87,75 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
         }
     }, [active, sprintId]);
 
-    // Fetch projects when modal is active
+    useEffect(() => {
+        if (!active) return;
+
+        if (pendingScopePath) {
+            setFiltersFromPath(pendingScopePath);
+            return;
+        }
+
+        if (pendingProjectName && subjects.length > 0) {
+            const match = subjects.find(
+                (subject) => parseCurriculumPath(subject.folderPath).project === pendingProjectName
+            );
+            if (match?.folderPath) {
+                const parts = getCurriculumPathParts(match.folderPath);
+                const next: Record<number, string> = {};
+                if (parts[0]) next[0] = parts[0];
+                if (parts[1]) next[1] = parts[1];
+                applyFilters(next);
+            }
+        }
+    }, [active, applyFilters, pendingProjectName, pendingScopePath, setFiltersFromPath, subjects]);
+
     useEffect(() => {
         if (active) {
-            const fetchProjects = async () => {
-                setIsLoadingProjects(true);
-                setProjectFetchError('');
+            const fetchSubjects = async () => {
+                setIsLoadingSubjects(true);
+                setSubjectFetchError('');
                 try {
-                    // Assuming API.PROJECTS.GET_ALL_FOR_SPRINT() exists and returns IProject[]
                     const response = await API.PROJECTS.GET_ALL_FOR_SPRINT();
                     if (response && response.data && !response.error) {
-                        setProjects(response.data);
+                        setSubjects(response.data);
                     } else {
-                        setProjectFetchError(response?.message || "Failed to fetch projects.");
+                        setSubjectFetchError(response?.message || "Failed to fetch subjects.");
                     }
                 } catch (err) {
-                    console.error("Error fetching projects:", err);
-                    setProjectFetchError("An error occurred while fetching projects.");
+                    console.error("Error fetching subjects:", err);
+                    setSubjectFetchError("An error occurred while fetching subjects.");
                 } finally {
-                    setIsLoadingProjects(false);
+                    setIsLoadingSubjects(false);
                 }
             };
-            fetchProjects();
+            fetchSubjects();
         }
     }, [active]);
 
-    // Fetch LOs when a project is selected
     useEffect(() => {
-        if (selectedProjectId) {
+        if (!hasProjectSelected) {
+            setSelectedSubjectId('');
+            setLearningOutcomes([]);
+            return;
+        }
+
+        if (
+            selectedSubjectId &&
+            !filteredSubjects.some((subject) => String(subject.id) === selectedSubjectId)
+        ) {
+            setSelectedSubjectId('');
+            setLearningOutcomes([]);
+        }
+    }, [filters, filteredSubjects, hasProjectSelected, selectedSubjectId]);
+
+    useEffect(() => {
+        if (selectedSubjectId) {
             const fetchLOs = async () => {
                 setIsLoadingLOs(true);
                 setLoFetchError('');
-                setLearningOutcomes([]); // Reset previous LOs
+                setLearningOutcomes([]);
                 try {
-                    // Assuming API.PROJECTS.GET_ALL_LOS() exists and returns IDName[]
-                    const response = await API.PROJECTS.GET_ALL_LOS(Number(selectedProjectId));
+                    const response = await API.PROJECTS.GET_ALL_LOS(Number(selectedSubjectId));
                     if (response && response.data && !response.error) {
                         setLearningOutcomes(response.data);
                     } else {
@@ -130,18 +170,27 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
             };
             fetchLOs();
         }
-    }, [selectedProjectId]);
+    }, [selectedSubjectId]);
 
-    // handleSelectLo and handleDeselectLo now correctly operate on IDName objects
+    const selectedScopeLabel = useMemo(() => {
+        const parts = [filters[0], filters[1], filters[2], filters[3]].filter(Boolean);
+        return parts.join(" › ");
+    }, [filters]);
+
+    const handleFilterChange = (index: number, value: string) => {
+        if (scopeLocked && index <= 1 && selectedLos.length > 0) {
+            return;
+        }
+        updateFilter(index, value);
+    };
+
     const handleSelectLo = (lo: IDName) => {
-        // Check if the LO is not already in selectedLos based on its ID
         if (!selectedLos.some(selected => selected.id === lo.id)) {
             setSelectedLos([...selectedLos, lo]);
         }
     };
 
     const handleDeselectLo = (lo: IDName) => {
-        // Filter out the LO with the matching ID
         setSelectedLos(selectedLos.filter(selected => selected.id !== lo.id));
     };
 
@@ -159,6 +208,7 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
         setFormError("");
 
         if (sprintName.trim() === "") return setFormError("Please enter a sprint name.");
+        if (!hasProjectSelected) return setFormError("Please select a project from the hierarchy filters.");
         if (selectedLos.length === 0) return setFormError("Please select at least one learning outcome.");
         if (!startDate) return setFormError("Please select a start date.");
         if (!endDate) return setFormError("Please select an end date.");
@@ -171,20 +221,19 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
         }
 
         try {
-            // ⭐ CRITICAL FIX: Map the IDName[] to number[] ONLY when sending to the API
             const losToSend = selectedLos.map(lo => lo.id);
 
             const response = await API.SPRINTS.UPDATE_SPRINT(sprintId, {
                 name: sprintName,
                 description,
-                startDate: dStartDate.toISOString(), // Send as ISO string
-                endDate: dEndDate.toISOString(),     // Send as ISO string
-                los: losToSend // Pass the array of numbers
+                startDate: dStartDate.toISOString(),
+                endDate: dEndDate.toISOString(),
+                los: losToSend,
             });
 
             if (response && !response.error) {
-                onSprintUpdated(); // Callback to refresh the parent page
-                closeModal(); // Close modal by removing query param
+                onSprintUpdated();
+                closeModal();
             } else if (response.error) {
                 setFormError(`Error: ${response.message}`);
             } else {
@@ -236,48 +285,68 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
                     </div>
 
                     <div>
-                        <label htmlFor="project" className="block text-gray-700 font-medium mb-1">Project (for adding more Learning Outcomes)</label>
-                        {isLoadingProjects && <p className="text-gray-500">Loading projects...</p>}
-                        {projectFetchError && <p className="text-red-500">{projectFetchError}</p>}
-                        {!isLoadingProjects && !projectFetchError && (
-                            <>
-                                <select
-                                    id="project"
-                                    value={selectedProjectId}
-                                    onChange={(e) => setSelectedProjectId(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
-                                >
-                                    <option value="" disabled>Select a project to see its LOs</option>
-                                    {projects.map((project) => (
-                                        <option key={project.id} value={project.id}>
-                                            {project.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="text-xs text-gray-500 mt-1">You can switch projects to add learning outcomes from multiple sources.</p>
-                            </>
+                        <label className="block text-gray-700 font-medium mb-2">Curriculum Scope</label>
+                        <p className="text-xs text-gray-500 mb-3">
+                            Learning outcomes can only be added from subjects within the selected project.
+                            {scopeLocked && " The project scope is locked based on existing sprint learning outcomes."}
+                        </p>
+                        {isLoadingSubjects && <p className="text-gray-500">Loading curriculum...</p>}
+                        {subjectFetchError && <p className="text-red-500">{subjectFetchError}</p>}
+                        {!isLoadingSubjects && !subjectFetchError && (
+                            <CurriculumPathFilters
+                                filterLabels={filterLabels}
+                                filterOptions={filterOptions}
+                                filters={filters}
+                                onFilterChange={handleFilterChange}
+                            />
+                        )}
+                        {hasProjectSelected && (
+                            <p className="text-xs text-blue-700 mt-2">
+                                Selected scope: {selectedScopeLabel}
+                            </p>
                         )}
                     </div>
 
+                    {hasProjectSelected && (
+                        <div>
+                            <label htmlFor="subject" className="block text-gray-700 font-medium mb-1">Subject</label>
+                            <select
+                                id="subject"
+                                value={selectedSubjectId}
+                                onChange={(e) => setSelectedSubjectId(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
+                            >
+                                <option value="">Select a subject to add more LOs</option>
+                                {filteredSubjects.map((subject) => (
+                                    <option key={subject.id} value={subject.id}>
+                                        {subject.name}
+                                        {subject.folderPath
+                                            ? ` (${formatCurriculumPathLabel(subject.folderPath)})`
+                                            : ""}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     <div>
                         <label className="block text-gray-700 font-medium mb-1">Learning Outcomes</label>
-                        {isLoadingLOs && selectedProjectId && <p className="text-gray-500">Loading learning outcomes...</p>}
+                        {isLoadingLOs && selectedSubjectId && <p className="text-gray-500">Loading learning outcomes...</p>}
                         {loFetchError && <p className="text-red-500">{loFetchError}</p>}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg">
                             <div>
-                                <h4 className="font-semibold mb-2 text-gray-800">Available from Project</h4>
+                                <h4 className="font-semibold mb-2 text-gray-800">Available from Subject</h4>
                                 <div className="h-48 overflow-y-auto border rounded p-2 space-y-1 bg-gray-50">
-                                    {/* Filter available LOs: show only those NOT in selectedLos */}
                                     {learningOutcomes.filter(lo => !selectedLos.some(selected => selected.id === lo.id)).map(lo => (
                                         <div key={lo.id} onClick={() => handleSelectLo(lo)} className="p-2 border rounded cursor-pointer hover:bg-blue-100 transition-colors">
                                             {lo.name}
                                         </div>
                                     ))}
-                                    {learningOutcomes.filter(lo => !selectedLos.some(selected => selected.id === lo.id)).length === 0 && selectedProjectId && (
-                                        <p className="text-gray-500 text-sm p-2">All available LOs from this project are selected.</p>
+                                    {learningOutcomes.filter(lo => !selectedLos.some(selected => selected.id === lo.id)).length === 0 && selectedSubjectId && (
+                                        <p className="text-gray-500 text-sm p-2">All available LOs from this subject are selected.</p>
                                     )}
-                                    {!selectedProjectId && !isLoadingLOs && (
-                                        <p className="text-gray-500 text-sm p-2">Select a project to see available LOs.</p>
+                                    {!selectedSubjectId && !isLoadingLOs && (
+                                        <p className="text-gray-500 text-sm p-2">Select a subject to see available LOs.</p>
                                     )}
                                 </div>
                             </div>

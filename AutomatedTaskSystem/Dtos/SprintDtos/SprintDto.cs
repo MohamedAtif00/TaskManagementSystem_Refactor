@@ -12,6 +12,8 @@ namespace AutomatedTaskSystem.Dtos.SprintDtos
         public bool IsArchived { get; set; }
         public int LoNumber { get; set; }
         public double CompletePercintag { get; set; }
+        public List<string> ProjectNames { get; set; } = new();
+        public string? ScopeFolderPath { get; set; }
         public List<Responses.IDName> learningObjects { get; set; }
     }
 }

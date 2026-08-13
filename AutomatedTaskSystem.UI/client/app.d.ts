@@ -210,6 +210,8 @@ interface ISprint{
     isArchived:boolean,
     loNumber:number,
     completePercintag:number,
+    projectNames?: string[],
+    scopeFolderPath?: string,
     learningObjects:IDName[]
 }
 

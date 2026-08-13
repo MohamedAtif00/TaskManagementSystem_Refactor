@@ -9,7 +9,7 @@ namespace AutomatedTaskSystem.Services.Sprint
     {
         Task<ResponseService<Responses.SprintDto>> CreateNewSprintAsync(Request.CreateSprint request);
         Task<ActionResult<BaseResponseService>> DeleteSprint(int id);
-        Task<ResponseService<List<SprintDTO>>> GetAllSprints(bool? archived = null);
+        Task<ResponseService<List<SprintDTO>>> GetAllSprints(bool? archived = null, SprintHierarchyFilter? hierarchyFilter = null);
         Task<ResponseService<SprintDTO>> GetSingleSprintAsync(int id);
         Task<ResponseService<Responses.SprintDto>> UpdateSprintAsync(int sprintId, Request.UpdateSprint request);
         Task<ResponseService<Responses.SprintDto>> ArchiveSprintAsync(int sprintId, bool archived);

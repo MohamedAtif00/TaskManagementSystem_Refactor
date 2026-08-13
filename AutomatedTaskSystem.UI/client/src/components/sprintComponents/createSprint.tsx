@@ -1,22 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { motion } from "framer-motion";
 import { addDays } from "date-fns";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import { IDName } from "../../lib/API/workFromHome";
+import CurriculumPathFilters from "../curriculum/CurriculumPathFilters";
+import { useCurriculumPathFilters } from "../../hooks/useCurriculumPathFilters";
+import {
+    formatCurriculumPathLabel,
+} from "../../lib/curriculumHierarchy";
 
-// Define a Project interface (adjust based on your actual data structure)
-// interface IProject {
-//     id: string; // Or 'id: number' or similar, depending on your backend
-//     name: string;
-// }
-
-// interface ILearningOutcome {
-//     id: string;
-//     name: string;
-// }
-// Helper function to format date for input type="date"
 const formatDateForInput = (date: Date): string => {
     return date.toISOString().split('T')[0];
 };
@@ -26,29 +20,31 @@ const CreateSprint = () => {
     const { role } = useAppSelector((s) => s.authSlice);
 
     const [active, setActive] = useState(false);
-    // Form fields state
     const [sprintName, setSprintName] = useState('');
     const [description, setDescription] = useState('');
     const [startDate, setStartDate] = useState<string>(formatDateForInput(new Date()));
     const [endDate, setEndDate] = useState<string>(formatDateForInput(addDays(new Date(), 7)));
-    const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+    const [selectedSubjectId, setSelectedSubjectId] = useState<string>('');
 
-    // State for projects list
-    const [projects, setProjects] = useState<IProject[]>([]);
-    const [isLoadingProjects, setIsLoadingProjects] = useState<boolean>(false);
-    const [projectFetchError, setProjectFetchError] = useState<string>('');
+    const [subjects, setSubjects] = useState<IProject[]>([]);
+    const [isLoadingSubjects, setIsLoadingSubjects] = useState<boolean>(false);
+    const [subjectFetchError, setSubjectFetchError] = useState<string>('');
 
-    // State for Learning Outcomes list
     const [learningOutcomes, setLearningOutcomes] = useState<IDName[]>([]);
     const [isLoadingLOs, setIsLoadingLOs] = useState<boolean>(false);
     const [loFetchError, setLoFetchError] = useState<string>('');
     const [selectedLos, setSelectedLos] = useState<IDName[]>([]);
-
-    // Error state for the form
     const [formError, setFormError] = useState('');
 
-
-    
+    const {
+        filters,
+        filterLabels,
+        filterOptions,
+        filteredSubjects,
+        updateFilter,
+        applyFilters,
+        hasProjectSelected,
+    } = useCurriculumPathFilters(subjects);
 
     useEffect(() => {
         if (query.form === "create-sprint") return setActive(true);
@@ -56,45 +52,83 @@ const CreateSprint = () => {
     }, [query]);
 
     useEffect(() => {
-        
+        if (!active) return;
+
+        const next: Record<number, string> = {};
+        if (typeof query.yearName === "string") next[0] = query.yearName;
+        if (typeof query.projectName === "string") next[1] = query.projectName;
+        if (typeof query.termName === "string") next[2] = query.termName;
+        if (typeof query.subjectGroupName === "string") next[3] = query.subjectGroupName;
+
+        if (Object.keys(next).length > 0) {
+            applyFilters(next);
+        }
+    }, [active, applyFilters, query.yearName, query.projectName, query.termName, query.subjectGroupName]);
+
+    useEffect(() => {
         if (active) {
-            const fetchProjects = async () => {
-                setIsLoadingProjects(true);
-                setProjectFetchError('');
+            const fetchSubjects = async () => {
+                setIsLoadingSubjects(true);
+                setSubjectFetchError('');
                 try {
-                    const response = await API.PROJECTS.GET_ALL_FOR_SPRINT(); 
+                    const response = await API.PROJECTS.GET_ALL_FOR_SPRINT();
                     if (response && response.data && !response.error) {
-                        setProjects(response.data);
+                        setSubjects(response.data);
                     } else {
-                        setProjectFetchError( response?.message || "Failed to fetch projects.");
+                        setSubjectFetchError(response?.message || "Failed to fetch subjects.");
                     }
                 } catch (err) {
-                    console.error("Error fetching projects:", err);
-                    setProjectFetchError("An error occurred while fetching projects.");
+                    console.error("Error fetching subjects:", err);
+                    setSubjectFetchError("An error occurred while fetching subjects.");
                 } finally {
-                    setIsLoadingProjects(false);
+                    setIsLoadingSubjects(false);
                 }
             };
-            fetchProjects();
+            fetchSubjects();
         }
     }, [active]);
 
     useEffect(() => {
-        // This effect fetches learning outcomes when a project is selected.
-        if (selectedProjectId) {
+        if (!hasProjectSelected) {
+            setSelectedSubjectId('');
+            setLearningOutcomes([]);
+            setSelectedLos([]);
+            return;
+        }
+
+        if (
+            selectedSubjectId &&
+            !filteredSubjects.some((subject) => String(subject.id) === selectedSubjectId)
+        ) {
+            setSelectedSubjectId('');
+            setLearningOutcomes([]);
+        }
+    }, [filters, filteredSubjects, hasProjectSelected, selectedSubjectId]);
+
+    const scopeKey = useMemo(
+        () => [filters[0], filters[1], filters[2], filters[3]].join("|"),
+        [filters]
+    );
+
+    useEffect(() => {
+        setSelectedLos([]);
+        setSelectedSubjectId('');
+        setLearningOutcomes([]);
+    }, [scopeKey]);
+
+    useEffect(() => {
+        if (selectedSubjectId) {
             const fetchLOs = async () => {
                 setIsLoadingLOs(true);
                 setLoFetchError('');
-                setLearningOutcomes([]); // Reset previous LOs
+                setLearningOutcomes([]);
                 try {
-                    // IMPORTANT: Assume an API endpoint exists to get LOs by project ID.
-                    // Adjust this call to match your actual API.
-                    const response = await API.PROJECTS.GET_ALL_LOS(Number(selectedProjectId));
+                    const response = await API.PROJECTS.GET_ALL_LOS(Number(selectedSubjectId));
                     if (response && response.data && !response.error) {
                         setLearningOutcomes(response.data);
                     } else {
                         setLoFetchError(response?.message || "Failed to fetch learning outcomes.");
-                    }       
+                    }
                 } catch (err) {
                     console.error("Error fetching learning outcomes:", err);
                     setLoFetchError("An error occurred while fetching learning outcomes.");
@@ -104,18 +138,21 @@ const CreateSprint = () => {
             };
             fetchLOs();
         }
-    }, [selectedProjectId]);
+    }, [selectedSubjectId]);
+
+    const selectedScopeLabel = useMemo(() => {
+        const parts = [filters[0], filters[1], filters[2], filters[3]].filter(Boolean);
+        return parts.join(" › ");
+    }, [filters]);
 
     const handleSelectLo = (lo: IDName) => {
-        // Add to selected if not already there
-        if (!selectedLos.some(selected => selected.id === lo.id)) {
+        if (!selectedLos.some((selected) => selected.id === lo.id)) {
             setSelectedLos([...selectedLos, lo]);
         }
     };
 
     const handleDeselectLo = (lo: IDName) => {
-        // Remove from selected
-        setSelectedLos(selectedLos.filter(selected => selected.id !== lo.id));
+        setSelectedLos(selectedLos.filter((selected) => selected.id !== lo.id));
     };
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -123,7 +160,7 @@ const CreateSprint = () => {
         setFormError("");
 
         if (sprintName.trim() === "") return setFormError("Please enter a sprint name.");
-        if (selectedProjectId === "") return setFormError("Please select a project.");
+        if (!hasProjectSelected) return setFormError("Please select a project from the hierarchy filters.");
         if (selectedLos.length === 0) return setFormError("Please select at least one learning outcome.");
         if (!startDate) return setFormError("Please select a start date.");
         if (!endDate) return setFormError("Please select an end date.");
@@ -136,18 +173,16 @@ const CreateSprint = () => {
         }
 
         try {
-            // IMPORTANT: Assume API.SPRINTS.CREATE_SPRINT now accepts projectId.
-            // Adjust the payload if your API expects a different structure.
             const response = await API.SPRINTS.CREATE_SPRINT({
                 name: sprintName,
                 description,
                 startDate: dStartDate.toISOString(),
                 endDate: dEndDate.toISOString(),
-                los: selectedLos
+                los: selectedLos,
             });
 
             if (response && !response.error) {
-                push(pathname); // Close modal
+                push(pathname);
             } else if (response.error) {
                 setFormError(`Error: ${response.message}`);
             } else {
@@ -171,8 +206,7 @@ const CreateSprint = () => {
                 initial={{ opacity: 0.1 }}
                 animate={{ opacity: 1 }}
                 className="bg-white w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-lg shadow relative flex flex-col"
->
-
+            >
                 <div className="sticky top-0 z-10 bg-white px-6 pt-6 pb-2 rounded-t-lg">
                     <h2 className="text-2xl font-semibold text-center">Create New Sprint</h2>
                     {formError && (
@@ -203,36 +237,58 @@ const CreateSprint = () => {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
                             placeholder="Enter description"
                             rows={3}
-                        />  
+                        />
                     </div>
-                    
+
                     <div>
-                        <label htmlFor="project" className="block text-gray-700 font-medium mb-1">Project</label>
-                        {isLoadingProjects && <p className="text-gray-500">Loading projects...</p>}
-                        {projectFetchError && <p className="text-red-500">{projectFetchError}</p>}
-                        {!isLoadingProjects && !projectFetchError && (
-                            <>
-                                <select
-                                    id="project"
-                                    value={selectedProjectId}
-                                    onChange={(e) => setSelectedProjectId(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
-                                    required
-                                >
-                                    <option value="" disabled>Select a project</option>
-                                    {projects.length === 0 && !isLoadingProjects && <option value="" disabled>No projects available</option>}
-                                    {projects.map((project) => (
-                                        <option key={project.id} value={project.id}>
-                                            {project.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <p className="text-xs text-gray-500 mt-1">You can switch projects to add learning outcomes from multiple sources.</p>
-                            </>
+                        <label className="block text-gray-700 font-medium mb-2">Curriculum Scope</label>
+                        <p className="text-xs text-gray-500 mb-3">
+                            Select the project scope first. Learning outcomes can only be added from subjects within the selected project.
+                        </p>
+                        {isLoadingSubjects && <p className="text-gray-500">Loading curriculum...</p>}
+                        {subjectFetchError && <p className="text-red-500">{subjectFetchError}</p>}
+                        {!isLoadingSubjects && !subjectFetchError && (
+                            <CurriculumPathFilters
+                                filterLabels={filterLabels}
+                                filterOptions={filterOptions}
+                                filters={filters}
+                                onFilterChange={updateFilter}
+                            />
+                        )}
+                        {hasProjectSelected && (
+                            <p className="text-xs text-blue-700 mt-2">
+                                Selected scope: {selectedScopeLabel}
+                            </p>
                         )}
                     </div>
 
-                    {selectedProjectId && (
+                    {hasProjectSelected && (
+                        <div>
+                            <label htmlFor="subject" className="block text-gray-700 font-medium mb-1">Subject</label>
+                            <select
+                                id="subject"
+                                value={selectedSubjectId}
+                                onChange={(e) => setSelectedSubjectId(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
+                                required
+                            >
+                                <option value="" disabled>Select a subject</option>
+                                {filteredSubjects.length === 0 && (
+                                    <option value="" disabled>No subjects available in this scope</option>
+                                )}
+                                {filteredSubjects.map((subject) => (
+                                    <option key={subject.id} value={subject.id}>
+                                        {subject.name}
+                                        {subject.folderPath
+                                            ? ` (${formatCurriculumPathLabel(subject.folderPath)})`
+                                            : ""}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
+                    {selectedSubjectId && (
                         <div>
                             <label className="block text-gray-700 font-medium mb-1">Learning Outcomes</label>
                             {isLoadingLOs && <p className="text-gray-500">Loading learning outcomes...</p>}
@@ -240,7 +296,7 @@ const CreateSprint = () => {
                             {!isLoadingLOs && !loFetchError && (
                                 <>
                                     {learningOutcomes.length === 0 ? (
-                                        <p className="text-gray-500 p-2 border rounded-lg">No learning outcomes available for this project.</p>
+                                        <p className="text-gray-500 p-2 border rounded-lg">No learning outcomes available for this subject.</p>
                                     ) : (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg">
                                             <div>
@@ -323,7 +379,6 @@ const CreateSprint = () => {
                             <button
                                 type="submit"
                                 className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                                
                             >
                                 Create Sprint
                             </button>

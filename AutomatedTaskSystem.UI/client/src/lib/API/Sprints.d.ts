@@ -9,6 +9,8 @@ export interface GetAllSprintsResponse{
     isArchived:boolean,
     loNumber:number,
     completePercintag:number,
+    projectNames?: string[],
+    scopeFolderPath?: string,
     learningObjects:IDName[],
 }
 

@@ -75,3 +75,22 @@ export const mapSubjectGroupNodesToOptions = (
 
 export const subjectLocationLabel = (folderPath?: string) =>
     formatCurriculumPathLabel(folderPath) || folderPath?.trim() || "";
+
+/** Split a subject folder path into hierarchy segments (Year, Project, Term, Subject Group). */
+export const getCurriculumPathParts = (folderPath?: string) =>
+    String(folderPath ?? "")
+        .split(">")
+        .map((part) => part.trim())
+        .filter(Boolean);
+
+/** True when every populated filter segment matches the subject folder path. */
+export const subjectMatchesHierarchyFilters = (
+    folderPath: string | undefined,
+    filters: Record<number, string>
+) => {
+    const parts = getCurriculumPathParts(folderPath);
+    return Object.entries(filters).every(([key, value]) => {
+        if (!value) return true;
+        return parts[Number(key)] === value;
+    });
+};
