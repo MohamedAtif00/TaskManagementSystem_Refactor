@@ -15,7 +15,11 @@ const formatDateForInput = (date: Date): string => {
     return date.toISOString().split('T')[0];
 };
 
-const CreateSprint = () => {
+type CreateSprintProps = {
+    onCreated?: () => void | Promise<void>;
+};
+
+const CreateSprint = ({ onCreated }: CreateSprintProps) => {
     const { query, pathname, push } = useRouter();
     const { role } = useAppSelector((s) => s.authSlice);
 
@@ -182,6 +186,7 @@ const CreateSprint = () => {
             });
 
             if (response && !response.error) {
+                await onCreated?.();
                 push(pathname);
             } else if (response.error) {
                 setFormError(`Error: ${response.message}`);

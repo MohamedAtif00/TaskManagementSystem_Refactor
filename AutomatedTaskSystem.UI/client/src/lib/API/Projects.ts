@@ -243,8 +243,11 @@ const PROJECTS = {
         options?: { includeInactive?: boolean }
     ) => PROJECTS.GET_BY_TERM(folderId, options),
     GET_ALL_FOR_SPRINT:async ()=>{
-
-        const res = await fetch(`${url}/subjects/GetAllForSprint`);
+        const res = await fetch(`${url}/subjects/GetAllForSprint`, {
+            headers: {
+                ...authService.authHeader(),
+            },
+        });
         const data: {
             data: IProject[];
             error: boolean;
