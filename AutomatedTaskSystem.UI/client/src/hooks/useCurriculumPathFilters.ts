@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
-    CURRICULUM_ROOT_LEVEL,
     curriculumLevelLabel,
     getCurriculumPathParts,
+    namesMatch,
     subjectMatchesHierarchyFilters,
 } from "../lib/curriculumHierarchy";
 
@@ -10,21 +10,14 @@ export const useCurriculumPathFilters = (subjects: IProject[]) => {
     const [filters, setFilters] = useState<Record<number, string>>({});
 
     const filterLabels = useMemo(() => {
-        const selectedYear = filters[0];
-        if (!selectedYear) {
-            return [CURRICULUM_ROOT_LEVEL];
-        }
-
-        const scopedSubjects = subjects.filter(
-            (subject) => getCurriculumPathParts(subject.folderPath)[0] === selectedYear
-        );
-        const pathDepth = scopedSubjects.reduce(
+        const pathDepth = subjects.reduce(
             (max, subject) => Math.max(max, getCurriculumPathParts(subject.folderPath).length),
-            1
+            0
         );
-
-        return Array.from({ length: pathDepth }, (_, index) => curriculumLevelLabel(index));
-    }, [filters, subjects]);
+        // Always show Year + Project so users can filter by project without picking a year first.
+        const depth = Math.max(pathDepth, 2);
+        return Array.from({ length: depth }, (_, index) => curriculumLevelLabel(index));
+    }, [subjects]);
 
     const filterOptions = useMemo(() => {
         return Array.from({ length: filterLabels.length }, (_, index) => {
@@ -32,7 +25,7 @@ export const useCurriculumPathFilters = (subjects: IProject[]) => {
                 const parts = getCurriculumPathParts(subject.folderPath);
                 return Object.entries(filters).every(([key, value]) => {
                     const filterIndex = Number(key);
-                    return filterIndex >= index || !value || parts[filterIndex] === value;
+                    return filterIndex >= index || !value || namesMatch(parts[filterIndex], value);
                 });
             });
 
@@ -54,7 +47,7 @@ export const useCurriculumPathFilters = (subjects: IProject[]) => {
         [filters, subjects]
     );
 
-    const updateFilter = (index: number, value: string) => {
+    const updateFilter = useCallback((index: number, value: string) => {
         setFilters((prev) => {
             const next: Record<number, string> = {};
             for (const [key, existingValue] of Object.entries(prev)) {
@@ -66,9 +59,9 @@ export const useCurriculumPathFilters = (subjects: IProject[]) => {
             if (value) next[index] = value;
             return next;
         });
-    };
+    }, []);
 
-    const setFiltersFromPath = (folderPath?: string) => {
+    const setFiltersFromPath = useCallback((folderPath?: string) => {
         const parts = getCurriculumPathParts(folderPath);
         if (parts.length === 0) return;
         const next: Record<number, string> = {};
@@ -76,11 +69,11 @@ export const useCurriculumPathFilters = (subjects: IProject[]) => {
             next[index] = part;
         });
         setFilters(next);
-    };
+    }, []);
 
-    const applyFilters = (next: Record<number, string>) => {
+    const applyFilters = useCallback((next: Record<number, string>) => {
         setFilters(next);
-    };
+    }, []);
 
     const hasProjectSelected = Boolean(filters[1]);
 

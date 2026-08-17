@@ -18,6 +18,7 @@ import { GetAllSprintsResponse } from "../../lib/API/Sprints.d";
 import { useAppSelector } from "../../app/hooks";
 import CurriculumPathFilters from "../../components/curriculum/CurriculumPathFilters";
 import { useCurriculumPathFilters } from "../../hooks/useCurriculumPathFilters";
+import { sprintMatchesProjectFilter } from "../../lib/curriculumHierarchy";
 
 const Sprints = () => {
     const [sprints, setSprints] = useState<GetAllSprintsResponse[]>([]);
@@ -117,6 +118,27 @@ const Sprints = () => {
         if (filters[3]) query.subjectGroupName = filters[3];
         return query;
     }, [filters]);
+
+    const sprintFilterOptions = useMemo(() => {
+        const options = filterOptions.map((opts) => [...opts]);
+        while (options.length < 2) {
+            options.push([]);
+        }
+
+        const fromSprints = sprints.flatMap((sprint) => sprint.projectNames ?? []).filter(Boolean);
+        if (fromSprints.length === 0) {
+            return options;
+        }
+
+        options[1] = Array.from(new Set([...options[1], ...fromSprints]))
+            .sort((a, b) => a.localeCompare(b));
+        return options;
+    }, [filterOptions, sprints]);
+
+    const visibleSprints = useMemo(
+        () => sprints.filter((sprint) => sprintMatchesProjectFilter(sprint.projectNames, filters[1])),
+        [filters, sprints]
+    );
 
     const sprintColumns: GridColDef[] = [
         { field: "col0", headerName: "ID", width: 90 },
@@ -270,7 +292,7 @@ const Sprints = () => {
                 <div className="mt-2 mb-4 rounded-lg border border-slate-200 bg-white p-4">
                     <CurriculumPathFilters
                         filterLabels={filterLabels}
-                        filterOptions={filterOptions}
+                        filterOptions={sprintFilterOptions}
                         filters={filters}
                         onFilterChange={updateFilter}
                     />
@@ -290,7 +312,7 @@ const Sprints = () => {
                                 sortModel: [{ field: "col1", sort: "asc" }],
                             },
                         }}
-                        rows={sprints.map((s) => {
+                        rows={visibleSprints.map((s) => {
                             return {
                                 id: s.id,
                                 col0: s.id,
@@ -321,7 +343,7 @@ const Sprints = () => {
                         }}
                     />
                 </div>
-                <CreateSprint onSprintCreated={() => fetchSprints(activeTab === 'archived')} />
+                <CreateSprint onCreated={() => fetchSprints(activeTab === 'archived')} />
             </div>
 
 

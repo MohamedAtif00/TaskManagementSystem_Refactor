@@ -22,6 +22,7 @@ namespace AutomatedTaskSystem.Services.Sprint
         // Cache configuration
         private const int CacheExpirationMinutes = 2; // Cache expires after 2 minutes
         private const string AllSprintsCacheKeyPrefix = "AllSprints_";
+        private const string AllSprintsCacheVersionKey = "AllSprints_CacheVersion";
         private const int ProgressQueryTimeoutSeconds = 20;
 
         public SprintService(DataContext dataContext, IMemoryCache cache)
@@ -33,8 +34,9 @@ namespace AutomatedTaskSystem.Services.Sprint
         /// <summary>
         /// Generates a cache key for all sprints based on archived filter and hierarchy filters
         /// </summary>
-        private static string GetAllSprintsCacheKey(bool? archived, SprintHierarchyFilter? hierarchyFilter)
+        private string GetAllSprintsCacheKey(bool? archived, SprintHierarchyFilter? hierarchyFilter)
         {
+            var version = GetAllSprintsCacheVersion();
             var archivedKey = archived switch
             {
                 null => "All",
@@ -44,7 +46,7 @@ namespace AutomatedTaskSystem.Services.Sprint
 
             if (hierarchyFilter is null || !hierarchyFilter.HasAnyFilter)
             {
-                return $"{AllSprintsCacheKeyPrefix}{archivedKey}";
+                return $"{AllSprintsCacheKeyPrefix}v{version}_{archivedKey}";
             }
 
             var filterKey = string.Join(
@@ -58,7 +60,30 @@ namespace AutomatedTaskSystem.Services.Sprint
                 }.Select(v => string.IsNullOrWhiteSpace(v) ? "-" : v.Trim())
             );
 
-            return $"{AllSprintsCacheKeyPrefix}{archivedKey}_{filterKey}";
+            return $"{AllSprintsCacheKeyPrefix}v{version}_{archivedKey}_{filterKey}";
+        }
+
+        private int GetAllSprintsCacheVersion()
+        {
+            if (_cache.TryGetValue(AllSprintsCacheVersionKey, out int version))
+            {
+                return version;
+            }
+
+            _cache.Set(AllSprintsCacheVersionKey, 0, new MemoryCacheEntryOptions
+            {
+                Priority = CacheItemPriority.NeverRemove
+            });
+            return 0;
+        }
+
+        private void InvalidateAllSprintsCache()
+        {
+            var next = GetAllSprintsCacheVersion() + 1;
+            _cache.Set(AllSprintsCacheVersionKey, next, new MemoryCacheEntryOptions
+            {
+                Priority = CacheItemPriority.NeverRemove
+            });
         }
 
         private const string SprintHierarchyJoinSql = @"
@@ -74,7 +99,7 @@ namespace AutomatedTaskSystem.Services.Sprint
 
         private static IEnumerable<string> BuildHierarchyWhereClauses(SprintHierarchyFilter? hierarchyFilter)
         {
-            if (hierarchyFilter is null || !hierarchyFilter.HasAnyFilter)
+            if (hierarchyFilter is null)
             {
                 return Array.Empty<string>();
             }
@@ -82,19 +107,16 @@ namespace AutomatedTaskSystem.Services.Sprint
             var clauses = new List<string>();
             if (!string.IsNullOrWhiteSpace(hierarchyFilter.YearName))
             {
-                clauses.Add("ay_filter.Name = @YearName");
+                clauses.Add("LTRIM(RTRIM(ay_filter.Name)) = LTRIM(RTRIM(@YearName))");
             }
-            if (!string.IsNullOrWhiteSpace(hierarchyFilter.ProjectName))
-            {
-                clauses.Add("cp_filter.Name = @ProjectName");
-            }
+            // Project is applied in-memory against ProjectNames so the list matches the Project column.
             if (!string.IsNullOrWhiteSpace(hierarchyFilter.TermName))
             {
-                clauses.Add("ct_filter.Name = @TermName");
+                clauses.Add("LTRIM(RTRIM(ct_filter.Name)) = LTRIM(RTRIM(@TermName))");
             }
             if (!string.IsNullOrWhiteSpace(hierarchyFilter.SubjectGroupName))
             {
-                clauses.Add("sg_filter.Name = @SubjectGroupName");
+                clauses.Add("LTRIM(RTRIM(sg_filter.Name)) = LTRIM(RTRIM(@SubjectGroupName))");
             }
 
             return clauses;
@@ -105,6 +127,60 @@ namespace AutomatedTaskSystem.Services.Sprint
             _cache.Remove(GetAllSprintsCacheKey(null));
             _cache.Remove(GetAllSprintsCacheKey(true));
             _cache.Remove(GetAllSprintsCacheKey(false));
+        }
+
+        /// <summary>
+        /// Resolves the distinct curriculum project names the given learning objectives belong to.
+        /// </summary>
+        private async Task<List<string>> GetProjectNamesForLearningObjectivesAsync(IEnumerable<int> learningObjectiveIds)
+        {
+            var ids = learningObjectiveIds.Distinct().ToList();
+            if (ids.Count == 0)
+            {
+                return new List<string>();
+            }
+
+            var names = await dataContext.LearningObjectives
+                .AsNoTracking()
+                .Where(lo => ids.Contains(lo.Id))
+                .Select(lo => lo.Lesson.Unit.Subject.SubjectGroup.Term.Project.Name)
+                .Distinct()
+                .ToListAsync();
+
+            return names
+                .Select(name => (name ?? "").Trim())
+                .Where(name => name.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name)
+                .ToList();
+        }
+
+        /// <summary>
+        /// A sprint is scoped to a single curriculum project; returns an error message when the
+        /// learning objectives span more than one, otherwise null.
+        /// </summary>
+        private async Task<string?> ValidateSingleProjectScopeAsync(IEnumerable<int> learningObjectiveIds)
+        {
+            var projectNames = await GetProjectNamesForLearningObjectivesAsync(learningObjectiveIds);
+            if (projectNames.Count <= 1)
+            {
+                return null;
+            }
+
+            return "All learning objectives in a sprint must belong to the same project. "
+                + $"The selected learning objectives span {projectNames.Count} projects: {string.Join(", ", projectNames)}.";
+        }
+
+        private static bool SprintMatchesProject(SprintDTO sprint, string? projectName)
+        {
+            if (string.IsNullOrWhiteSpace(projectName))
+            {
+                return true;
+            }
+
+            var needle = projectName.Trim();
+            return sprint.ProjectNames.Any(name =>
+                string.Equals(name?.Trim(), needle, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
@@ -211,6 +287,13 @@ namespace AutomatedTaskSystem.Services.Sprint
                     };
                 }).ToList();
 
+                if (!string.IsNullOrWhiteSpace(hierarchyFilter?.ProjectName))
+                {
+                    sprintDtos = sprintDtos
+                        .Where(sprint => SprintMatchesProject(sprint, hierarchyFilter.ProjectName))
+                        .ToList();
+                }
+
                 // Cache the result
                 var cacheEntryOptions = new MemoryCacheEntryOptions()
                     .SetAbsoluteExpiration(TimeSpan.FromMinutes(CacheExpirationMinutes));
@@ -258,7 +341,12 @@ namespace AutomatedTaskSystem.Services.Sprint
                 .GroupBy(row => row.SprintId)
                 .ToDictionary(
                     group => group.Key,
-                    group => group.Select(row => row.ProjectName).Distinct().OrderBy(name => name).ToList());
+                    group => group
+                        .Select(row => (row.ProjectName ?? "").Trim())
+                        .Where(name => name.Length > 0)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(name => name)
+                        .ToList());
         }
 
         private async Task<(Dictionary<int, int> Expected, Dictionary<int, int> Completed)> GetSprintProgressAsync(
@@ -498,6 +586,14 @@ namespace AutomatedTaskSystem.Services.Sprint
                         return response;
                     }
 
+                    var scopeError = await ValidateSingleProjectScopeAsync(learningObjectiveIdsToAssociate);
+                    if (scopeError != null)
+                    {
+                        response.Error = true;
+                        response.Message = scopeError;
+                        return response;
+                    }
+
                     // Create SprintLearningObjective entries for the many-to-many relationship
                     foreach (var lo in existingLearningObjectives)
                     {
@@ -602,6 +698,14 @@ namespace AutomatedTaskSystem.Services.Sprint
                 // 4. Manage Learning Objectives (many-to-many relationship)
                 var currentLoIds = sprintToUpdate.SprintLearningObjectives.Select(slo => slo.LearningObjectiveId).ToList();
                 var requestedLoIds = request.Los ?? new List<int>();
+
+                var scopeError = await ValidateSingleProjectScopeAsync(requestedLoIds);
+                if (scopeError != null)
+                {
+                    response.Error = true;
+                    response.Message = scopeError;
+                    return response;
+                }
 
                 // LOs to remove: In current but not in requested
                 var loIdsToRemove = currentLoIds.Except(requestedLoIds).ToList();

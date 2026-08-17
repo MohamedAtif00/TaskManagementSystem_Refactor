@@ -19,11 +19,11 @@ const formatDateForInput = (date: Date): string => {
     return `${year}-${month}-${day}`;
 };
 
-interface CreateSprintProps {
-    onSprintCreated?: () => void;
-}
+type CreateSprintProps = {
+    onCreated?: () => void | Promise<void>;
+};
 
-const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
+const CreateSprint = ({ onCreated }: CreateSprintProps) => {
     const { query, pathname, push } = useRouter();
     const { role } = useAppSelector((s) => s.authSlice);
 
@@ -165,7 +165,7 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
             });
 
             if (response && !response.error) {
-                onSprintCreated?.();
+                await onCreated?.();
                 push(pathname);
             } else if (response.error) {
                 setFormError(`Error: ${response.message}`);

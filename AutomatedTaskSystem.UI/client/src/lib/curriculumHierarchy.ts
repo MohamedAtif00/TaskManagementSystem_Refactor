@@ -99,6 +99,9 @@ export const getCurriculumPathParts = (folderPath?: string) =>
         .map((part) => part.trim())
         .filter(Boolean);
 
+export const namesMatch = (left?: string, right?: string) =>
+    String(left ?? "").trim().toLowerCase() === String(right ?? "").trim().toLowerCase();
+
 /** True when every populated filter segment matches the subject folder path. */
 export const subjectMatchesHierarchyFilters = (
     folderPath: string | undefined,
@@ -107,6 +110,15 @@ export const subjectMatchesHierarchyFilters = (
     const parts = getCurriculumPathParts(folderPath);
     return Object.entries(filters).every(([key, value]) => {
         if (!value) return true;
-        return parts[Number(key)] === value;
+        return namesMatch(parts[Number(key)], value);
     });
+};
+
+/** True when a sprint belongs to the selected curriculum project. */
+export const sprintMatchesProjectFilter = (
+    projectNames: string[] | undefined,
+    projectName?: string
+) => {
+    if (!projectName?.trim()) return true;
+    return (projectNames ?? []).some((name) => namesMatch(name, projectName));
 };
