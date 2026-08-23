@@ -107,12 +107,13 @@ const DataTable: React.FC<DataTableProps> = ({
     const searchInputRef = useRef<HTMLInputElement>(null);
     const onPageChangeRef = useRef(onPageChange);
 
-    const lastSentPageRef = useRef<number>(1);
+    const lastSentPageRef = useRef<number>(propCurrentPage ?? 1);
     const lastSentItemsPerPageRef = useRef<number>(propItemsPerPage);
-    const lastSentFiltersRef = useRef<Record<string, any>>({});
-    const lastSentSearchTextRef = useRef<string>("");
-    const isInitialMount = useRef(true);
+    const lastSentFiltersRef = useRef<Record<string, any>>(propCurrentFilters ?? {});
+    const lastSentSearchTextRef = useRef<string>(propCurrentSearchText ?? "");
     const debounceTimerRef = useRef<number | null>(null);
+    const SEARCH_DEBOUNCE_MS = 500;
+    const FILTER_DEBOUNCE_MS = 300;
 
     // Keep a stable reference to the latest onPageChange
     useEffect(() => {
@@ -130,38 +131,64 @@ const DataTable: React.FC<DataTableProps> = ({
         }
     }, [shouldFocusSearch]);
 
-    // Sync internal state with props when they change (for tab switching)
+    // Apply parent values only when the parent actually changes (tab restore).
+    // Never copy them back while the user is typing — that deletes the search text.
     useEffect(() => {
-        if (propCurrentPage !== undefined && propCurrentPage !== currentPage) {
-            setCurrentPage(propCurrentPage);
-        }
-    }, [propCurrentPage, currentPage]);
+        if (propCurrentPage === undefined) return;
+        setCurrentPage(propCurrentPage);
+    }, [propCurrentPage]);
 
     useEffect(() => {
-        if (propCurrentFilters !== undefined && !deepEqual(propCurrentFilters, filters)) {
-            setFilters(propCurrentFilters);
-        }
-    }, [propCurrentFilters, filters]);
+        if (propCurrentFilters === undefined) return;
+        if (debounceTimerRef.current) return;
+        if (deepEqual(propCurrentFilters, lastSentFiltersRef.current)) return;
+        setFilters(propCurrentFilters);
+        lastSentFiltersRef.current = propCurrentFilters;
+    }, [propCurrentFilters]);
 
     useEffect(() => {
-        if (propCurrentSearchText !== undefined && propCurrentSearchText !== searchText) {
-            setSearchText(propCurrentSearchText);
-        }
-    }, [propCurrentSearchText, searchText]);
+        if (propCurrentSearchText === undefined) return;
+        if (debounceTimerRef.current) return;
+        if (searchInputRef.current && document.activeElement === searchInputRef.current) return;
+        setSearchText(propCurrentSearchText);
+    }, [propCurrentSearchText]);
 
-    // Debounced emitter invoked from user-interaction handlers only
-    const scheduleEmitChange = useCallback((page: number, itemsPerPage: number, nextFilters: Record<string, any>, nextSearchText: string) => {
+    const emitChange = useCallback((page: number, itemsPerPage: number, nextFilters: Record<string, any>, nextSearchText: string) => {
+        if (
+            page === lastSentPageRef.current &&
+            itemsPerPage === lastSentItemsPerPageRef.current &&
+            nextSearchText === lastSentSearchTextRef.current &&
+            deepEqual(nextFilters, lastSentFiltersRef.current)
+        ) {
+            return;
+        }
+        lastSentPageRef.current = page;
+        lastSentItemsPerPageRef.current = itemsPerPage;
+        lastSentFiltersRef.current = nextFilters;
+        lastSentSearchTextRef.current = nextSearchText;
+        onPageChangeRef.current(page, itemsPerPage, nextFilters, nextSearchText);
+    }, []);
+
+    const scheduleEmitChange = useCallback((
+        page: number,
+        itemsPerPage: number,
+        nextFilters: Record<string, any>,
+        nextSearchText: string,
+        delay = SEARCH_DEBOUNCE_MS
+    ) => {
         if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
+            debounceTimerRef.current = null;
+        }
+        if (delay <= 0) {
+            emitChange(page, itemsPerPage, nextFilters, nextSearchText);
+            return;
         }
         debounceTimerRef.current = window.setTimeout(() => {
-            lastSentPageRef.current = page;
-            lastSentItemsPerPageRef.current = itemsPerPage;
-            lastSentFiltersRef.current = nextFilters;
-            lastSentSearchTextRef.current = nextSearchText;
-            onPageChangeRef.current(page, itemsPerPage, nextFilters, nextSearchText);
-        }, 300);
-    }, []);
+            debounceTimerRef.current = null;
+            emitChange(page, itemsPerPage, nextFilters, nextSearchText);
+        }, delay);
+    }, [emitChange]);
 
     useEffect(() => {
         return () => {
@@ -170,11 +197,8 @@ const DataTable: React.FC<DataTableProps> = ({
     }, []);
 
     useEffect(() => {
-        if (propItemsPerPage !== currentItemsPerPage) {
-            setCurrentItemsPerPage(propItemsPerPage);
-            setCurrentPage(1);
-        }
-    }, [propItemsPerPage, currentItemsPerPage]);
+        setCurrentItemsPerPage(propItemsPerPage);
+    }, [propItemsPerPage]);
 
     const filteredData = useMemo(() => {
         if (serverSide) return data;
@@ -227,7 +251,7 @@ const DataTable: React.FC<DataTableProps> = ({
         (page: number) => {
             if (page < 1 || page > totalPages) return;
             setCurrentPage(page);
-            scheduleEmitChange(page, currentItemsPerPage, filters, searchText);
+            scheduleEmitChange(page, currentItemsPerPage, filters, searchText, 0);
         },
         [totalPages, scheduleEmitChange, currentItemsPerPage, filters, searchText]
     );
@@ -240,7 +264,7 @@ const DataTable: React.FC<DataTableProps> = ({
                 if (deepEqual(prevFilters, newFilters)) {
                     return prevFilters;
                 }
-                scheduleEmitChange(1, currentItemsPerPage, newFilters, searchText);
+                scheduleEmitChange(1, currentItemsPerPage, newFilters, searchText, FILTER_DEBOUNCE_MS);
                 return newFilters;
             });
         },
@@ -251,7 +275,7 @@ const DataTable: React.FC<DataTableProps> = ({
         setCurrentPage(1);
         const nextSearch = e.target.value;
         setSearchText(nextSearch);
-        scheduleEmitChange(1, currentItemsPerPage, filters, nextSearch);
+        scheduleEmitChange(1, currentItemsPerPage, filters, nextSearch, SEARCH_DEBOUNCE_MS);
     }, [scheduleEmitChange, currentItemsPerPage, filters]);
 
     const paginatedData = useMemo(() => {
@@ -438,7 +462,7 @@ const DataTable: React.FC<DataTableProps> = ({
     const handleItemsPerPageChange = useCallback((newItemsPerPage: number) => {
         setCurrentItemsPerPage(newItemsPerPage);
         setCurrentPage(1);
-        scheduleEmitChange(1, newItemsPerPage, filters, searchText);
+        scheduleEmitChange(1, newItemsPerPage, filters, searchText, 0);
     }, [scheduleEmitChange, filters, searchText]);
 
     const renderPagination = useMemo(() => (
@@ -531,13 +555,7 @@ const DataTable: React.FC<DataTableProps> = ({
     const currentTotalCount = serverSide ? totalCount : filteredData.length;
 
     return (
-        <div className="w-full bg-white rounded-lg shadow-lg p-6 relative">
-            {loading && (
-                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 rounded-lg">
-                    <TableLoader />
-                </div>
-            )}
-
+        <div className="w-full bg-white rounded-lg shadow-lg p-6">
             <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                 {showSearchInput && (
                     <div className="relative col-span-full md:col-span-1 flex items-end">
@@ -548,6 +566,7 @@ const DataTable: React.FC<DataTableProps> = ({
                             placeholder="Search..."
                             value={searchText}
                             onChange={handleSearchChange}
+                            autoComplete="off"
                         />
                         <FiSearch className="absolute left-3 bottom-3 text-gray-400" />
                     </div>
@@ -567,6 +586,13 @@ const DataTable: React.FC<DataTableProps> = ({
                     <span className="text-sm text-blue-800">
                         {selectedRows.size} row{selectedRows.size !== 1 ? 's' : ''} selected
                     </span>
+                </div>
+            )}
+
+            <div className="relative">
+            {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 rounded-lg pointer-events-none">
+                    <TableLoader />
                 </div>
             )}
 
@@ -653,6 +679,7 @@ const DataTable: React.FC<DataTableProps> = ({
             <div className="mt-4 text-sm text-gray-500 text-center">
                 Showing {displayData.length > 0 ? (currentPage - 1) * currentItemsPerPage + 1 : 0} to {Math.min(currentPage * currentItemsPerPage, currentTotalCount)} of {currentTotalCount} results
                 {(searchText || Object.values(filters).some(f => f && f !== "all")) && ` (filtered)`}
+            </div>
             </div>
         </div>
     );

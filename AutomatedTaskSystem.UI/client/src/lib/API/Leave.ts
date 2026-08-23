@@ -154,7 +154,8 @@ interface IGetOpinion extends IOpinion {
 // The GET_ALL_DB function needs to expect a paginated response type
 const LEAVE = {
     GET_ALL_DB: async (
-        params?: Record<string, string | number | boolean | undefined> // Added undefined for optional params
+        params?: Record<string, string | number | boolean | undefined>,
+        signal?: AbortSignal
     ): Promise<ResponseService<PageList<IGetLeaveRequestForCalander[]>>> => { // Changed return type to IGetAllLeavesApiResponse
         try {
             const headers = authService.authHeader();
@@ -174,14 +175,18 @@ const LEAVE = {
                 headers: {
                     'Content-Type': 'application/json',
                     ...headers
-                }
+                },
+                signal,
             });
             // The response from the backend should now be an object with 'items' and 'totalCount'
             const response: ResponseService<PageList<IGetLeaveRequestForCalander[]>> = await res.json();
 
             return response;
-        } // ... inside catch block
+        }
         catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                throw error;
+            }
             console.error("Error fetching all leaves from DB:", error);
             return {
                 error: true, // Assuming ResponseService has an 'error' boolean or specific error message string

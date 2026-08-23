@@ -175,7 +175,7 @@ internal static class DailyReportSql
             END AS Grade,
             COALESCE(NULLIF(tb.Name, ''), t.Name) AS TaskName,
             ISNULL(lo.Name, '') AS LoCode,
-            ISNULL(lo.Template, '') AS LoType,
+            ISNULL(sch.Name, '') AS LoType,
             COALESCE(NULLIF(usr.Name, ''), NULLIF(lr.ToGroupName, ''), g.Name, '') AS AssignedTo,
             CASE
                 WHEN t.Flagged = 1 THEN 'Red Flag'
@@ -194,6 +194,7 @@ internal static class DailyReportSql
         FROM Tasks t
         INNER JOIN Groups g ON g.Id = t.GroupId
         INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId
+        INNER JOIN Schemas sch ON sch.Id = lo.SchemaId
         INNER JOIN Lessons l ON l.Id = lo.LessonId
         INNER JOIN Units un ON un.Id = l.UnitId
         INNER JOIN Subjects s ON s.Id = un.SubjectId
