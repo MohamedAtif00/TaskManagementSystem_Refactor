@@ -23,7 +23,7 @@ const TaskSheet = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
-                    <title>ATS - Select a view</title>
+                    <title>TMS - Select a view</title>
                 </Head>
                 <div>
                     {/* Maybe display some "Redirecting..." message or similar */}
@@ -35,7 +35,7 @@ const TaskSheet = () => {
     return (
         <div className="flex items-center justify-center mx-auto h-full">
             <Head>
-                <title>ATS - Loading</title>
+                <title>TMS - Loading</title>
             </Head>
             <Loader />
         </div>

@@ -95,7 +95,7 @@ const Schema = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <Loader />
             </div>
@@ -104,7 +104,7 @@ const Schema = () => {
     return (
         <>
             <Head>
-                <title>ATS - {schema.name} Schema</title>
+                <title>TMS - {schema.name} Schema</title>
             </Head>
             <div className="mainContainer">
                 <Header text={schema.name} icon="Schema">

@@ -54,7 +54,7 @@ const Report = () => {
         return (
             <>
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <div className="flex items-center justify-center mx-auto">
                     <Loader />
@@ -65,7 +65,7 @@ const Report = () => {
     return (
         <>
             <Head>
-                <title>ATS - {report.name} Summary</title>
+                <title>TMS - {report.name} Summary</title>
             </Head>
             <div className="pl-8 overflow-hidden">
                 <div className="pr-8 h-screen overflow-y-auto grow">

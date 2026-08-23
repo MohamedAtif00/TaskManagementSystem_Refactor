@@ -38,8 +38,8 @@ const API = {
     SPRINTS,
     LEAVE,
     PERMISSION,
-	    WORK_FROM_HOME,
-	    NOTIFICATIONS
+    WORK_FROM_HOME,
+    NOTIFICATIONS
 };
 
 export default API;

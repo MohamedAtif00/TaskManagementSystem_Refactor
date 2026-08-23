@@ -1,3 +1,7 @@
+interface IDName {
+    id: number;
+    name: string;
+}
 
 interface ITeam {
     id: number;
@@ -182,10 +186,17 @@ interface IProject {
     id: number;
     description: string;
     name: string;
-    year: { id: number; name: string };
-    term: boolean;
+    folderId?: number;
+    folderPath?: string;
+    levelNames?: string[];
+    rootProjectId: number;
+    projectYearId: number;
+    termId: number;
+    rootProject: IDName;
+    projectYear: IDName;
+    term: IDName;
     status: ProjectStatus;
-    count?:number;
+    count?: number;
     progressPercent?: number;
 }
 
@@ -236,6 +247,9 @@ interface ProjectDetails {
     description: string;
     units: Unit[];
     status: number;
+    folderId?: number;
+    yearId?: number;
+    folderPath?: string;
 }
 
 type CommentInfo = {

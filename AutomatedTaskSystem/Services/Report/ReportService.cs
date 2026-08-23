@@ -2,30 +2,26 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Dtos.Report;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
+using AutomatedTaskSystem.Services.CurriculumService;
 using AutomatedTaskSystem.Services.ResponseService;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Services.ReportService;
 
-public class ReportService : IReportService
+public class ReportService(DataContext context, ICurriculumService curriculumService) : IReportService
 {
-    private readonly DataContext _context;
-
-    public ReportService(DataContext context)
-    {
-        _context = context;
-    }
+    private readonly DataContext _context = context;
 
     public async Task<ActionResult<ResponseService<List<GetReportDto>>>> GetAllProjectsReports(DateTime? start, DateTime? end)
     {
-        var projects = await _context.Projects
+        var projects = await _context.Subjects
             .Where(
                 p =>
                     !p.Archived
                     && p.Status != ProjectStatusEnum.Closed
                     && p.Status != ProjectStatusEnum.Hold
             )
-            .Include(p => p.Year)
+            .Include(p => p.SubjectGroup)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
             .ThenInclude(l => l.LearningObjectives)
@@ -43,7 +39,7 @@ public class ReportService : IReportService
             );
 
         foreach (var project in projects)
-            res.Add(createReport(project, start, end));
+            res.Add(await createReport(project, start, end));
 
         return new ResponseService<List<GetReportDto>>
         {
@@ -55,7 +51,7 @@ public class ReportService : IReportService
 
     public async Task<ActionResult<ResponseService<GetProjectReportDto>>> GetProjectReport(int id)
     {
-        var project = await _context.Projects
+        var project = await _context.Subjects
             .Where(
                 p =>
                     p.Id == id
@@ -63,7 +59,7 @@ public class ReportService : IReportService
                     && p.Status != ProjectStatusEnum.Closed
                     && p.Status != ProjectStatusEnum.Hold
             )
-            .Include(p => p.Year)
+            .Include(p => p.SubjectGroup)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
             .ThenInclude(l => l.LearningObjectives)
@@ -80,8 +76,8 @@ public class ReportService : IReportService
             Id = project.Id,
             Name = project.Name,
             Description = project.Description,
-            Term = project.Term ? "Term 2" : "Term 1",
-            Year = project.Year.Number
+            Term = project.SubjectGroup?.Name ?? string.Empty,
+            Year = await curriculumService.BuildSubjectPathAsync(project.SubjectGroupId)
         };
 
         foreach (var unit in project.Units)
@@ -132,15 +128,15 @@ public class ReportService : IReportService
         };
     }
 
-    private GetReportDto createReport(Models.Project project, DateTime? start, DateTime? end)
+    private async Task<GetReportDto> createReport(Models.Subject project, DateTime? start, DateTime? end)
     {
         var report = new GetReportDto
         {
             Id = project.Id,
             Name = project.Name,
             Description = project.Description,
-            Year = project.Year.Number,
-            Term = project.Term ? "Term 2" : "Term 1",
+            Year = await curriculumService.BuildSubjectPathAsync(project.SubjectGroupId),
+            Term = project.SubjectGroup?.Name ?? string.Empty,
         };
 
         foreach (var unit in project.Units)

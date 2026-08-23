@@ -7,6 +7,7 @@ using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Services.ResponseService;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -20,6 +21,7 @@ namespace AutomatedTaskSystem.Services.Sprint
         // Cache configuration
         private const int CacheExpirationMinutes = 2; // Cache expires after 2 minutes
         private const string AllSprintsCacheKeyPrefix = "AllSprints_";
+        private const int ProgressQueryTimeoutSeconds = 20;
 
         public SprintService(DataContext dataContext, IMemoryCache cache)
         {
@@ -52,11 +54,8 @@ namespace AutomatedTaskSystem.Services.Sprint
                     return new ResponseService<List<SprintDTO>>() { Data = cachedData };
                 }
 
-                var connection = dataContext.Database.GetDbConnection();
-                if (connection.State != ConnectionState.Open)
-                {
-                    await connection.OpenAsync();
-                }
+                await using var connection = new SqlConnection(dataContext.Database.GetConnectionString());
+                await connection.OpenAsync();
 
                 // Query 1: Get all sprints with basic info and LO count
                 var sprintsSql = @"
@@ -95,48 +94,7 @@ namespace AutomatedTaskSystem.Services.Sprint
                 }
 
                 var sprintIds = sprintRows.Select(s => s.Id).ToList();
-
-                // Query 2: Get total expected tasks (schema steps) per sprint
-                const string expectedTasksSql = @"
-                    SELECT
-                        slo.SprintId,
-                        COUNT(st.Id) AS TotalExpectedTasks
-                    FROM SprintLearningObjectives slo
-                    INNER JOIN LearningObjectives lo ON slo.LearningObjectiveId = lo.Id
-                    INNER JOIN Schemas sch ON lo.SchemaId = sch.Id
-                    INNER JOIN Nodes n ON n.SchemaId = sch.Id
-                    INNER JOIN Steps st ON st.NodeId = n.Id
-                    WHERE slo.SprintId IN @SprintIds
-                      AND lo.Archived = 0
-                      AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
-                      AND n.Archived = 0
-                      AND st.Archived = 0
-                    GROUP BY slo.SprintId";
-
-                var expectedTasksDict = (await connection.QueryAsync<SprintExpectedTasksRow>(
-                    expectedTasksSql,
-                    new { SprintIds = sprintIds }))
-                    .ToDictionary(x => x.SprintId, x => x.TotalExpectedTasks);
-
-                // Query 3: Get completed task count per sprint
-                const string completedTasksSql = @"
-                    SELECT
-                        slo.SprintId,
-                        COUNT(t.Id) AS CompletedCount
-                    FROM SprintLearningObjectives slo
-                    INNER JOIN LearningObjectives lo ON slo.LearningObjectiveId = lo.Id
-                    INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id
-                    WHERE slo.SprintId IN @SprintIds
-                      AND lo.Archived = 0
-                      AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
-                      AND t.Archived = 0
-                      AND t.Status = 3  -- TaskStatusEnum.Done = 3
-                    GROUP BY slo.SprintId";
-
-                var completedTasksDict = (await connection.QueryAsync<SprintCompletedTasksRow>(
-                    completedTasksSql,
-                    new { SprintIds = sprintIds }))
-                    .ToDictionary(x => x.SprintId, x => x.CompletedCount);
+                var (expectedTasksDict, completedTasksDict) = await GetSprintProgressAsync(connection, sprintIds);
 
                 // Build the result list
                 var sprintDtos = sprintRows.Select(sprint =>
@@ -172,6 +130,71 @@ namespace AutomatedTaskSystem.Services.Sprint
                 Console.WriteLine(ex.StackTrace);
                 return new ResponseService<List<SprintDTO>>() { Error = true, Message = "Unexpected error" };
             }
+        }
+
+        private async Task<(Dictionary<int, int> Expected, Dictionary<int, int> Completed)> GetSprintProgressAsync(
+            SqlConnection connection,
+            List<int> sprintIds)
+        {
+            var expected = new Dictionary<int, int>();
+            var completed = new Dictionary<int, int>();
+
+            if (sprintIds.Count == 0)
+            {
+                return (expected, completed);
+            }
+
+            const string expectedTasksSql = @"
+                SELECT
+                    slo.SprintId,
+                    COUNT(st.Id) AS TotalExpectedTasks
+                FROM SprintLearningObjectives slo
+                INNER JOIN LearningObjectives lo ON slo.LearningObjectiveId = lo.Id AND lo.Archived = 0
+                INNER JOIN Schemas sch ON lo.SchemaId = sch.Id
+                INNER JOIN Nodes n ON n.SchemaId = sch.Id AND n.Archived = 0
+                INNER JOIN Steps st ON st.NodeId = n.Id AND st.Archived = 0
+                WHERE slo.SprintId IN @SprintIds
+                  AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
+                GROUP BY slo.SprintId";
+
+            const string completedTasksSql = @"
+                SELECT
+                    slo.SprintId,
+                    COUNT(1) AS CompletedCount
+                FROM SprintLearningObjectives slo
+                INNER JOIN LearningObjectives lo ON lo.Id = slo.LearningObjectiveId AND lo.Archived = 0
+                INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id AND t.Archived = 0 AND t.Status = 3
+                WHERE slo.SprintId IN @SprintIds
+                  AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
+                GROUP BY slo.SprintId";
+
+            try
+            {
+                var expectedRows = await connection.QueryAsync<SprintExpectedTasksRow>(
+                    expectedTasksSql,
+                    new { SprintIds = sprintIds },
+                    commandTimeout: ProgressQueryTimeoutSeconds);
+                expected = expectedRows.ToDictionary(x => x.SprintId, x => x.TotalExpectedTasks);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"GetAllSprints progress (expected tasks) skipped: {ex.Message}");
+            }
+
+            try
+            {
+                var completedRows = await connection.QueryAsync<SprintCompletedTasksRow>(
+                    completedTasksSql,
+                    new { SprintIds = sprintIds },
+                    commandTimeout: ProgressQueryTimeoutSeconds);
+                completed = completedRows.ToDictionary(x => x.SprintId, x => x.CompletedCount);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"GetAllSprints progress (completed tasks) skipped: {ex.Message}");
+            }
+
+            return (expected, completed);
         }
 
         // Helper DTOs for Dapper query results

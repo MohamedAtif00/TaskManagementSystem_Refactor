@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Xml;
 using AutomatedTaskSystem.Models;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
@@ -108,7 +109,7 @@ public class DataContext : DbContext
         modelBuilder.Entity<User>().Property(u => u.Role).HasDefaultValue(UserRoleEnum.Member);
 
         modelBuilder
-            .Entity<Project>()
+            .Entity<Subject>()
             .Property(p => p.Status)
             .HasDefaultValue(ProjectStatusEnum.Active);
 
@@ -124,7 +125,27 @@ public class DataContext : DbContext
                 new Year { Active = true, Id = 5, Number = "2024" }
             );
 
-        modelBuilder.Entity<Project>().Property(p => p.YearId).HasDefaultValue(1);
+        modelBuilder
+            .Entity<User>()
+            .HasMany(u => u.Subjects)
+            .WithMany(s => s.Users)
+            .UsingEntity<Dictionary<string, object>>(
+                "SubjectUser",
+                j =>
+                    j.HasOne<Subject>()
+                        .WithMany()
+                        .HasForeignKey("SubjectsId")
+                        .OnDelete(DeleteBehavior.Cascade),
+                j =>
+                    j.HasOne<User>()
+                        .WithMany()
+                        .HasForeignKey("UsersId")
+                        .OnDelete(DeleteBehavior.NoAction),
+                j =>
+                {
+                    j.HasKey("SubjectsId", "UsersId");
+                    j.ToTable("SubjectUser");
+                });
 
         modelBuilder
             .Entity<Rollback>()
@@ -196,6 +217,45 @@ public class DataContext : DbContext
             .WithMany(x => x.Opinions)
             .OnDelete(DeleteBehavior.NoAction);
 
+        modelBuilder.Entity<Subject>().ToTable("Subjects");
+
+        modelBuilder.Entity<AcademicYear>().ToTable("AcademicYears");
+        modelBuilder.Entity<CurriculumProject>().ToTable("CurriculumProjects");
+        modelBuilder.Entity<CurriculumTerm>().ToTable("CurriculumTerms");
+        modelBuilder.Entity<SubjectGroup>().ToTable("SubjectGroups");
+
+        modelBuilder.Entity<CurriculumProject>()
+            .HasOne(p => p.Year)
+            .WithMany(y => y.Projects)
+            .HasForeignKey(p => p.YearId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CurriculumTerm>()
+            .HasOne(t => t.Project)
+            .WithMany(p => p.Terms)
+            .HasForeignKey(t => t.ProjectId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<SubjectGroup>()
+            .HasOne(g => g.Term)
+            .WithMany(t => t.SubjectGroups)
+            .HasForeignKey(g => g.TermId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder
+            .Entity<Subject>()
+            .HasOne(s => s.SubjectGroup)
+            .WithMany(g => g.Subjects)
+            .HasForeignKey(s => s.SubjectGroupId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder
+            .Entity<Unit>()
+            .HasOne(u => u.Subject)
+            .WithMany(s => s.Units)
+            .HasForeignKey(u => u.SubjectId)
+            .OnDelete(DeleteBehavior.Cascade);
+
 	        modelBuilder
 	            .Entity<Notification>()
 	            .Property(n => n.Category)
@@ -226,7 +286,11 @@ public class DataContext : DbContext
     public DbSet<Year> Years => Set<Year>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
-    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<AcademicYear> AcademicYears => Set<AcademicYear>();
+    public DbSet<CurriculumProject> CurriculumProjects => Set<CurriculumProject>();
+    public DbSet<CurriculumTerm> CurriculumTerms => Set<CurriculumTerm>();
+    public DbSet<SubjectGroup> SubjectGroups => Set<SubjectGroup>();
+    public DbSet<Subject> Subjects => Set<Subject>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<Schema> Schemas => Set<Schema>();
     public DbSet<SchemaType> SchemaTypes => Set<SchemaType>();

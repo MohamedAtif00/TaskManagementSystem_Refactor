@@ -91,7 +91,7 @@ const TaskBoard = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <Loader />
             </div>
@@ -103,7 +103,7 @@ const TaskBoard = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full text-red-500">
                 <Head>
-                    <title>ATS - Error</title>
+                    <title>TMS - Error</title>
                 </Head>
                 <p>{error}</p>
             </div>
@@ -167,7 +167,7 @@ const TaskBoard = () => {
     return (
         <>
             <Head>
-                <title>ATS - {project.name} Tasks</title>
+                <title>TMS - {project.name} Tasks</title>
             </Head>
             <div className="w-full h-screen overflow-hidden flex flex-col">
                 <div className="px-8 relative z-20">

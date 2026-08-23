@@ -38,10 +38,10 @@ public class TaskController : ControllerBase
         _rollbackService = rollbackService;
     }
 
-    [HttpGet("/creatables/{projectId}")]
+    [HttpGet("/creatables/{subjectId}")]
     public async Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(
-        int projectId
-    ) => await _taskService.CreatableTasks(projectId);
+        int subjectId
+    ) => await _taskService.CreatableTasks(subjectId);
 
     [HttpPatch("{id}/priority")]
     public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> EditTask(int id, Requests.PriorityUpdateDto req) => await _taskService.UpdateTaskPriority(id, req.Priority);
@@ -144,14 +144,14 @@ public class TaskController : ControllerBase
     // GET:
     // Get Project Tasks as Card
     [Authorize]
-    [HttpGet("/projects/{id}/tasks/cards")]
+    [HttpGet("/subjects/{id}/tasks/cards")]
     public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetCardTasks(int id) =>
         await _taskService.GetProjectTask(id);
 
     // GET:
-    // Get Project Tasks as Sheet
+    // Get Subject Tasks as Sheet
     [Authorize]
-    [HttpGet("/projects/{id}/tasks/sheet")]
+    [HttpGet("/subjects/{id}/tasks/sheet")]
     public async Task<ActionResult<ResponseService<GetProjectSheetDto>>> GetTasksSheet(int id) =>
         await _taskService.GetProjectTaskChips(id);
 
@@ -211,7 +211,7 @@ public class TaskController : ControllerBase
         var user = await _context.Users
             .Where(u => u.Id == uid && !u.Archived)
             .Include(u => u.Group)
-            .Include(u => u.Projects)
+            .Include(u => u.Subjects)
             .FirstOrDefaultAsync();
         if (user is null)
             return new UnauthorizedObjectResult(

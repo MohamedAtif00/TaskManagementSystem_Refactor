@@ -3,41 +3,59 @@ import InputTextField from "../../formComponents/InputTextField";
 import { useEffect, useState } from "react";
 import FormConclusion from "../../formComponents/FormConclusion";
 import API from "../../../lib/API";
+import { dismissFormModal } from "../../../lib/routerHelpers";
 import { motion } from "framer-motion";
 import { useAppDispatch } from "../../../app/hooks";
 import { edit } from "../../../slices/projectSlice";
 import Dropdown from "../../formComponents/DropDown";
+import {
+    mapSubjectGroupNodesToOptions,
+    subjectLocationLabel,
+    type SubjectGroupPickerOption,
+} from "../../../lib/curriculumHierarchy";
+
+const SUBJECT_GROUP_HINT = "Year › Project › Term › Subject group";
+
+const subjectIdFromQuery = (query: ReturnType<typeof useRouter>["query"]) => {
+    const s = query.subjectId ?? query.projectId;
+    if (Array.isArray(s)) return s[0];
+    return s;
+};
 
 const EditProject = () => {
     const dispatch = useAppDispatch();
-    const { query, pathname, push: routerPush } = useRouter();
+    const router = useRouter();
+    const { query, pathname } = router;
     const [active, setActive] = useState<boolean>(false);
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
-    const [term, setTerm] = useState<null | { id: number; name: string }>(null);
-    const [year, setYear] = useState<null | { id: number; name: string }>(null);
-    const [years, setYears] = useState<{ id: number; name: string }[]>([]);
+    const [folder, setFolder] = useState<SubjectGroupPickerOption | null>(null);
+    const [folders, setFolders] = useState<SubjectGroupPickerOption[]>([]);
     const [error, setError] = useState("");
 
     useEffect(() => {
-        if (query.form === "edit-project" && query.projectId) {
-            API.PROJECTS.GET_ONE(query.projectId).then((res) => {
-                if (res && !res.error) {
-                    setName(res.data.name);
-                    setDescription(res.data.description);
-                    setTerm(
-                        res.data.term
-                            ? { id: 2, name: "Term 2" }
-                            : { id: 1, name: "Term 1" }
-                    );
-                    setYear(res.data.year);
+        const sid = subjectIdFromQuery(query);
+        if (query.form === "edit-project" && sid) {
+            let cancelled = false;
+            (async () => {
+                const one = await API.PROJECTS.GET_ONE(sid);
+                if (!one || one.error || cancelled) return;
+                const s = one.data;
+                setName(s.name);
+                setDescription(s.description);
+                const foldersRes = await API.PROJECTS.ROOT.WITH_SUBJECTS();
+                if (!cancelled && foldersRes && typeof foldersRes === "object" && "error" in foldersRes && !foldersRes.error && "data" in foldersRes) {
+                    setFolders(mapSubjectGroupNodesToOptions((foldersRes as { data: unknown[] }).data));
                 }
-            });
-            API.PROJECTS.YEARS.GET_ALL().then((res) => {
-                if (res && !res.error) {
-                    setYears(res.data);
+                if (!cancelled) {
+                    const folderId = Number((s as any).folderId);
+                    if (!Number.isNaN(folderId)) {
+                        const location =
+                            subjectLocationLabel((s as any).folderPath) || `Subject group #${folderId}`;
+                        setFolder({ id: folderId, name: location });
+                    }
                 }
-            });
+            })();
             return setActive(true);
         }
         setActive(false);
@@ -47,20 +65,21 @@ const EditProject = () => {
         e.preventDefault();
         setError("");
 
+        const sid = subjectIdFromQuery(query);
+        if (!sid) return setError("Missing subject");
+
         if (name === "") return setError("Please enter name");
-        if (year === null) return setError("Please select a year");
-        if (term === null) return setError("Please select a term");
+        if (folder === null) return setError("Please select a subject group location");
 
         API.PROJECTS.EDIT({
-            id: query.projectId!,
+            id: sid,
             name,
             description,
-            term: term.id === 1 ? false : true,
-            year: year.id,
+            folderId: folder.id,
         }).then((res) => {
             if (res && !res.error) {
                 dispatch(edit(res.data));
-                routerPush(pathname);
+                dismissFormModal(router);
             }
         });
     };
@@ -75,9 +94,9 @@ const EditProject = () => {
                 <motion.div
                     initial={{ opacity: 0.1 }}
                     animate={{ opacity: 1 }}
-                    className="bg-white px-5 py-4 basis-80 rounded-lg"
+                    className="bg-white px-5 py-4 basis-80 rounded-lg max-w-lg w-full"
                 >
-                    <h2 className="text-lg mb-5">Edit project</h2>
+                    <h2 className="text-lg mb-5">Edit subject</h2>
                     <form
                         onSubmit={handleSubmit}
                         className="flex flex-col gap-8"
@@ -94,30 +113,18 @@ const EditProject = () => {
                                 value={description}
                                 handleChange={setDescription}
                             />
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <Dropdown
-                                        value={year}
-                                        handleChange={setYear}
-                                        label="Year"
-                                        options={years}
-                                    />
-                                </div>
-                                <div>
-                                    <Dropdown
-                                        value={term}
-                                        handleChange={setTerm}
-                                        label="Term"
-                                        options={[
-                                            { id: 1, name: "Term 1" },
-                                            { id: 2, name: "Term 2" },
-                                        ]}
-                                    />
-                                </div>
+                            <div className="flex flex-col gap-3">
+                                <Dropdown
+                                    value={folder}
+                                    handleChange={setFolder}
+                                    label="Subject group location"
+                                    hint={SUBJECT_GROUP_HINT}
+                                    options={folders}
+                                />
                             </div>
                         </div>
                         <FormConclusion
-                            pathname="/projects"
+                            pathname={pathname}
                             submittable={true}
                         />
                     </form>

@@ -5,5 +5,5 @@ namespace AutomatedTaskSystem.Services.LearningObjectiveService;
 
 public interface ILearningObjectiveService
 {
-	Task<ResponseService<List<LearningObjective>>> GetLearningObjectivesByProjectId(int Pid);
+    Task<ResponseService<List<LearningObjective>>> GetLearningObjectivesBySubjectId(int subjectId);
 }

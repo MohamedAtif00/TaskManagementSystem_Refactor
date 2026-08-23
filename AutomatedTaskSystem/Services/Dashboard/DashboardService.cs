@@ -64,7 +64,7 @@ public class DashboardService : IDashboardService
             .ToListAsync();
         var schemas = await _context.Schemas.Where(g => !g.Archived).ToListAsync();
         var reports = await _reportService.GetAllProjectsReports(null, null);
-        var projects = await _context.Projects
+        var projects = await _context.Subjects
             .Where(
                 p =>
                     !p.Archived
@@ -78,13 +78,13 @@ public class DashboardService : IDashboardService
                     !t.Archived
                     && t.Status != TaskStatusEnum.Done
                     && t.Status != TaskStatusEnum.Rollback
-                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Closed
-                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
+                    && t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Closed
+                    && t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Hold
             )
             .Include(t => t.LearningObjective)
                 .ThenInclude(lo => lo.Lesson)
                     .ThenInclude(l => l.Unit)
-                        .ThenInclude(u => u.Project)
+                        .ThenInclude(u => u.Subject)
             .ToListAsync();
 
         if (reports.Value is null || reports.Value.Data is null)
@@ -148,7 +148,7 @@ public class DashboardService : IDashboardService
         var user = await _context.Users
             .Where(u => u.Id == uid && !u.Archived)
             .Include(u => u.Group)
-            .Include(u => u.Projects)
+            .Include(u => u.Subjects)
                 .ThenInclude(u => u.Units)
                     .ThenInclude(u => u.Lessons)
                         .ThenInclude(u => u.LearningObjectives)
@@ -161,7 +161,7 @@ public class DashboardService : IDashboardService
         if (user.Role != UserRoleEnum.TeamLeader)
             return new UnauthorizedObjectResult(
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
-            );
+            );  
 
         var members = await _context.Users
             .Where(u => u.GroupId == user.GroupId && !u.Archived && u.Role == UserRoleEnum.Member)
@@ -169,7 +169,7 @@ public class DashboardService : IDashboardService
                 .ThenInclude(t => t.LearningObjective)
                     .ThenInclude(lo => lo.Lesson)
                         .ThenInclude(l => l.Unit)
-                            .ThenInclude(u => u.Project)
+                            .ThenInclude(u => u.Subject)
             .ToListAsync();
 
         var ProjectsDetails = new List<GetTasksPerItemDto> { };
@@ -190,9 +190,9 @@ public class DashboardService : IDashboardService
                                 !t.Archived
                                 && t.Status != TaskStatusEnum.Done
                                 && t.Status != TaskStatusEnum.Rollback
-                                && t.LearningObjective.Lesson.Unit.Project.Status
+                                && t.LearningObjective.Lesson.Unit.Subject.Status
                                     != ProjectStatusEnum.Closed
-                                && t.LearningObjective.Lesson.Unit.Project.Status
+                                && t.LearningObjective.Lesson.Unit.Subject.Status
                                     != ProjectStatusEnum.Hold
                         )
                         .ToList()
@@ -201,7 +201,7 @@ public class DashboardService : IDashboardService
             );
         }
 
-        foreach (var project in user.Projects)
+        foreach (var project in user.Subjects)
         {
             var s = project.Status;
             if (s == ProjectStatusEnum.Closed || s == ProjectStatusEnum.Hold)
@@ -243,7 +243,7 @@ public class DashboardService : IDashboardService
             Data = new GetTeamLeaderDashboardDto
             {
                 Members = members.Count,
-                Projects = user.Projects
+                Projects = user.Subjects
                     .Where(
                         p => p.Status == ProjectStatusEnum.Active || p.Status == ProjectStatusEnum.Reopened
                     )

@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import PlusIcon from "../../assets/Icons/Plus";
 import QueryButton from "../../components/button/queryButton";
 import API from "../../lib/API";
+import { markProjectTreeSubjectGroup } from "../../lib/projectTreeState";
 import AddUnit from "../../components/forms/projects/addUnit";
 import AddLesson from "../../components/forms/projects/addLesson";
 import AddLearningObjective from "../../components/forms/projects/addLearningObjective";
@@ -40,7 +41,7 @@ const LearningObjective = (
             <div className="bg-inherit flex justify-end">
                 <Link
                     href={{
-                        pathname: `/projects/${router.query.projectId}`,
+                        pathname: `/subjects/${router.query.subjectId}`,
                         query: {
                             "learning-objective": props.id,
                             form: "edit-learning-objective",
@@ -99,7 +100,7 @@ const Lesson = (
                     </button>
                     <Link
                         href={{
-                            pathname: `/projects/${router.query.projectId}`,
+                            pathname: `/subjects/${router.query.subjectId}`,
                             query: {
                                 lesson: props.id,
                                 form: "edit-lesson",
@@ -115,7 +116,7 @@ const Lesson = (
                         icon={<PlusIcon />}
                         text="Learning Objective"
                         url={{
-                            pathname: `/projects/${router.query.projectId}`,
+                            pathname: `/subjects/${router.query.subjectId}`,
                             query: {
                                 form: "learning-objective",
                                 lessonId: props.id,
@@ -181,7 +182,7 @@ const Unit = (
                     </button>
                     <Link
                         href={{
-                            pathname: `/projects/${router.query.projectId}`,
+                            pathname: `/subjects/${router.query.subjectId}`,
                             query: {
                                 unit: props.id,
                                 form: "edit-unit",
@@ -197,7 +198,7 @@ const Unit = (
                         icon={<PlusIcon />}
                         text="Lesson"
                         url={{
-                            pathname: `/projects/${router.query.projectId}`,
+                            pathname: `/subjects/${router.query.subjectId}`,
                             query: {
                                 form: "lesson",
                                 unitId: props.id,
@@ -228,16 +229,30 @@ const Project = () => {
     const [activeLesson, setActiveLesson] = useState<Lesson>();
     const [activeLO, setActiveLO] = useState<LearningObjective>();
 
+    const backToFolderTreeHref = useMemo(() => {
+        const rawYear = router.query.rootProjectId;
+        const yearFromQuery = rawYear
+            ? Number(Array.isArray(rawYear) ? rawYear[0] : rawYear)
+            : NaN;
+        const yearId = !Number.isNaN(yearFromQuery) ? yearFromQuery : project?.yearId;
+        return !Number.isNaN(yearId) && yearId > 0 ? `/projects/${yearId}` : null;
+    }, [project?.yearId, router.query.rootProjectId]);
+
     if (!auth.isAuth || (auth.role !== 0 && auth.role !== 4)) router.replace("/");
 
     useEffect(() => {
-        if (router.query.projectId)
-            API.PROJECTS.GET_ONE_DETAILED(router.query.projectId).then(
+        if (router.query.subjectId)
+            API.PROJECTS.GET_ONE_DETAILED(router.query.subjectId).then(
                 (res) => {
                     if (res && !res.error) setProject(res.data);
                 }
             );
     }, [router.query]);
+
+    useEffect(() => {
+        if (!project?.yearId || !project?.folderId) return;
+        markProjectTreeSubjectGroup(project.yearId, project.folderId);
+    }, [project?.yearId, project?.folderId]);
 
     useEffect(() => {
         if (!project) return;
@@ -278,19 +293,19 @@ const Project = () => {
         project: {
             assign: (userIds: number[], groupIds?: number[]) => {
                 API.PROJECTS.ASSIGN({
-                    projectId: router.query.projectId!,
+                    projectId: router.query.subjectId!,
                     userIds,
                     groupIds
                 }).then(() => {
-                    router.push(`/projects/${router.query.projectId}`);
+                    router.push(`/subjects/${router.query.subjectId}`);
                 });
             },
             unassign: (userIds: number[]) => {
                 API.PROJECTS.UNASSIGN({
-                    projectId: router.query.projectId!,
+                    projectId: router.query.subjectId!,
                     userIds,
                 }).then(() => {
-                    router.push(`/projects/${router.query.projectId}`);
+                    router.push(`/subjects/${router.query.subjectId}`);
                 });
             },
         },
@@ -308,7 +323,7 @@ const Project = () => {
                                     units: [...ps!.units, res.data],
                                 };
                             });
-                            router.push(`/projects/${router.query.projectId}`);
+                            router.push(`/subjects/${router.query.subjectId}`);
                         }
                     });
                 }
@@ -347,7 +362,7 @@ const Project = () => {
                                 });
                                 return { ...ps!, units: newUnits };
                             });
-                            router.push(`/projects/${project.id}`);
+                            router.push(`/subjects/${project.id}`);
                         }
                     });
                 }
@@ -375,7 +390,7 @@ const Project = () => {
                                     return { ...ps!, units };
                                 });
                                 router.push(
-                                    `/projects/${router.query.projectId}`
+                                    `/subjects/${router.query.subjectId}`
                                 );
                             }
                         });
@@ -397,7 +412,7 @@ const Project = () => {
                                     });
                                     return { ...ps!, units: newUnits };
                                 });
-                                router.push(`/projects/${project.id}`);
+                                router.push(`/subjects/${project.id}`);
                             }
                         }
                     );
@@ -463,7 +478,7 @@ const Project = () => {
                             //     return { ...ps!, units };
                             // });
                             //
-                            router.push(`/projects/${project!.id}`);
+                            router.push(`/subjects/${project!.id}`);
                         }
                     });
                 }
@@ -492,7 +507,7 @@ const Project = () => {
                     });
                     return { ...ps!, units: newUnits };
                 });
-                router.push(`/projects/${project!.id}`);
+                router.push(`/subjects/${project!.id}`);
             },
             remove: (id: number) => {
                 API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.REMOVE(id).then(
@@ -562,7 +577,7 @@ const Project = () => {
                                 return { ...ps!, units: newUnits };
                             });
                         }
-                        router.push(`/projects/${project!.id}`);
+                        router.push(`/subjects/${project!.id}`);
                     });
                 else
                     return API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.UNASSIGN(
@@ -604,7 +619,7 @@ const Project = () => {
         return (
             <div className="flex items-center justify-center mx-auto h-full">
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <Loader />
             </div>
@@ -613,7 +628,7 @@ const Project = () => {
     return (
         <div className="w-full px-4">
             <Head>
-                <title>ATS - {project.name}</title>
+                <title>TMS - {project.name}</title>
             </Head>
             <div className="bg-white border-solid border border-gray-300 rounded-b-md px-8 z-10 h-20 sticky top-0 left-0 right-0 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -636,11 +651,20 @@ const Project = () => {
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    {backToFolderTreeHref && (
+                        <button
+                            type="button"
+                            className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50"
+                            onClick={() => router.push(backToFolderTreeHref)}
+                        >
+                            Back to folder tree
+                        </button>
+                    )}
                     <QueryButton
                         icon={<PlusIcon />}
                         text="Remove Users"
                         url={{
-                            pathname: `/projects/${project.id}`,
+                            pathname: `/subjects/${project.id}`,
                             query: {
                                 form: "unassign",
                             },
@@ -650,7 +674,7 @@ const Project = () => {
                         icon={<PlusIcon />}
                         text="Assign Users"
                         url={{
-                            pathname: `/projects/${project.id}`,
+                            pathname: `/subjects/${project.id}`,
                             query: {
                                 form: "assign",
                             },
@@ -667,7 +691,7 @@ const Project = () => {
                         icon={<PlusIcon />}
                         text="Unit"
                         url={{
-                            pathname: `/projects/${project.id}`,
+                            pathname: `/subjects/${project.id}`,
                             query: {
                                 form: "unit",
                             },
@@ -688,15 +712,15 @@ const Project = () => {
             </div>
             <>
                 <AddUnit
-                    path={`/projects/${project.id}`}
+                    path={`/subjects/${project.id}`}
                     submit={handlers.unit.add}
                 />
                 <AddLesson
-                    path={`/projects/${project.id}`}
+                    path={`/subjects/${project.id}`}
                     submit={handlers.lesson.add}
                 />
                 <AddLearningObjective
-                    path={`/projects/${project.id}`}
+                    path={`/subjects/${project.id}`}
                     submit={handlers.learningObjective.add}
                 />
                 <ProjectAssign handler={handlers.project.assign} />

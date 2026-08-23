@@ -4,13 +4,14 @@ namespace AutomatedTaskSystem.DTO
 {
     public static partial class Responses
     {
-        public class ProjectDTO
+        public class SubjectDTO
         {
             public int Id { get; set; }
             public string Name { get; set; } = "";
             public string Description { get; set; } = "";
-            public IDName Year { get; set; } = new IDName { };
-            public bool Term { get; set; }
+            public int FolderId { get; set; }
+            public string FolderPath { get; set; } = "";
+            public List<string> LevelNames { get; set; } = new();
             public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
             public int? Count { get; set; }
             public int? ProgressPercent { get; set; }
@@ -23,6 +24,9 @@ namespace AutomatedTaskSystem.DTO
             public string Description { get; set; } = "";
             public List<ProjectUnitDTO> Units { get; set; } = new List<ProjectUnitDTO> { };
             public ProjectStatusEnum Status { get; set; } = ProjectStatusEnum.Active;
+            public int FolderId { get; set; }
+            public int YearId { get; set; }
+            public string FolderPath { get; set; } = "";
         }
 
         public class ProjectUnitDTO
@@ -80,12 +84,11 @@ namespace AutomatedTaskSystem.DTO
             public string Name { get; set; } = "";
         }
 
-        public class ProjectDTO
+        public class SubjectWriteDTO
         {
             public string Name { get; set; } = "";
             public string Description { get; set; } = "";
-            public int YearId { get; set; }
-            public bool Term { get; set; }
+            public int FolderId { get; set; }
         }
 
         public class LOAssignDTO

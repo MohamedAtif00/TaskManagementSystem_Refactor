@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers
 {
-    [Route("projects")]
+    [Route("subjects")]
     [ApiController]
     public class SummaryController : ControllerBase
     {
@@ -18,7 +18,7 @@ namespace AutomatedTaskSystem.Controllers
         [HttpGet("{id}/summary")]
         public async Task<ActionResult<Responses.ReportDTO>> GetSummary(int id)
         {
-            var project = await _context.Projects
+            var project = await _context.Subjects
                 .Where(p => p.Id == id && !p.Archived)
                 .Include(p => p.Units)
                 .ThenInclude(u => u.Lessons)

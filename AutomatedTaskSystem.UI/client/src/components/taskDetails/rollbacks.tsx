@@ -39,7 +39,7 @@ const RollbackHistory: React.FC<Props> = ({ taskId, isReview ,type}) => {
 		return (
 			<div className="fixed z-50 flex justify-center items-center bg-black/25 top-0 left-0 bottom-0 right-0">
 				<Head>
-					<title>ATS - Loading</title>
+					<title>TMS - Loading</title>
 				</Head>
 				<Loader />
 			</div>

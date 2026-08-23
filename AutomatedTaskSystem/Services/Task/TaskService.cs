@@ -214,7 +214,7 @@ public class TaskService : ITaskService
             .Include(lo => lo.Schema)
             .Include(lo => lo.Lesson)
             .ThenInclude(l => l.Unit)
-            .ThenInclude(u => u.Project)
+            .ThenInclude(u => u.Subject)
             .FirstOrDefaultAsync();
         if (lo is null)
             return new BadRequestObjectResult(
@@ -290,7 +290,7 @@ public class TaskService : ITaskService
             .Where(lo => lo.Id == learningObjectiveId && !lo.Archived)
             .Include(lo => lo.Lesson)
                 .ThenInclude(l => l.Unit)
-                    .ThenInclude(u => u.Project)
+                    .ThenInclude(u => u.Subject)
                         .ThenInclude(p => p.Users) // Include project users for auth check
             .Include(lo => lo.SprintLearningObjectives)
                 .ThenInclude(slo => slo.Sprint)
@@ -306,7 +306,7 @@ public class TaskService : ITaskService
         // --- AUTH CHECK --- (No changes from previous refined version, assuming it's correct now)
         if (user.Role == UserRoleEnum.Member || user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
         {
-            var hasAccess = learningObjective.Lesson.Unit.Project.Users.Any(u => u.Id == user.Id);
+            var hasAccess = learningObjective.Lesson.Unit.Subject.Users.Any(u => u.Id == user.Id);
 
             if (!hasAccess && (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead))
             {
@@ -431,123 +431,123 @@ public class TaskService : ITaskService
     /// <param name="sprintId">The ID of the Sprint.</param>
 	    /// <returns>A ResponseService containing a list of GetTaskCardDto if successful, otherwise an error response.</returns>
 	public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetTasksBySprintId(int sprintId)
+	{
+	    var user = await _authService.GetAuthedUser();
+	    if (user is null)
 	    {
-	        var user = await _authService.GetAuthedUser();
-	        if (user is null)
+	        return new UnauthorizedObjectResult(
+	            new BaseResponseService { Error = false, Message = "Invalid auth" }
+	        );
+	    }
+	
+	    var sprint = await _context.Sprints
+	        .Where(s => s.Id == sprintId)
+	        .FirstOrDefaultAsync();
+	
+	    if (sprint is null)
+	    {
+	        return new NotFoundObjectResult(
+	            new BaseResponseService { Error = true, Message = "Sprint not found" }
+	        );
+	    }
+	
+	    // Define sprint start and end dates for comparison
+	    var sprintStartDate = sprint.StartDate.Date;
+	    var sprintEndDate = sprint.EndDate.Date;
+	
+	    // Base query: tasks in this sprint (via LO association) and not archived
+	    IQueryable<Models.Task> tasksQuery = _context.Tasks
+	        .Where(t => !t.Archived && t.LearningObjective.SprintLearningObjectives.Any(slo => slo.SprintId == sprintId))
+	        .Include(t => t.LearningObjective)
+	        .Include(t => t.User);
+	
+	    // NOTE: Role-based filtering for sprint tasks can be added here similar to
+	    // GetTasksByLearningObjectiveId if/when requirements are clarified.
+	
+	    var tasks = await tasksQuery.ToListAsync();
+	    var taskIds = tasks.Select(t => t.Id).ToList();
+	
+	    // Preload activity ranges for all tasks in a single query
+	    var activityLookup = await _context.TaskActivities
+	        .Where(ta => taskIds.Contains(ta.TaskId))
+	        .GroupBy(ta => ta.TaskId)
+	        .Select(g => new
 	        {
-	            return new UnauthorizedObjectResult(
-	                new BaseResponseService { Error = false, Message = "Invalid auth" }
-	            );
-	        }
+	            TaskId = g.Key,
+	            Earliest = g.Min(ta => ta.TimeStamp),
+	            Latest = g.Max(ta => ta.TimeStamp)
+	        })
+	        .ToDictionaryAsync(x => x.TaskId);
 	
-	        var sprint = await _context.Sprints
-	            .Where(s => s.Id == sprintId)
-	            .FirstOrDefaultAsync();
-	
-	        if (sprint is null)
+	    // Preload work time durations for all tasks
+	    var durationLookup = await _context.TaskWorkTimes
+	        .Where(twt => taskIds.Contains(twt.TaskId))
+	        .GroupBy(twt => twt.TaskId)
+	        .Select(g => new
 	        {
-	            return new NotFoundObjectResult(
-	                new BaseResponseService { Error = true, Message = "Sprint not found" }
-	            );
-	        }
+	            TaskId = g.Key,
+	            Duration = g.Sum(twt => twt.Duration)
+	        })
+	        .ToDictionaryAsync(x => x.TaskId);
 	
-	        // Define sprint start and end dates for comparison
-	        var sprintStartDate = sprint.StartDate.Date;
-	        var sprintEndDate = sprint.EndDate.Date;
+	    var result = tasks
+	        .Select(task =>
+	        {
+	            activityLookup.TryGetValue(task.Id, out var activityInfo);
+	            var latestTimestamp = activityInfo?.Latest ?? DateTime.MinValue;
 	
-	        // Base query: tasks in this sprint (via LO association) and not archived
-	        IQueryable<Models.Task> tasksQuery = _context.Tasks
-	            .Where(t => !t.Archived && t.LearningObjective.SprintLearningObjectives.Any(slo => slo.SprintId == sprintId))
-	            .Include(t => t.LearningObjective)
-	            .Include(t => t.User);
+	            var taskOriginalStart = task.CreatedAt.Date;
+	            var taskOriginalEnd = latestTimestamp != DateTime.MinValue
+	                ? latestTimestamp.Date
+	                : task.CreatedAt.Date;
 	
-	        // NOTE: Role-based filtering for sprint tasks can be added here similar to
-	        // GetTasksByLearningObjectiveId if/when requirements are clarified.
+	            // Clip to sprint window
+	            var effectiveStartDate = taskOriginalStart < sprintStartDate ? sprintStartDate : taskOriginalStart;
+	            var effectiveEndDate = taskOriginalEnd > sprintEndDate ? sprintEndDate : taskOriginalEnd;
 	
-	        var tasks = await tasksQuery.ToListAsync();
-	        var taskIds = tasks.Select(t => t.Id).ToList();
+	            durationLookup.TryGetValue(task.Id, out var durationInfo);
+	            var duration = durationInfo?.Duration ?? 0;
 	
-	        // Preload activity ranges for all tasks in a single query
-	        var activityLookup = await _context.TaskActivities
-	            .Where(ta => taskIds.Contains(ta.TaskId))
-	            .GroupBy(ta => ta.TaskId)
-	            .Select(g => new
+	            return new GetTaskCardDto
 	            {
-	                TaskId = g.Key,
-	                Earliest = g.Min(ta => ta.TimeStamp),
-	                Latest = g.Max(ta => ta.TimeStamp)
-	            })
-	            .ToDictionaryAsync(x => x.TaskId);
-	
-	        // Preload work time durations for all tasks
-	        var durationLookup = await _context.TaskWorkTimes
-	            .Where(twt => taskIds.Contains(twt.TaskId))
-	            .GroupBy(twt => twt.TaskId)
-	            .Select(g => new
-	            {
-	                TaskId = g.Key,
-	                Duration = g.Sum(twt => twt.Duration)
-	            })
-	            .ToDictionaryAsync(x => x.TaskId);
-	
-	        var result = tasks
-	            .Select(task =>
-	            {
-	                activityLookup.TryGetValue(task.Id, out var activityInfo);
-	                var latestTimestamp = activityInfo?.Latest ?? DateTime.MinValue;
-	
-	                var taskOriginalStart = task.CreatedAt.Date;
-	                var taskOriginalEnd = latestTimestamp != DateTime.MinValue
-	                    ? latestTimestamp.Date
-	                    : task.CreatedAt.Date;
-	
-	                // Clip to sprint window
-	                var effectiveStartDate = taskOriginalStart < sprintStartDate ? sprintStartDate : taskOriginalStart;
-	                var effectiveEndDate = taskOriginalEnd > sprintEndDate ? sprintEndDate : taskOriginalEnd;
-	
-	                durationLookup.TryGetValue(task.Id, out var durationInfo);
-	                var duration = durationInfo?.Duration ?? 0;
-	
-	                return new GetTaskCardDto
+	                Paused = task.Pause,
+	                Attention = task.Attention,
+	                Flagged = task.Flagged,
+	                From = task.From == null ? "" : task.From.Name,
+	                Id = task.Id,
+	                IsReview = task.IsReview,
+	                IsRollback = task.IsRollback,
+	                LearningObjective = new BasicInfoDto
 	                {
-	                    Paused = task.Pause,
-	                    Attention = task.Attention,
-	                    Flagged = task.Flagged,
-	                    From = task.From == null ? "" : task.From.Name,
-	                    Id = task.Id,
-	                    IsReview = task.IsReview,
-	                    IsRollback = task.IsRollback,
-	                    LearningObjective = new BasicInfoDto
+	                    Id = task.LearningObjective.Id,
+	                    Name = task.LearningObjective.Name
+	                },
+	                Name = task.Name,
+	                Priority = task.Priority,
+	                RollbackCount = task.RollbackCount,
+	                Status = task.Status,
+	                User = task.User == null
+	                    ? null
+	                    : new BasicInfoDto
 	                    {
-	                        Id = task.LearningObjective.Id,
-	                        Name = task.LearningObjective.Name
+	                        Name = task.User.Name,
+	                        Id = task.User.Id
 	                    },
-	                    Name = task.Name,
-	                    Priority = task.Priority,
-	                    RollbackCount = task.RollbackCount,
-	                    Status = task.Status,
-	                    User = task.User == null
-	                        ? null
-	                        : new BasicInfoDto
-	                        {
-	                            Name = task.User.Name,
-	                            Id = task.User.Id
-	                        },
-	                    baseDuration = task.Duration,
-	                    duration = (decimal?)duration / 60000,
-	                    AdjustedStartDate = effectiveStartDate,
-	                    AdjustedEndDate = effectiveEndDate
-	                };
-	            })
-	            .ToList();
+	                baseDuration = task.Duration,
+	                duration = (decimal?)duration / 60000,
+	                AdjustedStartDate = effectiveStartDate,
+	                AdjustedEndDate = effectiveEndDate
+	            };
+	        })
+	        .ToList();
 	
-	        return new ResponseService<List<GetTaskCardDto>>
-	        {
-	            Data = result,
-	            Error = false,
-	            Message = $"Successfully retrieved tasks for sprint ID: {sprintId}."
-	        };
-		    }
+	    return new ResponseService<List<GetTaskCardDto>>
+	    {
+	        Data = result,
+	        Error = false,
+	        Message = $"Successfully retrieved tasks for sprint ID: {sprintId}."
+	    };
+    }
 
 	/// <summary>
 	    /// Streaming version of GetTasksBySprintId that yields task cards in batches
@@ -960,7 +960,7 @@ public class TaskService : ITaskService
 	        // Project managers and owners can see all tasks in the project, regardless of group
 	        if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
 	        {
-            var p = await _context.Projects
+            var p = await _context.Subjects
                 .Where(_ => _.Id == pid && !_.Archived)
                 .Include(p => p.Units)
                 .ThenInclude(u => u.Lessons)
@@ -1075,7 +1075,7 @@ public class TaskService : ITaskService
             };
         }
 
-        var project = await _context.Projects
+        var project = await _context.Subjects
             .Where(p => !p.Archived && p.Id == pid)
             .Include(p => p.Users)
             .FirstOrDefaultAsync();
@@ -1130,7 +1130,7 @@ public class TaskService : ITaskService
             query = _context.Tasks.Where(
                 t =>
                     groups.Select(g => g.Id).Contains(t.GroupId)
-                    && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
+                    && t.LearningObjective.Lesson.Unit.SubjectId == project.Id
                     && !t.Archived
             );
         }
@@ -1140,7 +1140,7 @@ public class TaskService : ITaskService
                 t =>
                     t.GroupId == user.GroupId
                     && !t.Archived
-                    && t.LearningObjective.Lesson.Unit.ProjectId == project.Id
+                    && t.LearningObjective.Lesson.Unit.SubjectId == project.Id
                     && (t.UserId == user.Id || t.Status == TaskStatusEnum.Backlog)
                     && (!t.TL || t.UserId == user.Id)
             );
@@ -1225,7 +1225,7 @@ public class TaskService : ITaskService
             .Include(t => t.LearningObjective)
             .ThenInclude(lo => lo.Lesson)
             .ThenInclude(l => l.Unit)
-            .ThenInclude(u => u.Project)
+            .ThenInclude(u => u.Subject)
             .ThenInclude(p => p.Users)
             .Include(t => t.User)
             .FirstOrDefaultAsync();
@@ -1235,7 +1235,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Task is not found" }
             );
 
-        var user = task.LearningObjective.Lesson.Unit.Project.Users
+        var user = task.LearningObjective.Lesson.Unit.Subject.Users
             .Where(u => u.Id != task.UserId && u.GroupId == task.GroupId && !u.Archived)
             .ToList();
 
@@ -2427,7 +2427,7 @@ public class TaskService : ITaskService
 	        // Find the project this task belongs to via navigation properties
 	        var projectId = await _context.Tasks
 	            .Where(t => !t.Archived && t.Id == completedTaskId)
-	            .Select(t => (int?)t.LearningObjective.Lesson.Unit.ProjectId)
+	            .Select(t => (int?)t.LearningObjective.Lesson.Unit.SubjectId)
 	            .FirstOrDefaultAsync();
 	
 	        if (!projectId.HasValue)
@@ -2436,7 +2436,7 @@ public class TaskService : ITaskService
 	        // Count remaining non-archived tasks in the project that are not Done
 	        var remainingTasks = await _context.Tasks
 	            .Where(t => !t.Archived
-	                        && t.LearningObjective.Lesson.Unit.ProjectId == projectId.Value
+	                        && t.LearningObjective.Lesson.Unit.SubjectId == projectId.Value
 	                        && t.Status != TaskStatusEnum.Done)
 	            .CountAsync();
 	
@@ -2444,7 +2444,7 @@ public class TaskService : ITaskService
 	            return;
 	
 	        // All tasks are done for this project — mark the project as Closed if not already
-	        var project = await _context.Projects
+	        var project = await _context.Subjects
 	            .Where(p => !p.Archived && p.Id == projectId.Value)
 	            .FirstOrDefaultAsync();
 	
@@ -2538,8 +2538,7 @@ public class TaskService : ITaskService
             if (currentNode is null)
                 return true;
 
-            if (currentNode.Next.Count == 0)
-                task.LearningObjective.DoneAt = DateTime.Now;
+            await UpdateLearningObjectiveCompletionAsync(task.LearningObjectiveId);
 
             foreach (var nextNode in currentNode.Next)
             {
@@ -2630,8 +2629,7 @@ public class TaskService : ITaskService
 
         if (currentNode is not null)
         {
-            if (currentNode.Next.Count == 0)
-                lo.DoneAt = DateTime.Now;
+            await UpdateLearningObjectiveCompletionAsync(loId);
 
             foreach (var nextNode in currentNode.Next)
             {
@@ -2702,6 +2700,28 @@ public class TaskService : ITaskService
         return true;
     }
 
+    private async System.Threading.Tasks.Task UpdateLearningObjectiveCompletionAsync(int learningObjectiveId)
+    {
+        var lo = await _context.LearningObjectives
+            .Where(item => !item.Archived && item.Id == learningObjectiveId)
+            .FirstOrDefaultAsync();
+
+        if (lo is null)
+            return;
+
+        var loTasks = await _context.Tasks
+            .Where(t => !t.Archived && t.LearningObjectiveId == learningObjectiveId)
+            .ToListAsync();
+
+        var hasActiveTasks = loTasks.Count > 0;
+        var hasIncompleteTasks = loTasks.Any(t => t.Status != TaskStatusEnum.Done);
+
+        if (hasActiveTasks && !hasIncompleteTasks)
+            lo.DoneAt ??= DateTime.Now;
+        else
+            lo.DoneAt = null;
+    }
+
     public async Task<ActionResult<ResponseService<GetCreatableTasksDto>>> CreatableTasks(int projectId)
     {
         var user = await _authService.GetAuthedUser();
@@ -2710,7 +2730,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Invalid auth" }
             );
 
-        var project = await _context.Projects
+        var project = await _context.Subjects
             .Where(p => p.Id == projectId)
             .Include(p => p.Users)
             .ThenInclude(u => u.Group)
@@ -3769,7 +3789,7 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );
 
-        var p = await _context.Projects
+        var p = await _context.Subjects
             .Where(_ => _.Id == pid && !_.Archived)
             .FirstOrDefaultAsync();
 

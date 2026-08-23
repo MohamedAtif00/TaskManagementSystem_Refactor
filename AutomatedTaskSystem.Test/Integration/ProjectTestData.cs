@@ -12,6 +12,7 @@ namespace AutomatedTaskSystem.Test.Integration;
 public sealed class ProjectTestData
 {
     public int YearId { get; init; }
+    public int FolderId { get; init; }
     public int OwnerUserId { get; init; }
     public int MemberUserId { get; init; }
     public int ProjectId { get; init; }
@@ -68,27 +69,43 @@ public sealed class ProjectTestData
             await db.SaveChangesAsync();
         }
 
-        var project = await db.Projects.FirstOrDefaultAsync(p => p.Name == "Integration Test Project");
-        if (project is null)
+        var rootFolder = await db.Folders.FirstOrDefaultAsync(f => f.Name == "IntegrationRoot" && f.ParentFolderId == null);
+        if (rootFolder is null)
         {
-            project = new Project
+            rootFolder = new Folder { Name = "IntegrationRoot" };
+            db.Folders.Add(rootFolder);
+            await db.SaveChangesAsync();
+        }
+
+        var leafFolder = await db.Folders.FirstOrDefaultAsync(f => f.Name == "IntegrationLeaf" && f.ParentFolderId == rootFolder.Id);
+        if (leafFolder is null)
+        {
+            leafFolder = new Folder { Name = "IntegrationLeaf", ParentFolderId = rootFolder.Id };
+            db.Folders.Add(leafFolder);
+            await db.SaveChangesAsync();
+        }
+
+        var subject = await db.Subjects.FirstOrDefaultAsync(p => p.Name == "Integration Test Project");
+        if (subject is null)
+        {
+            subject = new Subject
             {
                 Name = "Integration Test Project",
-                Description = "Seeded for ProjectController integration tests",
-                YearId = year.Id,
-                Term = true,
+                Description = "Seeded for SubjectController integration tests",
+                FolderId = leafFolder.Id,
                 Status = ProjectStatusEnum.Active,
             };
-            db.Projects.Add(project);
+            db.Subjects.Add(subject);
             await db.SaveChangesAsync();
         }
 
         return new ProjectTestData
         {
             YearId = year.Id,
+            FolderId = leafFolder.Id,
             OwnerUserId = owner.Id,
             MemberUserId = member.Id,
-            ProjectId = project.Id,
+            ProjectId = subject.Id,
         };
     }
 }

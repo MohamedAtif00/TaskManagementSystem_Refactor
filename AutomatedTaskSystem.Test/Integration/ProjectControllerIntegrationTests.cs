@@ -7,7 +7,7 @@ using Task = System.Threading.Tasks.Task;
 namespace AutomatedTaskSystem.Test.Integration;
 
 /// <summary>
-/// Integration tests for every ProjectController use case.
+/// Integration tests for SubjectController (hierarchy successor to ProjectController).
 /// Serves as a safety net while refactoring the controller.
 /// </summary>
 [Collection("Integration")]
@@ -35,12 +35,12 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    // ── GET /projects/years ──────────────────────────────────────────────
+    // ── GET /subjects/years ──────────────────────────────────────────────
 
     [Fact]
     public async Task GetActiveYears_ReturnsSeededYear()
     {
-        var response = await _client.GetAsync("/projects/years");
+        var response = await _client.GetAsync("/subjects/years");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<IdNameDto>>>(JsonOptions);
@@ -49,17 +49,16 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         Assert.Contains(body.Data!, y => y.Id == _data.YearId && y.Name == "2025-2026");
     }
 
-    // ── POST /projects ───────────────────────────────────────────────────
+    // ── POST /subjects ───────────────────────────────────────────────────
 
     [Fact]
     public async Task CreateProject_WithValidYear_ReturnsCreatedProject()
     {
-        var response = await _client.PostAsJsonAsync("/projects", new
+        var response = await _client.PostAsJsonAsync("/subjects", new
         {
             name = "New Integration Project",
             description = "Created via integration test",
-            yearId = _data.YearId,
-            term = false,
+            folderId = _data.FolderId,
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -67,29 +66,28 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         Assert.NotNull(body);
         Assert.False(body!.Error);
         Assert.Equal("New Integration Project", body.Data!.Name);
-        Assert.Equal(_data.YearId, body.Data.Year.Id);
+        Assert.Equal(_data.FolderId, body.Data.FolderId);
     }
 
     [Fact]
-    public async Task CreateProject_WithInvalidYear_ReturnsNotFound()
+    public async Task CreateProject_WithInvalidTerm_ReturnsNotFound()
     {
-        var response = await _client.PostAsJsonAsync("/projects", new
+        var response = await _client.PostAsJsonAsync("/subjects", new
         {
-            name = "Invalid Year Project",
+            name = "Invalid Term Project",
             description = "Should fail",
-            yearId = 999999,
-            term = true,
+            folderId = 999999,
         });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ── GET /projects ────────────────────────────────────────────────────
+    // ── GET /subjects ────────────────────────────────────────────────────
 
     [Fact]
     public async Task GetProjects_ReturnsNonEmptyList()
     {
-        var response = await _client.GetAsync("/projects");
+        var response = await _client.GetAsync("/subjects");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<ProjectDto>>>(JsonOptions);
@@ -101,7 +99,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     [Fact]
     public async Task GetProjectsForSprint_ExcludesHoldAndClosedProjects()
     {
-        var response = await _client.GetAsync("/projects/GetAllForSprint");
+        var response = await _client.GetAsync("/subjects/GetAllForSprint");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<ProjectDto>>>(JsonOptions);
@@ -113,12 +111,12 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
             Assert.NotEqual(ProjectStatusEnum.Closed, p.Status));
     }
 
-    // ── GET /projects/assignment ─────────────────────────────────────────
+    // ── GET /subjects/assignment ─────────────────────────────────────────
 
     [Fact]
     public async Task GetAssignedProject_AsOwner_ReturnsActiveProjects()
     {
-        var response = await _client.GetAsync("/projects/assignment");
+        var response = await _client.GetAsync("/subjects/assignment");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<ProjectDto>>>(JsonOptions);
@@ -127,12 +125,12 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         Assert.Contains(body.Data!, p => p.Id == _data.ProjectId);
     }
 
-    // ── GET /projects/{id} ───────────────────────────────────────────────
+    // ── GET /subjects/{id} ───────────────────────────────────────────────
 
     [Fact]
     public async Task GetProject_WithExistingId_ReturnsProject()
     {
-        var response = await _client.GetAsync($"/projects/{_data.ProjectId}");
+        var response = await _client.GetAsync($"/subjects/{_data.ProjectId}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<ProjectDto>>(JsonOptions);
@@ -145,17 +143,17 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     [Fact]
     public async Task GetProject_WithMissingId_ReturnsNotFound()
     {
-        var response = await _client.GetAsync("/projects/999999");
+        var response = await _client.GetAsync("/subjects/999999");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ── GET /projects/{id}/details ───────────────────────────────────────
+    // ── GET /subjects/{id}/details ───────────────────────────────────────
 
     [Fact]
     public async Task GetProjectDetails_WithExistingId_ReturnsDetailedProject()
     {
-        var response = await _client.GetAsync($"/projects/{_data.ProjectId}/details");
+        var response = await _client.GetAsync($"/subjects/{_data.ProjectId}/details");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<DetailedProjectDto>>(JsonOptions);
@@ -168,17 +166,17 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     [Fact]
     public async Task GetProjectDetails_WithMissingId_ReturnsNotFound()
     {
-        var response = await _client.GetAsync("/projects/999999/details");
+        var response = await _client.GetAsync("/subjects/999999/details");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ── GET /projects/{id}/los ───────────────────────────────────────────
+    // ── GET /subjects/{id}/los ───────────────────────────────────────────
 
     [Fact]
     public async Task GetProjectLearningObjectives_WithExistingProject_ReturnsList()
     {
-        var response = await _client.GetAsync($"/projects/{_data.ProjectId}/los");
+        var response = await _client.GetAsync($"/subjects/{_data.ProjectId}/los");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<IdNameDto>>>(JsonOptions);
@@ -187,17 +185,16 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         Assert.NotNull(body.Data);
     }
 
-    // ── PATCH /projects/{id} ─────────────────────────────────────────────
+    // ── PATCH /subjects/{id} ─────────────────────────────────────────────
 
     [Fact]
     public async Task EditProject_WithValidData_UpdatesProject()
     {
-        var response = await _client.PatchAsJsonAsync($"/projects/{_data.ProjectId}", new
+        var response = await _client.PatchAsJsonAsync($"/subjects/{_data.ProjectId}", new
         {
             name = "Updated Integration Project",
             description = "Updated description",
-            yearId = _data.YearId,
-            term = true,
+            folderId = _data.FolderId,
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -209,14 +206,13 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     }
 
     [Fact]
-    public async Task EditProject_WithInvalidYear_ReturnsBadRequest()
+    public async Task EditProject_WithInvalidTerm_ReturnsBadRequest()
     {
-        var response = await _client.PatchAsJsonAsync($"/projects/{_data.ProjectId}", new
+        var response = await _client.PatchAsJsonAsync($"/subjects/{_data.ProjectId}", new
         {
             name = "Updated Integration Project",
             description = "Updated description",
-            yearId = 999999,
-            term = true,
+            folderId = 999999,
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -225,23 +221,22 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     [Fact]
     public async Task EditProject_WithMissingId_ReturnsNotFound()
     {
-        var response = await _client.PatchAsJsonAsync("/projects/999999", new
+        var response = await _client.PatchAsJsonAsync("/subjects/999999", new
         {
             name = "Ghost Project",
             description = "N/A",
-            yearId = _data.YearId,
-            term = false,
+            folderId = _data.FolderId,
         });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ── POST /projects/{id}/units ────────────────────────────────────────
+    // ── POST /subjects/{id}/units ────────────────────────────────────────
 
     [Fact]
     public async Task AddUnit_ToExistingProject_ReturnsUnit()
     {
-        var response = await _client.PostAsJsonAsync($"/projects/{_data.ProjectId}/units", new
+        var response = await _client.PostAsJsonAsync($"/subjects/{_data.ProjectId}/units", new
         {
             name = "Unit Alpha",
         });
@@ -257,22 +252,22 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     [Fact]
     public async Task AddUnit_ToMissingProject_ReturnsNotFound()
     {
-        var response = await _client.PostAsJsonAsync("/projects/999999/units", new { name = "Orphan Unit" });
+        var response = await _client.PostAsJsonAsync("/subjects/999999/units", new { name = "Orphan Unit" });
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ── POST /projects/{id}/assign & unassign ────────────────────────────
+    // ── POST /subjects/{id}/assign & unassign ────────────────────────────
 
     [Fact]
     public async Task AssignToProject_AddsMemberToProject()
     {
-        await _client.PostAsJsonAsync($"/projects/{_data.ProjectId}/unassign", new
+        await _client.PostAsJsonAsync($"/subjects/{_data.ProjectId}/unassign", new
         {
             userIds = new[] { _data.MemberUserId },
         });
 
-        var response = await _client.PostAsJsonAsync($"/projects/{_data.ProjectId}/assign", new
+        var response = await _client.PostAsJsonAsync($"/subjects/{_data.ProjectId}/assign", new
         {
             userIds = new[] { _data.MemberUserId },
         });
@@ -287,12 +282,12 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     [Fact]
     public async Task GetAssignedUsers_ReturnsAssignedMember()
     {
-        await _client.PostAsJsonAsync($"/projects/{_data.ProjectId}/assign", new
+        await _client.PostAsJsonAsync($"/subjects/{_data.ProjectId}/assign", new
         {
             userIds = new[] { _data.MemberUserId },
         });
 
-        var response = await _client.GetAsync($"/projects/{_data.ProjectId}/users/assigned");
+        var response = await _client.GetAsync($"/subjects/{_data.ProjectId}/users/assigned");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<UserDto>>>(JsonOptions);
@@ -304,12 +299,12 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     [Fact]
     public async Task GetUnassignedUsers_ExcludesAssignedMember()
     {
-        await _client.PostAsJsonAsync($"/projects/{_data.ProjectId}/assign", new
+        await _client.PostAsJsonAsync($"/subjects/{_data.ProjectId}/assign", new
         {
             userIds = new[] { _data.MemberUserId },
         });
 
-        var response = await _client.GetAsync($"/projects/{_data.ProjectId}/users/unassigned");
+        var response = await _client.GetAsync($"/subjects/{_data.ProjectId}/users/unassigned");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<List<UserDto>>>(JsonOptions);
@@ -321,12 +316,12 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     [Fact]
     public async Task UnassignFromProject_RemovesMemberFromProject()
     {
-        await _client.PostAsJsonAsync($"/projects/{_data.ProjectId}/assign", new
+        await _client.PostAsJsonAsync($"/subjects/{_data.ProjectId}/assign", new
         {
             userIds = new[] { _data.MemberUserId },
         });
 
-        var response = await _client.PostAsJsonAsync($"/projects/{_data.ProjectId}/unassign", new
+        var response = await _client.PostAsJsonAsync($"/subjects/{_data.ProjectId}/unassign", new
         {
             userIds = new[] { _data.MemberUserId },
         });
@@ -341,7 +336,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     [Fact]
     public async Task AssignToProject_WithMissingProject_ReturnsNotFound()
     {
-        var response = await _client.PostAsJsonAsync("/projects/999999/assign", new
+        var response = await _client.PostAsJsonAsync("/subjects/999999/assign", new
         {
             userIds = new[] { _data.MemberUserId },
         });
@@ -349,14 +344,14 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ── PATCH /projects/{id}/status ──────────────────────────────────────
+    // ── PATCH /subjects/{id}/status ──────────────────────────────────────
 
     [Fact]
     public async Task UpdateStatus_ToHold_PutsProjectOnHold()
     {
         var projectId = await CreateIsolatedProjectAsync("Hold Test Project");
 
-        var response = await _client.PatchAsJsonAsync($"/projects/{projectId}/status", new
+        var response = await _client.PatchAsJsonAsync($"/subjects/{projectId}/status", new
         {
             status = ProjectStatusEnum.Hold,
         });
@@ -372,9 +367,9 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     public async Task UpdateStatus_ToHold_WhenAlreadyOnHold_ReturnsBadRequest()
     {
         var projectId = await CreateIsolatedProjectAsync("Double Hold Project");
-        await _client.PatchAsJsonAsync($"/projects/{projectId}/status", new { status = ProjectStatusEnum.Hold });
+        await _client.PatchAsJsonAsync($"/subjects/{projectId}/status", new { status = ProjectStatusEnum.Hold });
 
-        var response = await _client.PatchAsJsonAsync($"/projects/{projectId}/status", new
+        var response = await _client.PatchAsJsonAsync($"/subjects/{projectId}/status", new
         {
             status = ProjectStatusEnum.Hold,
         });
@@ -386,9 +381,9 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     public async Task UpdateStatus_ToActive_FromHold_ReactivatesProject()
     {
         var projectId = await CreateIsolatedProjectAsync("Reactivate Project");
-        await _client.PatchAsJsonAsync($"/projects/{projectId}/status", new { status = ProjectStatusEnum.Hold });
+        await _client.PatchAsJsonAsync($"/subjects/{projectId}/status", new { status = ProjectStatusEnum.Hold });
 
-        var response = await _client.PatchAsJsonAsync($"/projects/{projectId}/status", new
+        var response = await _client.PatchAsJsonAsync($"/subjects/{projectId}/status", new
         {
             status = ProjectStatusEnum.Active,
         });
@@ -403,7 +398,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     {
         var projectId = await CreateIsolatedProjectAsync("Close Test Project");
 
-        var response = await _client.PatchAsJsonAsync($"/projects/{projectId}/status", new
+        var response = await _client.PatchAsJsonAsync($"/subjects/{projectId}/status", new
         {
             status = ProjectStatusEnum.Closed,
         });
@@ -416,7 +411,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
     [Fact]
     public async Task UpdateStatus_WithMissingProject_ReturnsNotFound()
     {
-        var response = await _client.PatchAsJsonAsync("/projects/999999/status", new
+        var response = await _client.PatchAsJsonAsync("/subjects/999999/status", new
         {
             status = ProjectStatusEnum.Hold,
         });
@@ -424,36 +419,35 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    // ── DELETE /projects/{id} ────────────────────────────────────────────
+    // ── DELETE /subjects/{id} ────────────────────────────────────────────
 
     [Fact]
     public async Task DeleteProject_WithExistingId_ArchivesProject()
     {
         var projectId = await CreateIsolatedProjectAsync("Delete Test Project");
 
-        var deleteResponse = await _client.DeleteAsync($"/projects/{projectId}");
+        var deleteResponse = await _client.DeleteAsync($"/subjects/{projectId}");
         Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
 
-        var getResponse = await _client.GetAsync($"/projects/{projectId}");
+        var getResponse = await _client.GetAsync($"/subjects/{projectId}");
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
 
     [Fact]
     public async Task DeleteProject_WithMissingId_ReturnsNotFound()
     {
-        var response = await _client.DeleteAsync("/projects/999999");
+        var response = await _client.DeleteAsync("/subjects/999999");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     private async Task<int> CreateIsolatedProjectAsync(string name)
     {
-        var response = await _client.PostAsJsonAsync("/projects", new
+        var response = await _client.PostAsJsonAsync("/subjects", new
         {
             name,
             description = "Isolated test project",
-            yearId = _data.YearId,
-            term = false,
+            folderId = _data.FolderId,
         });
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<ApiResponse<ProjectDto>>(JsonOptions);
@@ -478,8 +472,7 @@ public class ProjectControllerIntegrationTests : IClassFixture<IntegrationTestWe
         public int Id { get; set; }
         public string Name { get; set; } = "";
         public string Description { get; set; } = "";
-        public IdNameDto Year { get; set; } = new();
-        public bool Term { get; set; }
+        public int FolderId { get; set; }
         public ProjectStatusEnum Status { get; set; }
     }
 

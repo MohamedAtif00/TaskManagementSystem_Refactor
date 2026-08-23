@@ -5,6 +5,10 @@ interface Props {
 	value: { id: number; name: string } | null;
 	options: { id: number; name: string }[];
 	handleChange: (v: { id: number; name: string }) => void;
+	/** Optional helper shown under the label. */
+	hint?: string;
+	/** Extra classes for the options list (e.g. taller menu for long paths). */
+	menuClassName?: string;
 }
 
 const getDropdownPosition = (target: EventTarget) => {
@@ -21,7 +25,7 @@ const getDropdownPosition = (target: EventTarget) => {
 	return { top: 0, left: 0, width: 0 };
 };
 
-const Dropdown = ({ label, value, options, handleChange }: Props) => {
+const Dropdown = ({ label, value, options, handleChange, hint, menuClassName }: Props) => {
 	const [active, setActive] = useState(false);
 	const dropdownRef = useRef<HTMLDivElement>(null);
 	const dropdownListRef = useRef<HTMLDivElement>(null);
@@ -66,15 +70,17 @@ const Dropdown = ({ label, value, options, handleChange }: Props) => {
 	return (
 		<div className="flex flex-col relative">
 			<label className="text-sm">{label}</label>
+			{hint ? <p className="text-xs text-slate-500 mt-0.5 mb-1">{hint}</p> : null}
 			<div
 				onClick={handleToggle}
-				className="basis-10 items-center flex justify-between px-2 border-2 border-solid hover:bg-slate-100 cursor-default"
+				className="basis-10 items-center flex justify-between px-2 border-2 border-solid hover:bg-slate-100 cursor-default min-h-10"
 				ref={dropdownRef}
 			>
 				<div
-					className={`select-none${
+					className={`select-none truncate pr-2${
 						value === null && " opacity-50 text-xs"
 					}`}
+					title={value?.name}
 				>
 					{value ? value.name : "Select an item"}
 				</div>
@@ -101,7 +107,7 @@ const Dropdown = ({ label, value, options, handleChange }: Props) => {
 					ref={dropdownListRef}
 					onClick={(e) => e.stopPropagation()}
 					style={{ top, left, width }}
-					className="z-50 border border-solid py-1 fixed bg-white flex flex-col max-h-32 overflow-y-auto"
+					className={`z-50 border border-solid py-1 fixed bg-white flex flex-col max-h-64 overflow-y-auto ${menuClassName ?? ""}`}
 				>
 					{options.map((opt) => (
 						<div
@@ -109,8 +115,9 @@ const Dropdown = ({ label, value, options, handleChange }: Props) => {
 								setActive(false);
 								handleChange(opt);
 							}}
-							className="px-4 basis-8 shrink-0 hover:bg-slate-300 hover:text-black text-slate-600 flex items-center"
+							className="px-4 py-2 shrink-0 hover:bg-slate-300 hover:text-black text-slate-600 text-sm leading-snug"
 							key={opt.id}
+							title={opt.name}
 						>
 							{opt.name}
 						</div>

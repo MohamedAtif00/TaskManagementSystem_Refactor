@@ -1,5 +1,5 @@
-﻿	using AutomatedTaskSystem.Data;
-	using AutomatedTaskSystem.Helper;
+using AutomatedTaskSystem.Data;
+using AutomatedTaskSystem.Helper;
 	using AutomatedTaskSystem.Hub;
 	using AutomatedTaskSystem.Models;
 	using AutomatedTaskSystem.Models.Enums.NotificationCategory;
@@ -140,7 +140,7 @@ using Microsoft.AspNetCore.SignalR;
 	                    .Include(t => t.LearningObjective)
 	                        .ThenInclude(lo => lo.Lesson)
 	                            .ThenInclude(l => l.Unit)
-	                                .ThenInclude(u => u.Project)
+	                                .ThenInclude(u => u.Subject)
 	                    .FirstOrDefaultAsync();
 
 	                if (task is null)
@@ -162,21 +162,21 @@ using Microsoft.AspNetCore.SignalR;
 	                {
 	                    taskId = task.Id,
 	                    taskName = task.Name,
-	                    projectId = task.LearningObjective.Lesson.Unit.Project.Id,
-	                    projectName = task.LearningObjective.Lesson.Unit.Project.Name,
+	                    subjectId = task.LearningObjective.Lesson.Unit.Subject.Id,
+	                    projectName = task.LearningObjective.Lesson.Unit.Subject.Name,
 	                    learningObjectiveId = task.LearningObjective.Id,
 	                    learningObjectiveName = task.LearningObjective.Name,
 	                    assignedByUserId = assignedByUser?.Id,
 	                    assignedByUserName = assignedByUser?.Name
 	                });
 
-	                var project = task.LearningObjective.Lesson.Unit.Project;
+	                var subject = task.LearningObjective.Lesson.Unit.Subject;
 	                var assignedByName = assignedByUser?.Name ?? "System";
 	                var title = "New Task Assigned";
-	                var message = $"Task '{task.Name}' in project '{project.Name}' has been assigned to you by {assignedByName}.";
+	                var message = $"Task '{task.Name}' in subject '{subject.Name}' has been assigned to you by {assignedByName}.";
 
-	                // Create additional data JSON with projectId for proper routing
-	                var additionalData = System.Text.Json.JsonSerializer.Serialize(new { projectId = project.Id });
+	                // Create additional data JSON with subjectId for proper routing
+	                var additionalData = System.Text.Json.JsonSerializer.Serialize(new { subjectId = subject.Id });
 
 	                await CreateNotification(
 	                    assignedUserId,
@@ -207,7 +207,7 @@ using Microsoft.AspNetCore.SignalR;
 	                    .Include(t => t.LearningObjective)
 	                        .ThenInclude(lo => lo.Lesson)
 	                            .ThenInclude(l => l.Unit)
-	                                .ThenInclude(u => u.Project)
+	                                .ThenInclude(u => u.Subject)
 	                    .FirstOrDefaultAsync();
 
 	                if (task is null)
@@ -225,7 +225,7 @@ using Microsoft.AspNetCore.SignalR;
 	                var canView = teamLeader is not null && await CanUserViewTask(teamLeader, task);
 
 	                var client = _hubContext.Clients.User(teamLeaderId.ToString());
-	                var project = task.LearningObjective.Lesson.Unit.Project;
+	                var subject = task.LearningObjective.Lesson.Unit.Subject;
 	                var learningObjectiveName = task.LearningObjective.Name;
 	                var flaggedByName = flaggedByUser?.Name ?? "A user";
 
@@ -234,8 +234,8 @@ using Microsoft.AspNetCore.SignalR;
 	                    taskId = task.Id,
 	                    taskName = task.Name,
 	                    learningObjectiveName,
-	                    projectId = project.Id,
-	                    projectName = project.Name,
+	                    projectId = subject.Id,
+	                    projectName = subject.Name,
 	                    flaggedByUserId = flaggedByUser?.Id,
 	                    flaggedByUserName = flaggedByName,
 	                    comment,
@@ -243,14 +243,15 @@ using Microsoft.AspNetCore.SignalR;
 	                });
 
 	                var title = "Task Flagged";
-	                var message = $"{flaggedByName} flagged task '{task.Name}' in LO '{learningObjectiveName}' (project '{project.Name}'). Comment: {comment}";
+	                var message = $"{flaggedByName} flagged task '{task.Name}' in LO '{learningObjectiveName}' (project '{subject.Name}'). Comment: {comment}";
 	                var additionalData = System.Text.Json.JsonSerializer.Serialize(new
 	                {
-	                    projectId = project.Id,
+	                    projectId = subject.Id,
+	                    subjectId = subject.Id,
 	                    kind = "flagged",
 	                    taskName = task.Name,
 	                    learningObjectiveName,
-	                    projectName = project.Name,
+	                    projectName = subject.Name,
 	                    flaggedByUserName = flaggedByName,
 	                    comment,
 	                    taskGroupId = task.GroupId,
@@ -277,17 +278,17 @@ using Microsoft.AspNetCore.SignalR;
 	            }
 	        }
 
-		    public async Task<bool> NotifyUserOfProjectAssignment(int assignedUserId, int projectId, int? assignedByUserId = null)
+		    public async Task<bool> NotifyUserOfProjectAssignment(int assignedUserId, int subjectId, int? assignedByUserId = null)
 		    {
 		        try
 		        {
-		            var project = await _dataContext.Projects
-		                .Where(p => !p.Archived && p.Id == projectId)
+		            var project = await _dataContext.Subjects
+		                .Where(p => !p.Archived && p.Id == subjectId)
 		                .FirstOrDefaultAsync();
 
 		            if (project is null)
 		            {
-		                Console.WriteLine($"Warning: Project with id {projectId} not found when trying to notify user {assignedUserId} about project assignment.");
+		                Console.WriteLine($"Warning: Project with id {subjectId} not found when trying to notify user {assignedUserId} about project assignment.");
 		                return false;
 		            }
 
@@ -302,7 +303,7 @@ using Microsoft.AspNetCore.SignalR;
 
 		            await client.SendAsync("ProjectAssigned", new
 		            {
-		                projectId = project.Id,
+		                subjectId = project.Id,
 		                projectName = project.Name,
 		                description = project.Description,
 		                assignedByUserId = assignedByUser?.Id,
@@ -328,12 +329,12 @@ using Microsoft.AspNetCore.SignalR;
 		        catch (Exception ex)
 		        {
 				_logService.LogError(ex,message:$"this error happen in NotifyUserOfProjectAssignment");
-		            Console.WriteLine($"Error sending ProjectAssigned notification for project {projectId} to user {assignedUserId}: {ex.Message}");
+		            Console.WriteLine($"Error sending ProjectAssigned notification for project {subjectId} to user {assignedUserId}: {ex.Message}");
 		            return false;
 		        }
 		    }
 	
-	        public async Task<bool> NotifyOwnerOfProjectClosed(int projectId, bool closedManually)
+	        public async Task<bool> NotifyOwnerOfProjectClosed(int subjectId, bool closedManually)
 	        {
 	            var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
 	            if (owner is null)
@@ -342,14 +343,13 @@ using Microsoft.AspNetCore.SignalR;
 	                return false;
 	            }
 
-	            var project = await _dataContext.Projects
-	                .Where(p => !p.Archived && p.Id == projectId)
-	                .Include(p => p.Year)
+	            var project = await _dataContext.Subjects
+	                .Where(p => !p.Archived && p.Id == subjectId)
 	                .FirstOrDefaultAsync();
 
 	            if (project is null)
 	            {
-	                Console.WriteLine($"Warning: Project with id {projectId} not found when trying to send ProjectClosed notification.");
+	                Console.WriteLine($"Warning: Project with id {subjectId} not found when trying to send ProjectClosed notification.");
 	                return false;
 	            }
 
@@ -359,11 +359,10 @@ using Microsoft.AspNetCore.SignalR;
 
 	                await ownerClient.SendAsync("ProjectClosed", new
 	                {
-	                    projectId = project.Id,
+	                    subjectId = project.Id,
 	                    projectName = project.Name,
 	                    description = project.Description,
-	                    yearId = project.YearId,
-	                    yearName = project.Year?.Number,
+	                    subjectGroupId = project.SubjectGroupId,
 	                    status = project.Status.ToString(),
 	                    closedManually
 	                });
@@ -387,12 +386,12 @@ using Microsoft.AspNetCore.SignalR;
 	            }
 	            catch (Exception ex)
 	            {
-	                Console.WriteLine($"Error sending ProjectClosed notification for project {projectId}: {ex.Message}");
+	                Console.WriteLine($"Error sending ProjectClosed notification for project {subjectId}: {ex.Message}");
 	                return false;
 	            }
 	        }
 	
-	        public async Task<bool> NotifyOwnerOfProjectCompleted(int projectId)
+	        public async Task<bool> NotifyOwnerOfProjectCompleted(int subjectId)
 	        {
 	            var owner = await _dataContext.Users.FirstOrDefaultAsync(x => x.Role == UserRoleEnum.Owner);
 	            if (owner is null)
@@ -401,9 +400,8 @@ using Microsoft.AspNetCore.SignalR;
 	                return false;
 	            }
 
-	            var project = await _dataContext.Projects
-	                .Where(p => !p.Archived && p.Id == projectId)
-	                .Include(p => p.Year)
+	            var project = await _dataContext.Subjects
+	                .Where(p => !p.Archived && p.Id == subjectId)
 	                .Include(p => p.Units)
 	                    .ThenInclude(u => u.Lessons)
 	                        .ThenInclude(l => l.LearningObjectives)
@@ -412,7 +410,7 @@ using Microsoft.AspNetCore.SignalR;
 
 	            if (project is null)
 	            {
-	                Console.WriteLine($"Warning: Project with id {projectId} not found when trying to send ProjectCompleted notification.");
+	                Console.WriteLine($"Warning: Project with id {subjectId} not found when trying to send ProjectCompleted notification.");
 	                return false;
 	            }
 
@@ -433,11 +431,10 @@ using Microsoft.AspNetCore.SignalR;
 
 	                await ownerClient.SendAsync("ProjectCompleted", new
 	                {
-	                    projectId = project.Id,
+	                    subjectId = project.Id,
 	                    projectName = project.Name,
 	                    description = project.Description,
-	                    yearId = project.YearId,
-	                    yearName = project.Year?.Number,
+	                    subjectGroupId = project.SubjectGroupId,
 	                    status = project.Status.ToString(),
 	                    totalTasks,
 	                    completedTasks,
@@ -461,7 +458,7 @@ using Microsoft.AspNetCore.SignalR;
 	            }
 	            catch (Exception ex)
 	            {
-	                Console.WriteLine($"Error sending ProjectCompleted notification for project {projectId}: {ex.Message}");
+	                Console.WriteLine($"Error sending ProjectCompleted notification for project {subjectId}: {ex.Message}");
 	                return false;
 	            }
 	        }

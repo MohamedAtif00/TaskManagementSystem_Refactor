@@ -135,16 +135,6 @@ try
         AllowAutoRedirect = false
     });
 
-
-    if (!isTesting)
-    {
-        using (var serviceScope = builder.Services.BuildServiceProvider().CreateScope())
-        {
-            var context = serviceScope.ServiceProvider.GetRequiredService<DataContext>();
-            context.Database.Migrate();
-        }
-    }
-
     var app = builder.Build();
 
     // 👇 Static files and CORS should come early in the pipeline
@@ -178,13 +168,15 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
 
-    // 👇 Call seeding logic here (skipped in integration tests)
+    // 👇 Apply migrations, repair schema drift, then seed (skipped in integration tests)
     if (!isTesting)
     {
         using (var scope = app.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<DataContext>();
-            dbContext.Database.Migrate(); // This applies pending migrations
+            await dbContext.Database.MigrateAsync();
+            await SubjectSchemaRepair.ApplyAsync(dbContext);
+            await CurriculumHierarchyRepair.ApplyAsync(dbContext);
             var seeder = scope.ServiceProvider.GetRequiredService<DataSeeder>();
             await seeder.Seed();
         }

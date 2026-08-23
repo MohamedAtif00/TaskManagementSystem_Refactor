@@ -43,12 +43,12 @@ const Login = () => {
     return (
         <>
             <Head>
-                <title>ATS - Login</title>
+                <title>TMS - Login</title>
             </Head>
             <div className="bg-gradient-to-tr from-sky-300 to-slate-400 h-screen flex flex-col justify-center items-center gap-4">
                 <div className="bg-white px-6 py-4 rounded-lg flex flex-col gap-2">
                     <h2 className="text-4xl">Selah El-Telmeez</h2>
-                    <h3 className="text-2xl">Welcome to ATS</h3>
+                    <h3 className="text-2xl">Welcome to TMS</h3>
                     <p className={err === "" ? "" : "text-red-500"}>
                         {err !== ""
                             ? err
@@ -126,7 +126,7 @@ const Auth = ({ children }: Props) => {
         return (
             <div className="flex items-center justify-center mx-auto h-screen bg-slate-200">
                 <Head>
-                    <title>ATS - Loading</title>
+                    <title>TMS - Loading</title>
                 </Head>
                 <Loader />
             </div>

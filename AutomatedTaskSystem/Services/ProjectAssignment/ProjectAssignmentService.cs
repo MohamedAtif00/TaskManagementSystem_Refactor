@@ -24,7 +24,7 @@ public class ProjectAssignmentService : IProjectAssignmentService
 		    public async Task<ResponseService<List<User>>> AssignUsersToProject(int Pid, List<int> userIds)
 	    {
 	        // Load project with current user assignments so we can avoid creating duplicate relationships
-	        var project = await _context.Projects
+	        var project = await _context.Subjects
 	            .Where(p => !p.Archived && p.Id == Pid)
 	            .Include(p => p.Users)
 	            .FirstOrDefaultAsync();
@@ -91,7 +91,7 @@ public class ProjectAssignmentService : IProjectAssignmentService
 
     public async Task<ResponseService<List<User>>> GetAssignedUsersForProject(int Pid)
     {
-        var project = await _context.Projects
+        var project = await _context.Subjects
             .Where(p => p.Id == Pid && !p.Archived)
             .Include(p => p.Users)
             .ThenInclude(u => u.Group)
@@ -115,7 +115,7 @@ public class ProjectAssignmentService : IProjectAssignmentService
 
     public async Task<ResponseService<List<User>>> GetUnassignedUsersForProject(int Pid)
     {
-        var project = await _context.Projects
+        var project = await _context.Subjects
             .Where(p => !p.Archived && p.Id == Pid)
             .FirstOrDefaultAsync();
 
@@ -127,7 +127,7 @@ public class ProjectAssignmentService : IProjectAssignmentService
             };
 
         var users = await _context.Users
-            .Where(u => !u.Archived && !u.Projects.Contains(project))
+            .Where(u => !u.Archived && !u.Subjects.Contains(project))
             .Include(u => u.Group)
             .ToListAsync();
 
@@ -139,26 +139,26 @@ public class ProjectAssignmentService : IProjectAssignmentService
         };
     }
 
-    public async Task<ResponseService<List<Models.Project>>> ProjectsAssignedToUser(int Uid)
+    public async Task<ResponseService<List<Models.Subject>>> ProjectsAssignedToUser(int Uid)
     {
         var user = await _context.Users
             .Where(u => !u.Archived && u.Id == Uid)
-            .Include(u => u.Projects)
+            .Include(u => u.Subjects)
             .FirstOrDefaultAsync();
 
         if (user is null)
-            return new ResponseService<List<Models.Project>>
+            return new ResponseService<List<Models.Subject>>
             {
                 Error = true,
                 Message = $"User of id:{Uid} is not found"
             };
 
-        return new ResponseService<List<Models.Project>>
+        return new ResponseService<List<Models.Subject>>
         {
             Data =
                 user.Role == UserRoleEnum.ProjectManger
-                    ? await _context.Projects.Where(p => !p.Archived).ToListAsync()
-                    : user.Projects
+                    ? await _context.Subjects.Where(p => !p.Archived).ToListAsync()
+                    : user.Subjects
                         .Where(
                             p =>
                                 !p.Archived
@@ -176,7 +176,7 @@ public class ProjectAssignmentService : IProjectAssignmentService
         List<int> userIds
     )
     {
-        var project = await _context.Projects
+        var project = await _context.Subjects
             .Where(p => !p.Archived && p.Id == Pid)
             .Include(u => u.Users)
             .FirstOrDefaultAsync();

@@ -5,7 +5,7 @@ interface GET_ALL_PARAMS { start?: Date; end?: Date };
 const Reports = {
 	GET_ALL: async (params?: GET_ALL_PARAMS) => {
 		try {
-			const urlArr: string[] = [`${url}/projects/reports`];
+			const urlArr: string[] = [`${url}/subjects/reports`];
 
 			if (params) {
 				const { start, end } = params;
@@ -41,7 +41,7 @@ const Reports = {
 	},
 	GET_ONE: async (id: number | string | string[]) => {
 		try {
-			const res = await fetch(`${url}/projects/${id}/reports`);
+			const res = await fetch(`${url}/subjects/${id}/reports`);
 			const data: ResponseService<DetailedReport> = await res.json();
 			return data;
 		} catch (error) {

@@ -515,43 +515,43 @@ namespace AutomatedTaskSystem.Services.Sprint
                 }
 
                 const string tableRowsSql = """
-            WITH SprintLOs AS (
-                SELECT lo.Id, lo.Name, lo.StartedAt, lo.DoneAt, lo.SchemaId
-                FROM SprintLearningObjectives slo
-                INNER JOIN LearningObjectives lo ON lo.Id = slo.LearningObjectiveId
-                WHERE slo.SprintId = @sprintId
-                  AND lo.Archived = 0
-                  AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
-            ),
-            ExpectedSteps AS (
-                SELECT sl.Id AS LearningObjectiveId, COUNT(1) AS TotalExpectedTasks
-                FROM SprintLOs sl
-                INNER JOIN Nodes n ON n.SchemaId = sl.SchemaId AND n.Archived = 0
-                INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
-                GROUP BY sl.Id
-            ),
-            TaskAgg AS (
-                SELECT t.LearningObjectiveId,
-                       CompletedTasks = SUM(CASE WHEN t.Status = @done THEN 1 ELSE 0 END),
-                       ActiveTasks = SUM(CASE WHEN t.Status IN (@todo, @doing) THEN 1 ELSE 0 END)
-                FROM Tasks t
-                INNER JOIN SprintLOs sl ON sl.Id = t.LearningObjectiveId
-                WHERE t.Archived = 0
-                GROUP BY t.LearningObjectiveId
-            )
-            SELECT
-                sl.Id,
-                sl.Name,
-                sl.StartedAt,
-                sl.DoneAt,
-                TotalExpectedTasks = ISNULL(es.TotalExpectedTasks, 0),
-                CompletedTasks = ISNULL(ta.CompletedTasks, 0),
-                ActiveTasks = ISNULL(ta.ActiveTasks, 0)
-            FROM SprintLOs sl
-            LEFT JOIN ExpectedSteps es ON es.LearningObjectiveId = sl.Id
-            LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = sl.Id
-            ORDER BY sl.Id;
-            """;
+                    WITH SprintLOs AS (
+                        SELECT lo.Id, lo.Name, lo.StartedAt, lo.DoneAt, lo.SchemaId
+                        FROM SprintLearningObjectives slo
+                        INNER JOIN LearningObjectives lo ON lo.Id = slo.LearningObjectiveId
+                        WHERE slo.SprintId = @sprintId
+                          AND lo.Archived = 0
+                          AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
+                    ),
+                    ExpectedSteps AS (
+                        SELECT sl.Id AS LearningObjectiveId, COUNT(1) AS TotalExpectedTasks
+                        FROM SprintLOs sl
+                        INNER JOIN Nodes n ON n.SchemaId = sl.SchemaId AND n.Archived = 0
+                        INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
+                        GROUP BY sl.Id
+                    ),
+                    TaskAgg AS (
+                        SELECT t.LearningObjectiveId,
+                               CompletedTasks = SUM(CASE WHEN t.Status = @done THEN 1 ELSE 0 END),
+                               ActiveTasks = SUM(CASE WHEN t.Status IN (@todo, @doing) THEN 1 ELSE 0 END)
+                        FROM Tasks t
+                        INNER JOIN SprintLOs sl ON sl.Id = t.LearningObjectiveId
+                        WHERE t.Archived = 0
+                        GROUP BY t.LearningObjectiveId
+                    )
+                    SELECT
+                        sl.Id,
+                        sl.Name,
+                        sl.StartedAt,
+                        sl.DoneAt,
+                        TotalExpectedTasks = ISNULL(es.TotalExpectedTasks, 0),
+                        CompletedTasks = ISNULL(ta.CompletedTasks, 0),
+                        ActiveTasks = ISNULL(ta.ActiveTasks, 0)
+                    FROM SprintLOs sl
+                    LEFT JOIN ExpectedSteps es ON es.LearningObjectiveId = sl.Id
+                    LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = sl.Id
+                    ORDER BY sl.Id;
+                    """;
 
                 var loRows = (await connection.QueryAsync<SprintTableLoRow>(
                     tableRowsSql,

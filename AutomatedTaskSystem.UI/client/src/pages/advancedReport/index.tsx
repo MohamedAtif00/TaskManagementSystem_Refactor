@@ -7,7 +7,7 @@ export default function AdvancedReport() {
     return (
         <>
             <Head>
-                <title>ATS - Advanced Report</title>
+                <title>TMS - Advanced Report</title>
             </Head>
             <div className="w-full h-screen">
                 <iframe

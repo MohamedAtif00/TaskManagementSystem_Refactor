@@ -4,7 +4,7 @@ import { BasicInfo, url } from "./";
 import REPORTS from "./Reports";
 import { IDName } from "./workFromHome";
 
-/** Single segment for `/projects/{id}/analytics/...` (avoids `1,2` when query is string[]). */
+/** Single segment for `/subjects/{id}/analytics/...` (avoids `1,2` when query is string[]). */
 const projectAnalyticsPathId = (projectId: string | string[] | number | undefined) => {
     if (projectId === undefined || projectId === null) return "";
     if (typeof projectId === "number") return String(projectId);
@@ -16,7 +16,7 @@ const PROJECTS = {
     REPORTS,
     SUMMARY: async (projectId: string | string[]) => {
         try {
-            const res = await fetch(`${url}/projects/${projectId}/summary`);
+            const res = await fetch(`${url}/subjects/${projectId}/summary`);
             const data: ISummary = await res.json();
             return data;
         } catch (error) {
@@ -27,7 +27,7 @@ const PROJECTS = {
     USERS_UNASSIGNED: async (projectId: string | string[]) => {
         try {
             const res = await fetch(
-                `${url}/projects/${projectId}/users/unassigned`
+                `${url}/subjects/${projectId}/users/unassigned`
             );
             const data: {
                 data: IUser[];
@@ -43,7 +43,7 @@ const PROJECTS = {
     USERS_ASSIGNED: async (projectId: string | string[]) => {
         try {
             const res = await fetch(
-                `${url}/projects/${projectId}/users/assigned`
+                `${url}/subjects/${projectId}/users/assigned`
             );
             const data: {
                 data: IUser[];
@@ -64,7 +64,7 @@ const PROJECTS = {
         userIds: number[];
     }) => {
         try {
-            const res = await fetch(`${url}/projects/${projectId}/unassign`, {
+            const res = await fetch(`${url}/subjects/${projectId}/unassign`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -88,7 +88,7 @@ const PROJECTS = {
         groupIds: number[] | undefined;
     }) => {
         try {
-            const res = await fetch(`${url}/projects/${projectId}/assign`, {
+            const res = await fetch(`${url}/subjects/${projectId}/assign`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -106,22 +106,20 @@ const PROJECTS = {
         id,
         name,
         description,
-        term,
-        year,
+        folderId,
     }: {
         id: string | string[] | number;
         name: string;
         description: string;
-        term: boolean;
-        year: number;
+        folderId: number;
     }) => {
         try {
-            const res = await fetch(`${url}/projects/${id}`, {
+            const res = await fetch(`${url}/subjects/${id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ name, description, term, yearId: year }),
+                body: JSON.stringify({ name, description, folderId }),
             });
             const data: {
                 data: IProject;
@@ -142,7 +140,7 @@ const PROJECTS = {
         status: 0 | 1 | 2;
     }) => {
         try {
-            const res = await fetch(`${url}/projects/${id}/status`, {
+            const res = await fetch(`${url}/subjects/${id}/status`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -163,21 +161,19 @@ const PROJECTS = {
     CREATE: async ({
         name,
         description,
-        term,
-        year,
+        folderId,
     }: {
         name: string;
         description: string;
-        term: boolean;
-        year: number;
+        folderId: number;
     }) => {
         try {
-            const res = await fetch(`${url}/projects`, {
+            const res = await fetch(`${url}/subjects`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ name, description, term, yearId: year }),
+                body: JSON.stringify({ name, description, folderId }),
             });
             const data: {
                 data: IProject;
@@ -192,7 +188,7 @@ const PROJECTS = {
     },
     DELETE: async (id: string | string[] | number) => {
         try {
-            const res = await fetch(`${url}/projects/${id}`, {
+            const res = await fetch(`${url}/subjects/${id}`, {
                 method: "DELETE",
             });
             const data: {
@@ -207,7 +203,7 @@ const PROJECTS = {
     },
     GET_ALL_LOS: async (projectId: number) => {
 
-        const res = await fetch(`${url}/projects/${projectId}/los`);
+        const res = await fetch(`${url}/subjects/${projectId}/los`);
         const data: {
             error: boolean;
             message: string;
@@ -218,7 +214,7 @@ const PROJECTS = {
     },
     GET_ALL: async () => {
       
-        const res = await fetch(`${url}/projects`);
+        const res = await fetch(`${url}/subjects`);
         const data: {
             data: IProject[];
             error: boolean;
@@ -226,23 +222,43 @@ const PROJECTS = {
         } = await res.json();
         return data;
 
-    },GET_ALL_FOR_SPRINT:async ()=>{
-
-        const res = await fetch(`${url}/projects/GetAllForSprint`);
+    },
+    GET_BY_TERM: async (
+        folderId: number,
+        options?: { includeInactive?: boolean }
+    ) => {
+        const query = options?.includeInactive ? "?includeInactive=true" : "";
+        const res = await fetch(`${url}/subjects/by-folder/${folderId}${query}`, {
+            headers: { ...authService.authHeader() },
+        });
         const data: {
             data: IProject[];
             error: boolean;
             message: string;
         } = await res.json();
         return data;
-    }    ,
+    },
+    GET_BY_FOLDER: async (
+        folderId: number,
+        options?: { includeInactive?: boolean }
+    ) => PROJECTS.GET_BY_TERM(folderId, options),
+    GET_ALL_FOR_SPRINT:async ()=>{
+
+        const res = await fetch(`${url}/subjects/GetAllForSprint`);
+        const data: {
+            data: IProject[];
+            error: boolean;
+            message: string;
+        } = await res.json();
+        return data;
+    },
     GET_ANALYTICS_OVERVIEW: async (projectId: number | string | string[], timePeriod?: number) => {
         try {
             const pid = projectAnalyticsPathId(projectId);
             if (!pid) return false;
             const authHeader = authService.authHeader();
             const queryParams = timePeriod ? `?timePeriod=${timePeriod}` : "";
-            const res = await fetch(`${url}/projects/${pid}/analytics/overview${queryParams}`, {
+            const res = await fetch(`${url}/subjects/${pid}/analytics/overview${queryParams}`, {
                 headers: { ...authHeader },
             });
             const raw = await res.json();
@@ -316,7 +332,7 @@ const PROJECTS = {
                     ? `${queryParams ? "&" : "?"}group=${group}`
                     : "";
             const res = await fetch(
-                `${url}/projects/${pid}/analytics/learning-objectives-progress${queryParams}${groupParam}`,
+                `${url}/subjects/${pid}/analytics/learning-objectives-progress${queryParams}${groupParam}`,
                 { headers: { ...authHeader } }
             );
             const raw = await res.json();
@@ -353,7 +369,7 @@ const PROJECTS = {
             const pid = projectAnalyticsPathId(projectId);
             if (!pid) return false;
             const authHeader = authService.authHeader();
-            const res = await fetch(`${url}/projects/${pid}/analytics/learning-objectives-table`, {
+            const res = await fetch(`${url}/subjects/${pid}/analytics/learning-objectives-table`, {
                 headers: { ...authHeader },
             });
             const raw = await res.json();
@@ -396,7 +412,9 @@ const PROJECTS = {
     },
     GET_ONE: async (id: string | string[]) => {
         try {
-            const res = await fetch(`${url}/projects/${id}`);
+            const res = await fetch(`${url}/subjects/${id}`, {
+                headers: { ...authService.authHeader() },
+            });
             if (res.status >= 400) return false;
             const data: {
                 data: IProject;
@@ -411,7 +429,9 @@ const PROJECTS = {
     },
     GET_ONE_DETAILED: async (id: string | string[]) => {
         try {
-            const res = await fetch(`${url}/projects/${id}/details`);
+            const res = await fetch(`${url}/subjects/${id}/details`, {
+                headers: { ...authService.authHeader() },
+            });
             if (res.status >= 400) return false;
             const data: {
                 data: ProjectDetails;
@@ -433,7 +453,7 @@ const PROJECTS = {
             projectId: number;
         }) => {
             try {
-                const res = await fetch(`${url}/projects/${projectId}/units`, {
+                const res = await fetch(`${url}/subjects/${projectId}/units`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -662,10 +682,184 @@ const PROJECTS = {
             },
         },
     },
+    ROOT: {
+        LIST: async () => {
+            const res = await fetch(`${url}/curriculum/years`);
+            return res.json();
+        },
+        WITH_SUBJECTS: async () => {
+            const res = await fetch(`${url}/curriculum/subject-groups/with-subjects`);
+            return res.json();
+        },
+        GET: async (yearId: number) => {
+            const res = await fetch(`${url}/curriculum/years/${yearId}`);
+            return res.json();
+        },
+        TREE: async (yearId: number) => {
+            const res = await fetch(`${url}/curriculum/years/${yearId}/tree`);
+            return res.json();
+        },
+        CREATE: async (name: string, description?: string) => {
+            const res = await fetch(`${url}/curriculum/years`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, description: description ?? "" }),
+            });
+            return res.json();
+        },
+        UPDATE: async (yearId: number, name: string, description?: string) => {
+            const res = await fetch(`${url}/curriculum/years/${yearId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, description: description ?? "" }),
+            });
+            return res.json();
+        },
+        YEARS: async (yearId: number) => {
+            const res = await fetch(`${url}/curriculum/years/${yearId}/projects`);
+            return res.json();
+        },
+        GET_YEAR: async (projectId: number) => {
+            const res = await fetch(`${url}/curriculum/projects/${projectId}`);
+            return res.json();
+        },
+        CREATE_YEAR: async (yearId: number, label: string) => {
+            const res = await fetch(`${url}/curriculum/years/${yearId}/projects`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: label }),
+            });
+            return res.json();
+        },
+        UPDATE_YEAR: async (projectId: number, label: string) => {
+            const res = await fetch(`${url}/curriculum/projects/${projectId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: label }),
+            });
+            return res.json();
+        },
+        TERMS: async (parentId: number, parentType: "year" | "project" | "term" = "year") => {
+            const path =
+                parentType === "year"
+                    ? `${url}/curriculum/years/${parentId}/projects`
+                    : parentType === "project"
+                      ? `${url}/curriculum/projects/${parentId}/terms`
+                      : `${url}/curriculum/terms/${parentId}/subject-groups`;
+            const res = await fetch(path);
+            return res.json();
+        },
+        GET_TERM: async (nodeId: number, nodeType: "project" | "term" | "subjectGroup" = "term") => {
+            const path =
+                nodeType === "project"
+                    ? `${url}/curriculum/projects/${nodeId}`
+                    : nodeType === "term"
+                      ? `${url}/curriculum/terms/${nodeId}`
+                      : `${url}/curriculum/subject-groups/${nodeId}`;
+            const res = await fetch(path);
+            return res.json();
+        },
+        CREATE_TERM: async (
+            parentId: number,
+            body: {
+                name: string;
+                parentType?: "year" | "project" | "term";
+                order?: number;
+                startDate?: string | null;
+                endDate?: string | null;
+            }
+        ) => {
+            const parentType = body.parentType ?? "project";
+            const path =
+                parentType === "year"
+                    ? `${url}/curriculum/years/${parentId}/projects`
+                    : parentType === "project"
+                      ? `${url}/curriculum/projects/${parentId}/terms`
+                      : `${url}/curriculum/terms/${parentId}/subject-groups`;
+            const res = await fetch(path, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: body.name,
+                    startDate: body.startDate,
+                    endDate: body.endDate,
+                }),
+            });
+            return res.json();
+        },
+        UPDATE_TERM: async (
+            nodeId: number,
+            body: {
+                name: string;
+                nodeType?: "project" | "term" | "subjectGroup";
+                order?: number;
+                startDate?: string | null;
+                endDate?: string | null;
+            }
+        ) => {
+            const nodeType = body.nodeType ?? "term";
+            const path =
+                nodeType === "project"
+                    ? `${url}/curriculum/projects/${nodeId}`
+                    : nodeType === "term"
+                      ? `${url}/curriculum/terms/${nodeId}`
+                      : `${url}/curriculum/subject-groups/${nodeId}`;
+            const res = await fetch(path, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: body.name,
+                    startDate: body.startDate,
+                    endDate: body.endDate,
+                }),
+            });
+            return res.json();
+        },
+        DELETE_TERM: async (
+            nodeId: number,
+            body: { nodeType?: "year" | "project" | "term" | "subjectGroup" } = {}
+        ) => {
+            const nodeType = body.nodeType ?? "term";
+            const path =
+                nodeType === "year"
+                    ? `${url}/curriculum/years/${nodeId}`
+                    : nodeType === "project"
+                      ? `${url}/curriculum/projects/${nodeId}`
+                      : nodeType === "term"
+                        ? `${url}/curriculum/terms/${nodeId}`
+                        : `${url}/curriculum/subject-groups/${nodeId}`;
+            const res = await fetch(path, { method: "DELETE" });
+            return res.json();
+        },
+        ARCHIVED_LIST: async () => {
+            const res = await fetch(`${url}/curriculum/archived`);
+            return res.json();
+        },
+        RESTORE: async (
+            nodeType: "year" | "project" | "term" | "subjectGroup",
+            id: number,
+            subjectIds?: number[]
+        ) => {
+            const path =
+                nodeType === "year"
+                    ? `${url}/curriculum/years/${id}/restore`
+                    : nodeType === "project"
+                      ? `${url}/curriculum/projects/${id}/restore`
+                      : nodeType === "term"
+                        ? `${url}/curriculum/terms/${id}/restore`
+                        : `${url}/curriculum/subject-groups/${id}/restore`;
+            const res = await fetch(path, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ subjectIds: subjectIds ?? [] }),
+            });
+            return res.json();
+        },
+    },
     YEARS: {
         GET_ALL: async () => {
             try {
-                const res = await fetch(`${url}/projects/years`);
+                const res = await fetch(`${url}/subjects/years`);
                 const data: {
                     data: { id: number; name: string }[];
                     error: boolean;

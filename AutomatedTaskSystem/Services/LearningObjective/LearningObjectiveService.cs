@@ -16,27 +16,27 @@ public class LearningObjectiveService : ILearningObjectiveService
     private static bool IsOldLearningObjectiveName(string? name) =>
         !string.IsNullOrWhiteSpace(name) && name.Contains("old", StringComparison.OrdinalIgnoreCase);
 
-    public async Task<ResponseService<List<LearningObjective>>> GetLearningObjectivesByProjectId(
-        int Pid
+    public async Task<ResponseService<List<LearningObjective>>> GetLearningObjectivesBySubjectId(
+        int subjectId
     )
     {
-        var project = await _context.Projects
-            .Where(p => !p.Archived && p.Id == Pid)
+        var subject = await _context.Subjects
+            .Where(p => !p.Archived && p.Id == subjectId)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
             .ThenInclude(l => l.LearningObjectives.Where(x => x.DoneAt == null && !x.Archived))
             .FirstOrDefaultAsync();
 
-        if (project is null)
+        if (subject is null)
             return new ResponseService<List<LearningObjective>>
             {
                 Error = true,
-                Message = "Project is not found"
+                Message = "Subject is not found"
             };
 
-        var los = new List<LearningObjective> { };
+        var los = new List<LearningObjective>();
 
-        foreach (var unit in project.Units)
+        foreach (var unit in subject.Units)
             if (!unit.Archived)
                 foreach (var lesson in unit.Lessons)
                     if (!lesson.Archived)
@@ -48,7 +48,7 @@ public class LearningObjectiveService : ILearningObjectiveService
         {
             Data = los,
             Error = false,
-            Message = $"List of learning objectives in project of id:{project.Id}"
+            Message = $"List of learning objectives in subject of id:{subject.Id}"
         };
     }
 }

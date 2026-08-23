@@ -30,7 +30,7 @@
         public string? Title { get; set; } 
         public User? Teamleader { get; set; }
         public int? TeamleaderId { get; set; }
-        public List<Project> Projects { get; set; } = new List<Project> { };
+        public List<Subject> Subjects { get; set; } = new List<Subject> { };
         public List<Task> Tasks { get; set; } = new List<Task> { };
         public Team? Team { get; set; } = null;
         public int? TeamId { get; set; }

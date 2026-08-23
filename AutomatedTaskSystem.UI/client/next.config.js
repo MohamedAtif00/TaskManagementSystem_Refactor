@@ -1,6 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    reactStrictMode: true,
+    async redirects() {
+    return [
+      {
+        source: "/projects/charts/:projectChartId",
+        destination: "/subjects/charts/:projectChartId",
+        permanent: false,
+      },
+    ];
+  },
+  reactStrictMode: true,
     swcMinify: true,
     generateEtags: false,
      typescript: {

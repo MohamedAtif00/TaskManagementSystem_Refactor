@@ -38,7 +38,7 @@ public class UserTaskService : IUserTaskService
                     .ThenInclude(t => t.LearningObjective)
                     .ThenInclude(t => t.Lesson)
                     .ThenInclude(t => t.Unit)
-                    .ThenInclude(t => t.Project)
+                    .ThenInclude(t => t.Subject)
                 .ToListAsync();
 
             var res = new List<UserTaskDto> { };
@@ -57,9 +57,9 @@ public class UserTaskService : IUserTaskService
                                 t =>
                                     !t.Archived
                                     && t.Status == TaskStatusEnum.Doing
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Closed
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Hold
                             )
                             .Count(),
@@ -68,9 +68,9 @@ public class UserTaskService : IUserTaskService
                                 t =>
                                     !t.Archived
                                     && t.Status == TaskStatusEnum.ToDo
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Closed
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Hold
                             )
                             .Count()
@@ -107,7 +107,7 @@ public class UserTaskService : IUserTaskService
                     .ThenInclude(t => t.LearningObjective)
                     .ThenInclude(t => t.Lesson)
                     .ThenInclude(t => t.Unit)
-                    .ThenInclude(t => t.Project)
+                    .ThenInclude(t => t.Subject)
                 .ToListAsync();
 
             var res = new List<UserTaskDto> { };
@@ -126,10 +126,10 @@ public class UserTaskService : IUserTaskService
                                 t =>
                                     !t.Archived
                                     && t.Status == TaskStatusEnum.Doing
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Closed
                                
-                                        && t.LearningObjective.Lesson.Unit.Project.Status
+                                        && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Hold
                             )
                             .Count(),
@@ -138,9 +138,9 @@ public class UserTaskService : IUserTaskService
                                 t =>
                                     !t.Archived
                                     && t.Status == TaskStatusEnum.ToDo
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Closed
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Hold
                             )
                             .Count()
@@ -167,7 +167,7 @@ public class UserTaskService : IUserTaskService
                 .ThenInclude(u => u.LearningObjective)
                 .ThenInclude(u => u.Lesson)
                 .ThenInclude(u => u.Unit)
-                .ThenInclude(u => u.Project)
+                .ThenInclude(u => u.Subject)
                 .ToListAsync();
 
             var res = new List<UserTaskDto> { };
@@ -186,9 +186,9 @@ public class UserTaskService : IUserTaskService
                                 t =>
                                     !t.Archived
                                     && t.Status == TaskStatusEnum.Doing
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Closed
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Hold
                             )
                             .Count(),
@@ -197,9 +197,9 @@ public class UserTaskService : IUserTaskService
                                 t =>
                                     !t.Archived
                                     && t.Status == TaskStatusEnum.ToDo
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Closed
-                                    && t.LearningObjective.Lesson.Unit.Project.Status
+                                    && t.LearningObjective.Lesson.Unit.Subject.Status
                                         != ProjectStatusEnum.Hold
                             )
                             .Count()
@@ -289,14 +289,14 @@ public class UserTaskService : IUserTaskService
     //                Doing = u.Tasks.Count(t =>
     //                    !t.Archived &&
     //                    t.Status == TaskStatusEnum.Doing &&
-    //                    t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Closed &&
-    //                    t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
+    //                    t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Closed &&
+    //                    t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Hold
     //                ),
     //                Todo = u.Tasks.Count(t =>
     //                    !t.Archived &&
     //                    t.Status == TaskStatusEnum.ToDo &&
-    //                    t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Closed &&
-    //                    t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
+    //                    t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Closed &&
+    //                    t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Hold
     //                )
     //            }
     //        })
@@ -320,7 +320,7 @@ public class UserTaskService : IUserTaskService
             .ThenInclude(t => t.LearningObjective)
             .ThenInclude(t => t.Lesson)
             .ThenInclude(t => t.Unit)
-            .ThenInclude(t => t.Project)
+            .ThenInclude(t => t.Subject)
             .Include(u => u.Group)
             .FirstOrDefaultAsync();
 
@@ -340,8 +340,8 @@ public class UserTaskService : IUserTaskService
                 t =>
                     !t.Archived
                     && t.Status == TaskStatusEnum.ToDo
-                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Closed
-                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
+                    && t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Closed
+                    && t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Hold
             )
         )
             res.TodoTasks.Add(
@@ -354,7 +354,7 @@ public class UserTaskService : IUserTaskService
                         Name = task.LearningObjective.Name
                     },
                     Name = task.Name,
-                    ProjectId = task.LearningObjective.Lesson.Unit.ProjectId
+                    ProjectId = task.LearningObjective.Lesson.Unit.SubjectId
                 }
             );
 
@@ -363,8 +363,8 @@ public class UserTaskService : IUserTaskService
                 t =>
                     !t.Archived
                     && t.Status == TaskStatusEnum.Doing
-                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Closed
-                    && t.LearningObjective.Lesson.Unit.Project.Status != ProjectStatusEnum.Hold
+                    && t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Closed
+                    && t.LearningObjective.Lesson.Unit.Subject.Status != ProjectStatusEnum.Hold
             )
         )
             res.DoingTasks.Add(
@@ -377,13 +377,13 @@ public class UserTaskService : IUserTaskService
                         Name = task.LearningObjective.Name
                     },
                     Name = task.Name,
-                    ProjectId = task.LearningObjective.Lesson.Unit.ProjectId
+                    ProjectId = task.LearningObjective.Lesson.Unit.SubjectId
                 }
             );
 
         await _context
             .Entry(user)
-            .Collection(u => u.Projects)
+            .Collection(u => u.Subjects)
             .Query()
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
@@ -392,7 +392,7 @@ public class UserTaskService : IUserTaskService
             .LoadAsync();
 
         foreach (
-            var p in user.Projects.Where(
+            var p in user.Subjects.Where(
                 p =>
                     !p.Archived
                     && p.Status != ProjectStatusEnum.Closed

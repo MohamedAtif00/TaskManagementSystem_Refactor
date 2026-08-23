@@ -9,7 +9,7 @@ interface Props {
 
 const ProjectItem = ({ id, name, description }: Props) => {
 	return (
-		<Link href={`/projects/${id}`}>
+		<Link href={`/subjects/${id}`}>
 			<div className={styles.GridItem} style={{ padding: "0.5rem 1rem" }}>
 				<div>
 					<div>{name}</div>

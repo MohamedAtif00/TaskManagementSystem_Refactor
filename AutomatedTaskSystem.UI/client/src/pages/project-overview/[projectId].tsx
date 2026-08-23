@@ -27,7 +27,7 @@ const ProjectReport = () => {
 	if (loading)
 		return <div className="flex items-center justify-center mx-auto">
 			<Head>
-				<title>ATS - Loading</title>
+				<title>TMS - Loading</title>
 			</Head>
 			<Loader />
 		</div>;
@@ -35,7 +35,7 @@ const ProjectReport = () => {
 	if (report === undefined)
 		return <div className="flex items-center justify-center mx-auto">
 			<Head>
-				<title>ATS - Page not found</title>
+				<title>TMS - Page not found</title>
 			</Head>
 			<div>Report is not found</div>
 		</div>;
@@ -43,7 +43,7 @@ const ProjectReport = () => {
 	return (
 		<div className="mx-auto w-10/12 bg-white flex flex-col gap-1">
 			<Head>
-				<title>{`ATS - ${report.name} Report`}</title>
+				<title>{`TMS - ${report.name} Report`}</title>
 			</Head>
 			<ReportHeader
 				name={report.name}

@@ -192,7 +192,7 @@ const EditLearningObjectiveForm: React.FC<Props> = (props) => {
                         </label>
                     </div>
                     <div className="grid grid-cols-2 gap-4 px-8 pt-2 pb-4">
-                        <Link href={`/projects/${props.projectId}`}>
+                        <Link href={`/subjects/${props.projectId}`}>
                             <button
                                 className="w-full py-2 bg-black text-white border-2 border-solid border-white/30"
                                 type="button"

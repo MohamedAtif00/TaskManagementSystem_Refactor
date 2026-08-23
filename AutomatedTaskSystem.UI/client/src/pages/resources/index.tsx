@@ -16,7 +16,7 @@ const Resources = () => {
     return (
         <>
             <Head>
-                <title>ATS - Resources</title>
+                <title>TMS - Resources</title>
             </Head>
             <div className="mainContainer">
                 <Header text="Resources" icon="Resources"></Header>

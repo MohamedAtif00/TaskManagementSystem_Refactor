@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AutomatedTaskSystem.Controllers;
 
-[Route("projects/{projectId}/analytics")]
+[Route("subjects/{subjectId}/analytics")]
 [ApiController]
 public class ProjectAnalyticsController : ControllerBase
 {
@@ -21,7 +21,7 @@ public class ProjectAnalyticsController : ControllerBase
     /// Optional time period filters tag distribution only (same rules as sprint analytics).
     /// </summary>
     [HttpGet("overview")]
-    public async Task<IActionResult> GetProjectOverview(int projectId, [FromQuery] int? timePeriod = null)
+    public async Task<IActionResult> GetProjectOverview(int subjectId, [FromQuery] int? timePeriod = null)
     {
         try
         {
@@ -29,7 +29,7 @@ public class ProjectAnalyticsController : ControllerBase
             if (timePeriod.HasValue && Enum.IsDefined(typeof(TimePeriodFilter), timePeriod.Value))
                 filter = (TimePeriodFilter)timePeriod.Value;
 
-            var result = await _projectAnalyticsService.GetProjectOverviewAsync(projectId, filter);
+            var result = await _projectAnalyticsService.GetProjectOverviewAsync(subjectId, filter);
 
             if (result.Error)
             {
@@ -53,7 +53,7 @@ public class ProjectAnalyticsController : ControllerBase
     }
 
     [HttpGet("learning-objectives-progress")]
-    public async Task<IActionResult> GetLearningObjectivesProgress(int projectId, [FromQuery] int? timePeriod = null, [FromQuery] int? group = null)
+    public async Task<IActionResult> GetLearningObjectivesProgress(int subjectId, [FromQuery] int? timePeriod = null, [FromQuery] int? group = null)
     {
         try
         {
@@ -61,7 +61,7 @@ public class ProjectAnalyticsController : ControllerBase
             if (timePeriod.HasValue && Enum.IsDefined(typeof(TimePeriodFilter), timePeriod.Value))
                 filter = (TimePeriodFilter)timePeriod.Value;
 
-            var result = await _projectAnalyticsService.GetProjectLearningObjectivesProgressAsync(projectId, filter, group);
+            var result = await _projectAnalyticsService.GetProjectLearningObjectivesProgressAsync(subjectId, filter, group);
 
             if (result.Error)
             {
@@ -85,11 +85,11 @@ public class ProjectAnalyticsController : ControllerBase
     }
 
     [HttpGet("learning-objectives-table")]
-    public async Task<IActionResult> GetLearningObjectivesTable(int projectId)
+    public async Task<IActionResult> GetLearningObjectivesTable(int subjectId)
     {
         try
         {
-            var result = await _projectAnalyticsService.GetProjectLearningObjectivesTableAsync(projectId);
+            var result = await _projectAnalyticsService.GetProjectLearningObjectivesTableAsync(subjectId);
 
             if (result.Error)
             {

@@ -62,7 +62,7 @@ const UserTasksPage = () => {
 		return (
 			<div className="flex items-center justify-center mx-auto h-screen bg-slate-200">
 				<Head>
-					<title>ATS - Loading</title>
+					<title>TMS - Loading</title>
 				</Head>
 				<Loader />
 			</div>
@@ -72,7 +72,7 @@ const UserTasksPage = () => {
 		<>
 			<div className="mx-4 flex flex-col w-full gap-4">
 				<Head>
-					<title>ATS - User Tasks</title>
+					<title>TMS - User Tasks</title>
 				</Head>
 				<div className="py-4 px-8 bg-white rounded-b-lg border border-gray-300 border-solid flex justify-between">
 					<div className="flex gap-4">

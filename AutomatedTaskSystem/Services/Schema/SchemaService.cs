@@ -299,13 +299,13 @@ public class SchemaService : ISchemaService
         var schema = await _context.Schemas
             .Where(s => s.Id == id && !s.Archived)
             .Include(s => s.Nodes)
-            .ThenInclude(n => n.Previous)
+                .ThenInclude(n => n.Previous)
             .Include(s => s.Nodes)
-            .ThenInclude(n => n.Next)
+                .ThenInclude(n => n.Next)
             .Include(s => s.Nodes)
-            .ThenInclude(n => n.Steps)
-            .ThenInclude(s => s.TaskBank)
-            .ThenInclude(s => s.Group)
+                .ThenInclude(n => n.Steps)
+                    .ThenInclude(s => s.TaskBank)
+                        .ThenInclude(s => s.Group)
             .FirstOrDefaultAsync();
 
         if (schema is null)
