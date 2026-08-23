@@ -9,7 +9,7 @@
 | **Document version** | 1.0 |
 | **Date** | 2026-08-11 |
 | **Prepared from** | Reverse-engineered from the implemented solution, validated against source code |
-| **Companion document** | `docs/SYSTEM_DESCRIPTION.md` (technical system description) |
+| **Companion documents** | `docs/PROJECT_BRIEF.md` (executive brief), `docs/PRD.md` (product requirements), `docs/SYSTEM_DESCRIPTION.md` (technical system description) |
 | **Status** | For review |
 
 ### Document control
