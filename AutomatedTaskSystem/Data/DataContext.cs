@@ -80,6 +80,42 @@ public class DataContext : DbContext
             .HasOne(lo => lo.Schema)
             .WithMany(s => s.LearningObjectives);
 
+        modelBuilder.Entity<DailyReportNoteOverride>()
+            .HasIndex(o => o.TaskId)
+            .IsUnique();
+
+        modelBuilder.Entity<DailyReportNoteOverride>()
+            .HasOne(o => o.Task)
+            .WithMany()
+            .HasForeignKey(o => o.TaskId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Daily Report hot-path indexes
+        modelBuilder.Entity<TaskActivity>()
+            .HasIndex(a => new { a.Type, a.TimeStamp })
+            .IncludeProperties(a => a.TaskId)
+            .HasDatabaseName("IX_TaskActivities_Type_TimeStamp_TaskId");
+
+        modelBuilder.Entity<Models.Task>()
+            .HasIndex(t => new { t.Archived, t.GroupId, t.CreatedAt })
+            .IncludeProperties(t => new
+            {
+                t.LearningObjectiveId,
+                t.StepId,
+                t.UserId,
+                t.Status,
+                t.IsRollback,
+                t.Priority,
+                t.Name
+            })
+            .HasDatabaseName("IX_Tasks_Archived_GroupId_CreatedAt");
+
+        modelBuilder.Entity<Rollback>()
+            .HasIndex(r => new { r.TaskId, r.Id })
+            .IsDescending(false, true)
+            .IncludeProperties(r => new { r.Clarification, r.ToTaskId })
+            .HasDatabaseName("IX_Rollbacks_TaskId_Id");
+
         modelBuilder
             .Entity<Models.Task>()
             .HasOne(t => t.Group)
@@ -163,6 +199,13 @@ public class DataContext : DbContext
             .HasOne(p => p.Step)
             .WithMany()
             .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder
+            .Entity<RollbackAttachment>()
+            .HasOne(a => a.Rollback)
+            .WithMany(r => r.Attachments)
+            .HasForeignKey(a => a.RollbackId)
+            .OnDelete(DeleteBehavior.Cascade);
         //modelBuilder
         //    .Entity<Sprint>()
         //    .HasMany(x => x.Tasks)
@@ -307,6 +350,7 @@ public class DataContext : DbContext
     public DbSet<LearningObjective> LearningObjectives => Set<LearningObjective>();
     public DbSet<Rollback> Rollbacks => Set<Rollback>();
     public DbSet<RollbackIssue> RollbackIssues => Set<RollbackIssue>();
+    public DbSet<RollbackAttachment> RollbackAttachments => Set<RollbackAttachment>();
     public DbSet<Sprint> Sprints => Set<Sprint>();
     public DbSet<SectionGroup> SectionGroups => Set<SectionGroup>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
@@ -317,4 +361,5 @@ public class DataContext : DbContext
     public DbSet<Opinion> Opinions => Set<Opinion>();
     public DbSet<SprintLearningObjective> SprintLearningObjectives => Set<SprintLearningObjective>();
 	    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<DailyReportNoteOverride> DailyReportNoteOverrides => Set<DailyReportNoteOverride>();
 }

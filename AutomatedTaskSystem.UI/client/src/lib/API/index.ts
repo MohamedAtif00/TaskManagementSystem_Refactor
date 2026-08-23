@@ -8,6 +8,8 @@ import LEAVE from "./Leave";
 import PERMISSION from "./Permission";
 import WORK_FROM_HOME from "./workFromHome";
 import NOTIFICATIONS from "./Notifications";
+import DAILY_REPORT from "./dailyReport";
+import TASK_LOGGER from "./taskLogger";
 
 
 export const url = "/api";
@@ -38,8 +40,10 @@ const API = {
     SPRINTS,
     LEAVE,
     PERMISSION,
-    WORK_FROM_HOME,
-    NOTIFICATIONS
+	    WORK_FROM_HOME,
+	    NOTIFICATIONS,
+    DAILY_REPORT,
+    TASK_LOGGER,
 };
 
 export default API;

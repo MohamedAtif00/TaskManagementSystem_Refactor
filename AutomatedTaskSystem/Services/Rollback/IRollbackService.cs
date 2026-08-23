@@ -12,6 +12,7 @@ public interface IRollbackService
         int ToTaskId,
         int UserId,
         string? Clarification,
-        List<RollbackLogDto> logs
+        List<RollbackLogDto> logs,
+        List<IFormFile>? attachments = null
     );
 }

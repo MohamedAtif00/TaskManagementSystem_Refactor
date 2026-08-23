@@ -1,0 +1,12 @@
+{
+  "name": "task-management-system",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n api,ui -c blue,green \"dotnet run --project AutomatedTaskSystem/AutomatedTaskSystem.csproj\" \"npm run dev --prefix AutomatedTaskSystem.UI/client\"",
+    "dev:api": "dotnet run --project AutomatedTaskSystem/AutomatedTaskSystem.csproj",
+    "dev:ui": "npm run dev --prefix AutomatedTaskSystem.UI/client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

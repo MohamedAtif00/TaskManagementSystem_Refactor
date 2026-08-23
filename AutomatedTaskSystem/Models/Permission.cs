@@ -15,7 +15,7 @@
             public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
             public DateTime? UpdatedAt { get; set; } = null;
             public PermissionStatusEnum Status { get; set; } = PermissionStatusEnum.Pending;
-        public int UserId { get; set; }
+            public int UserId { get; set; }
             public User User { get; set; }
             public List<Opinion> Opinions { get; set; } = new();
             

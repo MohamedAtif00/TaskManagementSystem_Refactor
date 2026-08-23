@@ -152,6 +152,40 @@ namespace AutomatedTaskSystem.Migrations
                     b.ToTable("CurriculumTerms", (string)null);
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.DailyReportNoteOverride", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UpdatedById")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TaskId")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedById");
+
+                    b.ToTable("DailyReportNoteOverrides");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.Group", b =>
                 {
                     b.Property<int>("Id")
@@ -556,13 +590,53 @@ namespace AutomatedTaskSystem.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TaskId");
-
                     b.HasIndex("ToTaskId");
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("TaskId", "Id")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("IX_Rollbacks_TaskId_Id");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("TaskId", "Id"), new[] { "Clarification", "ToTaskId" });
+
                     b.ToTable("Rollbacks");
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.RollbackAttachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("FileSize")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("RollbackId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RollbackId");
+
+                    b.ToTable("RollbackAttachments");
                 });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.RollbackIssue", b =>
@@ -918,6 +992,11 @@ namespace AutomatedTaskSystem.Migrations
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("Archived", "GroupId", "CreatedAt")
+                        .HasDatabaseName("IX_Tasks_Archived_GroupId_CreatedAt");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Archived", "GroupId", "CreatedAt"), new[] { "LearningObjectiveId", "StepId", "UserId", "Status", "IsRollback", "Priority", "Name" });
+
                     b.ToTable("Tasks");
                 });
 
@@ -959,6 +1038,11 @@ namespace AutomatedTaskSystem.Migrations
                     b.HasIndex("TaskId");
 
                     b.HasIndex("TaskSecondaryId");
+
+                    b.HasIndex("Type", "TimeStamp")
+                        .HasDatabaseName("IX_TaskActivities_Type_TimeStamp_TaskId");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Type", "TimeStamp"), new[] { "TaskId" });
 
                     b.ToTable("TaskActivities");
                 });
@@ -1401,6 +1485,25 @@ namespace AutomatedTaskSystem.Migrations
                     b.Navigation("Project");
                 });
 
+            modelBuilder.Entity("AutomatedTaskSystem.Models.DailyReportNoteOverride", b =>
+                {
+                    b.HasOne("AutomatedTaskSystem.Models.Task", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AutomatedTaskSystem.Models.User", "UpdatedBy")
+                        .WithMany()
+                        .HasForeignKey("UpdatedById")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Task");
+
+                    b.Navigation("UpdatedBy");
+                });
+
             modelBuilder.Entity("AutomatedTaskSystem.Models.LearningObjective", b =>
                 {
                     b.HasOne("AutomatedTaskSystem.Models.Lesson", "Lesson")
@@ -1539,6 +1642,17 @@ namespace AutomatedTaskSystem.Migrations
                     b.Navigation("ToTask");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("AutomatedTaskSystem.Models.RollbackAttachment", b =>
+                {
+                    b.HasOne("AutomatedTaskSystem.Models.Rollback", "Rollback")
+                        .WithMany("Attachments")
+                        .HasForeignKey("RollbackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Rollback");
                 });
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.RollbackIssue", b =>
@@ -1916,6 +2030,8 @@ namespace AutomatedTaskSystem.Migrations
 
             modelBuilder.Entity("AutomatedTaskSystem.Models.Rollback", b =>
                 {
+                    b.Navigation("Attachments");
+
                     b.Navigation("RollbackIssues");
                 });
 

@@ -1254,7 +1254,7 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(int taskId, int stepId, List<RollbackLogDto> logs, string? clarification)
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(int taskId, int stepId, List<RollbackLogDto> logs, string? clarification, List<IFormFile>? attachments = null)
     {
         var user = await _authService.GetAuthedUser();
         if (user is null)
@@ -1364,7 +1364,8 @@ public class TaskService : ITaskService
                 ToTaskId: foundTask.Id,
                 UserId: user.Id,
                 Clarification: clarification,
-                logs: logs
+                logs: logs,
+                attachments: attachments
             );
 
             if (RollbackLog.Error)
@@ -1435,7 +1436,8 @@ public class TaskService : ITaskService
                 ToTaskId: newTask.Id,
                 UserId: user.Id,
                 Clarification: null,
-                logs: logs
+                logs: logs,
+                attachments: attachments
             );
 
             if (RollbackLog.Error)

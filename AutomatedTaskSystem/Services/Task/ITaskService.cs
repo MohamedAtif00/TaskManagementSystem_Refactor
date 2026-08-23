@@ -32,7 +32,8 @@ public interface ITaskService
         int taskId,
         int stepId,
         List<RollbackLogDto> logs,
-        string? clarification
+        string? clarification,
+        List<IFormFile>? attachments = null
     );
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ProceedTask(int taskId);
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> CompleteTask(int taskId,bool forceComplete  = false);
