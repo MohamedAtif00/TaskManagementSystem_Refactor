@@ -309,7 +309,7 @@ const TASKS = {
 	}: {
 		taskId: string | string[] | number;
 		stepId: number;
-		clarification?: string;
+		clarification: string;
 		logs: {
 			stepId: number;
 			note: string;
@@ -324,7 +324,7 @@ const TASKS = {
 			}
 			const form = new FormData();
 			form.append("StepId", String(stepId));
-			if (clarification) form.append("Clarification", clarification);
+			form.append("Clarification", clarification);
 			logs.forEach((l, i) => {
 				form.append(`Logs[${i}].StepId`, String(l.stepId));
 				form.append(`Logs[${i}].Note`, l.note ?? "");

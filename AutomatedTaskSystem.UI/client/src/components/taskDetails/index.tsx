@@ -325,13 +325,16 @@ const TaskDetails = ({ refreshTasks ,type}: Props) => {
 												},
 											}}
 											className="flex gap-2"
+											title="View rollback history"
 										>
-											<div
-												className="px-4 rounded-full bg-blue-500 text-white flex items-center gap-2"
-												title="Rollbacks"
-											>
+											<div className="px-3 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-solid border-orange-200 hover:bg-orange-100 flex items-center gap-1.5 text-sm font-medium">
 												<ArrowPathRoundedSquareIcon className="w-4 h-4" />
-												<div>{task.issuesCreated}</div>
+												<span>
+													{task.issuesCreated}{" "}
+													{task.issuesCreated === 1
+														? "rollback"
+														: "rollbacks"}
+												</span>
 											</div>
 										</Link>
 									) : (
@@ -344,20 +347,26 @@ const TaskDetails = ({ refreshTasks ,type}: Props) => {
 												},
 											}}
 											className="flex gap-2"
+											title="View rollback history"
 										>
-											<div
-												className="px-4 rounded-full bg-blue-500 text-white flex items-center gap-2"
-												title="Rollbacks"
-											>
+											<div className="px-3 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-solid border-orange-200 hover:bg-orange-100 flex items-center gap-1.5 text-sm font-medium">
 												<ArrowPathRoundedSquareIcon className="w-4 h-4" />
-												<div>{task.issuesRecieved}</div>
+												<span>
+													{task.issuesRecieved}{" "}
+													{task.issuesRecieved === 1
+														? "rollback"
+														: "rollbacks"}
+												</span>
 											</div>
 											<div
-												className="px-4 rounded-full bg-yellow-500 text-white flex items-center gap-2"
+												className="px-3 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-solid border-amber-200 flex items-center gap-1.5 text-sm font-medium"
 												title="Notes"
 											>
 												<PencilSquareIcon className="w-4 h-4" />
-												<div>{task.notes}</div>
+												<span>
+													{task.notes}{" "}
+													{task.notes === 1 ? "note" : "notes"}
+												</span>
 											</div>
 										</Link>
 									)}

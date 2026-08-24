@@ -1262,6 +1262,16 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Invalid auth" }
             );
 
+        if (string.IsNullOrWhiteSpace(clarification))
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Reason is required" }
+            );
+
+        if (logs is null || logs.Count == 0)
+            return new BadRequestObjectResult(
+                new BaseResponseService { Error = true, Message = "Problem type is required" }
+            );
+
         var task = await _context.Tasks
             .Include(t => t.LearningObjective)
             .Where(t => t.Id == taskId && !t.Archived)
@@ -1435,7 +1445,7 @@ public class TaskService : ITaskService
                 FromTaskId: task.Id,
                 ToTaskId: newTask.Id,
                 UserId: user.Id,
-                Clarification: null,
+                Clarification: clarification,
                 logs: logs,
                 attachments: attachments
             );

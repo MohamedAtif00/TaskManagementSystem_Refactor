@@ -42,6 +42,12 @@ public class RollbackService : IRollbackService
         if (user is null)
             return new BaseResponseService { Error = true, Message = "Unauthorized" };
 
+        if (string.IsNullOrWhiteSpace(Clarification))
+            return new BaseResponseService { Error = true, Message = "Reason is required" };
+
+        if (logs is null || logs.Count == 0)
+            return new BaseResponseService { Error = true, Message = "Problem type is required" };
+
         // Reject every invalid file before anything is written to disk or the database,
         // so a bad attachment never leaves a half applied rollback behind.
         var attachmentError = _attachmentHelper.ValidateAttachments(attachments);

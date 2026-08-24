@@ -8,8 +8,9 @@ import {
     ExclamationCircleIcon,
     ForwardIcon,
     ArrowUturnDownIcon,
+    ArrowUturnLeftIcon,
 } from "@heroicons/react/24/outline";
-import { PlayIcon, CheckIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
+import { PlayIcon, CheckIcon } from "@heroicons/react/24/solid";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import { ITask } from ".";
@@ -253,10 +254,14 @@ const TaskAction: React.FC<Props> = ({
                                     taskId: taskId,
                                 },
                             }}
+                            title="Send this task back to an earlier step"
                         >
-                            <button className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-orange-400 bg-orange-500 text-white">
-                                <ArrowPathIcon className="w-6 h-6" />
-                                <div>Roll Back</div>
+                            <button
+                                type="button"
+                                className="flex gap-1 px-3 py-1 rounded border-2 border-solid border-orange-400 bg-orange-500 text-white"
+                            >
+                                <ArrowUturnLeftIcon className="w-6 h-6" />
+                                <div>Roll back</div>
                             </button>
                         </Link>
                     )}
