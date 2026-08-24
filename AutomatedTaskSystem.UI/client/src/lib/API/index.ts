@@ -12,8 +12,8 @@ import DAILY_REPORT from "./dailyReport";
 import TASK_LOGGER from "./taskLogger";
 
 
-// export const url = "/api";
-export const url = "http://localhost:5238";
+export const url = "/api";
+// export const url = "http://localhost:5238";
 //  export const url = process.env.REACT_APP_API_URL || "/api";
 
 export interface BasicInfo {

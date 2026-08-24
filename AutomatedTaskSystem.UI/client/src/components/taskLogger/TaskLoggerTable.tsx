@@ -51,7 +51,7 @@ const TaskLoggerTable = ({
                             ? "Loading..."
                             : dupMode
                               ? "Hide Duplicates"
-                              : "Detect Duplicate LO Names"}
+                              : "Detect Duplicate LO Codes"}
                     </button>
                     <button
                         type="button"
@@ -72,7 +72,7 @@ const TaskLoggerTable = ({
                 <table className="min-w-full border text-sm">
                     <thead className="bg-gray-100 border-b">
                         <tr>
-                            {["Date", "Member", "LO Name", "Subject", "Task", "Time", "Expected", "Points", "Status", "Note"].map(
+                            {["Date", "Member", "LO Code", "Subject", "Task", "Time", "Expected", "Points", "Status", "Note"].map(
                                 (h) => (
                                     <th key={h} className="p-2 text-left font-semibold whitespace-nowrap">
                                         {h}

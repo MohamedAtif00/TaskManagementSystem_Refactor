@@ -32,7 +32,7 @@ const DailyReportTable = ({ rows }: Props) => {
                             "Subjects",
                             "Grade",
                             "Task Name",
-                            "LO Name",
+                            "LO Code",
                             "LO Type",
                             "Assigned To",
                             "Status",
