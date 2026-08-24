@@ -24,7 +24,6 @@ const DailyReportPage = () => {
         setPageSize,
         setProblemTypes,
         resetFilters,
-        updateNotes,
         fetchAllRowsForExport,
         refetch,
     } = useDailyReport();
@@ -81,7 +80,7 @@ const DailyReportPage = () => {
                                 <Loader />
                             </div>
                         )}
-                        <DailyReportTable rows={rows} onUpdateNotes={updateNotes} />
+                        <DailyReportTable rows={rows} />
                         <DailyReportPagination
                             pagination={pagination}
                             loading={loading}

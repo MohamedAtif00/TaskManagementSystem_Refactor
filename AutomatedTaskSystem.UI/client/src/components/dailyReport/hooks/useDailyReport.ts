@@ -179,18 +179,6 @@ export function useDailyReport() {
 
     const resetFilters = () => setFilters(createEmptyFilters());
 
-    const updateNotes = async (taskId: number, notes: string) => {
-        const res = await API.DAILY_REPORT.PATCH_NOTES(taskId, notes);
-        const { error: isError } = unwrapResponse(res);
-        if (!isError) {
-            setRows((prev) =>
-                prev.map((row) => (row.taskId === taskId ? { ...row, notes } : row))
-            );
-            return true;
-        }
-        return false;
-    };
-
     const fetchAllRowsForExport = async () => {
         const raw = await API.DAILY_REPORT.GET_ROWS({
             ...filters,
@@ -220,7 +208,6 @@ export function useDailyReport() {
         setPageSize,
         setProblemTypes,
         resetFilters,
-        updateNotes,
         fetchAllRowsForExport,
         refetch: () => fetchData(filters),
     };

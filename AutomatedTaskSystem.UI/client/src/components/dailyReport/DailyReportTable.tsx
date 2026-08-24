@@ -1,4 +1,3 @@
-import { useState, useCallback } from "react";
 import { STATUS_COLORS } from "./constants";
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -10,25 +9,9 @@ const PRIORITY_STYLES: Record<string, string> = {
 
 interface Props {
     rows: DailyReportRow[];
-    onUpdateNotes: (taskId: number, notes: string) => Promise<boolean>;
 }
 
-const DailyReportTable = ({ rows, onUpdateNotes }: Props) => {
-    const [editingNotes, setEditingNotes] = useState<Record<number, string>>({});
-    const [savingId, setSavingId] = useState<number | null>(null);
-
-    const handleNotesBlur = useCallback(
-        async (taskId: number, originalNotes: string) => {
-            const newNotes = editingNotes[taskId] ?? originalNotes;
-            if (newNotes === originalNotes) return;
-
-            setSavingId(taskId);
-            await onUpdateNotes(taskId, newNotes);
-            setSavingId(null);
-        },
-        [editingNotes, onUpdateNotes]
-    );
-
+const DailyReportTable = ({ rows }: Props) => {
     if (rows.length === 0) {
         return (
             <div className="bg-white rounded-3xl p-12 text-center text-slate-500 italic shadow-sm">
@@ -100,20 +83,8 @@ const DailyReportTable = ({ rows, onUpdateNotes }: Props) => {
                                     {row.priority || "None"}
                                 </span>
                             </td>
-                            <td className="px-2 py-2 text-center min-w-[140px]">
-                                <input
-                                    type="text"
-                                    className="w-full px-2 py-1 rounded-full border border-slate-200 text-xs"
-                                    value={editingNotes[row.taskId] ?? row.notes}
-                                    disabled={savingId === row.taskId}
-                                    onChange={(e) =>
-                                        setEditingNotes((prev) => ({
-                                            ...prev,
-                                            [row.taskId]: e.target.value,
-                                        }))
-                                    }
-                                    onBlur={() => handleNotesBlur(row.taskId, row.notes)}
-                                />
+                            <td className="px-2 py-2 text-center min-w-[140px] max-w-xs">
+                                {row.notes || "-"}
                             </td>
                         </tr>
                     ))}
