@@ -1,6 +1,6 @@
 import styles from "../styles.module.scss";
 import Backdrop from "../backdrop";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import FormField from "../field";
 import { useRouter } from "next/router";
 import { useAppDispatch, useAppSelector } from "../../../app/hooks";
@@ -25,7 +25,7 @@ const AddLearningObjective = ({
         tag: string;
         template: string;
         environment: string;
-    }) => void;
+    }) => void | Promise<boolean | void>;
 }) => {
     const [submittable, setSubmittable] = useState(false);
     const [name, setName] = useState("");
@@ -34,6 +34,8 @@ const AddLearningObjective = ({
     const [environment, setEnvironment] = useState("");
     const [schema, setSchema] = useState<BasicInfo>();
     const [active, setActive] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const submittingRef = useRef(false);
     const router = useRouter();
     const schemas = useAppSelector((s) => s.schemasSlice);
     const dispatch = useAppDispatch();
@@ -63,13 +65,32 @@ const AddLearningObjective = ({
             setTemplate("");
             setEnvironment("");
             setSchema(undefined);
+            submittingRef.current = false;
+            setIsSubmitting(false);
         }
     }, [router]);
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (submittable && schema)
-            submit({ environment, name, schemaId: schema.id, tag, template });
+        if (!submittable || !schema || submittingRef.current) return;
+        submittingRef.current = true;
+        setIsSubmitting(true);
+        try {
+            const ok = await submit({
+                environment,
+                name,
+                schemaId: schema.id,
+                tag,
+                template,
+            });
+            if (ok === false) {
+                submittingRef.current = false;
+                setIsSubmitting(false);
+            }
+        } catch {
+            submittingRef.current = false;
+            setIsSubmitting(false);
+        }
     };
 
     if (active)
@@ -114,10 +135,11 @@ const AddLearningObjective = ({
                         <div>
                             <input
                                 type="submit"
-                                value="Add"
+                                value={isSubmitting ? "Adding..." : "Add"}
+                                disabled={isSubmitting || !submittable}
                                 className={[
                                     styles.submit,
-                                    submittable ? "" : styles.inactive,
+                                    submittable && !isSubmitting ? "" : styles.inactive,
                                 ].join(" ")}
                             />
                         </div>

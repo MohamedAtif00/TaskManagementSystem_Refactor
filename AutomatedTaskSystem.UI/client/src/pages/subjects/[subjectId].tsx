@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Head from "next/head";
 import { useRouter } from "next/router";
@@ -228,6 +228,11 @@ const Project = () => {
     const [activeUnit, setActiveUnit] = useState<Unit>();
     const [activeLesson, setActiveLesson] = useState<Lesson>();
     const [activeLO, setActiveLO] = useState<LearningObjective>();
+    const addInFlightRef = useRef({
+        unit: false,
+        lesson: false,
+        learningObjective: false,
+    });
 
     const backToFolderTreeHref = useMemo(() => {
         const rawYear = router.query.rootProjectId;
@@ -310,22 +315,27 @@ const Project = () => {
             },
         },
         unit: {
-            add: (name: string) => {
-                if (project) {
-                    API.PROJECTS.UNITS.ADD({
+            add: async (name: string) => {
+                if (!project || addInFlightRef.current.unit) return false;
+                addInFlightRef.current.unit = true;
+                try {
+                    const res = await API.PROJECTS.UNITS.ADD({
                         name,
                         projectId: project.id,
-                    }).then((res) => {
-                        if (res && !res.error) {
-                            setProject((ps) => {
-                                return {
-                                    ...ps!,
-                                    units: [...ps!.units, res.data],
-                                };
-                            });
-                            router.push(`/subjects/${router.query.subjectId}`);
-                        }
                     });
+                    if (res && !res.error) {
+                        setProject((ps) => {
+                            return {
+                                ...ps!,
+                                units: [...ps!.units, res.data],
+                            };
+                        });
+                        await router.push(`/subjects/${router.query.subjectId}`);
+                        return true;
+                    }
+                    return false;
+                } finally {
+                    addInFlightRef.current.unit = false;
                 }
             },
             remove: (id: number) => {
@@ -369,31 +379,36 @@ const Project = () => {
             },
         },
         lesson: {
-            add: (name: string) => {
+            add: async (name: string) => {
                 const unitId = router.query.unitId;
-                if (unitId) {
-                    const id = parseInt(unitId.toString());
-                    !isNaN(id) &&
-                        API.PROJECTS.UNITS.LESSONS.ADD({
-                            name,
-                            unitId: id,
-                        }).then((res) => {
-                            if (res) {
-                                setProject((ps) => {
-                                    const units: Unit[] = [];
-                                    ps!.units.forEach((u) => {
-                                        if (u.id == id) {
-                                            u.lessons.push(res);
-                                        }
-                                        units.push(u);
-                                    });
-                                    return { ...ps!, units };
-                                });
-                                router.push(
-                                    `/subjects/${router.query.subjectId}`
-                                );
-                            }
+                if (!unitId || addInFlightRef.current.lesson) return false;
+                const id = parseInt(unitId.toString());
+                if (isNaN(id)) return false;
+                addInFlightRef.current.lesson = true;
+                try {
+                    const res = await API.PROJECTS.UNITS.LESSONS.ADD({
+                        name,
+                        unitId: id,
+                    });
+                    if (res) {
+                        setProject((ps) => {
+                            const units: Unit[] = [];
+                            ps!.units.forEach((u) => {
+                                if (u.id == id) {
+                                    u.lessons.push(res);
+                                }
+                                units.push(u);
+                            });
+                            return { ...ps!, units };
                         });
+                        await router.push(
+                            `/subjects/${router.query.subjectId}`
+                        );
+                        return true;
+                    }
+                    return false;
+                } finally {
+                    addInFlightRef.current.lesson = false;
                 }
             },
             edit: (id: number, name: string) => {
@@ -440,7 +455,7 @@ const Project = () => {
             },
         },
         learningObjective: {
-            add: ({
+            add: async ({
                 name,
                 schemaId,
                 environment,
@@ -454,33 +469,30 @@ const Project = () => {
                 environment: string;
             }) => {
                 const lessonId = router.query.lessonId;
-                if (lessonId) {
-                    const id = parseInt(lessonId.toString());
-                    API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.CREATE({
-                        lessonId: id,
-                        name,
-                        schemaId,
-                        environment,
-                        tag,
-                        template,
-                    }).then((res) => {
-                        if (res) {
-                            // setProject((ps) => {
-                            //     const units: Unit[] = [];
-                            //     ps!.units.forEach((u) => {
-                            //         u.lessons.forEach((l) => {
-                            //             if (l.id == id) {
-                            //                 l.learningObjectives.push(res);
-                            //             }
-                            //         });
-                            //         units.push(u);
-                            //     });
-                            //     return { ...ps!, units };
-                            // });
-                            //
-                            router.push(`/subjects/${project!.id}`);
-                        }
-                    });
+                if (!lessonId || addInFlightRef.current.learningObjective)
+                    return false;
+                const id = parseInt(lessonId.toString());
+                if (isNaN(id)) return false;
+                addInFlightRef.current.learningObjective = true;
+                try {
+                    const res =
+                        await API.PROJECTS.UNITS.LESSONS.LEARNING_OBJECTIVES.CREATE(
+                            {
+                                lessonId: id,
+                                name,
+                                schemaId,
+                                environment,
+                                tag,
+                                template,
+                            }
+                        );
+                    if (res) {
+                        await router.push(`/subjects/${project!.id}`);
+                        return true;
+                    }
+                    return false;
+                } finally {
+                    addInFlightRef.current.learningObjective = false;
                 }
             },
             edit: async (params: LearningObjective) => {

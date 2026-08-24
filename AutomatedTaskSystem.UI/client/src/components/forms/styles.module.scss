@@ -180,9 +180,11 @@
         font-size: 1rem;
         cursor: pointer;
 
-        &.inactive {
+        &.inactive,
+        &:disabled {
             cursor: default;
             background-color: #eaeef4;
+            pointer-events: none;
         }
     }
 

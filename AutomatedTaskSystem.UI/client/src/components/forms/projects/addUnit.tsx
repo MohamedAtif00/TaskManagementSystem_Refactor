@@ -1,6 +1,6 @@
 import styles from "../styles.module.scss";
 import Backdrop from "../backdrop";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import FormField from "../field";
 import { useRouter } from "next/router";
 
@@ -9,17 +9,23 @@ const AddUnit = ({
 	submit,
 }: {
 	path: string;
-	submit: (name: string) => void;
+	submit: (name: string) => void | Promise<boolean | void>;
 }) => {
 	const [submittable, setSubmittable] = useState(false);
 	const [name, setName] = useState("");
 	const [active, setActive] = useState(false);
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const submittingRef = useRef(false);
 	const router = useRouter();
 
 	useEffect(() => {
 		const _active = router.query.form === "unit";
 		setActive(_active);
-		if (!_active) setName("");
+		if (!_active) {
+			setName("");
+			submittingRef.current = false;
+			setIsSubmitting(false);
+		}
 	}, [router]);
 
 	useEffect(() => {
@@ -28,9 +34,21 @@ const AddUnit = ({
 		} else setSubmittable(true);
 	}, [name]);
 
-	const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
-		if (submittable) submit(name);
+		if (!submittable || submittingRef.current) return;
+		submittingRef.current = true;
+		setIsSubmitting(true);
+		try {
+			const ok = await submit(name);
+			if (ok === false) {
+				submittingRef.current = false;
+				setIsSubmitting(false);
+			}
+		} catch {
+			submittingRef.current = false;
+			setIsSubmitting(false);
+		}
 	};
 
 	if (active)
@@ -48,10 +66,11 @@ const AddUnit = ({
 						<div>
 							<input
 								type="submit"
-								value="Add"
+								value={isSubmitting ? "Adding..." : "Add"}
+								disabled={isSubmitting || !submittable}
 								className={[
 									styles.submit,
-									submittable ? "" : styles.inactive,
+									submittable && !isSubmitting ? "" : styles.inactive,
 								].join(" ")}
 							/>
 						</div>
