@@ -53,7 +53,7 @@ public class ProjectAnalyticsController : ControllerBase
     }
 
     [HttpGet("learning-objectives-progress")]
-    public async Task<IActionResult> GetLearningObjectivesProgress(int subjectId, [FromQuery] int? timePeriod = null, [FromQuery] int? group = null)
+    public async Task<IActionResult> GetLearningObjectivesProgress(int subjectId, [FromQuery] int? timePeriod = null, [FromQuery] int? group = null, [FromQuery] bool inProgressOnly = false)
     {
         try
         {
@@ -61,7 +61,7 @@ public class ProjectAnalyticsController : ControllerBase
             if (timePeriod.HasValue && Enum.IsDefined(typeof(TimePeriodFilter), timePeriod.Value))
                 filter = (TimePeriodFilter)timePeriod.Value;
 
-            var result = await _projectAnalyticsService.GetProjectLearningObjectivesProgressAsync(subjectId, filter, group);
+            var result = await _projectAnalyticsService.GetProjectLearningObjectivesProgressAsync(subjectId, filter, group, inProgressOnly);
 
             if (result.Error)
             {
@@ -75,6 +75,38 @@ public class ProjectAnalyticsController : ControllerBase
         catch (Exception ex)
         {
             Console.WriteLine($"Error in GetLearningObjectivesProgress (project): {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+            return StatusCode(500, new BaseResponseService
+            {
+                Error = true,
+                Message = $"An unexpected server error occurred: {ex.Message}"
+            });
+        }
+    }
+
+    [HttpGet("in-progress-tasks")]
+    public async Task<IActionResult> GetInProgressTasks(int subjectId, [FromQuery] int? timePeriod = null, [FromQuery] int? group = null)
+    {
+        try
+        {
+            TimePeriodFilter? filter = null;
+            if (timePeriod.HasValue && Enum.IsDefined(typeof(TimePeriodFilter), timePeriod.Value))
+                filter = (TimePeriodFilter)timePeriod.Value;
+
+            var result = await _projectAnalyticsService.GetProjectInProgressTasksAsync(subjectId, filter, group);
+
+            if (result.Error)
+            {
+                if (result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                    return NotFound(result);
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in GetInProgressTasks (project): {ex.Message}");
             Console.WriteLine(ex.StackTrace);
             return StatusCode(500, new BaseResponseService
             {

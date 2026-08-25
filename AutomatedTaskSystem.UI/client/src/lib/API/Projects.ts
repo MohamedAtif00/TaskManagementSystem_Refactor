@@ -321,18 +321,23 @@ const PROJECTS = {
             return false;
         }
     },
-    GET_PROJECT_LO_PROGRESS: async (projectId: string | string[], timePeriod?: number, group?: number) => {
+    GET_PROJECT_LO_PROGRESS: async (
+        projectId: string | string[],
+        timePeriod?: number,
+        group?: number,
+        inProgressOnly?: boolean
+    ) => {
         try {
             const pid = projectAnalyticsPathId(projectId);
             if (!pid) return false;
             const authHeader = authService.authHeader();
-            const queryParams = timePeriod ? `?timePeriod=${timePeriod}` : "";
-            const groupParam =
-                group !== undefined && group !== null
-                    ? `${queryParams ? "&" : "?"}group=${group}`
-                    : "";
+            const params = new URLSearchParams();
+            if (timePeriod) params.set("timePeriod", String(timePeriod));
+            if (group !== undefined && group !== null) params.set("group", String(group));
+            if (inProgressOnly) params.set("inProgressOnly", "true");
+            const qs = params.toString() ? `?${params.toString()}` : "";
             const res = await fetch(
-                `${url}/subjects/${pid}/analytics/learning-objectives-progress${queryParams}${groupParam}`,
+                `${url}/subjects/${pid}/analytics/learning-objectives-progress${qs}`,
                 { headers: { ...authHeader } }
             );
             const raw = await res.json();
@@ -351,6 +356,60 @@ const PROJECTS = {
                 return {
                     error: true,
                     message: raw?.message ?? raw?.Message ?? "Failed to fetch LO progress",
+                    data: undefined,
+                };
+            }
+            return {
+                error: false,
+                message: raw?.message ?? raw?.Message ?? "",
+                data: { data: list },
+            };
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
+    GET_PROJECT_IN_PROGRESS_TASKS: async (
+        projectId: string | string[],
+        timePeriod?: number,
+        group?: number
+    ) => {
+        try {
+            const pid = projectAnalyticsPathId(projectId);
+            if (!pid) return false;
+            const authHeader = authService.authHeader();
+            const params = new URLSearchParams();
+            if (timePeriod) params.set("timePeriod", String(timePeriod));
+            if (group !== undefined && group !== null) params.set("group", String(group));
+            const qs = params.toString() ? `?${params.toString()}` : "";
+            const res = await fetch(
+                `${url}/subjects/${pid}/analytics/in-progress-tasks${qs}`,
+                { headers: { ...authHeader } }
+            );
+            const raw = await res.json();
+            const error = raw?.error ?? raw?.Error;
+            const outer = raw?.data ?? raw?.Data;
+            const listRaw = outer?.data ?? outer?.Data ?? [];
+            const list = Array.isArray(listRaw)
+                ? listRaw.map((item: any) => ({
+                      id: item.id ?? item.Id,
+                      name: item.name ?? item.Name ?? "",
+                      status: item.status ?? item.Status ?? 0,
+                      statusName: item.statusName ?? item.StatusName ?? "",
+                      learningObjectiveId:
+                          item.learningObjectiveId ?? item.LearningObjectiveId,
+                      learningObjectiveName:
+                          item.learningObjectiveName ?? item.LearningObjectiveName ?? "",
+                      groupId: item.groupId ?? item.GroupId,
+                      groupName: item.groupName ?? item.GroupName ?? "",
+                      groupColor: item.groupColor ?? item.GroupColor ?? "#6b7280",
+                      assigneeName: item.assigneeName ?? item.AssigneeName ?? "",
+                  }))
+                : [];
+            if (!res.ok || error) {
+                return {
+                    error: true,
+                    message: raw?.message ?? raw?.Message ?? "Failed to fetch in-progress tasks",
                     data: undefined,
                 };
             }

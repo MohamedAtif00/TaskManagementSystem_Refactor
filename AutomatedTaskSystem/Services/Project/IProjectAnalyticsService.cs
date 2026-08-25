@@ -12,7 +12,13 @@ public interface IProjectAnalyticsService
     /// <summary>
     /// Project-level Learning Objectives progress chart data (same shape as sprint).
     /// </summary>
-    Task<ResponseService<ProjectLearningObjectivesProgressDto>> GetProjectLearningObjectivesProgressAsync(int projectId, TimePeriodFilter? timePeriod = null, int? groupId = null);
+    /// <param name="inProgressOnly">When true, only LOs that still have Backlog / To Do / Doing tasks (optionally for the selected group).</param>
+    Task<ResponseService<ProjectLearningObjectivesProgressDto>> GetProjectLearningObjectivesProgressAsync(int projectId, TimePeriodFilter? timePeriod = null, int? groupId = null, bool inProgressOnly = false);
+
+    /// <summary>
+    /// Tasks still in Backlog, To Do, or Doing for the project, optionally filtered by group and time period.
+    /// </summary>
+    Task<ResponseService<ProjectInProgressTasksDto>> GetProjectInProgressTasksAsync(int projectId, TimePeriodFilter? timePeriod = null, int? groupId = null);
 
     /// <summary>
     /// Project-level Learning Objectives table data (same columns as sprint).

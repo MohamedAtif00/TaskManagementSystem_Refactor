@@ -8,8 +8,9 @@ import { Box } from "@mui/material";
 import { LightDropdown } from "../../../../components/formComponents/LightDropdown";
 import { ProjectStatusData } from "../../../../components/charts/ProjectStatusChart";
 import ProjectOverview from "./overview";
+import ProjectLoProgress from "./lo-progress";
 
-type ChartView = "overview" | "progress";
+type ChartView = "overview" | "progress" | "loProgress";
 
 const Tab = ({
   label,
@@ -383,6 +384,11 @@ const ProjectChartsPage = () => {
               onClick={() => setActiveTab("overview")}
             />
             <Tab
+              label="LO Progress"
+              active={activeTab === "loProgress"}
+              onClick={() => setActiveTab("loProgress")}
+            />
+            <Tab
               label="Learning Objectives"
               active={activeTab === "progress"}
               onClick={() => setActiveTab("progress")}
@@ -408,6 +414,7 @@ const ProjectChartsPage = () => {
 
         <div className="mt-4">
           {activeTab === "overview" && <ProjectOverview />}
+          {activeTab === "loProgress" && <ProjectLoProgress />}
           {activeTab === "progress" && (
             <div className="bg-white p-6 rounded-lg shadow-sm">
               <h2 className="text-xl font-bold mb-4">Learning Objectives</h2>

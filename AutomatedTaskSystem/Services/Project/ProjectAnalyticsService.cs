@@ -347,7 +347,7 @@ LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = pl.Id;
         int NotStarted
     );
 
-    public async Task<ResponseService<ProjectLearningObjectivesProgressDto>> GetProjectLearningObjectivesProgressAsync(int subjectId, TimePeriodFilter? timePeriod = null, int? groupId = null)
+    public async Task<ResponseService<ProjectLearningObjectivesProgressDto>> GetProjectLearningObjectivesProgressAsync(int subjectId, TimePeriodFilter? timePeriod = null, int? groupId = null, bool inProgressOnly = false)
     {
         var response = new ResponseService<ProjectLearningObjectivesProgressDto>();
 
@@ -431,10 +431,22 @@ LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = pl.Id;
                     LEFT JOIN GroupTaskCounts gtc ON gtc.LearningObjectiveId = pl.Id
                     LEFT JOIN Completed c ON c.LearningObjectiveId = pl.Id
                     LEFT JOIN Actual a ON a.LearningObjectiveId = pl.Id
-                    WHERE (@groupId IS NULL OR EXISTS (
-                        SELECT 1 FROM Tasks t
-                        WHERE t.LearningObjectiveId = pl.Id AND t.Archived = 0 AND t.GroupId = @groupId
-                    ))
+                    WHERE (
+                        @inProgressOnly = 0 AND (
+                            @groupId IS NULL OR EXISTS (
+                                SELECT 1 FROM Tasks t
+                                WHERE t.LearningObjectiveId = pl.Id AND t.Archived = 0 AND t.GroupId = @groupId
+                            )
+                        )
+                    ) OR (
+                        @inProgressOnly = 1 AND EXISTS (
+                            SELECT 1 FROM Tasks t
+                            WHERE t.LearningObjectiveId = pl.Id AND t.Archived = 0
+                              AND t.Status IN (@backlog, @todo, @doing)
+                              AND (@groupId IS NULL OR t.GroupId = @groupId)
+                              AND (@startDate IS NULL OR (t.CreatedAt >= @startDate AND t.CreatedAt <= @endDate))
+                        )
+                    )
                     ORDER BY pl.Id;
                     """;
 
@@ -446,7 +458,11 @@ LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = pl.Id;
                     groupId,
                     startDate,
                     endDate,
-                    done = (int)TaskStatusEnum.Done
+                    inProgressOnly = inProgressOnly ? 1 : 0,
+                    done = (int)TaskStatusEnum.Done,
+                    backlog = (int)TaskStatusEnum.Backlog,
+                    todo = (int)TaskStatusEnum.ToDo,
+                    doing = (int)TaskStatusEnum.Doing
                 }
             )).ToList();
 
@@ -525,7 +541,7 @@ WHERE u.SubjectId = @subjectId
                 };
             }).ToList();
 
-            if (!groupId.HasValue && data.Count > 10)
+            if (!inProgressOnly && !groupId.HasValue && data.Count > 10)
                 data = data.Where(x => x.Value > 0).ToList();
 
             response.Data = new ProjectLearningObjectivesProgressDto { Data = data };
@@ -556,6 +572,116 @@ WHERE u.SubjectId = @subjectId
         int LearningObjectiveId,
         string? GroupName,
         string? ColorCode
+    );
+
+    public async Task<ResponseService<ProjectInProgressTasksDto>> GetProjectInProgressTasksAsync(int subjectId, TimePeriodFilter? timePeriod = null, int? groupId = null)
+    {
+        var response = new ResponseService<ProjectInProgressTasksDto>();
+
+        try
+        {
+            var (startDate, endDate) = GetDateRangeFromTimePeriod(timePeriod);
+            var projectExists = await _context.Subjects
+                .AsNoTracking()
+                .AnyAsync(p => p.Id == subjectId);
+
+            if (!projectExists)
+            {
+                response.Error = true;
+                response.Message = "Project not found.";
+                return response;
+            }
+
+            var connection = await GetOpenConnectionAsync();
+
+            const string tasksSql = """
+SELECT
+    t.Id,
+    t.Name,
+    t.Status,
+    lo.Id AS LearningObjectiveId,
+    lo.Name AS LearningObjectiveName,
+    t.GroupId,
+    g.Name AS GroupName,
+    g.ColorCode AS GroupColor,
+    usr.Name AS AssigneeName
+FROM Tasks t
+INNER JOIN LearningObjectives lo ON lo.Id = t.LearningObjectiveId
+INNER JOIN Lessons l ON l.Id = lo.LessonId AND l.Archived = 0
+INNER JOIN Units u ON u.Id = l.UnitId AND u.Archived = 0
+INNER JOIN Groups g ON g.Id = t.GroupId
+LEFT JOIN Users usr ON usr.Id = t.UserId
+WHERE u.SubjectId = @subjectId
+  AND lo.Archived = 0
+  AND LOWER(ISNULL(lo.Name, '')) NOT LIKE '%old%'
+  AND t.Archived = 0
+  AND t.Status IN (@backlog, @todo, @doing)
+  AND (@groupId IS NULL OR t.GroupId = @groupId)
+  AND (@startDate IS NULL OR (t.CreatedAt >= @startDate AND t.CreatedAt <= @endDate))
+ORDER BY lo.Name, t.Status, t.Name;
+""";
+
+            var rows = (await connection.QueryAsync<ProjectInProgressTaskRow>(
+                tasksSql,
+                new
+                {
+                    subjectId,
+                    groupId,
+                    startDate,
+                    endDate,
+                    backlog = (int)TaskStatusEnum.Backlog,
+                    todo = (int)TaskStatusEnum.ToDo,
+                    doing = (int)TaskStatusEnum.Doing
+                }
+            )).ToList();
+
+            static string StatusName(int status) => status switch
+            {
+                (int)TaskStatusEnum.Backlog => "Backlog",
+                (int)TaskStatusEnum.ToDo => "To Do",
+                (int)TaskStatusEnum.Doing => "Doing",
+                _ => "Unknown"
+            };
+
+            response.Data = new ProjectInProgressTasksDto
+            {
+                Data = rows.Select(r => new ProjectInProgressTaskDto
+                {
+                    Id = r.Id,
+                    Name = r.Name ?? "",
+                    Status = r.Status,
+                    StatusName = StatusName(r.Status),
+                    LearningObjectiveId = r.LearningObjectiveId,
+                    LearningObjectiveName = r.LearningObjectiveName ?? "",
+                    GroupId = r.GroupId,
+                    GroupName = r.GroupName ?? "",
+                    GroupColor = string.IsNullOrEmpty(r.GroupColor) ? "#6b7280" : r.GroupColor,
+                    AssigneeName = r.AssigneeName
+                }).ToList()
+            };
+            response.Message = "In-progress tasks retrieved successfully.";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in GetProjectInProgressTasksAsync: {ex.Message}");
+            Console.WriteLine(ex.StackTrace);
+            response.Error = true;
+            response.Message = $"An unexpected error occurred: {ex.Message}";
+        }
+
+        return response;
+    }
+
+    private sealed record ProjectInProgressTaskRow(
+        int Id,
+        string? Name,
+        int Status,
+        int LearningObjectiveId,
+        string? LearningObjectiveName,
+        int GroupId,
+        string? GroupName,
+        string? GroupColor,
+        string? AssigneeName
     );
 
     public async Task<ResponseService<ProjectLearningObjectivesTableDto>> GetProjectLearningObjectivesTableAsync(int subjectId)

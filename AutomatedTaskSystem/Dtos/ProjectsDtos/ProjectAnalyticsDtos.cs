@@ -45,3 +45,22 @@ public class ProjectLearningObjectivesTableDto
     public string ProjectName { get; set; } = string.Empty;
     public List<LearningObjectiveTableRowDto> Data { get; set; } = new();
 }
+
+public class ProjectInProgressTaskDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int Status { get; set; }
+    public string StatusName { get; set; } = string.Empty;
+    public int LearningObjectiveId { get; set; }
+    public string LearningObjectiveName { get; set; } = string.Empty;
+    public int GroupId { get; set; }
+    public string GroupName { get; set; } = string.Empty;
+    public string GroupColor { get; set; } = "#6b7280";
+    public string? AssigneeName { get; set; }
+}
+
+public class ProjectInProgressTasksDto
+{
+    public List<ProjectInProgressTaskDto> Data { get; set; } = new();
+}
