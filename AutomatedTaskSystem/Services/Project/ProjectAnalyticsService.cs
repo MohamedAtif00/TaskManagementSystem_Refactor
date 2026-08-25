@@ -386,7 +386,16 @@ LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = pl.Id;
                         INNER JOIN Nodes n ON n.SchemaId = pl.SchemaId AND n.Archived = 0
                         INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
                         LEFT JOIN TaskBank tb ON tb.Id = s.TaskBankId
+                        WHERE (@groupId IS NULL OR tb.GroupId = @groupId)
                         GROUP BY pl.Id
+                    ),
+                    GroupTaskCounts AS (
+                        SELECT t.LearningObjectiveId, GroupTaskCount = COUNT(1)
+                        FROM Tasks t
+                        INNER JOIN ProjectLOs pl ON pl.Id = t.LearningObjectiveId
+                        WHERE t.Archived = 0
+                          AND (@groupId IS NULL OR t.GroupId = @groupId)
+                        GROUP BY t.LearningObjectiveId
                     ),
                     FilteredTasks AS (
                         SELECT t.Id, t.LearningObjectiveId, t.Status
@@ -415,9 +424,11 @@ LEFT JOIN TaskAgg ta ON ta.LearningObjectiveId = pl.Id;
                         TotalExpectedTasks = ISNULL(e.TotalExpectedTasks, 0),
                         TotalExpectedDuration = ISNULL(e.TotalExpectedDuration, 0),
                         CompletedTasks = ISNULL(c.CompletedTasks, 0),
-                        TotalActualMinutes = ISNULL(a.TotalActualMinutes, 0)
+                        TotalActualMinutes = ISNULL(a.TotalActualMinutes, 0),
+                        GroupTaskCount = ISNULL(gtc.GroupTaskCount, 0)
                     FROM ProjectLOs pl
                     LEFT JOIN Expected e ON e.LearningObjectiveId = pl.Id
+                    LEFT JOIN GroupTaskCounts gtc ON gtc.LearningObjectiveId = pl.Id
                     LEFT JOIN Completed c ON c.LearningObjectiveId = pl.Id
                     LEFT JOIN Actual a ON a.LearningObjectiveId = pl.Id
                     WHERE (@groupId IS NULL OR EXISTS (
@@ -485,8 +496,14 @@ WHERE u.SubjectId = @subjectId
 
             var data = loRows.Select(r =>
             {
-                var completionPercentage = r.TotalExpectedTasks > 0
-                    ? Math.Min(100, (int)Math.Round((double)r.CompletedTasks / r.TotalExpectedTasks * 100))
+                // Group filter uses that group's schema steps (not the whole LO), so a
+                // finished GD step is ~100% for GD instead of ~16% of the full schema.
+                var expectedTasks = r.TotalExpectedTasks;
+                if (groupId.HasValue && expectedTasks == 0)
+                    expectedTasks = r.GroupTaskCount;
+
+                var completionPercentage = expectedTasks > 0
+                    ? Math.Min(100, (int)Math.Round((double)r.CompletedTasks / expectedTasks * 100))
                     : 0;
 
                 var status =
@@ -531,7 +548,8 @@ WHERE u.SubjectId = @subjectId
         int TotalExpectedTasks,
         int TotalExpectedDuration,
         int CompletedTasks,
-        double TotalActualMinutes
+        double TotalActualMinutes,
+        int GroupTaskCount
     );
 
     private sealed record ProjectLoPhaseRow(

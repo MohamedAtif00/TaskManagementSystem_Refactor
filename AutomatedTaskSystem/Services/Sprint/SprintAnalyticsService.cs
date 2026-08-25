@@ -386,15 +386,20 @@ namespace AutomatedTaskSystem.Services.Sprint
                         // Apply time period filtering to the group-filtered tasks
                         var filteredTasks = filterTasksByDate(groupFilteredTasks).ToList();
 
-                        // Get all steps from schema (excluding archived)
+                        // Get schema steps. When a group is selected, only that group's
+                        // TaskBank steps count as expected work (so status is not Delayed
+                        // just because the group owns a small share of the full LO).
                         var steps = lo.Schema?.Nodes?
                             .Where(node => !node.Archived)
                             .SelectMany(node => node.Steps ?? new List<Models.Step>())
                             .Where(step => !step.Archived)
+                            .Where(step => !groupId.HasValue || (step.TaskBank != null && step.TaskBank.GroupId == groupId.Value))
                             .ToList() ?? new List<Models.Step>();
 
                         // Calculate total expected tasks from schema steps count
                         var totalExpectedTasks = steps.Count;
+                        if (groupId.HasValue && totalExpectedTasks == 0)
+                            totalExpectedTasks = groupFilteredTasks.Count;
 
                         // Calculate total expected duration from TaskBank.Duration for all schema steps
                         var totalExpectedDuration = steps
