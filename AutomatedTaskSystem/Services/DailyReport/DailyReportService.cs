@@ -5,6 +5,7 @@ using AutomatedTaskSystem.Models.Enums.TaskActivityType;
 using AutomatedTaskSystem.Models.Enums.TaskPriority;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
+using AutomatedTaskSystem.Models.Enums;
 using AutomatedTaskSystem.Services.AuthService;
 using AutomatedTaskSystem.Services.ResponseService;
 using Dapper;
@@ -333,7 +334,7 @@ public class DailyReportService : IDailyReportService
             Subjects = StaticSubjects.ToList(),
             Grades = StaticGrades.ToList(),
             TaskNames = taskNames.Select(r => r.Value).ToList(),
-            ProblemTypes = [],
+            ProblemTypes = RollbackProblemTypes.All.ToList(),
             Priorities = StaticPriorities.ToList()
         };
     }

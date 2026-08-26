@@ -3,6 +3,7 @@ using AutomatedTaskSystem.Dtos.Tasks;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.AuthService;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums;
 using Microsoft.AspNetCore.Mvc;
 using AutomatedTaskSystem.Dtos.Common;
 using AutomatedTaskSystem.Helper;
@@ -34,6 +35,7 @@ public class RollbackService : IRollbackService
         int ToTaskId,
         int UserId,
         string? Clarification,
+        string problemType,
         List<RollbackLogDto> logs,
         List<IFormFile>? attachments = null
     )
@@ -45,8 +47,12 @@ public class RollbackService : IRollbackService
         if (string.IsNullOrWhiteSpace(Clarification))
             return new BaseResponseService { Error = true, Message = "Reason is required" };
 
-        if (logs is null || logs.Count == 0)
-            return new BaseResponseService { Error = true, Message = "Problem type is required" };
+        if (!RollbackProblemTypes.TryNormalizeMany(
+                string.IsNullOrWhiteSpace(problemType) ? [] : [problemType],
+                out var normalizedProblemType))
+            return new BaseResponseService { Error = true, Message = "Select at least one problem type" };
+
+        logs ??= new List<RollbackLogDto>();
 
         // Reject every invalid file before anything is written to disk or the database,
         // so a bad attachment never leaves a half applied rollback behind.
@@ -66,14 +72,6 @@ public class RollbackService : IRollbackService
         if (toTask is null)
             return new BaseResponseService { Error = true, Message = "To task is not found" };
 
-        List<int> stepIds = logs.Select(l => l.StepId).ToList();
-
-        var steps = await _context.Steps
-            .Where(s => stepIds.Contains(s.Id) && !s.Archived)
-            .ToListAsync();
-        if (steps.Count() != logs.Count())
-            return new BaseResponseService { Error = true, Message = "Steps are not found" };
-
         var Issues = new List<RollbackIssue> { };
         var rollback = new Rollback
         {
@@ -84,26 +82,38 @@ public class RollbackService : IRollbackService
             User = user,
             UserId = user.Id,
             Clarification = Clarification,
+            ProblemType = normalizedProblemType,
             RollbackIssues = Issues
         };
         _context.Rollbacks.Add(rollback);
 
-        for (int i = 0; i < steps.Count; i++)
+        if (logs.Count > 0)
         {
-            var step = steps[i];
-            var note = logs[i].Note;
+            List<int> stepIds = logs.Select(l => l.StepId).ToList();
 
-            var issue = new RollbackIssue
+            var steps = await _context.Steps
+                .Where(s => stepIds.Contains(s.Id) && !s.Archived)
+                .ToListAsync();
+            if (steps.Count() != logs.Count())
+                return new BaseResponseService { Error = true, Message = "Steps are not found" };
+
+            for (int i = 0; i < steps.Count; i++)
             {
-                Note = note,
-                Rollback = rollback,
-                RollbackId = rollback.Id,
-                Step = step,
-                StepId = step.Id
-            };
+                var step = steps[i];
+                var note = logs[i].Note;
 
-            Issues.Add(issue);
-            _context.RollbackIssues.Add(issue);
+                var issue = new RollbackIssue
+                {
+                    Note = note,
+                    Rollback = rollback,
+                    RollbackId = rollback.Id,
+                    Step = step,
+                    StepId = step.Id
+                };
+
+                Issues.Add(issue);
+                _context.RollbackIssues.Add(issue);
+            }
         }
 
         if (attachments is not null)
@@ -193,6 +203,7 @@ public class RollbackService : IRollbackService
                             {
                                 Id = r.Id,
                                 Clarification = r.Clarification,
+                                ProblemType = r.ProblemType,
                                 Task = new BasicInfoDto { Id = r.ToTask.Id, Name = r.ToTask.Name },
                                 Attachments = MapAttachments(r)
                             }
@@ -228,6 +239,7 @@ public class RollbackService : IRollbackService
                         {
                             Id = r.Id,
                             Clarification = r.Clarification,
+                            ProblemType = r.ProblemType,
                             Task = new BasicInfoDto { Id = r.Task.Id, Name = r.Task.Name },
                             Attachments = MapAttachments(r)
                         }

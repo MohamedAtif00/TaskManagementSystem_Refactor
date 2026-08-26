@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import API from "../../../lib/API";
 import { DEFAULT_PAGE_SIZE, createEmptyFilters } from "../constants";
+import { PROBLEM_TYPES } from "../../../lib/problemTypes";
 
 const emptySummary = (): DailyReportSummary => ({
     total: 0,
@@ -24,7 +25,7 @@ const emptyLookups = (): DailyReportLookups => ({
     subjects: [],
     grades: [],
     taskNames: [],
-    problemTypes: [],
+    problemTypes: [...PROBLEM_TYPES],
     priorities: ["High", "Medium", "Low"],
 });
 
@@ -141,7 +142,7 @@ export function useDailyReport() {
                 problemTypes:
                     dashboard.lookups.problemTypes?.length > 0
                         ? dashboard.lookups.problemTypes
-                        : (dashboard.charts.problemTypes ?? []).map((p) => p.problemType).filter(Boolean),
+                        : [...PROBLEM_TYPES],
             });
         } catch (err) {
             console.error("Daily report fetch failed:", err);

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PRIORITY_OPTIONS, STATUS_OPTIONS } from "./constants";
+import { PROBLEM_TYPES } from "../../lib/problemTypes";
 
 interface Props {
     filters: DailyReportFilters;
@@ -22,6 +23,10 @@ const DailyReportFilters = ({
     onReset,
 }: Props) => {
     const selectedProblemTypes = filters.problemTypes ?? [];
+    const problemTypeOptions =
+        lookups?.problemTypes && lookups.problemTypes.length > 0
+            ? lookups.problemTypes
+            : [...PROBLEM_TYPES];
     const [problemTypesOpen, setProblemTypesOpen] = useState(false);
     const problemTypesRef = useRef<HTMLDivElement>(null);
 
@@ -156,12 +161,7 @@ const DailyReportFilters = ({
                         >
                             All
                         </button>
-                        {(lookups?.problemTypes ?? []).length === 0 ? (
-                            <div className="px-2 py-1.5 text-xs text-slate-400">
-                                No problem types
-                            </div>
-                        ) : (
-                            (lookups?.problemTypes ?? []).map((v) => (
+                        {problemTypeOptions.map((v) => (
                                 <label
                                     key={v}
                                     className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-100"
@@ -173,8 +173,7 @@ const DailyReportFilters = ({
                                     />
                                     <span className="whitespace-nowrap text-xs">{v}</span>
                                 </label>
-                            ))
-                        )}
+                            ))}
                     </div>
                 )}
                 </div>

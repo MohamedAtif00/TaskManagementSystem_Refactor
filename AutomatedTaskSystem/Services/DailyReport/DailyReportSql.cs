@@ -127,13 +127,18 @@ internal static class DailyReportSql
             SELECT agg.TaskId,
                 STRING_AGG(agg.ProblemType, ', ') WITHIN GROUP (ORDER BY agg.ProblemType) AS ProblemType
             FROM (
-                SELECT DISTINCT r.TaskId, ISNULL(tb.Name, '') AS ProblemType
+                SELECT DISTINCT r.TaskId,
+                    LTRIM(RTRIM(split.value)) AS ProblemType
                 FROM Rollbacks r
-                INNER JOIN RollbackIssues ri ON ri.RollbackId = r.Id
+                LEFT JOIN RollbackIssues ri ON ri.RollbackId = r.Id
                 LEFT JOIN Steps st ON st.Id = ri.StepId
                 LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
+                CROSS APPLY STRING_SPLIT(
+                    CASE WHEN ISNULL(r.ProblemType, '') <> '' THEN r.ProblemType ELSE ISNULL(tb.Name, '') END,
+                    ','
+                ) split
                 WHERE r.TaskId IN @taskIds
-                  AND ISNULL(tb.Name, '') <> ''
+                  AND LTRIM(RTRIM(split.value)) <> ''
             ) agg
             GROUP BY agg.TaskId
         ),
@@ -176,7 +181,11 @@ internal static class DailyReportSql
             COALESCE(NULLIF(tb.Name, ''), t.Name) AS TaskName,
             ISNULL(lo.Name, '') AS LoCode,
             ISNULL(sch.Name, '') AS LoType,
-            COALESCE(NULLIF(usr.Name, ''), NULLIF(lr.ToGroupName, ''), g.Name, '') AS AssignedTo,
+            CASE
+                WHEN t.Status = @taskRollback OR t.IsRollback = 1 THEN
+                    COALESCE(NULLIF(usr.Name, ''), NULLIF(lr.ToGroupName, ''), g.Name, '')
+                ELSE ''
+            END AS AssignedTo,
             CASE
                 WHEN t.Flagged = 1 THEN 'Red Flag'
                 WHEN t.Status = @taskRollback OR t.IsRollback = 1 THEN 'Rollback'
@@ -248,31 +257,39 @@ internal static class DailyReportSql
         AND EXISTS (
             SELECT 1
             FROM Rollbacks r
-            INNER JOIN RollbackIssues ri ON ri.RollbackId = r.Id
+            LEFT JOIN RollbackIssues ri ON ri.RollbackId = r.Id
             LEFT JOIN Steps pst ON pst.Id = ri.StepId
             LEFT JOIN TaskBank ptb ON ptb.Id = pst.TaskBankId
+            CROSS APPLY STRING_SPLIT(
+                CASE WHEN ISNULL(r.ProblemType, '') <> '' THEN r.ProblemType ELSE ISNULL(ptb.Name, '') END,
+                ','
+            ) split
             WHERE r.TaskId = TaskId
-              AND ISNULL(ptb.Name, '') IN @problemTypes
+              AND LTRIM(RTRIM(split.value)) IN @problemTypes
         )
         """;
 
     /// <summary>Problem-type chart — only rollback tasks, no full report CTE.</summary>
     internal const string ProblemTypesDirect = """
-        SELECT ISNULL(tb.Name, '') AS ProblemType,
-               COUNT(1) AS [Count]
+        SELECT LTRIM(RTRIM(split.value)) AS ProblemType,
+               COUNT(DISTINCT r.Id) AS [Count]
         FROM Tasks t
         INNER JOIN Rollbacks r ON r.TaskId = t.Id
-        INNER JOIN RollbackIssues ri ON ri.RollbackId = r.Id
+        LEFT JOIN RollbackIssues ri ON ri.RollbackId = r.Id
         LEFT JOIN Steps st ON st.Id = ri.StepId
         LEFT JOIN TaskBank tb ON tb.Id = st.TaskBankId
+        CROSS APPLY STRING_SPLIT(
+            CASE WHEN ISNULL(r.ProblemType, '') <> '' THEN r.ProblemType ELSE ISNULL(tb.Name, '') END,
+            ','
+        ) split
         WHERE t.Archived = 0
           AND (t.Status = @taskRollback OR t.IsRollback = 1)
           AND t.CreatedAt >= @fromDate
           AND t.CreatedAt < DATEADD(DAY, 1, @toDate)
+          AND LTRIM(RTRIM(split.value)) <> ''
           {ROLE_FILTER}
-        GROUP BY ISNULL(tb.Name, '')
-        HAVING ISNULL(tb.Name, '') <> ''
-        ORDER BY COUNT(1) DESC
+        GROUP BY LTRIM(RTRIM(split.value))
+        ORDER BY COUNT(DISTINCT r.Id) DESC
         """;
 
     internal const string LightLookupsTeams = """

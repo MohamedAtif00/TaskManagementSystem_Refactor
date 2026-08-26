@@ -60,7 +60,9 @@ const DailyReportTable = ({ rows }: Props) => {
                             <td className="px-2 py-2 text-center">{row.taskName}</td>
                             <td className="px-2 py-2 text-center">{row.loCode}</td>
                             <td className="px-2 py-2 text-center">{row.loType}</td>
-                            <td className="px-2 py-2 text-center">{row.assignedTo}</td>
+                            <td className="px-2 py-2 text-center">
+                                {row.status === "Rollback" ? row.assignedTo || "-" : "-"}
+                            </td>
                             <td className="px-2 py-2 text-center">
                                 <span
                                     className="inline-block px-2 py-1 rounded-full text-xs font-semibold"

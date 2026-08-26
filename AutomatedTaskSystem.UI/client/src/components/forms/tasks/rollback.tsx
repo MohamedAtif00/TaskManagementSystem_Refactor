@@ -8,6 +8,7 @@ import CrossIcon from "../../../assets/Icons/Cross";
 import Link from "next/link";
 import FileUpload from "../../pageComponent/leave/fileUpload";
 import useTaskPathHandler from "../../taskDetails/useTaskPathHandler.ts";
+import { PROBLEM_TYPES } from "../../../lib/problemTypes";
 import {
 	ArrowUturnLeftIcon,
 	CheckIcon,
@@ -18,29 +19,55 @@ import {
 const ATTACHMENT_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
 const ATTACHMENT_MAX_SIZE = 10 * 1024 * 1024;
 
+function uniqueRollbackPoints(
+	points: { id?: number; name?: string; Id?: number; Name?: string }[] | { data?: unknown; Data?: unknown }
+): BasicInfo[] {
+	const list = Array.isArray(points)
+		? points
+		: Array.isArray((points as { data?: unknown })?.data)
+			? ((points as { data: unknown[] }).data)
+			: Array.isArray((points as { Data?: unknown })?.Data)
+				? ((points as { Data: unknown[] }).Data)
+				: [];
+
+	const seenIds = new Set<number>();
+	const seenNames = new Set<string>();
+	const unique: BasicInfo[] = [];
+
+	for (const raw of list) {
+		const point = raw as { id?: number; name?: string; Id?: number; Name?: string };
+		const id = point.id ?? point.Id;
+		const name = String(point.name ?? point.Name ?? "")
+			.replace(/[\u200B-\u200D\uFEFF]/g, "")
+			.replace(/\s+/g, " ")
+			.trim();
+		if (id == null || seenIds.has(id)) continue;
+		const nameKey = name.toLowerCase();
+		if (nameKey && seenNames.has(nameKey)) continue;
+		seenIds.add(id);
+		if (nameKey) seenNames.add(nameKey);
+		unique.push({ id, name });
+	}
+
+	return unique;
+}
+
 interface Props {
 	update: (params: ITask) => void;
 	taskId: number;
 	type: string;
 }
 
-interface Log {
-	step: BasicInfo;
-	note: string;
-	isSelected: boolean;
-}
-
 const RollbackForm = ({ taskId, update, type }: Props) => {
-	const [logs, setLogs] = useState<Log[]>([]);
 	const [step, setStep] = useState<BasicInfo>();
 	const [clarification, setClarification] = useState("");
+	const [problemTypes, setProblemTypes] = useState<string[]>([]);
 	const [attachments, setAttachments] = useState<File[]>([]);
 	const [rollbackPoints, setRollbackPoints] = useState<BasicInfo[]>();
 	const [review, setReview] = useState(false);
 	const [error, setError] = useState<string>();
 	const [submitting, setSubmitting] = useState(false);
 	const pathHandler = useTaskPathHandler({ type: type });
-	const selectedLogs = logs.filter((l) => l.isSelected);
 	const closeHref = {
 		pathname: pathHandler(),
 		query: { taskId },
@@ -49,18 +76,10 @@ const RollbackForm = ({ taskId, update, type }: Props) => {
 	useEffect(() => {
 		API.TASKS.PREVIOUS_TASKS(taskId).then((res) => {
 			if (res) {
-				setRollbackPoints(res);
-				setLogs(
-					res.map((s) => ({
-						isSelected: false,
-						note: "",
-						step: s,
-					}))
-				);
+				setRollbackPoints(uniqueRollbackPoints(res));
 				return;
 			}
 			setRollbackPoints([]);
-			setLogs([]);
 		});
 	}, [taskId]);
 
@@ -74,6 +93,15 @@ const RollbackForm = ({ taskId, update, type }: Props) => {
 			</div>
 		);
 
+	const toggleProblemType = (typeName: string) => {
+		setError(undefined);
+		setProblemTypes((current) =>
+			current.includes(typeName)
+				? current.filter((t) => t !== typeName)
+				: [...current, typeName]
+		);
+	};
+
 	const handleSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
 		e.preventDefault();
 
@@ -81,8 +109,8 @@ const RollbackForm = ({ taskId, update, type }: Props) => {
 			return setError("Choose the step this task should go back to");
 		if (!clarification.trim())
 			return setError("Please explain why you are rolling this back");
-		if (selectedLogs.length === 0)
-			return setError("Select at least one step where the problem started");
+		if (problemTypes.length === 0)
+			return setError("Select at least one problem type");
 
 		if (!review) {
 			setError(undefined);
@@ -93,11 +121,9 @@ const RollbackForm = ({ taskId, update, type }: Props) => {
 		API.TASKS.ROLLBACK({
 			taskId,
 			stepId: step.id,
-			logs: selectedLogs.map((l) => ({
-				note: l.note,
-				stepId: l.step.id,
-			})),
+			logs: [],
 			clarification: clarification.trim(),
+			problemTypes,
 			attachments,
 		}).then((res) => {
 			if (res && !res.error) return update(res.data);
@@ -108,29 +134,6 @@ const RollbackForm = ({ taskId, update, type }: Props) => {
 			);
 		});
 	};
-
-	const toggleLog = (log: Log) => {
-		setError(undefined);
-		setLogs((ps) =>
-			ps.map((element) => ({
-				isSelected:
-					element.step.id === log.step.id
-						? !log.isSelected
-						: element.isSelected,
-				note: element.note,
-				step: element.step,
-			}))
-		);
-	};
-
-	const updateLogNote = (str: string, log: Log) =>
-		setLogs((ps) =>
-			ps.map((element) => ({
-				isSelected: element.isSelected,
-				note: element.step.id === log.step.id ? str : element.note,
-				step: element.step,
-			}))
-		);
 
 	return (
 		<motion.div
@@ -201,18 +204,16 @@ const RollbackForm = ({ taskId, update, type }: Props) => {
 								</div>
 								<div className="rounded-lg border border-solid border-slate-200 p-3">
 									<div className="text-xs uppercase tracking-wide text-slate-500">
-										Problem started at
+										Problem type
 									</div>
-									<div className="mt-2 flex flex-col gap-2">
-										{selectedLogs.map((l) => (
-											<div key={l.step.id}>
-												<div className="font-medium text-slate-900">
-													{l.step.name}
-												</div>
-												<div className="text-slate-600">
-													{l.note.trim() ? l.note : "No extra note"}
-												</div>
-											</div>
+									<div className="mt-2 flex flex-wrap gap-1.5">
+										{problemTypes.map((typeName) => (
+											<span
+												key={typeName}
+												className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800"
+											>
+												{typeName}
+											</span>
 										))}
 									</div>
 								</div>
@@ -255,7 +256,7 @@ const RollbackForm = ({ taskId, update, type }: Props) => {
 										const selected = step?.id === point.id;
 										return (
 											<button
-												key={point.id}
+												key={`${point.id}-${point.name}`}
 												type="button"
 												onClick={() => {
 													setError(undefined);
@@ -301,19 +302,19 @@ const RollbackForm = ({ taskId, update, type }: Props) => {
 
 							<section>
 								<div className="text-sm font-medium text-slate-800">
-									3. Where did the problem start?{" "}
+									3. Problem type{" "}
 									<span className="text-red-600">*</span>
 								</div>
 								<p className="text-xs text-slate-500 mt-0.5 mb-2">
-									Select every step that needs attention. Notes are optional.
+									Select every type that applies. At least one is required.
 								</p>
 								<div className="flex flex-col gap-2">
-									{logs.map((l) => {
-										const selected = l.isSelected;
+									{PROBLEM_TYPES.map((typeName) => {
+										const selected = problemTypes.includes(typeName);
 										return (
 											<label
-												key={l.step.id}
-												className={`flex items-start gap-3 rounded-lg border-2 border-solid p-3 cursor-pointer transition-colors ${
+												key={typeName}
+												className={`flex items-center gap-3 rounded-lg border-2 border-solid p-3 cursor-pointer transition-colors ${
 													selected
 														? "border-orange-300 bg-orange-50"
 														: "border-slate-200 bg-white hover:border-slate-300"
@@ -322,26 +323,12 @@ const RollbackForm = ({ taskId, update, type }: Props) => {
 												<input
 													type="checkbox"
 													checked={selected}
-													onChange={() => toggleLog(l)}
-													className="mt-1 h-4 w-4 accent-orange-500"
+													onChange={() => toggleProblemType(typeName)}
+													className="h-4 w-4 accent-orange-500"
 												/>
-												<div className="grow min-w-0">
-													<div className="text-sm font-medium text-slate-800">
-														{l.step.name}
-													</div>
-													{selected && (
-														<input
-															className="mt-2 outline-none w-full py-2 px-3 text-sm border-solid border border-slate-300 rounded-lg bg-white text-left focus:ring-2 focus:ring-orange-300"
-															type="text"
-															placeholder="Optional note for this step"
-															value={l.note}
-															onClick={(e) => e.stopPropagation()}
-															onChange={(e) =>
-																updateLogNote(e.target.value, l)
-															}
-														/>
-													)}
-												</div>
+												<span className="text-sm font-medium text-slate-800">
+													{typeName}
+												</span>
 											</label>
 										);
 									})}

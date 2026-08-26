@@ -18,7 +18,7 @@ const DailyReportHeader = ({ rows, onExport }: Props) => {
             "Task Name": item.taskName,
             "LO Code": item.loCode,
             "LO Type": item.loType,
-            "Assigned To": item.assignedTo,
+            "Assigned To": item.status === "Rollback" ? item.assignedTo : "",
             Status: item.status,
             "Problem Type": item.problemType,
             Priority: item.priority,

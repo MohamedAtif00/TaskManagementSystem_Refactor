@@ -21,6 +21,7 @@ interface History {
 	rollbacks: {
 		id: number;
 		clarification?: string;
+		problemType?: string;
 		task: BasicInfo;
 		attachments: {
 			id: number;
@@ -108,6 +109,18 @@ const RollbackHistory: React.FC<Props> = ({ taskId, isReview, type }) => {
 										<div className="text-sm font-medium text-slate-900">
 											{m.task.name}
 										</div>
+										{m.problemType ? (
+											<div className="mt-1 flex flex-wrap gap-1">
+												{m.problemType.split(",").map((typeName) => (
+													<div
+														key={typeName.trim()}
+														className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-800"
+													>
+														{typeName.trim()}
+													</div>
+												))}
+											</div>
+										) : null}
 										{m.clarification ? (
 											<p className="mt-1 text-sm text-slate-600">
 												{m.clarification}

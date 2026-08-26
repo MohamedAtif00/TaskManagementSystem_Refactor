@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace AutomatedTaskSystem.Models;
 
 public class Rollback
@@ -10,6 +12,8 @@ public class Rollback
     public User User { get; set; } = new User { };
     public int UserId { get; set; }
     public string? Clarification { get; set; }
+    [MaxLength(256)]
+    public string? ProblemType { get; set; }
     public List<RollbackIssue> RollbackIssues { get; set; } = new List<RollbackIssue> { };
     public List<RollbackAttachment> Attachments { get; set; } = new List<RollbackAttachment> { };
 }

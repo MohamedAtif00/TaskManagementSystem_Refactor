@@ -304,13 +304,15 @@ const TASKS = {
 		taskId,
 		stepId,
 		clarification,
+		problemTypes,
 		logs,
 		attachments,
 	}: {
 		taskId: string | string[] | number;
 		stepId: number;
 		clarification: string;
-		logs: {
+		problemTypes: string[];
+		logs?: {
 			stepId: number;
 			note: string;
 		}[];
@@ -325,7 +327,10 @@ const TASKS = {
 			const form = new FormData();
 			form.append("StepId", String(stepId));
 			form.append("Clarification", clarification);
-			logs.forEach((l, i) => {
+			problemTypes.forEach((p, i) => {
+				form.append(`ProblemTypes[${i}]`, p);
+			});
+			(logs ?? []).forEach((l, i) => {
 				form.append(`Logs[${i}].StepId`, String(l.stepId));
 				form.append(`Logs[${i}].Note`, l.note ?? "");
 			});
@@ -437,8 +442,15 @@ const TASKS = {
 					...auth,
 				},
 			});
-			const data: { id: number; name: string }[] = await res.json();
-			return data;
+			const data = await res.json();
+			const list = Array.isArray(data)
+				? data
+				: Array.isArray(data?.data)
+					? data.data
+					: Array.isArray(data?.Data)
+						? data.Data
+						: [];
+			return list;
 		} catch (error) {
 			//console.log(error);
 			return false;
