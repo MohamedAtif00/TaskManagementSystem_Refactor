@@ -14,6 +14,7 @@ using AutomatedTaskSystem.Models.Enums.TaskPriority;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Models.Enums.UserRole;
 using AutomatedTaskSystem.Models.Enums.ProjectStatus;
+using AutomatedTaskSystem.Models.Enums;
 using AutomatedTaskSystem.Services.AuthService;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.RollbackService;
@@ -950,273 +951,189 @@ public class TaskService : ITaskService
     //    };
     //}
 	public async Task<ActionResult<ResponseService<List<GetTaskCardDto>>>> GetProjectTask(int pid)
-	    {
-	        var user = await _authService.GetAuthedUser();
-	        if (user is null)
-	            return new UnauthorizedObjectResult(
-	                new BaseResponseService { Error = false, Message = "Invalid auth" }
-	            );
+	{
+	    var user = await _authService.GetAuthedUser();
+	    if (user is null)
+	        return new UnauthorizedObjectResult(
+	            new BaseResponseService { Error = false, Message = "Invalid auth" }
+	        );
 
-	        // Project managers and owners can see all tasks in the project, regardless of group
-	        if (user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner)
+	    var project = await _context.Subjects
+	        .AsNoTracking()
+	        .Where(p => p.Id == pid && !p.Archived)
+	        .Select(p => new
 	        {
-            var p = await _context.Subjects
-                .Where(_ => _.Id == pid && !_.Archived)
-                .Include(p => p.Units)
-                .ThenInclude(u => u.Lessons)
-                .ThenInclude(l => l.LearningObjectives)
-                .ThenInclude(lo => lo.Tasks)
-                .ThenInclude(t => t.User)
-                .Include(p => p.Units)
-                .ThenInclude(u => u.Lessons)
-                .ThenInclude(l => l.LearningObjectives)
-                .ThenInclude(lo => lo.Tasks)
-                .ThenInclude(t => t.User)
-                .FirstOrDefaultAsync();
+	            p.Id,
+	            IsAssigned = p.Users.Any(u => u.Id == user.Id)
+	        })
+	        .FirstOrDefaultAsync();
 
-            if (p is null)
-                return new NotFoundObjectResult(
-                    new BaseResponseService { Error = true, Message = "Project is not found" }
-                );
+	    if (project is null)
+	        return new NotFoundObjectResult(
+	            new BaseResponseService { Error = true, Message = "Project is not found" }
+	        );
 
-            // Collect all task IDs first
-            var allTaskIds = p.Units
-                .Where(u => !u.Archived)
-                .SelectMany(u => u.Lessons.Where(l => !l.Archived))
-                .SelectMany(l => l.LearningObjectives.Where(lo => !lo.Archived))
-                .SelectMany(lo => lo.Tasks.Where(t => !t.Archived))
-                .Select(t => t.Id)
-                .ToList();
+	    var isProjectManager = user.Role == UserRoleEnum.ProjectManger || user.Role == UserRoleEnum.Owner;
 
-            // Fetch activity dates for all tasks in one query
-            var activityDates = await _context.TaskActivities
-                .Where(a => allTaskIds.Contains(a.TaskId) &&
-                    (a.Type == TaskActivityTypeEnum.Status_Doing || a.Type == TaskActivityTypeEnum.Status_Done))
-                .GroupBy(a => a.TaskId)
-                .Select(g => new
-                {
-                    TaskId = g.Key,
-                    StartedAt = g.Where(a => a.Type == TaskActivityTypeEnum.Status_Doing)
-                                 .OrderBy(a => a.TimeStamp)
-                                 .Select(a => (DateTime?)a.TimeStamp)
-                                 .FirstOrDefault(),
-                    DoneAt = g.Where(a => a.Type == TaskActivityTypeEnum.Status_Done)
-                              .OrderByDescending(a => a.TimeStamp)
-                              .Select(a => (DateTime?)a.TimeStamp)
-                              .FirstOrDefault()
-                })
-                .ToDictionaryAsync(x => x.TaskId, x => new { x.StartedAt, x.DoneAt });
+	    if (!isProjectManager && !project.IsAssigned)
+	        return new BadRequestObjectResult(
+	            new BaseResponseService { Error = true, Message = "User is unassigned to project" }
+	        );
 
-            var tasks = new List<GetTaskCardDto>();
-            foreach (var unit in p.Units)
-            {
-                if (unit.Archived)
-                    continue;
+	    IQueryable<Models.Task> query = _context.Tasks
+	        .AsNoTracking()
+	        .Where(t => !t.Archived && t.LearningObjective.Lesson.Unit.SubjectId == project.Id);
 
-                foreach (var lesson in unit.Lessons)
-                {
-                    if (lesson.Archived)
-                        continue;
+	    if (isProjectManager)
+	    {
+	        query = query.Where(t =>
+	            !t.LearningObjective.Archived
+	            && !t.LearningObjective.Lesson.Archived
+	            && !t.LearningObjective.Lesson.Unit.Archived);
 
-                    foreach (var lo in lesson.LearningObjectives)
-                    {
-                        if (lo.Archived)
-                            continue;
+	        return new ResponseService<List<GetTaskCardDto>>
+	        {
+	            Data = await LoadProjectTaskCardsAsync(query),
+	            Error = false,
+	            Message = "List of all tasks in project"
+	        };
+	    }
 
-                        foreach (var task in lo.Tasks)
-                        {
-                            if (!task.Archived)
-                            {
-                                activityDates.TryGetValue(task.Id, out var dates);
-                                tasks.Add(new GetTaskCardDto
-                                {
-                                    Paused = task.Pause,
-                                    Attention = task.Attention,
-                                    Flagged = task.Flagged,
-                                    From = task.From is null ? "" : task.From.Name,
-                                    Id = task.Id,
-                                    IsReview = task.IsReview,
-                                    IsRollback = task.IsRollback,
-                                    LearningObjective = new BasicInfoDto
-                                    {
-                                        Id = lo.Id,
-                                        Name = lo.Name
-                                    },
-                                    Name = task.Name,
-                                    Priority = task.Priority,
-                                    RollbackCount = task.RollbackCount,
-                                    Status = task.Status,
-                                    User = task.User is null
-                                        ? null
-                                        : new BasicInfoDto
-                                        {
-                                            Name = task.User.Name,
-                                            Id = task.User.Id
-                                        },
-                                    baseDuration = task.Duration,
-                                    duration = (decimal?)_context.TaskWorkTimes
-                                                    .Where(q => q.TaskId == task.Id)
-                                                    .Sum(q => q.Duration) / 60000,
-                                    CreatedAt = task.CreatedAt,
-                                    StartedAt = dates?.StartedAt,
-                                    DoneAt = dates?.DoneAt
-                                });
-                            }
-                        }
-                    }
-                }
-            }
+	    var userHasGroup = await _context.Groups
+	        .AsNoTracking()
+	        .AnyAsync(g => g.Id == user.GroupId);
 
-            return new ResponseService<List<GetTaskCardDto>>
-            {
-                Data = tasks,
-                Error = false,
-                Message = "List of all tasks in project"
-            };
-        }
+	    if (!userHasGroup)
+	        return new BadRequestObjectResult(
+	            new BaseResponseService { Error = true, Message = "User has a not found group" }
+	        );
 
-        var project = await _context.Subjects
-            .Where(p => !p.Archived && p.Id == pid)
-            .Include(p => p.Users)
-            .FirstOrDefaultAsync();
+	    if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
+	    {
+	        var groupIds = new List<int> { user.GroupId!.Value };
 
-        if (project is null)
-            return new NotFoundObjectResult(
-                new BaseResponseService { Error = true, Message = "Project is not found" }
-            );
+	        if (user.Role == UserRoleEnum.SectionHead)
+	        {
+	            var sectionGroupIds = await _context.SectionGroups
+	                .AsNoTracking()
+	                .Where(sg => sg.Section.HeadId == user.Id && !sg.Section.Archived)
+	                .Select(sg => sg.GroupId)
+	                .ToListAsync();
 
-        if (!project.Users.Any(u => u.Id == user.Id))
-            return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = "User is unassigned to project" }
-            );
+	            groupIds.AddRange(sectionGroupIds);
+	        }
 
-	        var userGroup = await _context.Groups
-	            .Where(g => g.Id == user.GroupId)
-	            .FirstOrDefaultAsync();
-	
-	        // If for some reason the user has no associated group, fail gracefully
-	        if (userGroup is null)
-	            return new BadRequestObjectResult(
-	                new BaseResponseService { Error = true, Message = "User has a not found group" }
-	            );
+	        groupIds = groupIds.Distinct().ToList();
+	        query = query.Where(t => groupIds.Contains(t.GroupId));
+	    }
+	    else
+	    {
+	        query = query.Where(t =>
+	            t.GroupId == user.GroupId
+	            && (t.UserId == user.Id || t.Status == TaskStatusEnum.Backlog)
+	            && (!t.TL || t.UserId == user.Id));
+	    }
 
-        var groups = new List<Group> { userGroup };
+	    return new ResponseService<List<GetTaskCardDto>>
+	    {
+	        Data = await LoadProjectTaskCardsAsync(query),
+	        Error = false,
+	        Message = "List of available tasks"
+	    };
+	}
 
-        if (user.Role == UserRoleEnum.SectionHead)
-        {
-            var section = await _context.Sections
-                .Where(s => s.HeadId == user.Id && !s.Archived)
-                .FirstOrDefaultAsync();
+	private async Task<List<GetTaskCardDto>> LoadProjectTaskCardsAsync(IQueryable<Models.Task> query)
+	{
+	    var rows = await query
+	        .Select(t => new
+	        {
+	            t.Id,
+	            t.Name,
+	            t.Status,
+	            t.Pause,
+	            t.Attention,
+	            t.Flagged,
+	            t.IsReview,
+	            t.IsRollback,
+	            t.RollbackCount,
+	            t.Duration,
+	            t.CreatedAt,
+	            t.Priority,
+	            FromName = t.From != null ? t.From.Name : "",
+	            LearningObjectiveId = t.LearningObjective.Id,
+	            LearningObjectiveName = t.LearningObjective.Name,
+	            UserId = t.User != null ? (int?)t.User.Id : null,
+	            UserName = t.User != null ? t.User.Name : null
+	        })
+	        .ToListAsync();
 
-            if (section is not null)
-            {
-                var sectionGroupIds = await _context.SectionGroups
-                    .Where(sg => sg.SectionId == section.Id)
-                    .Select(sg => sg.GroupId)
-                    .ToListAsync();
+	    if (rows.Count == 0)
+	        return new List<GetTaskCardDto>();
 
-                var sectionGroups = await _context.Groups
-                    .Where(g => sectionGroupIds.Contains(g.Id))
-                    .ToListAsync();
+	    // Subquery join (not a client-side IN list) so large projects stay under SQL parameter limits.
+	    var taskIds = query.Select(t => t.Id);
 
-                groups.AddRange(sectionGroups);
-            }
-        }
+	    var durationLookup = await _context.TaskWorkTimes
+	        .AsNoTracking()
+	        .Where(twt => taskIds.Contains(twt.TaskId))
+	        .GroupBy(twt => twt.TaskId)
+	        .Select(g => new { TaskId = g.Key, Duration = g.Sum(twt => twt.Duration) })
+	        .ToDictionaryAsync(x => x.TaskId, x => x.Duration);
 
-        IQueryable<Models.Task> query;
+	    var activityLookup = await _context.TaskActivities
+	        .AsNoTracking()
+	        .Where(a =>
+	            taskIds.Contains(a.TaskId)
+	            && (a.Type == TaskActivityTypeEnum.Status_Doing || a.Type == TaskActivityTypeEnum.Status_Done))
+	        .GroupBy(a => a.TaskId)
+	        .Select(g => new
+	        {
+	            TaskId = g.Key,
+	            StartedAt = g.Where(a => a.Type == TaskActivityTypeEnum.Status_Doing)
+	                .Min(a => (DateTime?)a.TimeStamp),
+	            DoneAt = g.Where(a => a.Type == TaskActivityTypeEnum.Status_Done)
+	                .Max(a => (DateTime?)a.TimeStamp)
+	        })
+	        .ToDictionaryAsync(x => x.TaskId);
 
-        if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
-        {
-            query = _context.Tasks.Where(
-                t =>
-                    groups.Select(g => g.Id).Contains(t.GroupId)
-                    && t.LearningObjective.Lesson.Unit.SubjectId == project.Id
-                    && !t.Archived
-            );
-        }
-        else
-        {
-            query = _context.Tasks.Where(
-                t =>
-                    t.GroupId == user.GroupId
-                    && !t.Archived
-                    && t.LearningObjective.Lesson.Unit.SubjectId == project.Id
-                    && (t.UserId == user.Id || t.Status == TaskStatusEnum.Backlog)
-                    && (!t.TL || t.UserId == user.Id)
-            );
-        }
+	    return rows.Select(t =>
+	    {
+	        activityLookup.TryGetValue(t.Id, out var dates);
+	        durationLookup.TryGetValue(t.Id, out var durationMs);
 
-        var _tasks = await query
-            .Include(t => t.LearningObjective)
-            .ThenInclude(lo => lo.Lesson)
-            .ThenInclude(l => l.Unit)
-            .Include(t => t.User)
-            .Include(t => t.Group)
-            .Include(t => t.From)
-            .ToListAsync();
-
-        // Fetch activity dates for filtered tasks
-        var taskIds = _tasks.Select(t => t.Id).ToList();
-        var activityDatesForUser = await _context.TaskActivities
-            .Where(a => taskIds.Contains(a.TaskId) &&
-                (a.Type == TaskActivityTypeEnum.Status_Doing || a.Type == TaskActivityTypeEnum.Status_Done))
-            .GroupBy(a => a.TaskId)
-            .Select(g => new
-            {
-                TaskId = g.Key,
-                StartedAt = g.Where(a => a.Type == TaskActivityTypeEnum.Status_Doing)
-                             .OrderBy(a => a.TimeStamp)
-                             .Select(a => (DateTime?)a.TimeStamp)
-                             .FirstOrDefault(),
-                DoneAt = g.Where(a => a.Type == TaskActivityTypeEnum.Status_Done)
-                          .OrderByDescending(a => a.TimeStamp)
-                          .Select(a => (DateTime?)a.TimeStamp)
-                          .FirstOrDefault()
-            })
-            .ToDictionaryAsync(x => x.TaskId, x => new { x.StartedAt, x.DoneAt });
-
-        return new ResponseService<List<GetTaskCardDto>>
-        {
-            Data = _tasks.Select(t => {
-                activityDatesForUser.TryGetValue(t.Id, out var dates);
-                return new GetTaskCardDto
-                {
-                    Paused = t.Pause,
-                    Attention = t.Attention,
-                    Flagged = t.Flagged,
-                    From = t.From is null ? "" : t.From.Name,
-                    Id = t.Id,
-                    IsReview = t.IsReview,
-                    IsRollback = t.IsRollback,
-                    LearningObjective = new BasicInfoDto
-                    {
-                        Id = t.LearningObjective.Id,
-                        Name = t.LearningObjective.Name
-                    },
-                    Name = t.Name,
-                    Priority = t.Priority,
-                    RollbackCount = t.RollbackCount,
-                    Status = t.Status,
-                    User = t.User is null
-                        ? null
-                        : new BasicInfoDto
-                        {
-                            Name = t.User.Name,
-                            Id = t.User.Id
-                        },
-                    baseDuration = t.Duration,
-                    duration = (decimal?)_context.TaskWorkTimes
-                        .Where(q => q.TaskId == t.Id)
-                        .Sum(q => q.Duration) / 60000,
-                    CreatedAt = t.CreatedAt,
-                    StartedAt = dates?.StartedAt,
-                    DoneAt = dates?.DoneAt
-                };
-            }).ToList(),
-            Error = false,
-            Message = "List of available tasks"
-        };
-    }
+	        return new GetTaskCardDto
+	        {
+	            Paused = t.Pause,
+	            Attention = t.Attention,
+	            Flagged = t.Flagged,
+	            From = t.FromName ?? "",
+	            Id = t.Id,
+	            IsReview = t.IsReview,
+	            IsRollback = t.IsRollback,
+	            LearningObjective = new BasicInfoDto
+	            {
+	                Id = t.LearningObjectiveId,
+	                Name = t.LearningObjectiveName
+	            },
+	            Name = t.Name,
+	            Priority = t.Priority,
+	            RollbackCount = t.RollbackCount,
+	            Status = t.Status,
+	            User = t.UserId is null
+	                ? null
+	                : new BasicInfoDto
+	                {
+	                    Id = t.UserId.Value,
+	                    Name = t.UserName ?? ""
+	                },
+	            baseDuration = t.Duration,
+	            duration = (decimal?)durationMs / 60000,
+	            CreatedAt = t.CreatedAt,
+	            StartedAt = dates?.StartedAt,
+	            DoneAt = dates?.DoneAt
+	        };
+	    }).ToList();
+	}
 
     public async Task<ActionResult<ResponseService<GetTaskAssignmentDto>>> GetTaskAssignment(int id)
     {
@@ -1254,7 +1171,7 @@ public class TaskService : ITaskService
         };
     }
 
-    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(int taskId, int stepId, List<RollbackLogDto> logs, string? clarification, List<IFormFile>? attachments = null)
+    public async Task<ActionResult<ResponseService<GetTaskDetailsDto>>> RollbackTask(int taskId, int stepId, List<RollbackLogDto> logs, string? clarification, IEnumerable<string>? problemTypes, List<IFormFile>? attachments = null)
     {
         var user = await _authService.GetAuthedUser();
         if (user is null)
@@ -1267,9 +1184,9 @@ public class TaskService : ITaskService
                 new BaseResponseService { Error = true, Message = "Reason is required" }
             );
 
-        if (logs is null || logs.Count == 0)
+        if (!RollbackProblemTypes.TryNormalizeMany(problemTypes, out var normalizedProblemType))
             return new BadRequestObjectResult(
-                new BaseResponseService { Error = true, Message = "Problem type is required" }
+                new BaseResponseService { Error = true, Message = "Select at least one problem type" }
             );
 
         var task = await _context.Tasks
@@ -1374,6 +1291,7 @@ public class TaskService : ITaskService
                 ToTaskId: foundTask.Id,
                 UserId: user.Id,
                 Clarification: clarification,
+                problemType: normalizedProblemType,
                 logs: logs,
                 attachments: attachments
             );
@@ -1446,6 +1364,7 @@ public class TaskService : ITaskService
                 ToTaskId: newTask.Id,
                 UserId: user.Id,
                 Clarification: clarification,
+                problemType: normalizedProblemType,
                 logs: logs,
                 attachments: attachments
             );

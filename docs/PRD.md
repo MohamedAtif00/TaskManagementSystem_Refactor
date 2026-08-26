@@ -6,8 +6,8 @@
 | **Document type** | Product Requirements Document |
 | **System** | Automated Task System (ATS) / Task Management System v1.0 |
 | **Organisation** | Selah El-Telmeez — Educational Content Production |
-| **Version** | 1.0 |
-| **Date** | 2026-08-17 |
+| **Version** | 1.1 |
+| **Date** | 2026-08-26 |
 | **Status** | For review |
 | **Companion documents** | `docs/PROJECT_BRIEF.md`, `docs/BRD.md`, `docs/SYSTEM_DESCRIPTION.md` |
 
@@ -16,6 +16,7 @@
 | Version | Date | Change summary |
 |---|---|---|
 | 1.0 | 2026-08-17 | Initial PRD reconstructed from the delivered system |
+| 1.1 | 2026-08-26 | Gap review vs code: rollback problem type, User Tasks, HR calendar, LO progress, extra daily-report filters, dashboards delivered, session audit not present, token lifetimes corrected |
 
 This PRD describes the **product the organisation is operating today**, plus the requirements that are specified but not yet met. Where older project notes conflict with source code, the source code is authoritative.
 
@@ -60,7 +61,7 @@ Users claim and execute work on Kanban boards or spreadsheet views, optionally i
 | F-08 | Rework (rollback) with evidence | M | Delivered | Member, Team Leader |
 | F-09 | Managerial intervention (skip, jump, change process) | M | Delivered | PM, Owner |
 | F-10 | Sprint planning and sprint boards | M | Delivered | PM, Team Leader, Owner |
-| F-11 | Role-based dashboards | M | Partial | All five roles |
+| F-11 | Role-based dashboards | M | Delivered | All five roles |
 | F-12 | Daily operational report | M | Delivered | All (scoped) |
 | F-13 | Productivity measurement (Task Logger) | M | Delivered | All (scoped) |
 | F-14 | Project and sprint analytics | M | Delivered | PM, Owner, Team Leader |
@@ -70,11 +71,13 @@ Users claim and execute work on Kanban boards or spreadsheet views, optionally i
 | F-18 | Permission management | M | Delivered | All + approvers |
 | F-19 | Work-from-home management | M | Delivered | All + approvers |
 | F-20 | Notification centre (real-time + persistent) | M | Delivered | All |
-| F-21 | Session audit and force-logout | M | Delivered | Owner |
-| F-22 | Sign-in and session hygiene | M | Partial | All |
+| F-21 | Session audit and force-logout | M | Not delivered | Owner |
+| F-22 | Sign-in | M | Partial | All |
 | F-23 | Forward capacity forecasting | S | Not delivered | Owner, PM |
 | F-24 | Automatic ageing and escalation | S | Not delivered | Team Leader, PM |
 | F-25 | Estimate recalibration | C | Not delivered | PM |
+| F-26 | User Tasks (per-person workload) | M | Delivered | PM, Section Head, Team Leader, Owner |
+| F-27 | HR calendar | M | Delivered | All except Member (detail + approval) |
 
 ### 2.2 Feature descriptions
 
@@ -92,19 +95,19 @@ Users claim and execute work on Kanban boards or spreadsheet views, optionally i
 
 **F-07 Assignment and workload.** Managers assign within the task’s discipline (Owner and PM may cross disciplines). Members cannot assign. Assignment notifies the assignee. Reassignment closes any open effort session. Managers see per-user in-progress and queued counts.
 
-**F-08 Rework.** Only from a task that is in progress, and only to steps configured as rollback targets. Captures per-step issue notes, clarification, and up to 5 files of 10 MB each (PDF/Office). The new task is marked as rework, linked to its origin, and increments a rework counter. Full history is retrievable.
+**F-08 Rework.** Only from a task that is in progress, and only to steps configured as rollback targets. Requires clarification, at least one originating step, and a **problem type** from the closed list: Content, Logic, UI, API, Performance, Development, VO/Narration, Others. Also captures per-step issue notes and up to 5 files of 10 MB each (PDF/Office). The new task is marked as rework, linked to its origin, and increments a rework counter. Full history is retrievable.
 
 **F-09 Managerial intervention.** Skip a task; jump a workflow forward (Owner/PM); change the schema on a learning objective in flight, including auto-completing work up to defined stopping points (PM); complete a task on another user’s behalf (Owner/PM). All interventions are journaled as distinct event types.
 
 **F-10 Sprints.** Named time-boxed increments with a date range. Learning objectives attach to sprints (an LO may appear in more than one). Sprint boards span projects and include work generated after the sprint opened. Sprints are archivable.
 
-**F-11 Role-based dashboards.** Landing screen is determined by role. Owner and PM share an organisation-wide dashboard. Team Leader sees team-scoped metrics. Section Head and Member dashboards exist as endpoints; content requires business sign-off.
+**F-11 Role-based dashboards.** Landing screen is determined by role. Owner and PM share an organisation-wide dashboard. Team Leader sees team-scoped metrics. Section Head and Member each have a dedicated dashboard UI and API. Business sign-off of widget content is still recommended.
 
-**F-12 Daily operational report.** Filterable by team, semester, subject, grade, status, and problem type. Summary figures, charts, CSV/Excel export. Managers may attach one explanatory note per task.
+**F-12 Daily operational report.** Filterable by team, semester, subject, grade, status, problem type, task name, and priority. Summary figures, charts (including counts by problem type), CSV/Excel export. Managers may attach one explanatory note per task.
 
 **F-13 Task Logger.** Productivity report with no manual entry. Actual effort from work sessions (fallback: task duration). Expected effort from Step → Task Bank → task. Points: 3 early, 2 on time, 1 late, 0 if no estimate. Top 5 members for All Time, This Week, This Month. Excludes archived content, unassigned work, and archived users. Data is scoped to the viewer’s responsibility.
 
-**F-14 Project and sprint analytics.** Learning-objective progress and status distribution; outstanding work by discipline using each Group’s colour. Periods: Today, Last Week, Last Month, All Time.
+**F-14 Project and sprint analytics.** Learning-objective progress and status distribution; outstanding work by discipline using each Group’s colour; LO Progress tab listing work still in Backlog / To Do / Doing. Periods: Today, Last Week, Last Month, All Time. Several analytics SQL paths still exclude learning objectives whose name contains “old” (known gap).
 
 **F-15 Hierarchical / SSRS reporting.** Date-ranged project reports, per-project breakdowns, and an embedded SSRS report. Screens exist but are not reachable from navigation.
 
@@ -118,11 +121,15 @@ Users claim and execute work on Kanban boards or spreadsheet views, optionally i
 
 **F-20 Notifications.** Thirteen real-time event types. Every event also persisted. Categories (General, Leaves, Work Updates) and types (Project, Sprint, Leave, Task, System). Inbox: pagination, filters, unread count, mark read, deep links, inline approve/reject. Managers receive a live pending-decision count.
 
-**F-21 Session audit.** Owner browses sessions (date range, reason), views a user’s 24-hour activity storyline, and can force logout (tokens invalidated; browser signed out in real time).
+**F-21 Session audit.** **Not delivered.** There is no session table, Owner session browser, 24-hour storyline, or force-logout API. Presence is an in-memory SignalR map; disconnected users’ open tasks are paused after 30 minutes.
 
-**F-22 Sign-in.** Unique 6-character code. Session opened with time, IP, device. New login replaces any prior open session. Sessions record why they ended. Expired tokens closed within one minute. Ten minutes of inactivity pauses work and signs the user out. **Gaps:** no rate limiting/lockout; sessions also expire after 10–15 minutes even while the user is working (no silent refresh).
+**F-22 Sign-in.** Unique 6-character code. JWT access token lasts 2 days; refresh token cookie lasts 10 days. Logout and refresh endpoints exist. After SignalR disconnect, open tasks are paused at 30 minutes. **Gaps:** no rate limiting/lockout; JWT issuer/audience not validated; access token stored in browser storage.
 
 **F-23–F-25 (not delivered).** Forward capacity forecast; automatic ageing alerts; feeding observed averages back into default durations.
+
+**F-26 User Tasks.** Managers (not Members) see a table of users with To Do and Doing counts and can open that user’s tasks (`/user-tasks`).
+
+**F-27 HR calendar.** Non-members use `/calendar` (leave, permission, WFH tabs) plus detail pages to review and decide requests. Members use My Leaves only.
 
 ---
 
@@ -138,7 +145,7 @@ User requirements are stated as capabilities a person must have. They map to fea
 | UR-M-02 | I need to claim a task from the group backlog, start it, pause it when interrupted, and complete it. |
 | UR-M-03 | I need comments (including replies) so I can discuss the work on the task itself. |
 | UR-M-04 | I need to flag a blocked task so my Team Leader is notified immediately. |
-| UR-M-05 | I need to send work back to a permitted earlier step, with notes and files, when the work is not acceptable. |
+| UR-M-05 | I need to send work back to a permitted earlier step, with a problem type, notes, and files, when the work is not acceptable. |
 | UR-M-06 | I need Kanban and spreadsheet views of the same work, and I need the system to remember which I prefer. |
 | UR-M-07 | I need to request leave, permission, and work-from-home, preview the balance impact, and cancel while pending. |
 | UR-M-08 | I need a notification inbox that still has my alerts if I was offline. |
@@ -155,6 +162,8 @@ User requirements are stated as capabilities a person must have. They map to fea
 | UR-TL-05 | I need to record the first opinion on leave / permission / WFH for my direct reports. |
 | UR-TL-06 | I need sprint boards and sprint analytics for the increment my team is delivering. |
 | UR-TL-07 | I need Task Logger and the daily report scoped to my group. |
+| UR-TL-08 | I need a per-person view of To Do and Doing counts so I can open a member’s work. |
+| UR-TL-09 | I need a calendar of pending leave, permission, and WFH for my reports. |
 
 ### 3.3 Section Head
 
@@ -164,6 +173,7 @@ User requirements are stated as capabilities a person must have. They map to fea
 | UR-SH-02 | I need to approve HR requests for users in my section’s groups. |
 | UR-SH-03 | I need reporting scoped to my section, not the whole organisation. |
 | UR-SH-04 | I need a live count of requests waiting for my decision. |
+| UR-SH-05 | I need User Tasks and calendar views scoped to my section. |
 
 ### 3.4 Project Manager / Coordinator
 
@@ -188,15 +198,15 @@ User requirements are stated as capabilities a person must have. They map to fea
 | UR-O-02 | I need to be the final approver on leave, and to be notified when a subject closes. |
 | UR-O-03 | I need my own permission requests auto-approved, with the CEO emailed. |
 | UR-O-04 | I need to see every staff member’s leave balances. |
-| UR-O-05 | I need a complete record of who signed in, from where, for how long, and why they left — including a 24-hour storyline. |
-| UR-O-06 | I need to force a user out immediately and have their browser signed out. |
+| UR-O-05 | I need a complete record of who signed in, from where, for how long, and why they left — including a 24-hour storyline. **Not met** (no session store). |
+| UR-O-06 | I need to force a user out immediately and have their browser signed out. **Not met.** |
 
 ### 3.6 Cross-cutting (all authenticated users)
 
 | ID | User requirement |
 |---|---|
-| UR-X-01 | I need to sign in with my issued code and not stay signed in on a desk I have left. |
-| UR-X-02 | I must not be signed out while I am actively working. **Not met** (10-minute access token, no silent refresh). |
+| UR-X-01 | I need to sign in with my issued code and sign out when I am done. |
+| UR-X-02 | I must not be signed out while I am actively working. Met at current 2-day JWT (the previous 10-minute token assumption does not match code). |
 | UR-X-03 | I must only see navigation and data my role is entitled to. |
 | UR-X-04 | I need operational events (assignment, flag, HR decision, project close) both as a live toast and as a durable inbox item. |
 
@@ -262,7 +272,7 @@ The catalogue below is the product contract. IDs align with `docs/BRD.md` Sectio
 | FR-035 | Journal every task event to an actor and timestamp across at least: creation, each status change, pause, resume, flag, unflag, assign, comment, comment edit/delete, rollback, priority change, skip, process change, jump, reactivation. | M | Delivered (22 event types) |
 | FR-036 | Present tasks as Kanban and spreadsheet; remember the user’s preference. | M | Delivered |
 | FR-037 | Scope task lists to what the viewer’s role may see. | M | Delivered |
-| FR-038 | Automatically pause a user’s active tasks after 10 minutes of inactivity. | M | Delivered |
+| FR-038 | Automatically pause a user’s active tasks after 30 minutes of SignalR disconnect (in-memory presence). | M | Delivered |
 | FR-039 | Alert when a task exceeds expected duration or waits unclaimed beyond a threshold. | S | Not delivered |
 
 ### 4.5 Assignment
@@ -274,7 +284,7 @@ The catalogue below is the product contract. IDs align with `docs/BRD.md` Sectio
 | FR-042 | Assignment restricted to the task’s discipline, except Owner and Project Manager. | M | Delivered |
 | FR-043 | Assignment notifies the assignee in real time and persistently, with a link to the task. | M | Delivered |
 | FR-044 | Reassignment closes any open effort session with a reassignment reason. | M | Delivered |
-| FR-045 | Present per-user workload (in-progress and queued counts) to managers. | M | Delivered |
+| FR-045 | Present per-user workload (in-progress and queued counts) to managers, including the User Tasks screen (not Members). | M | Delivered |
 
 ### 4.6 Rework
 
@@ -282,7 +292,7 @@ The catalogue below is the product contract. IDs align with `docs/BRD.md` Sectio
 |---|---|---|---|
 | FR-046 | Rework only from a task that is in progress. | M | Delivered |
 | FR-047 | Rework targets limited to configured rollback targets. | M | Delivered |
-| FR-048 | Capture per-step issue notes and a free-text clarification. | M | Delivered |
+| FR-048 | Capture per-step issue notes, a free-text clarification, and a required problem type from: Content, Logic, UI, API, Performance, Development, VO/Narration, Others. | M | Delivered |
 | FR-049 | Accept supporting files: up to 5 files of 10 MB, PDF or Office formats. | M | Delivered |
 | FR-050 | Mark the resulting task as rework, link to origin, increment rework counter. | M | Delivered |
 | FR-051 | Retrievable rework history; attachments downloadable. | M | Delivered |
@@ -315,8 +325,8 @@ The catalogue below is the product contract. IDs align with `docs/BRD.md` Sectio
 | FR-063 | Landing screen determined by the signed-in user’s role. | M | Delivered |
 | FR-064 | Owner and Project Manager see an organisation-wide dashboard (users, projects, schemas, active work, learning-objective status). | M | Delivered |
 | FR-065 | Team Leader sees a team-scoped dashboard (members, projects, task distribution). | M | Delivered |
-| FR-066 | Section Head sees a section-scoped dashboard. | M | Partial — endpoint exists; content not signed off |
-| FR-067 | Member sees a personal dashboard (own work and leave). | M | Partial — endpoint exists; content not signed off |
+| FR-066 | Section Head sees a section-scoped dashboard. | M | Delivered |
+| FR-067 | Member sees a personal dashboard (own work and leave). | M | Delivered |
 | FR-068 | A dashboard request from the wrong role is refused. | M | Delivered |
 | FR-069 | Navigation shown only where the user’s role permits the function. | M | Delivered |
 
@@ -328,7 +338,7 @@ The catalogue below is the product contract. IDs align with `docs/BRD.md` Sectio
 | FR-071 | Analytics filterable by Today, Last Week, Last Month, All Time. | M | Delivered |
 | FR-072 | Report outstanding work across disciplines using each discipline’s colour. | M | Delivered |
 | FR-073 | A learning objective is complete only when it has work and none is incomplete; not started when it has no work but work is expected, or all work is still in Backlog. | M | Delivered |
-| FR-074 | Daily operational report filterable by team, semester, subject, grade, status, problem type, with summaries and charts. | M | Delivered |
+| FR-074 | Daily operational report filterable by team, semester, subject, grade, status, problem type, task name, and priority, with summaries and charts (including problem-type counts). | M | Delivered |
 | FR-075 | A manager can attach one explanatory note per task in the daily report. | M | Delivered |
 | FR-076 | Productivity report derived entirely from recorded data. | M | Delivered |
 | FR-077 | Award 3 points for finishing ahead of expected duration, 2 on time, 1 late, 0 where no expectation exists. | M | Delivered |
@@ -404,18 +414,19 @@ The catalogue below is the product contract. IDs align with `docs/BRD.md` Sectio
 | ID | Requirement | P | Status |
 |---|---|---|---|
 | FR-124 | Users sign in with their unique 6-character code. | M | Delivered |
-| FR-125 | Every sign-in opens a session record (time, IP, device). | M | Delivered |
-| FR-126 | A new sign-in closes any previously open session, recorded as replaced. | M | Delivered |
-| FR-127 | Every session records why it ended: manual, expiry, inactivity, administrative, or replacement. | M | Delivered |
-| FR-128 | Sessions left open beyond token expiry are closed automatically within one minute. | M | Delivered |
-| FR-129 | Ten minutes of inactivity pauses work, invalidates access, and signs the user out. | M | Delivered |
-| FR-130 | An expired user is prevented from continuing to navigate. | M | Delivered |
-| FR-131 | Owner can browse all sessions, filtered by date range and reason. | M | Delivered |
-| FR-132 | Owner can view a user’s 24-hour activity storyline. | M | Delivered |
-| FR-133 | Owner can force a user out immediately (invalidate access; sign out browser in real time). | M | Delivered |
+| FR-125 | Every sign-in opens a session record (time, IP, device). | M | Not delivered |
+| FR-126 | A new sign-in closes any previously open session, recorded as replaced. | M | Not delivered (refresh tokens exist; no session journal) |
+| FR-127 | Every session records why it ended: manual, expiry, inactivity, administrative, or replacement. | M | Not delivered |
+| FR-128 | Sessions left open beyond token expiry are closed automatically within one minute. | M | Not delivered |
+| FR-129 | Thirty minutes after SignalR disconnect, open tasks are paused. | M | Delivered |
+| FR-130 | An expired or archived user is prevented from continuing to navigate. | M | Partial — archived users rejected on about-me; no dedicated expired-user entity |
+| FR-131 | Owner can browse all sessions, filtered by date range and reason. | M | Not delivered |
+| FR-132 | Owner can view a user’s 24-hour activity storyline. | M | Not delivered |
+| FR-133 | Owner can force a user out immediately (invalidate access; sign out browser in real time). | M | Not delivered |
 | FR-134 | Every function restricted to entitled roles, enforced by the server. | M | Not delivered consistently |
 | FR-135 | Sign-in protected against automated guessing (rate limiting and lockout). | M | Not delivered |
-| FR-136 | An active user is not signed out while working. | M | Not delivered |
+| FR-136 | An active user is not signed out while working. | M | Delivered at current 2-day access token |
+| FR-137 | Approvers (not Members) can review leave, permission, and WFH from a calendar and request-detail pages. | M | Delivered |
 
 ---
 
@@ -426,7 +437,7 @@ The catalogue below is the product contract. IDs align with `docs/BRD.md` Sectio
 | ID | Constraint | Implication |
 |---|---|---|
 | C-01 | Users are known to HR and issued a unique 6-character code. There is no password and no SSO. | Cannot satisfy a corporate authentication standard without a change. |
-| C-02 | Access token lifetime is 10 minutes; refresh token 15 minutes. | Unbroken session ceiling is 15 minutes unless refresh is implemented. |
+| C-02 | Access token lifetime is 2 days; refresh token 10 days. | Long-lived browser session unless the user logs out. |
 | C-03 | Only one active session per user. | A user cannot work on two devices at once. |
 | C-04 | Working week is Monday–Friday for all staff. | No shift or regional variation. |
 | C-05 | Permission and work-from-home counters reset on the 21st (payroll month boundary). | Policy is compiled in; changing the day requires a release. |
@@ -502,7 +513,7 @@ Criteria are written so QA can pass or fail them without interpreting intent. **
 - Given a flagged task, then the Team Leader receives a real-time alert and a persistent notification.
 - Given comments, then replies thread; the author can edit and delete their comments; each action is journaled.
 - Given board and sheet routes for the same project, then both show the same tasks and the last-used view is restored on return.
-- Given 10 minutes of inactivity on the real-time channel, then the user’s open tasks are paused with end reason Session, tokens are invalidated, and the browser is signed out.
+- Given 30 minutes of SignalR disconnect, then the user’s open tasks are paused with end reason Session. The browser is not force-signed-out; JWT remains valid until expiry or logout.
 
 ### AC-05 Assignment
 
@@ -516,7 +527,8 @@ Criteria are written so QA can pass or fail them without interpreting intent. **
 
 - Given a task not in Doing, when rollback is attempted, then it is refused.
 - Given a Doing task, when rollback targets are requested, then only configured earlier steps are returned.
-- Given a valid rollback with notes, clarification, and ≤5 PDF/Office files ≤10 MB each (request ≤60 MB), then a new task is created at the target step, marked as rework, linked via origin id, with RollbackCount incremented.
+- Given a valid rollback with problem type, notes, clarification, and ≤5 PDF/Office files ≤10 MB each (request ≤60 MB), then a new task is created at the target step, marked as rework, linked via origin id, with RollbackCount incremented.
+- Given rollback without a recognised problem type, then it is refused.
 - Given rollback history, then the chain and attachments are retrievable.
 - *Gap:* Given an unauthenticated caller, when they request an attachment download, then they **must** be refused. Currently they are not — fail until fixed.
 
@@ -539,13 +551,13 @@ Criteria are written so QA can pass or fail them without interpreting intent. **
 - Given each of the five roles, when that user signs in, then they land on the dashboard for their role and cannot retrieve another role’s dashboard API (401/403).
 - Given Owner or Project Manager, then the landing view includes organisation-wide counts (users, projects, schemas, active tasks) and learning-objective status distribution.
 - Given Team Leader, then the landing view is team-scoped (members, projects, task distribution).
-- *Sign-off:* Section Head dashboard content matches the agreed section-scoped widgets.
-- *Sign-off:* Member dashboard content matches agreed personal work and leave widgets.
-- Given sidebar rules, then Members do not see User Management, Workflow, Projects, Sessions, or Members Leaves; only Owner sees Sessions and Members Leaves.
+- Given Section Head, then the landing view loads the section-head dashboard API and widgets.
+- Given Member, then the landing view loads personal work (and leave) widgets.
+- Given sidebar rules, then Members do not see User Management, Workflow, Projects, or Members Leaves; only Owner sees Members Leaves. There is no Sessions screen.
 
 ### AC-10 Daily report and Task Logger
 
-- Given the daily report, when filters (team, semester, subject, grade, status, problem type) are applied, then the table, summaries, and charts match the filters.
+- Given the daily report, when filters (team, semester, subject, grade, status, problem type, task name, priority) are applied, then the table, summaries, and charts match the filters.
 - Given a manager note on a task, then at most one note exists per task and it appears on the report.
 - Given CSV/Excel export, then the downloaded file contains the filtered rows.
 - Given Task Logger for a period, then actual minutes come from work sessions of non-archived users (fallback: task duration); expected minutes resolve Step → Task Bank → task → 0.
@@ -597,14 +609,12 @@ Criteria are written so QA can pass or fail them without interpreting intent. **
 
 ### AC-15 Sessions
 
-- Given login with a valid 6-character code, then a session row is opened with time, IP, and user agent.
-- Given a second login, then the previous open session closes as ReplacedByNewLogin.
-- Given logout, expiry sweeper, inactivity, force-logout, then the session records the matching reason.
-- Given Owner, when they filter sessions by date and reason, then results match; when they open a user’s day view, then active/inactive segments cover 24 hours.
-- Given Owner force-logout, then tokens are invalid, the session reason is ForcedByAdmin, and the user’s browser signs out via real-time event.
-- Given an expired token, when the user navigates, then navigation is aborted and they cannot continue using the app.
+- Given login with a valid 6-character code, then a JWT is issued (2 days) and a refresh token cookie is set (10 days).
+- Given logout, then the refresh cookie is cleared.
+- Given SignalR disconnect for 30 minutes, then open tasks are paused.
+- *Gap:* no persisted session row, no Owner session browser, no 24-hour storyline, no force-logout.
 - *Gap:* repeated failed logins must be rate-limited and locked out.
-- *Gap:* a user who is actively working (mouse/keyboard or SignalR activity within the inactivity window) must not be signed out solely because 10 minutes of wall-clock token life elapsed.
+- Given a 2-day access token, a user who remains on the site is not signed out solely by a 10-minute wall clock.
 
 ### AC-16 Authorisation (release blocker)
 
@@ -625,28 +635,30 @@ These authorisation criteria are **not currently met** across the API surface. T
 | F-03–F-04 Schema / Task Bank | UR-PM-02, UR-PM-08 | FR-010–FR-019 | AC-02, AC-07 |
 | F-05 Automation | UR-PM-03, UR-TL-02 | FR-021–FR-027 | AC-02, AC-03 |
 | F-06 Execution | UR-M-01–UR-M-06 | FR-028–FR-038 | AC-04 |
-| F-07 Assignment | UR-TL-03–04, UR-PM-04 | FR-040–FR-045 | AC-05 |
+| F-07 Assignment | UR-TL-03–04, UR-TL-08, UR-PM-04 | FR-040–FR-045 | AC-05 |
 | F-08 Rework | UR-M-05 | FR-046–FR-052 | AC-06 |
 | F-09 Intervention | UR-PM-04 | FR-053–FR-057 | AC-07 |
 | F-10 Sprints | UR-TL-06, UR-PM-05 | FR-058–FR-062 | AC-08 |
 | F-11 Dashboards | UR-M-09, UR-TL-01, UR-SH-01, UR-O-01 | FR-063–FR-069 | AC-09 |
 | F-12–F-15 Reporting | UR-PM-06, UR-TL-07, UR-SH-03 | FR-070–FR-082 | AC-10, AC-11 |
 | F-16 Org admin | UR-PM-07 | FR-083–FR-091 | AC-12 |
-| F-17–F-19 HR | UR-M-07, UR-TL-05, UR-SH-02, UR-O-02–04 | FR-092–FR-115 | AC-13 |
+| F-17–F-19 HR | UR-M-07, UR-TL-05, UR-TL-09, UR-SH-02, UR-O-02–04 | FR-092–FR-115, FR-137 | AC-13 |
 | F-20 Notifications | UR-X-04, UR-SH-04 | FR-116–FR-123 | AC-14 |
 | F-21–F-22 Sessions | UR-O-05–06, UR-X-01–02 | FR-124–FR-136 | AC-15, AC-16 |
 | F-23–F-25 Future | UR-PM-09–10 | FR-020, FR-039 | Not in v1.0 AC |
+| F-26 User Tasks | UR-TL-08, UR-SH-05 | FR-045 | AC-05 |
+| F-27 HR calendar | UR-TL-09, UR-SH-05 | FR-137 | AC-13 |
 
 ### Counts
 
 | Measure | Count |
 |---|---|
-| Features | 25 (22 in product, 3 not delivered) |
-| User requirements | 40 |
-| Functional requirements | 136 |
+| Features | 27 (21 delivered, 2 partial, 4 not delivered) |
+| User requirements | 43 |
+| Functional requirements | 137 |
 | Acceptance suites | 16 |
 
-**v1.0 product intent is delivered.** Remaining must-fix items before treating the PRD as fully satisfied: FR-009/062/091/134 (server authorisation), FR-052/104 (document access), FR-135 (login lockout), FR-136 (session renewal), FR-066/067 (dashboard sign-off), FR-082 (report navigation), plus the three strategic features F-23–F-25.
+**v1.0 product intent is delivered** for pipeline, execution, sprints, HR, notifications, and reporting. Remaining must-fix items before treating the PRD as fully satisfied: FR-009/062/091/134 (server authorisation), FR-052/104 (document access), FR-125–133 (session audit), FR-135 (login lockout), FR-082 (report navigation), AC-11 name-substring exclusion, plus the three strategic features F-23–F-25.
 
 ---
 

@@ -33,6 +33,7 @@ public interface ITaskService
         int stepId,
         List<RollbackLogDto> logs,
         string? clarification,
+        IEnumerable<string>? problemTypes,
         List<IFormFile>? attachments = null
     );
     Task<ActionResult<ResponseService<GetTaskDetailsDto>>> ProceedTask(int taskId);

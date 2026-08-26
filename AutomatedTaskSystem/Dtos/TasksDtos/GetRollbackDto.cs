@@ -7,6 +7,7 @@ public class GetRollbackDto
     public int Id { get; set; }
     public BasicInfoDto Task { get; set; } = new BasicInfoDto { };
     public string? Clarification { get; set; }
+    public string? ProblemType { get; set; }
     public List<RollbackAttachmentDto> Attachments { get; set; } =
         new List<RollbackAttachmentDto> { };
 }

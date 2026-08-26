@@ -191,6 +191,11 @@ public class TaskController : ControllerBase
             stepId: req.StepId,
             logs: req.Logs,
             clarification: req.Clarification,
+            problemTypes: req.ProblemTypes?.Count > 0
+                ? req.ProblemTypes
+                : string.IsNullOrWhiteSpace(req.ProblemType)
+                    ? []
+                    : [req.ProblemType],
             attachments: req.Attachments
         );
 
@@ -231,10 +236,18 @@ public class TaskController : ControllerBase
                 new BaseResponseService { Error = false, Message = "Invalid auth" }
             );
 
-        var res = new List<BasicInfoDto> { };
-
         if (task.Step is null)
-            return Ok(res);
+            return Ok(new List<BasicInfoDto>());
+
+        var loStepIds = (await _context.Tasks
+            .Where(t =>
+                t.LearningObjectiveId == task.LearningObjectiveId
+                && !t.Archived
+                && t.StepId != null)
+            .Select(t => t.StepId!.Value)
+            .Distinct()
+            .ToListAsync())
+            .ToHashSet();
 
         var taskStep = await _context.Steps
             .Where(s => !s.Archived && s.Id == task.Step.Id)
@@ -248,61 +261,111 @@ public class TaskController : ControllerBase
             && user.Role != UserRoleEnum.ProjectManger
         )
         {
-            foreach (var step in taskStep.Rollbacks)
-                res.Add(new BasicInfoDto { Id = step.Id, Name = step.TaskBank.Name });
-            return res;
+            var configured = taskStep.Rollbacks
+                .Where(s => !s.Archived && s.TaskBank is not null)
+                .OrderByDescending(s => loStepIds.Contains(s.Id))
+                .Select(s => (s.Id, s.TaskBankId, s.TaskBank.Name));
+            return Ok(DistinctRollbackPoints(configured));
         }
 
         var schema = await _context.Schemas
-            .Include(s => s.Nodes)
-            .ThenInclude(n => n.Steps)
-            .ThenInclude(s => s.TaskBank)
-            .ThenInclude(tb => tb.Group)
+            .AsSplitQuery()
             .Include(s => s.Nodes)
             .ThenInclude(n => n.Previous)
             .Where(s => !s.Archived && s.Nodes.Any(n => !n.Archived && n.Id == task.Step.NodeId))
             .FirstOrDefaultAsync();
 
         if (schema is null)
-            return Ok(res);
+            return Ok(new List<BasicInfoDto>());
 
-        var nodes = new List<Node>
+        var currentNode = schema.Nodes.FirstOrDefault(n => !n.Archived && n.Id == task.Step.NodeId);
+        if (currentNode is null)
+            return Ok(new List<BasicInfoDto>());
+
+        var distanceByNodeId = new Dictionary<int, int> { [currentNode.Id] = 0 };
+        var visited = new HashSet<int> { currentNode.Id };
+        var queue = new Queue<Node>();
+        queue.Enqueue(currentNode);
+
+        while (queue.Count > 0)
         {
-            schema.Nodes.Where(n => !n.Archived && n.Steps.Any(s => s.Id == task.StepId)).First()
-        };
+            var node = queue.Dequeue();
+            foreach (var prev in node.Previous)
+            {
+                if (prev.Archived || !visited.Add(prev.Id))
+                    continue;
 
-        while (true)
-        {
-            var prevList = new List<Node> { };
-
-            foreach (var item in nodes)
-                foreach (var prev in item.Previous)
-                {
-                    var check = nodes.Any(n => !n.Archived && n.Id == prev.Id);
-                    if (!check)
-                        prevList.Add(prev);
-                }
-
-            if (prevList.Count == 0)
-                break;
-
-            foreach (var item in prevList)
-                nodes.Add(item);
+                distanceByNodeId[prev.Id] = distanceByNodeId[node.Id] + 1;
+                queue.Enqueue(schema.Nodes.FirstOrDefault(n => n.Id == prev.Id) ?? prev);
+            }
         }
 
-        foreach (var item in nodes)
-            foreach (var step in item.Steps)
-                if (
-                    !step.Archived
-                    && step.TaskBank.Type == TaskBankTypeEnum.Creation
-                    && (
-                        step.NodeId != task.Step.NodeId
-                        || (step.NodeId == task.Step.NodeId && step.Order < task.Step.Order)
-                    )
-                )
-                    res.Add(new BasicInfoDto { Id = step.Id, Name = step.TaskBank.Name });
+        var nodeIds = visited.ToList();
+        var currentNodeId = task.Step.NodeId;
+        var currentStepOrder = task.Step.Order;
 
-        return Ok(res);
+        var steps = await _context.Steps
+            .Where(s =>
+                !s.Archived
+                && nodeIds.Contains(s.NodeId)
+                && s.TaskBank.Type == TaskBankTypeEnum.Creation)
+            .Select(s => new
+            {
+                s.Id,
+                s.Order,
+                s.NodeId,
+                NodeOrder = s.Node.Order,
+                s.TaskBankId,
+                Name = s.TaskBank.Name
+            })
+            .ToListAsync();
+
+        var points = steps
+            .Where(s => s.NodeId != currentNodeId || s.Order < currentStepOrder)
+            .Select(s => (
+                OnLo: loStepIds.Contains(s.Id),
+                Distance: distanceByNodeId.GetValueOrDefault(s.NodeId, int.MaxValue),
+                s.NodeOrder,
+                s.Order,
+                s.Id,
+                s.TaskBankId,
+                s.Name
+            ))
+            .OrderByDescending(c => c.OnLo)
+            .ThenBy(c => c.Distance)
+            .ThenByDescending(c => c.NodeOrder)
+            .ThenByDescending(c => c.Order)
+            .Select(c => (c.Id, c.TaskBankId, c.Name));
+
+        return Ok(DistinctRollbackPoints(points));
+    }
+
+    private static string NormalizeRollbackPointName(string? name) =>
+        string.Join(" ", (name ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+
+    private static List<BasicInfoDto> DistinctRollbackPoints(
+        IEnumerable<(int Id, int TaskBankId, string Name)> points)
+    {
+        var seenIds = new HashSet<int>();
+        var seenTaskBanks = new HashSet<int>();
+        var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var unique = new List<BasicInfoDto>();
+
+        foreach (var point in points)
+        {
+            if (!seenIds.Add(point.Id))
+                continue;
+            if (point.TaskBankId > 0 && !seenTaskBanks.Add(point.TaskBankId))
+                continue;
+
+            var name = NormalizeRollbackPointName(point.Name);
+            if (name.Length > 0 && !seenNames.Add(name))
+                continue;
+
+            unique.Add(new BasicInfoDto { Id = point.Id, Name = name });
+        }
+
+        return unique;
     }
 
     // POST:

@@ -78,6 +78,8 @@ public static partial class Requests
         public int StepId { get; set; }
         public List<RollbackLogDto> Logs { get; set; } = new List<RollbackLogDto> { };
         public string Clarification { get; set; } = "";
+        public List<string> ProblemTypes { get; set; } = new();
+        public string ProblemType { get; set; } = "";
         public List<IFormFile>? Attachments { get; set; }
     }
 
