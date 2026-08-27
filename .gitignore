@@ -363,3 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 /AutomatedTaskSystem/wwwroot/uploads/medical-certificates
 /AutomatedTaskSystem/ErrorLogs
+# Local stakeholder docs
+/docs/

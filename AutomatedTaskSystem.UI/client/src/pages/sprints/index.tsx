@@ -278,10 +278,11 @@ const Sprints = () => {
                         })}
                         columns={sprintColumns}
                         onRowClick={(params) => {
-                            // For Member (role 3) and Team Leader (role 2), go directly to task board
-                            // For other roles, go to sprint detail page
-                            if(role === 0 || role === 4)
-                            handleRoutingToSprintDetail(params.id as number);
+                            if (role === 0 || role === 4) {
+                                handleRoutingToSprintDetail(params.id as number);
+                            } else {
+                                handleRouteToSprintTask(params.id as number);
+                            }
                         }}
                         sx={{
                             '& .MuiDataGrid-row': {
@@ -293,7 +294,7 @@ const Sprints = () => {
                         }}
                     />
                 </div>
-                <CreateSprint />
+                <CreateSprint onSprintCreated={() => fetchSprints(activeTab === 'archived')} />
             </div>
 
 

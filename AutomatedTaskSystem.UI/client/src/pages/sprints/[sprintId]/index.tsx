@@ -116,7 +116,7 @@ const SingleSprintPage = () => {
                         <h1 className="font-bold text-2xl">Sprint: {sprint.name}</h1>
                     </div>
                     <div className="flex items-center gap-4">
-                        {(role === 0 || role === 2) && (
+                        {(role === 0 || role === 4) && (
                             <Link href={{ pathname: router.pathname, query: { ...router.query, form: "edit-sprint" } }}>
                                 <button className="px-4 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 transition-colors">
                                     Edit Sprint
@@ -189,7 +189,7 @@ const SingleSprintPage = () => {
                     </div>
                 </div>
             </div>
-            {(role === 0 || role === 2) && sprintId && typeof sprintId === 'string' && (
+            {(role === 0 || role === 4) && sprintId && typeof sprintId === 'string' && (
                 <EditSprint sprintId={sprintId} onSprintUpdated={refreshSprintDetails} />
             )}
         </>

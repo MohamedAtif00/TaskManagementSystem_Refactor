@@ -38,6 +38,13 @@ namespace AutomatedTaskSystem.Services.Sprint
             return archived.Value ? $"{AllSprintsCacheKeyPrefix}Archived" : $"{AllSprintsCacheKeyPrefix}Active";
         }
 
+        private void InvalidateAllSprintsCache()
+        {
+            _cache.Remove(GetAllSprintsCacheKey(null));
+            _cache.Remove(GetAllSprintsCacheKey(true));
+            _cache.Remove(GetAllSprintsCacheKey(false));
+        }
+
         /// <summary>
         /// Optimized version using Dapper for improved performance with caching.
         /// Replaces EF Core with direct SQL queries to minimize database round trips.
@@ -351,6 +358,7 @@ namespace AutomatedTaskSystem.Services.Sprint
 
                 // Save all changes (new sprint and updated learning objectives) to the database
                 await dataContext.SaveChangesAsync();
+                InvalidateAllSprintsCache();
 
                 // Prepare the successful response DTO
                 response.Data = new Responses.SprintDto
@@ -477,6 +485,7 @@ namespace AutomatedTaskSystem.Services.Sprint
 
                 // 5. Save all changes to the database
                 await dataContext.SaveChangesAsync();
+                InvalidateAllSprintsCache();
 
                 // 6. Prepare the successful response DTO
                 response.Data = new Responses.SprintDto
@@ -588,6 +597,7 @@ namespace AutomatedTaskSystem.Services.Sprint
 
                 sprint.IsArchived = archived;
                 await dataContext.SaveChangesAsync();
+                InvalidateAllSprintsCache();
 
                 response.Data = new Responses.SprintDto
                 {

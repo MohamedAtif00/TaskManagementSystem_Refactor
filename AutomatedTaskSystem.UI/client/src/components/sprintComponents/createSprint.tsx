@@ -6,22 +6,18 @@ import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import { IDName } from "../../lib/API/workFromHome";
 
-// Define a Project interface (adjust based on your actual data structure)
-// interface IProject {
-//     id: string; // Or 'id: number' or similar, depending on your backend
-//     name: string;
-// }
-
-// interface ILearningOutcome {
-//     id: string;
-//     name: string;
-// }
-// Helper function to format date for input type="date"
 const formatDateForInput = (date: Date): string => {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
-const CreateSprint = () => {
+interface CreateSprintProps {
+    onSprintCreated?: () => void;
+}
+
+const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
     const { query, pathname, push } = useRouter();
     const { role } = useAppSelector((s) => s.authSlice);
 
@@ -118,6 +114,24 @@ const CreateSprint = () => {
         setSelectedLos(selectedLos.filter(selected => selected.id !== lo.id));
     };
 
+    const resetForm = () => {
+        setSprintName('');
+        setDescription('');
+        setStartDate(formatDateForInput(new Date()));
+        setEndDate(formatDateForInput(addDays(new Date(), 7)));
+        setSelectedProjectId('');
+        setLearningOutcomes([]);
+        setSelectedLos([]);
+        setFormError('');
+        setProjectFetchError('');
+        setLoFetchError('');
+    };
+
+    const closeModal = () => {
+        resetForm();
+        push(pathname);
+    };
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setFormError("");
@@ -147,7 +161,8 @@ const CreateSprint = () => {
             });
 
             if (response && !response.error) {
-                push(pathname); // Close modal
+                onSprintCreated?.();
+                closeModal();
             } else if (response.error) {
                 setFormError(`Error: ${response.message}`);
             } else {
@@ -315,7 +330,7 @@ const CreateSprint = () => {
                         <div className="flex gap-4">
                             <button
                                 type="button"
-                                onClick={() => push(pathname)}
+                                onClick={closeModal}
                                 className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                             >
                                 Cancel

@@ -53,6 +53,10 @@ namespace AutomatedTaskSystem.Controllers
             try
             {
                 var result = await sprintService.CreateNewSprintAsync(request);
+                if (result.Error)
+                {
+                    return BadRequest(result);
+                }
                 return Ok(result);
             }
             catch (Exception)

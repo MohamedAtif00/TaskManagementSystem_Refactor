@@ -93,9 +93,9 @@ const SPRINTS = {
 
             // Check if the response was successful (status code 2xx)
             if (!res.ok) {
-                const errorData = await res.json();
+                const errorData = await res.json().catch(() => ({}));
                 console.error(`API Error: ${res.status} - ${errorData.message || res.statusText}`);
-                return { success: false, error: errorData.message || res.statusText };
+                return { error: true, message: errorData.message || res.statusText, data: undefined };
             }
 
             // Parse the JSON response
@@ -104,8 +104,7 @@ const SPRINTS = {
         } catch (err) {
             // Handle network errors or issues with JSON parsing
             console.error("An unexpected error occurred:", err);
-            // Return a structured error response
-            return { success: false, error: (err as Error).message || "Unknown error occurred" };
+            return { error: true, message: (err as Error).message || "Unknown error occurred", data: undefined };
         }
     },
     UPDATE_SPRINT: async (
