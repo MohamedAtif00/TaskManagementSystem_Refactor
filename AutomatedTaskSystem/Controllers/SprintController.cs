@@ -1,4 +1,5 @@
 ﻿using AutomatedTaskSystem.DTO;
+using AutomatedTaskSystem.Dtos.SprintDtos;
 using AutomatedTaskSystem.Services.ResponseService;
 using AutomatedTaskSystem.Services.Sprint;
 using Microsoft.AspNetCore.Http;
@@ -47,6 +48,24 @@ namespace AutomatedTaskSystem.Controllers
                 return StatusCode(500);
             }
         }
+        [HttpPost("resolve-los-by-name")]
+        public async Task<IActionResult> ResolveLosByName([FromBody] ResolveLosByName request)
+        {
+            try
+            {
+                var result = await sprintService.ResolveLosByNameAsync(request);
+                if (result.Error)
+                {
+                    return BadRequest(result);
+                }
+                return Ok(result);
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, "Unexpected error occurred.");
+            }
+        }
+
         [HttpPost("create-sprint")]
         public async Task<IActionResult> CreateSprint(Request.CreateSprint request)
         {

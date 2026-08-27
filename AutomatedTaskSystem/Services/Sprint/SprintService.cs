@@ -3,6 +3,7 @@ using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.DTO;
 using AutomatedTaskSystem.Dtos.SprintDtos;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.ProjectStatus;
 using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Services.ResponseService;
 using Dapper;
@@ -620,9 +621,135 @@ namespace AutomatedTaskSystem.Services.Sprint
             return response;
         }
 
+        private const int MaxResolveLoNames = 500;
 
+        private static bool IsOldLearningObjectiveName(string? name) =>
+            !string.IsNullOrWhiteSpace(name) && name.Contains("old", StringComparison.OrdinalIgnoreCase);
 
+        public async Task<ResponseService<ResolveLosByNameResult>> ResolveLosByNameAsync(Request.ResolveLosByName request)
+        {
+            var result = new ResolveLosByNameResult();
+            var response = new ResponseService<ResolveLosByNameResult> { Data = result };
 
+            var requestedNames = (request.Names ?? new List<string>())
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Select(n => n.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
 
+            if (requestedNames.Count == 0)
+            {
+                response.Message = "No learning objective names were provided.";
+                return response;
+            }
+
+            if (requestedNames.Count > MaxResolveLoNames)
+            {
+                response.Error = true;
+                response.Message = $"A maximum of {MaxResolveLoNames} learning objective names can be imported at once.";
+                return response;
+            }
+
+            try
+            {
+                var candidates = await dataContext.LearningObjectives
+                    .Include(lo => lo.Lesson)
+                        .ThenInclude(l => l.Unit)
+                            .ThenInclude(u => u.Subject)
+                    .Where(lo => requestedNames.Contains(lo.Name))
+                    .ToListAsync();
+
+                var byName = candidates
+                    .GroupBy(lo => (lo.Name ?? "").Trim(), StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+
+                foreach (var name in requestedNames)
+                {
+                    if (!byName.TryGetValue(name, out var matches) || matches.Count == 0)
+                    {
+                        result.Errors.Add(new LoNameError
+                        {
+                            Name = name,
+                            Message = "Learning objective does not exist"
+                        });
+                        continue;
+                    }
+
+                    var eligible = matches.Where(lo => GetIneligibilityReason(lo) == null).ToList();
+                    if (eligible.Count == 1)
+                    {
+                        var lo = eligible[0];
+                        result.Matched.Add(new Responses.IDName { Id = lo.Id, Name = lo.Name });
+                        continue;
+                    }
+
+                    if (eligible.Count > 1)
+                    {
+                        result.Errors.Add(new LoNameError
+                        {
+                            Name = name,
+                            Message = "Name matches more than one learning objective"
+                        });
+                        continue;
+                    }
+
+                    result.Errors.Add(new LoNameError
+                    {
+                        Name = name,
+                        Message = matches
+                            .Select(GetIneligibilityReason)
+                            .Where(reason => reason != null)
+                            .OrderBy(reason => IneligibilityRank(reason!))
+                            .First()!
+                    });
+                }
+
+                response.Message = result.Errors.Count == 0
+                    ? "Learning objectives resolved successfully."
+                    : "Some learning objective names could not be resolved.";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in ResolveLosByNameAsync: {ex.Message}");
+                response.Error = true;
+                response.Message = $"An unexpected error occurred: {ex.Message}";
+            }
+
+            return response;
+        }
+
+        private static string? GetIneligibilityReason(LearningObjective lo)
+        {
+            if (IsOldLearningObjectiveName(lo.Name))
+                return "Learning objective is marked old and cannot be added to a sprint";
+            if (lo.Archived)
+                return "Learning objective is archived";
+            if (lo.DoneAt != null)
+                return "Learning objective is already completed";
+
+            var lesson = lo.Lesson;
+            var unit = lesson?.Unit;
+            var subject = unit?.Subject;
+            if (lesson == null || lesson.Archived || unit == null || unit.Archived
+                || subject == null || subject.Archived || subject.ArchivedWithFolder)
+            {
+                return "Learning objective is not available (archived parent)";
+            }
+
+            if (subject.Status == ProjectStatusEnum.Hold || subject.Status == ProjectStatusEnum.Closed)
+                return "Subject is on hold or closed";
+
+            return null;
+        }
+
+        private static int IneligibilityRank(string reason) => reason switch
+        {
+            "Learning objective is archived" => 0,
+            "Learning objective is marked old and cannot be added to a sprint" => 1,
+            "Learning objective is already completed" => 2,
+            "Learning objective is not available (archived parent)" => 3,
+            "Subject is on hold or closed" => 4,
+            _ => 5
+        };
     }
 }

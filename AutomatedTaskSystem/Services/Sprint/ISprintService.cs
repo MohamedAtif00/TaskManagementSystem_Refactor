@@ -13,5 +13,6 @@ namespace AutomatedTaskSystem.Services.Sprint
         Task<ResponseService<SprintDTO>> GetSingleSprintAsync(int id);
         Task<ResponseService<Responses.SprintDto>> UpdateSprintAsync(int sprintId, Request.UpdateSprint request);
         Task<ResponseService<Responses.SprintDto>> ArchiveSprintAsync(int sprintId, bool archived);
+        Task<ResponseService<ResolveLosByNameResult>> ResolveLosByNameAsync(Request.ResolveLosByName request);
     }
 }

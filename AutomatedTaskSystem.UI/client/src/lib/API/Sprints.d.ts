@@ -12,6 +12,16 @@ export interface GetAllSprintsResponse{
     learningObjects:IDName[],
 }
 
+export interface LoNameError {
+    name: string;
+    message: string;
+}
+
+export interface ResolveLosByNameResult {
+    matched: IDName[];
+    errors: LoNameError[];
+}
+
 interface IDName {
     id: number;
     name: string;

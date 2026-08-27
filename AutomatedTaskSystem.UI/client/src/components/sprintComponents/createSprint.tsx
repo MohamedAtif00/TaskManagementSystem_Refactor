@@ -5,6 +5,7 @@ import { addDays } from "date-fns";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import { IDName } from "../../lib/API/workFromHome";
+import ImportLosFromExcel from "./importLosFromExcel";
 
 const formatDateForInput = (date: Date): string => {
     const year = date.getFullYear();
@@ -109,6 +110,13 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
         }
     };
 
+    const handleExcelImported = (matched: IDName[]) => {
+        setSelectedLos((prev) => {
+            const existingIds = new Set(prev.map((lo) => lo.id));
+            return [...prev, ...matched.filter((lo) => !existingIds.has(lo.id))];
+        });
+    };
+
     const handleDeselectLo = (lo: IDName) => {
         // Remove from selected
         setSelectedLos(selectedLos.filter(selected => selected.id !== lo.id));
@@ -137,7 +145,6 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
         setFormError("");
 
         if (sprintName.trim() === "") return setFormError("Please enter a sprint name.");
-        if (selectedProjectId === "") return setFormError("Please select a project.");
         if (selectedLos.length === 0) return setFormError("Please select at least one learning outcome.");
         if (!startDate) return setFormError("Please select a start date.");
         if (!endDate) return setFormError("Please select an end date.");
@@ -232,7 +239,6 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
                                     value={selectedProjectId}
                                     onChange={(e) => setSelectedProjectId(e.target.value)}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring focus:border-blue-500"
-                                    required
                                 >
                                     <option value="" disabled>Select a project</option>
                                     {projects.length === 0 && !isLoadingProjects && <option value="" disabled>No projects available</option>}
@@ -247,61 +253,59 @@ const CreateSprint = ({ onSprintCreated }: CreateSprintProps) => {
                         )}
                     </div>
 
-                    {selectedProjectId && (
-                        <div>
-                            <label className="block text-gray-700 font-medium mb-1">Learning Outcomes</label>
-                            {isLoadingLOs && <p className="text-gray-500">Loading learning outcomes...</p>}
-                            {loFetchError && <p className="text-red-500">{loFetchError}</p>}
-                            {!isLoadingLOs && !loFetchError && (
-                                <>
-                                    {learningOutcomes.length === 0 ? (
-                                        <p className="text-gray-500 p-2 border rounded-lg">No learning outcomes available for this project.</p>
-                                    ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg">
-                                            <div>
-                                                <h4 className="font-semibold mb-2 text-gray-800">Available</h4>
-                                                <div className="h-48 overflow-y-auto border rounded p-2 space-y-1 bg-gray-50">
-                                                    {learningOutcomes
-                                                        .filter(lo => !selectedLos.some(selected => selected.id === lo.id))
-                                                        .map(lo => (
-                                                            <div
-                                                                key={lo.id}
-                                                                onClick={() => handleSelectLo(lo)}
-                                                                className="p-2 border rounded cursor-pointer hover:bg-blue-100 transition-colors"
-                                                            >
-                                                                {lo.name}
-                                                            </div>
-                                                        ))
-                                                    }
-                                                    {learningOutcomes.filter(lo => !selectedLos.some(selected => selected.id === lo.id)).length === 0 && (
-                                                        <p className="text-gray-500 text-sm p-2">All available LOs selected.</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <h4 className="font-semibold mb-2 text-gray-800">Selected ({selectedLos.length})</h4>
-                                                <div className="h-48 overflow-y-auto border rounded p-2 space-y-1 bg-blue-50">
-                                                    {selectedLos.map(lo => (
-                                                        <div
-                                                            key={lo.id}
-                                                            onClick={() => handleDeselectLo(lo)}
-                                                            className="p-2 border rounded cursor-pointer hover:bg-red-100 transition-colors flex justify-between items-center bg-white"
-                                                        >
-                                                            <span>{lo.name}</span>
-                                                            <span className="text-red-500 font-bold text-lg leading-none">&times;</span>
-                                                        </div>
-                                                    ))}
-                                                    {selectedLos.length === 0 && (
-                                                        <p className="text-gray-500 text-sm p-2">Click on an available LO to select it.</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
+                    <div>
+                        <label className="block text-gray-700 font-medium mb-1">Learning Outcomes</label>
+                        <ImportLosFromExcel selectedLos={selectedLos} onImported={handleExcelImported} />
+                        {isLoadingLOs && <p className="text-gray-500 mt-2">Loading learning outcomes...</p>}
+                        {loFetchError && <p className="text-red-500 mt-2">{loFetchError}</p>}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg mt-3">
+                            <div>
+                                <h4 className="font-semibold mb-2 text-gray-800">Available</h4>
+                                <div className="h-48 overflow-y-auto border rounded p-2 space-y-1 bg-gray-50">
+                                    {!selectedProjectId && (
+                                        <p className="text-gray-500 text-sm p-2">Select a project to see available LOs, or import from Excel.</p>
                                     )}
-                                </>
-                            )}
+                                    {selectedProjectId && learningOutcomes
+                                        .filter(lo => !selectedLos.some(selected => selected.id === lo.id))
+                                        .map(lo => (
+                                            <div
+                                                key={lo.id}
+                                                onClick={() => handleSelectLo(lo)}
+                                                className="p-2 border rounded cursor-pointer hover:bg-blue-100 transition-colors"
+                                            >
+                                                {lo.name}
+                                            </div>
+                                        ))
+                                    }
+                                    {selectedProjectId && !isLoadingLOs && learningOutcomes.filter(lo => !selectedLos.some(selected => selected.id === lo.id)).length === 0 && (
+                                        <p className="text-gray-500 text-sm p-2">
+                                            {learningOutcomes.length === 0
+                                                ? "No learning outcomes available for this project."
+                                                : "All available LOs selected."}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold mb-2 text-gray-800">Selected ({selectedLos.length})</h4>
+                                <div className="h-48 overflow-y-auto border rounded p-2 space-y-1 bg-blue-50">
+                                    {selectedLos.map(lo => (
+                                        <div
+                                            key={lo.id}
+                                            onClick={() => handleDeselectLo(lo)}
+                                            className="p-2 border rounded cursor-pointer hover:bg-red-100 transition-colors flex justify-between items-center bg-white"
+                                        >
+                                            <span>{lo.name}</span>
+                                            <span className="text-red-500 font-bold text-lg leading-none">&times;</span>
+                                        </div>
+                                    ))}
+                                    {selectedLos.length === 0 && (
+                                        <p className="text-gray-500 text-sm p-2">Import from Excel or click an available LO to select it.</p>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    )}
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>

@@ -14,4 +14,16 @@ namespace AutomatedTaskSystem.Dtos.SprintDtos
         public double CompletePercintag { get; set; }
         public List<Responses.IDName> learningObjects { get; set; }
     }
+
+    public class LoNameError
+    {
+        public string Name { get; set; } = "";
+        public string Message { get; set; } = "";
+    }
+
+    public class ResolveLosByNameResult
+    {
+        public List<Responses.IDName> Matched { get; set; } = new();
+        public List<LoNameError> Errors { get; set; } = new();
+    }
 }

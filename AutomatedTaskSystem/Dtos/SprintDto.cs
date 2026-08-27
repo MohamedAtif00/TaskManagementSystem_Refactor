@@ -37,5 +37,10 @@ namespace AutomatedTaskSystem.DTO
             public string? EndDate { get; set; }
             public List<int> Los { get; set; }
         }
+
+        public class ResolveLosByName
+        {
+            public List<string> Names { get; set; } = new();
+        }
     }
 }

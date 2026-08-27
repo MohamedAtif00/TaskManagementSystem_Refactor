@@ -1,6 +1,6 @@
 import { url } from ".";
 import authService from "../Auth";
-import { GetAllSprintsResponse, SprintOverviewData, LearningObjectivesProgressData, LearningObjectivesTableData, TagData, TaskSummary, LearningObjectiveSummary, LearningObjectiveTableRow, CurrentPhase } from './Sprints.d'
+import { GetAllSprintsResponse, SprintOverviewData, LearningObjectivesProgressData, LearningObjectivesTableData, TagData, TaskSummary, LearningObjectiveSummary, LearningObjectiveTableRow, CurrentPhase, ResolveLosByNameResult, LoNameError } from './Sprints.d'
 import {format} from 'date-fns'
 import { IDName } from "./workFromHome";
 
@@ -12,7 +12,7 @@ declare interface ResponseService<T> {
 }
 
 // Re-export types for use in other files
-export type { TagData, SprintOverviewData, LearningObjectivesProgressData, LearningObjectivesTableData, LearningObjectiveTableRow, CurrentPhase, TaskSummary, LearningObjectiveSummary };
+export type { TagData, SprintOverviewData, LearningObjectivesProgressData, LearningObjectivesTableData, LearningObjectiveTableRow, CurrentPhase, TaskSummary, LearningObjectiveSummary, ResolveLosByNameResult, LoNameError };
 
 const asSingle = (v: string | string[] | undefined | null) =>
     Array.isArray(v) ? v[0] : v;
@@ -105,6 +105,38 @@ const SPRINTS = {
             // Handle network errors or issues with JSON parsing
             console.error("An unexpected error occurred:", err);
             return { error: true, message: (err as Error).message || "Unknown error occurred", data: undefined };
+        }
+    },
+    RESOLVE_LOS_BY_NAME: async (names: string[]): Promise<ResponseService<ResolveLosByNameResult>> => {
+        try {
+            const authHeader = authService.authHeader();
+            const res = await fetch(`${url}/Sprint/resolve-los-by-name`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...authHeader,
+                },
+                body: JSON.stringify({ names }),
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                return {
+                    error: true,
+                    message: errorData.message || `Failed to resolve learning objectives (${res.status})`,
+                    data: undefined,
+                };
+            }
+
+            const data: ResponseService<ResolveLosByNameResult> = await res.json();
+            return data;
+        } catch (err) {
+            console.error(err);
+            return {
+                error: true,
+                message: (err as Error).message || "Failed to resolve learning objectives",
+                data: undefined,
+            };
         }
     },
     UPDATE_SPRINT: async (

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useAppSelector } from "../../app/hooks";
 import API from "../../lib/API";
 import { IDName } from "../../lib/API/workFromHome"; // Assuming IDName is defined here
+import ImportLosFromExcel from "./importLosFromExcel";
 
 // Define IProject interface if it's not already globally available
 interface IProject {
@@ -140,6 +141,13 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
         }
     };
 
+    const handleExcelImported = (matched: IDName[]) => {
+        setSelectedLos((prev) => {
+            const existingIds = new Set(prev.map((lo) => lo.id));
+            return [...prev, ...matched.filter((lo) => !existingIds.has(lo.id))];
+        });
+    };
+
     const handleDeselectLo = (lo: IDName) => {
         // Filter out the LO with the matching ID
         setSelectedLos(selectedLos.filter(selected => selected.id !== lo.id));
@@ -261,9 +269,10 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
 
                     <div>
                         <label className="block text-gray-700 font-medium mb-1">Learning Outcomes</label>
-                        {isLoadingLOs && selectedProjectId && <p className="text-gray-500">Loading learning outcomes...</p>}
-                        {loFetchError && <p className="text-red-500">{loFetchError}</p>}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg">
+                        <ImportLosFromExcel selectedLos={selectedLos} onImported={handleExcelImported} />
+                        {isLoadingLOs && selectedProjectId && <p className="text-gray-500 mt-2">Loading learning outcomes...</p>}
+                        {loFetchError && <p className="text-red-500 mt-2">{loFetchError}</p>}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-lg mt-3">
                             <div>
                                 <h4 className="font-semibold mb-2 text-gray-800">Available from Project</h4>
                                 <div className="h-48 overflow-y-auto border rounded p-2 space-y-1 bg-gray-50">
