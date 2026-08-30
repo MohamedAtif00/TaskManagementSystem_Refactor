@@ -14,11 +14,13 @@ using AutomatedTaskSystem.Services.UnitService;
 using AutomatedTaskSystem.Helper;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using System.Data.Common;
 using System.Text.Json;
 using static AutomatedTaskSystem.DTO.Responses;
+
 
 namespace AutomatedTaskSystem.Services.SubjectService;
 
@@ -38,6 +40,9 @@ public class SubjectService(
         await connection.EnsureOpenAsync();
         return connection;
     }
+
+    private SqlConnection CreateSqlConnection() =>
+        new(context.Database.GetConnectionString());
 
     private static int CalculateProgressPercent(int completed, int expected)
     {
@@ -215,6 +220,181 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
     }
 
     private sealed record SubjectProgressRow(int SubjectId, int ExpectedTasks, int CompletedTasks);
+
+    private sealed record UserAssignmentRow(int Id, UserRoleEnum Role, int? GroupId);
+
+    private sealed class SubjectAssignmentRow
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Description { get; set; } = "";
+        public int FolderId { get; set; }
+        public string FolderPath { get; set; } = "";
+        public ProjectStatusEnum Status { get; set; }
+    }
+
+    private sealed record SubjectCountRow(int SubjectId, int TaskCount);
+
+    private static string AssignmentSubjectIdsCte(bool canViewAll) =>
+        canViewAll
+            ? """
+    SELECT s.Id
+    FROM Subjects s
+    WHERE s.Archived = 0 AND s.Status NOT IN (@closed, @hold)
+"""
+            : """
+    SELECT s.Id
+    FROM Subjects s
+    INNER JOIN SubjectUser su ON su.SubjectsId = s.Id AND su.UsersId = @UserId
+    WHERE s.Archived = 0 AND s.Status NOT IN (@closed, @hold)
+""";
+
+    private static object AssignmentQueryParams(UserAssignmentRow user) =>
+        new
+        {
+            UserId = user.Id,
+            GroupId = user.GroupId,
+            closed = (int)ProjectStatusEnum.Closed,
+            hold = (int)ProjectStatusEnum.Hold,
+            backlog = (int)TaskStatusEnum.Backlog,
+            todo = (int)TaskStatusEnum.ToDo,
+            doing = (int)TaskStatusEnum.Doing,
+            done = (int)TaskStatusEnum.Done
+        };
+
+    private static async Task<List<SubjectAssignmentRow>> QueryAssignmentSubjectsAsync(
+        SqlConnection connection,
+        UserAssignmentRow user,
+        bool canViewAll
+    )
+    {
+        await connection.EnsureOpenAsync();
+        var joinAssigned = canViewAll
+            ? ""
+            : "INNER JOIN SubjectUser su ON su.SubjectsId = s.Id AND su.UsersId = @UserId";
+        var sql = $"""
+SELECT
+    s.Id,
+    s.Name,
+    s.Description,
+    s.SubjectGroupId AS FolderId,
+    s.Status,
+    CASE
+        WHEN sg.Id IS NOT NULL
+             AND sg.Archived = 0 AND ct.Archived = 0 AND cp.Archived = 0 AND ay.Archived = 0
+        THEN ay.Name + N' > ' + cp.Name + N' > ' + ct.Name + N' > ' + sg.Name
+        ELSE N''
+    END AS FolderPath
+FROM Subjects s
+{joinAssigned}
+LEFT JOIN SubjectGroups sg ON sg.Id = s.SubjectGroupId
+LEFT JOIN CurriculumTerms ct ON ct.Id = sg.TermId
+LEFT JOIN CurriculumProjects cp ON cp.Id = ct.ProjectId
+LEFT JOIN AcademicYears ay ON ay.Id = cp.YearId
+WHERE s.Archived = 0 AND s.Status NOT IN (@closed, @hold)
+""";
+        var rows = await connection.QueryAsync<SubjectAssignmentRow>(sql, AssignmentQueryParams(user));
+        return rows.AsList();
+    }
+
+    private static async Task<Dictionary<int, int>> QueryAssignmentTaskCountsAsync(
+        SqlConnection connection,
+        UserAssignmentRow user,
+        bool canViewAll
+    )
+    {
+        await connection.EnsureOpenAsync();
+        var subjectIds = AssignmentSubjectIdsCte(canViewAll);
+        string roleFilter;
+        if (canViewAll)
+        {
+            roleFilter = "AND t.Status IN (@backlog, @todo, @doing)";
+        }
+        else if (user.Role is UserRoleEnum.TeamLeader or UserRoleEnum.SectionHead)
+        {
+            roleFilter = """
+AND t.GroupId = @GroupId
+AND t.Status <> @done
+""";
+        }
+        else
+        {
+            roleFilter = """
+AND t.GroupId = @GroupId
+AND t.Status <> @done
+AND (t.UserId = @UserId OR t.Status = @backlog)
+AND (t.TL = 0 OR t.UserId = @UserId)
+""";
+        }
+
+        var sql = $"""
+WITH SubjectIds AS (
+{subjectIds}
+)
+SELECT u.SubjectId, COUNT(1) AS TaskCount
+FROM Tasks t
+INNER JOIN LearningObjectives lo ON t.LearningObjectiveId = lo.Id
+INNER JOIN Lessons l ON lo.LessonId = l.Id
+INNER JOIN Units u ON l.UnitId = u.Id
+INNER JOIN SubjectIds sid ON sid.Id = u.SubjectId
+WHERE t.Archived = 0
+{roleFilter}
+GROUP BY u.SubjectId
+""";
+        var rows = await connection.QueryAsync<SubjectCountRow>(sql, AssignmentQueryParams(user));
+        return rows.ToDictionary(r => r.SubjectId, r => r.TaskCount);
+    }
+
+    private static async Task<Dictionary<int, int>> QueryAssignmentProgressAsync(
+        SqlConnection connection,
+        UserAssignmentRow user,
+        bool canViewAll
+    )
+    {
+        await connection.EnsureOpenAsync();
+        var subjectIds = AssignmentSubjectIdsCte(canViewAll);
+        var sql = $"""
+WITH SubjectIds AS (
+{subjectIds}
+),
+Expected AS (
+    SELECT
+        u.SubjectId,
+        ExpectedTasks = COUNT(1)
+    FROM SubjectIds sid
+    INNER JOIN Units u ON u.SubjectId = sid.Id AND u.Archived = 0
+    INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
+    INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
+    INNER JOIN Nodes n ON n.SchemaId = lo.SchemaId AND n.Archived = 0
+    INNER JOIN Steps s ON s.NodeId = n.Id AND s.Archived = 0
+    GROUP BY u.SubjectId
+),
+Completed AS (
+    SELECT
+        u.SubjectId,
+        CompletedTasks = COUNT(1)
+    FROM SubjectIds sid
+    INNER JOIN Units u ON u.SubjectId = sid.Id AND u.Archived = 0
+    INNER JOIN Lessons l ON l.UnitId = u.Id AND l.Archived = 0
+    INNER JOIN LearningObjectives lo ON lo.LessonId = l.Id AND lo.Archived = 0
+    INNER JOIN Tasks t ON t.LearningObjectiveId = lo.Id AND t.Archived = 0 AND t.Status = @done
+    GROUP BY u.SubjectId
+)
+SELECT
+    SubjectId = COALESCE(e.SubjectId, c.SubjectId),
+    ExpectedTasks = ISNULL(e.ExpectedTasks, 0),
+    CompletedTasks = ISNULL(c.CompletedTasks, 0)
+FROM Expected e
+FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId
+""";
+        var rows = await connection.QueryAsync<SubjectProgressRow>(sql, AssignmentQueryParams(user));
+        var map = new Dictionary<int, int>();
+        foreach (var r in rows)
+        {
+            map[r.SubjectId] = CalculateProgressPercent(r.CompletedTasks, r.ExpectedTasks);
+        }
+        return map;
+    }
 
     public async Task<ActionResult<ResponseService<ProjectUnitDTO>>> AddUnit(int Id, string Name)
     {
@@ -693,6 +873,84 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
 
     public async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetUserSpecificProjects()
     {
+        if (!context.Database.IsRelational())
+            return await GetUserSpecificProjectsEfAsync();
+
+        var authRes = tokenService.GetUserIdFromToken();
+        if (authRes.Error)
+        {
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = authRes.Message }
+            );
+        }
+
+        if (!int.TryParse(authRes.Data, out var uid))
+        {
+            return new UnauthorizedObjectResult(
+                new BaseResponseService { Error = true, Message = "Invalid token" }
+            );
+        }
+
+        await using var userConn = CreateSqlConnection();
+        await userConn.EnsureOpenAsync();
+        var user = await userConn.QueryFirstOrDefaultAsync<UserAssignmentRow>(
+            """
+            SELECT Id, Role, GroupId
+            FROM Users
+            WHERE Id = @Id AND Archived = 0
+            """,
+            new { Id = uid }
+        );
+
+        if (user is null)
+        {
+            return new NotFoundObjectResult(
+                new BaseResponseService { Error = true, Message = $"User of id:{uid} is not found" }
+            );
+        }
+
+        var canViewAll = CanViewAllSubjects(user.Role);
+
+        await using var subjectsConn = CreateSqlConnection();
+        await using var countsConn = CreateSqlConnection();
+        await using var progressConn = CreateSqlConnection();
+
+        var subjectsTask = QueryAssignmentSubjectsAsync(subjectsConn, user, canViewAll);
+        var countsTask = QueryAssignmentTaskCountsAsync(countsConn, user, canViewAll);
+        var progressTask = QueryAssignmentProgressAsync(progressConn, user, canViewAll);
+
+        await System.Threading.Tasks.Task.WhenAll(subjectsTask, countsTask, progressTask);
+
+        var subjects = await subjectsTask;
+        var counts = await countsTask;
+        var progress = await progressTask;
+        var data = subjects
+            .Select(s => new SubjectDTO
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Description = s.Description,
+                FolderId = s.FolderId,
+                FolderPath = s.FolderPath,
+                Status = s.Status,
+                Count = counts.GetValueOrDefault(s.Id),
+                ProgressPercent = progress.GetValueOrDefault(s.Id),
+                LevelNames = DefaultLevelNames()
+            })
+            .ToList();
+
+        return new ResponseService<List<SubjectDTO>>
+        {
+            Error = false,
+            Message = canViewAll
+                ? "List of all subjects"
+                : $"Subjects assigned to user of id:{user.Id}",
+            Data = data
+        };
+    }
+
+    private async Task<ActionResult<ResponseService<List<SubjectDTO>>>> GetUserSpecificProjectsEfAsync()
+    {
         var (user, userError) = await ResolveCurrentUserAsync();
         if (userError is not null)
             return userError;
@@ -763,43 +1021,6 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
             };
         }
 
-        var groups = new List<Group>();
-
-        if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
-        {
-            var userGroup = await context.Groups
-                .Where(g => g.Id == user.GroupId)
-                .FirstOrDefaultAsync();
-
-            if (userGroup is null)
-                return new NotFoundObjectResult(
-                    new BaseResponseService { Error = true, Message = "User's group is not found" }
-                );
-
-            groups.Add(userGroup);
-
-            if (user.Role == UserRoleEnum.SectionHead)
-            {
-                var section = await context.Sections
-                    .Where(s => s.HeadId == user.Id && !s.Archived)
-                    .FirstOrDefaultAsync();
-
-                if (section is not null)
-                {
-                    var sectionGroupIds = await context.SectionGroups
-                        .Where(sg => sg.SectionId == section.Id)
-                        .Select(sg => sg.GroupId)
-                        .ToListAsync();
-
-                    var sectionGroups = await context.Groups
-                        .Where(g => sectionGroupIds.Contains(g.Id))
-                        .ToListAsync();
-
-                    groups.AddRange(sectionGroups);
-                }
-            }
-        }
-
         var userSubjects = user.Subjects
             .Where(p =>
                 !p.Archived
@@ -821,13 +1042,7 @@ FULL OUTER JOIN Completed c ON c.SubjectId = e.SubjectId;
                 t.Status != TaskStatusEnum.Done
             );
 
-        if (user.Role == UserRoleEnum.TeamLeader || user.Role == UserRoleEnum.SectionHead)
-        {
-            baseTaskQuery = baseTaskQuery.Where(t =>
-                groups.Select(g => g.Id).Contains(t.GroupId)
-            );
-        }
-        else
+        if (user.Role is not (UserRoleEnum.TeamLeader or UserRoleEnum.SectionHead))
         {
             baseTaskQuery = baseTaskQuery.Where(t =>
                 t.GroupId == user.GroupId &&
