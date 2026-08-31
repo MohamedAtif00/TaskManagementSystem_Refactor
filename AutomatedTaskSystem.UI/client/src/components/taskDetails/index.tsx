@@ -13,6 +13,7 @@ import RollbackForm from "../../components/forms/tasks/rollback";
 import { ClockIcon } from "@heroicons/react/24/solid";
 import TaskActivity from "./RecentActivity/taskActivity";
 import AssignTask from "../forms/tasks/assignToTask";
+import JumpForm from "./jumpForm";
 import DurationBadge from "./durationBadge";
 import Link from "next/link";
 import EditCommentForm from "./taskComments/EditCommentForm";
@@ -478,6 +479,19 @@ const TaskDetails = ({ refreshTasks ,type}: Props) => {
 						/>
 					)}
 				</motion.div>
+			)}
+			{task && router.query.form === "jump" && (
+				<JumpForm
+					key="jump-form"
+					taskId={task.id}
+					updateTask={(data) => {
+						handleUpdate(data);
+						router.push(
+							`${pathHandler()}?taskId=${task.id}`
+						);
+					}}
+					type={type}
+				/>
 			)}
 			{task && router.query.form === "task-assign" && (
 				<AssignTask

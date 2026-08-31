@@ -2853,7 +2853,7 @@ public class TaskService : ITaskService
                         nodeTasks.All(t => t.Status == TaskStatusEnum.Done)
                         && nodeTasks.Count == node.Steps.Where(s => !s.Archived).Count(),
                     Steps = node.Steps
-                        .Where(s => !s.Archived)
+                        .Where(s => !s.Archived && s.TaskBank != null)
                         .OrderBy(s => s.Order)
                         .Select(s =>
                         {
@@ -2863,8 +2863,8 @@ public class TaskService : ITaskService
                                 Name = s.TaskBank.Name,
                                 Group = new BasicInfoDto
                                 {
-                                    Name = s.TaskBank.Group.Name,
-                                    Id = s.TaskBank.Group.Id
+                                    Name = s.TaskBank.Group?.Name ?? string.Empty,
+                                    Id = s.TaskBank.Group?.Id ?? 0
                                 },
                                 IsComplete = nodeTasks.Any(
                                     t => t.StepId == s.Id && t.Status == TaskStatusEnum.Done

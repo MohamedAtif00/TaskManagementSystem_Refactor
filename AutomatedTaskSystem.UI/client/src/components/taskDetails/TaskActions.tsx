@@ -16,7 +16,6 @@ import { ITask } from ".";
 import Link from "next/link";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import JumpForm from "./jumpForm";
 import useTaskPathHandler from "./useTaskPathHandler.ts";
 import FlagTaskModal from "./FlagTaskModal";
 
@@ -286,11 +285,6 @@ const TaskAction: React.FC<Props> = ({
                     </Link>
                 )}
             </div>
-            <JumpForm
-                taskId={taskId}
-                updateTask={handleUpdate}
-                type={type}
-            />
             {showFlagModal && (
                 <FlagTaskModal
                     taskId={taskId}
