@@ -141,7 +141,8 @@ interface IGetAllPermissionsRequest {
 
 const PERMISSION = {
     GET_ALL: async (
-        params?: Record<string, string | number | boolean | undefined> // Added undefined for optional params
+        params?: Record<string, string | number | boolean | undefined>,
+        signal?: AbortSignal
     ): Promise<ResponseService<IGetAllPermissionsApiResponse> | false> => { // Changed return type
         try {
             const auth = authService.authHeader();
@@ -164,10 +165,14 @@ const PERMISSION = {
                     "Content-Type": "application/json",
                     ...auth
                 },
+                signal,
             });
             const response: ResponseService<IGetAllPermissionsApiResponse> = await res.json();
             return response;
         } catch (error) {
+            if (error instanceof DOMException && error.name === 'AbortError') {
+                throw error;
+            }
             console.error("Error fetching all permissions:", error);
             return false;
         }

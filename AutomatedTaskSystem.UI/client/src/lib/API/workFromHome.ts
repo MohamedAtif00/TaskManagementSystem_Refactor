@@ -116,7 +116,8 @@ import authService from "../Auth";
 const WORK_FROM_HOME = {
   // --- Get All Work From Home Requests (Paginated) ---
   GET_ALL: async (
-    params?: Record<string, string | number | boolean | undefined>
+    params?: Record<string, string | number | boolean | undefined>,
+    signal?: AbortSignal
   ): Promise<ResponseService<PageList<IGetWorkFromHomeRequest[]>>> => {
     try {
       const headers = authService.authHeader();
@@ -145,6 +146,7 @@ const WORK_FROM_HOME = {
           "Content-Type": "application/json",
           ...headers,
         },
+        signal,
       });
 
       if (!res.ok) {
@@ -161,6 +163,9 @@ const WORK_FROM_HOME = {
         await res.json();
       return response;
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
+      }
       console.error("Error fetching all work from home requests:", error);
       return {
         error: true,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { format } from "date-fns";
 import LEAVE, { IGetAllLeavesRequestNoPagination, IGetLeaveRequestForCalander, IOpinion, LeaveRequestStatus, LeaveRequestType } from "../../lib/API/Leave";
 import PERMISSION, { IPermission, PermissionRequestStatus, PermissionType } from "../../lib/API/Permission";
@@ -30,6 +30,20 @@ interface PageList<T> {
     hasNextPage: boolean;
     hasPreviousPage: boolean;
 }
+
+const isAbortError = (error: unknown) =>
+    (error instanceof DOMException && error.name === "AbortError") ||
+    (error instanceof Error && error.name === "AbortError");
+
+const sameFilters = (
+    prev: Record<string, string | number | undefined>,
+    next: Record<string, string | number | undefined>
+) => {
+    const prevKeys = Object.keys(prev);
+    const nextKeys = Object.keys(next);
+    if (prevKeys.length !== nextKeys.length) return false;
+    return prevKeys.every((key) => prev[key] === next[key]);
+};
 
 // Interfaces for Leave (already present in your code)
 interface IGetAllLeavesRequest {
@@ -125,6 +139,12 @@ const Calendar = () => {
         permissions: true,
         workFromHome: true, // New loading state for WFH
     });
+    const vacancyAbortRef = useRef<AbortController | null>(null);
+    const permissionAbortRef = useRef<AbortController | null>(null);
+    const workFromHomeAbortRef = useRef<AbortController | null>(null);
+    const vacancyHasLoadedRef = useRef(false);
+    const permissionHasLoadedRef = useRef(false);
+    const workFromHomeHasLoadedRef = useRef(false);
 
     // Pagination & Filter state for Vacancies
     const [vacancyCurrentPage, setVacancyCurrentPage] = useState<number>(1);
@@ -290,7 +310,11 @@ const Calendar = () => {
 
 
      const fetchVacancies = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
-        setLoading(prev => ({ ...prev, vacancies: true }));
+        vacancyAbortRef.current?.abort();
+        const controller = new AbortController();
+        vacancyAbortRef.current = controller;
+
+        setLoading(prev => ({ ...prev, vacancies: !vacancyHasLoadedRef.current }));
         try {
             const params: IGetAllLeavesRequest = {
                 page: page,
@@ -303,9 +327,12 @@ const Calendar = () => {
                 myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as LeaveRequestStatus : undefined,
             };
 
-            const response = await LEAVE.GET_ALL_DB(params as Record<string, string | number | boolean | undefined>);
+            const response = await LEAVE.GET_ALL_DB(params as Record<string, string | number | boolean | undefined>, controller.signal);
+
+            if (controller.signal.aborted) return;
 
             if (response && response.data) {
+                vacancyHasLoadedRef.current = true;
                 setVacancies(response.data.items || []);
                 setTotalVacanciesCount(response.data.totalCount || 0);
             } else {
@@ -314,17 +341,24 @@ const Calendar = () => {
                 setTotalVacanciesCount(0);
             }
         } catch (error) {
+            if (isAbortError(error)) return;
             console.error("Error fetching vacancies:", error);
             setVacancies([]);
             setTotalVacanciesCount(0);
         } finally {
-            setLoading(prev => ({ ...prev, vacancies: false }));
+            if (!controller.signal.aborted) {
+                setLoading(prev => ({ ...prev, vacancies: false }));
+            }
         }
     }, [auth.id, auth.role]);
     
 
     const fetchPermissions = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
-        setLoading(prev => ({ ...prev, permissions: true }));
+        permissionAbortRef.current?.abort();
+        const controller = new AbortController();
+        permissionAbortRef.current = controller;
+
+        setLoading(prev => ({ ...prev, permissions: !permissionHasLoadedRef.current }));
         try {
             const params: IGetAllPermissionsRequest = {
                 page: page,
@@ -337,9 +371,12 @@ const Calendar = () => {
                 myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as PermissionRequestStatus : undefined,
             };
 
-            const response = await PERMISSION.GET_ALL(params as Record<string, string | number | boolean | undefined>);
+            const response = await PERMISSION.GET_ALL(params as Record<string, string | number | boolean | undefined>, controller.signal);
+
+            if (controller.signal.aborted) return;
 
             if (response && response.data && !response.error) {
+                permissionHasLoadedRef.current = true;
                 setPermissions(response.data.items || []);
                 setTotalPermissionsCount(response.data.totalCount || 0);
             } else {
@@ -348,17 +385,24 @@ const Calendar = () => {
                 setTotalPermissionsCount(0);
             }
         } catch (error) {
+            if (isAbortError(error)) return;
             console.error("Error fetching permissions:", error);
             setPermissions([]);
             setTotalPermissionsCount(0);
         } finally {
-            setLoading(prev => ({ ...prev, permissions: false }));
+            if (!controller.signal.aborted) {
+                setLoading(prev => ({ ...prev, permissions: false }));
+            }
         }
     }, [auth.role]);
 
     // New: Fetch function for Work From Home requests
     const fetchWorkFromHome = useCallback(async (page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
-        setLoading(prev => ({ ...prev, workFromHome: true }));
+        workFromHomeAbortRef.current?.abort();
+        const controller = new AbortController();
+        workFromHomeAbortRef.current = controller;
+
+        setLoading(prev => ({ ...prev, workFromHome: !workFromHomeHasLoadedRef.current }));
         try {
             const params: IGetAllWorkFromHomeRequest = {
                 page: page,
@@ -370,9 +414,12 @@ const Calendar = () => {
                 myStatus: (auth.role === 0 || auth.role === 2 || auth.role === 1) && filters.myStatus && filters.myStatus !== "all" ? filters.myStatus as WorkFromHomeStatus : undefined,
             };
 
-            const response = await WORK_FROM_HOME.GET_ALL(params as Record<string, string | number | boolean | undefined>);
+            const response = await WORK_FROM_HOME.GET_ALL(params as Record<string, string | number | boolean | undefined>, controller.signal);
+
+            if (controller.signal.aborted) return;
 
             if (response && response.data && !response.error) {
+                workFromHomeHasLoadedRef.current = true;
                 setWorkFromHomeRequests(response.data.items || []); // Assuming response.data.items matches IGetWorkFromHomeRequestForCalanderDisplay
                 setTotalWorkFromHomeCount(response.data.totalCount || 0);
             } else {
@@ -381,11 +428,14 @@ const Calendar = () => {
                 setTotalWorkFromHomeCount(0);
             }
         } catch (error) {
+            if (isAbortError(error)) return;
             console.error("Error fetching work from home requests:", error);
             setWorkFromHomeRequests([]);
             setTotalWorkFromHomeCount(0);
         } finally {
-            setLoading(prev => ({ ...prev, workFromHome: false }));
+            if (!controller.signal.aborted) {
+                setLoading(prev => ({ ...prev, workFromHome: false }));
+            }
         }
     }, [auth.role]);
     //
@@ -822,6 +872,14 @@ type RequestType = "vacancy" | "permission" | "workFromHome";
 
     // Use useEffect to trigger data fetches when pagination/filter states change
     useEffect(() => {
+        return () => {
+            vacancyAbortRef.current?.abort();
+            permissionAbortRef.current?.abort();
+            workFromHomeAbortRef.current?.abort();
+        };
+    }, []);
+
+    useEffect(() => {
         if (activeTab === "vacancy") {
             fetchVacancies(vacancyCurrentPage, vacancyItemsPerPage, vacancyFilters, vacancySearchText);
         }
@@ -851,14 +909,14 @@ type RequestType = "vacancy" | "permission" | "workFromHome";
     const handleVacancyDataTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
         setVacancyCurrentPage(page);
         setVacancyItemsPerPage(itemsPerPage);
-        setVacancyFilters(filters);
+        setVacancyFilters(prev => sameFilters(prev, filters) ? prev : filters);
         setVacancySearchText(searchText);
     }, []);
 
     const handlePermissionDataTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
         setPermissionCurrentPage(page);
         setPermissionItemsPerPage(itemsPerPage);
-        setPermissionFilters(filters);
+        setPermissionFilters(prev => sameFilters(prev, filters) ? prev : filters);
         setPermissionSearchText(searchText);
     }, []);
 
@@ -866,7 +924,7 @@ type RequestType = "vacancy" | "permission" | "workFromHome";
     const handleWorkFromHomeDataTableChange = useCallback((page: number, itemsPerPage: number, filters: Record<string, string | number | undefined>, searchText: string) => {
         setWorkFromHomeCurrentPage(page);
         setWorkFromHomeItemsPerPage(itemsPerPage);
-        setWorkFromHomeFilters(filters);
+        setWorkFromHomeFilters(prev => sameFilters(prev, filters) ? prev : filters);
         setWorkFromHomeSearchText(searchText);
     }, []);
 
