@@ -270,7 +270,7 @@ const ProjectTreePage = () => {
 
     if (!auth.isAuth || (auth.role !== 0 && auth.role !== 4) || loading) {
         return (
-            <div className="flex items-center justify-center mx-auto h-full">
+            <div className="flex items-center justify-center mx-auto h-full min-h-screen">
                 <Loader />
             </div>
         );

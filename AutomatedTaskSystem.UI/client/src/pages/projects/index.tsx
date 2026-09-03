@@ -153,21 +153,35 @@ const ProjectsIndex = () => {
     useEffect(() => {
         if (!auth.isAuth || (auth.role !== 0 && auth.role !== 4)) {
             router.replace("/");
-            return;
         }
-        setLoading(false);
     }, [auth.isAuth, auth.role, router]);
 
     useEffect(() => {
-        if (loading) return;
-        API.PROJECTS.ROOT.LIST().then((res) => {
-            if (res && !res.error && Array.isArray(res.data)) {
-                setExistingRoots(res.data as YearListItem[]);
-            } else {
-                setExistingRoots([]);
-            }
-        });
-    }, [loading, isCreating]);
+        if (!auth.isAuth || (auth.role !== 0 && auth.role !== 4)) return;
+        if (isCreating) return;
+
+        let cancelled = false;
+        setLoading(true);
+        API.PROJECTS.ROOT.LIST()
+            .then((res) => {
+                if (cancelled) return;
+                if (res && !res.error && Array.isArray(res.data)) {
+                    setExistingRoots(res.data as YearListItem[]);
+                } else {
+                    setExistingRoots([]);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setExistingRoots([]);
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [auth.isAuth, auth.role, isCreating]);
 
     const selectedNode = selectedKey != null ? nodeByKey[selectedKey] ?? null : null;
     const selectedDepth = selectedNode?.level ?? 0;
@@ -717,7 +731,7 @@ const ProjectsIndex = () => {
 
     if (!auth.isAuth || (auth.role !== 0 && auth.role !== 4) || loading) {
         return (
-            <div className="flex items-center justify-center mx-auto h-full">
+            <div className="flex items-center justify-center mx-auto h-full min-h-screen">
                 <Loader />
             </div>
         );
