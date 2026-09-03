@@ -222,7 +222,7 @@ const EditSprint = ({ sprintId, onSprintUpdated }: EditSprintProps) => {
         }
     };
 
-    if (!active || (role !== 2 && role !== 0)) return null;
+    if (!active || (role !== 0 && role !== 2 && role !== 4)) return null;
 
     return (
         <motion.div

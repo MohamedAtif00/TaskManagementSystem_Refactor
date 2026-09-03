@@ -122,13 +122,6 @@ namespace AutomatedTaskSystem.Services.Sprint
             return clauses;
         }
 
-        private void InvalidateAllSprintsCache()
-        {
-            _cache.Remove(GetAllSprintsCacheKey(null));
-            _cache.Remove(GetAllSprintsCacheKey(true));
-            _cache.Remove(GetAllSprintsCacheKey(false));
-        }
-
         /// <summary>
         /// Resolves the distinct curriculum project names the given learning objectives belong to.
         /// </summary>
