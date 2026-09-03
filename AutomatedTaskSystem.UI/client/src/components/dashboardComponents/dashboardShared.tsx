@@ -4,6 +4,7 @@ import {
     Tooltip,
 } from "chart.js";
 import { Doughnut } from "react-chartjs-2";
+import Link from "next/link";
 
 ChartJS.register(ArcElement, Tooltip);
 
@@ -141,17 +142,18 @@ export const SubjectsOverviewCard = ({
                 <p className="text-sm text-gray-400">No active subjects</p>
             ) : (
                 subjects.map((subject) => (
-                    <div
+                    <Link
                         key={subject.id}
-                        className="flex items-center justify-between gap-3"
+                        href={`/tasks/${subject.id}`}
+                        className="flex items-center justify-between gap-3 rounded-md px-1 py-0.5 hover:bg-slate-50"
                     >
-                        <span className="text-sm font-medium text-gray-800 truncate">
+                        <span className="text-sm font-medium text-gray-800 truncate hover:text-blue-600">
                             {subject.name}
                         </span>
                         <span className="text-sm font-semibold text-blue-500 shrink-0">
                             {subject.activeTasks}
                         </span>
-                    </div>
+                    </Link>
                 ))
             )}
         </div>
