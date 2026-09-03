@@ -1,31 +1,32 @@
-namespace AutomatedTaskSystem.Dtos.Dashboard.GetProjectManagerDashboard;
+namespace AutomatedTaskSystem.Dtos.Dashboard.GetSectionHeadDashboard;
 
-public class GetProjectManagerDashboardDto
+public class GetSectionHeadDashboardDto
 {
     public int Projects { get; set; }
     public int Sprints { get; set; }
     public int LearningObjectives { get; set; }
     public int Users { get; set; }
+    public int Teams { get; set; }
     public int ActiveTasks { get; set; }
-    public List<ProjectManagerTeamWorkloadDto> TeamsWorkload { get; set; } = new();
-    public ProjectManagerLearningObjectivesOverviewDto LearningObjectivesOverview { get; set; } =
+    public List<SectionHeadTeamWorkloadDto> TeamsWorkload { get; set; } = new();
+    public SectionHeadLearningObjectivesOverviewDto LearningObjectivesOverview { get; set; } =
         new();
-    public List<ProjectManagerSubjectOverviewDto> SubjectsOverview { get; set; } = new();
-    public ProjectManagerTasksOverviewDto TasksOverview { get; set; } = new();
-    public List<ProjectManagerProjectRowDto> ProjectsTable { get; set; } = new();
-    public List<ProjectManagerFlaggedRollbackDto> FlaggedRollbackTasks { get; set; } = new();
-    public List<ProjectManagerSprintRowDto> SprintsTable { get; set; } = new();
-    public List<ProjectManagerActivityDto> ActivityLog { get; set; } = new();
+    public List<SectionHeadSubjectOverviewDto> SubjectsOverview { get; set; } = new();
+    public SectionHeadTasksOverviewDto TasksOverview { get; set; } = new();
+    public List<SectionHeadProjectRowDto> ProjectsTable { get; set; } = new();
+    public List<SectionHeadFlaggedRollbackDto> FlaggedRollbackTasks { get; set; } = new();
+    public List<SectionHeadSprintRowDto> SprintsTable { get; set; } = new();
+    public List<SectionHeadActivityDto> ActivityLog { get; set; } = new();
 }
 
-public class ProjectManagerSubjectOverviewDto
+public class SectionHeadSubjectOverviewDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
     public int ActiveTasks { get; set; }
 }
 
-public class ProjectManagerTeamWorkloadDto
+public class SectionHeadTeamWorkloadDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
@@ -33,14 +34,14 @@ public class ProjectManagerTeamWorkloadDto
     public double WorkloadPercent { get; set; }
 }
 
-public class ProjectManagerLearningObjectivesOverviewDto
+public class SectionHeadLearningObjectivesOverviewDto
 {
     public int Completed { get; set; }
     public int Uncompleted { get; set; }
     public int Total { get; set; }
 }
 
-public class ProjectManagerTasksOverviewDto
+public class SectionHeadTasksOverviewDto
 {
     public int ToDo { get; set; }
     public int Doing { get; set; }
@@ -50,7 +51,7 @@ public class ProjectManagerTasksOverviewDto
     public int Total { get; set; }
 }
 
-public class ProjectManagerProjectRowDto
+public class SectionHeadProjectRowDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
@@ -60,7 +61,7 @@ public class ProjectManagerProjectRowDto
     public string Deadline { get; set; } = "";
 }
 
-public class ProjectManagerSprintRowDto
+public class SectionHeadSprintRowDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
@@ -71,7 +72,7 @@ public class ProjectManagerSprintRowDto
     public string Deadline { get; set; } = "";
 }
 
-public class ProjectManagerFlaggedRollbackDto
+public class SectionHeadFlaggedRollbackDto
 {
     public int TaskId { get; set; }
     public int ProjectId { get; set; }
@@ -81,7 +82,7 @@ public class ProjectManagerFlaggedRollbackDto
     public string Timestamp { get; set; } = "";
 }
 
-public class ProjectManagerActivityDto
+public class SectionHeadActivityDto
 {
     public int Id { get; set; }
     public string UserName { get; set; } = "";

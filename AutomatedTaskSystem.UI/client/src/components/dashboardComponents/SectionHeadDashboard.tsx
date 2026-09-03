@@ -18,12 +18,12 @@ const WORKLOAD_COLORS = ["#3B82F6", "#F59E0B"];
 const TABLE_PREVIEW_COUNT = 4;
 const LIST_PREVIEW_COUNT = 3;
 
-const ProjectManagerDashboard = () => {
-    const [dashboard, setDashboard] = useState<ProjectManagerDashboard>();
+const SectionHeadDashboard = () => {
+    const [dashboard, setDashboard] = useState<SectionHeadDashboard>();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        API.DASHBOARDS.GET_PM_DB().then((res) => {
+        API.DASHBOARDS.GET_SECTION_HEAD_DB().then((res) => {
             if (res && !res.error) setDashboard(res.data);
             setLoading(false);
         });
@@ -64,9 +64,10 @@ const ProjectManagerDashboard = () => {
 
             <DashboardHeader
                 title="Dashboard"
-                subtitle="High-level operational stats and system health monitors."
+                subtitle="Overall management of Art, Content, and Tech teams."
             />
 
+            {/* Stat Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
                 <StatCard label="Projects" value={dashboard.projects} />
                 <StatCard label="Sprints" value={dashboard.sprints} />
@@ -74,19 +75,22 @@ const ProjectManagerDashboard = () => {
                     label="Learning Objectives"
                     value={dashboard.learningObjectives}
                 />
-                <StatCard label="Users" value={dashboard.users} />
+                <StatCard
+                    label="Users"
+                    value={dashboard.users}
+                    badge={`${dashboard.teams} Teams`}
+                />
                 <StatCard label="Active Tasks" value={dashboard.activeTasks} />
             </div>
 
+            {/* Charts & Workload Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
                 <div className="bg-white rounded-xl p-6 border border-gray-100">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-base font-bold text-[#29313D]">
                             Teams Workload
                         </h3>
-                        <span className="text-xs text-gray-400">
-                            Per Learning Objectives
-                        </span>
+                        <span className="text-xs text-gray-400">Per Tasks</span>
                     </div>
                     <div className="flex flex-col gap-3">
                         {dashboard.teamsWorkload.length === 0 ? (
@@ -134,6 +138,7 @@ const ProjectManagerDashboard = () => {
                 />
             </div>
 
+            {/* Projects & Flagged Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
                 <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-100 max-h-[311px] overflow-hidden">
                     <div className="flex items-center justify-between mb-4">
@@ -258,6 +263,7 @@ const ProjectManagerDashboard = () => {
                 </div>
             </div>
 
+            {/* Sprints & Activity Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-100 max-h-[311px] overflow-hidden">
                     <div className="flex items-center justify-between mb-4">
@@ -372,4 +378,4 @@ const ProjectManagerDashboard = () => {
     );
 };
 
-export default ProjectManagerDashboard;
+export default SectionHeadDashboard;
