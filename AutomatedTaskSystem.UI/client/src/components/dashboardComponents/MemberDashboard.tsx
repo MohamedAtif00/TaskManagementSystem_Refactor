@@ -9,6 +9,7 @@ import {
     DashboardHeader,
     DonutChart,
     StatCard,
+    SubjectsOverviewCard,
 } from "./dashboardShared";
 
 const PRIORITY_LABELS: Record<number, { label: string; className: string }> = {
@@ -78,7 +79,6 @@ const MemberDashboard = () => {
         );
     }
 
-    const loOverview = dashboard.learningObjectivesOverview;
     const tasksOverview = dashboard.tasksOverview;
 
     return (
@@ -93,7 +93,7 @@ const MemberDashboard = () => {
             />
 
             {/* Stat Cards */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
                 <StatCard
                     label="Projects"
                     value={dashboard.projects}
@@ -109,27 +109,12 @@ const MemberDashboard = () => {
                     label="Team Performance"
                     value={`${dashboard.teamPerformance}%`}
                 />
+                <StatCard label="Active Tasks" value={dashboard.activeTasks} />
             </div>
 
             {/* Charts Row */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-                <DonutChart
-                    title="Learning Objectives Overview"
-                    segments={[
-                        {
-                            label: "Uncompleted",
-                            color: "#D1D5DB",
-                            value: loOverview.uncompleted,
-                        },
-                        {
-                            label: "Completed",
-                            color: "#10B981",
-                            value: loOverview.completed,
-                        },
-                    ]}
-                    centerValue={loOverview.total}
-                    centerSubLabel="TOTAL LO"
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <SubjectsOverviewCard subjects={dashboard.subjectsOverview} />
                 <DonutChart
                     title="Your Tasks Overview"
                     segments={[

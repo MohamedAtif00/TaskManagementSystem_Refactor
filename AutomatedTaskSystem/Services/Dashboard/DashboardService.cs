@@ -154,6 +154,28 @@ public class DashboardService : IDashboardService
             .ToList();
         var totalIncompleteLos = incompleteLoIds.Count;
 
+        var subjectsOverview = activeTasks
+            .GroupBy(
+                t =>
+                    new
+                    {
+                        Id = t.LearningObjective.Lesson.Unit.Subject.Id,
+                        Name = t.LearningObjective.Lesson.Unit.Subject.Name,
+                    }
+            )
+            .Select(
+                g =>
+                    new ProjectManagerSubjectOverviewDto
+                    {
+                        Id = g.Key.Id,
+                        Name = g.Key.Name,
+                        ActiveTasks = g.Count(),
+                    }
+            )
+            .OrderByDescending(s => s.ActiveTasks)
+            .Take(9)
+            .ToList();
+
         var teamsWorkload = activeGroups
             .Select(
                 g =>
@@ -358,6 +380,7 @@ public class DashboardService : IDashboardService
                 Sprints = sprintIds.Count,
                 LearningObjectives = learningObjectiveRows.Count,
                 Users = orgUsers,
+                ActiveTasks = activeTasks.Count,
                 TeamsWorkload = teamsWorkload,
                 LearningObjectivesOverview = new ProjectManagerLearningObjectivesOverviewDto
                 {
@@ -365,6 +388,7 @@ public class DashboardService : IDashboardService
                     Uncompleted = loUncompleted,
                     Total = learningObjectiveRows.Count,
                 },
+                SubjectsOverview = subjectsOverview,
                 TasksOverview = new ProjectManagerTasksOverviewDto
                 {
                     ToDo = toDoCount,
@@ -497,6 +521,28 @@ public class DashboardService : IDashboardService
             )
             .ToList();
         var totalActiveMemberWorkload = activeMemberTasks.Count;
+
+        var subjectsOverview = activeMemberTasks
+            .GroupBy(
+                t =>
+                    new
+                    {
+                        Id = t.LearningObjective.Lesson.Unit.Subject.Id,
+                        Name = t.LearningObjective.Lesson.Unit.Subject.Name,
+                    }
+            )
+            .Select(
+                g =>
+                    new TeamLeaderSubjectOverviewDto
+                    {
+                        Id = g.Key.Id,
+                        Name = g.Key.Name,
+                        ActiveTasks = g.Count(),
+                    }
+            )
+            .OrderByDescending(s => s.ActiveTasks)
+            .Take(9)
+            .ToList();
 
         var membersWorkload = members
             .Select(
@@ -696,6 +742,7 @@ public class DashboardService : IDashboardService
                 LearningObjectives = learningObjectiveRows.Count,
                 Users = members.Count,
                 TeamPerformance = teamPerformance,
+                ActiveTasks = activeMemberTasks.Count,
                 MembersWorkload = membersWorkload,
                 LearningObjectivesOverview = new TeamLeaderLearningObjectivesOverviewDto
                 {
@@ -703,6 +750,7 @@ public class DashboardService : IDashboardService
                     Uncompleted = loUncompleted,
                     Total = learningObjectiveRows.Count,
                 },
+                SubjectsOverview = subjectsOverview,
                 TasksOverview = new TeamLeaderTasksOverviewDto
                 {
                     ToDo = toDoCount,
@@ -878,6 +926,28 @@ public class DashboardService : IDashboardService
             )
             .ToList();
         var totalActiveGroupWorkload = activeGroupTasks.Count;
+
+        var subjectsOverview = activeGroupTasks
+            .GroupBy(
+                t =>
+                    new
+                    {
+                        Id = t.LearningObjective.Lesson.Unit.Subject.Id,
+                        Name = t.LearningObjective.Lesson.Unit.Subject.Name,
+                    }
+            )
+            .Select(
+                g =>
+                    new SectionHeadSubjectOverviewDto
+                    {
+                        Id = g.Key.Id,
+                        Name = g.Key.Name,
+                        ActiveTasks = g.Count(),
+                    }
+            )
+            .OrderByDescending(s => s.ActiveTasks)
+            .Take(9)
+            .ToList();
 
         var teamsWorkload = groups
             .Select(
@@ -1077,6 +1147,7 @@ public class DashboardService : IDashboardService
                 LearningObjectives = learningObjectiveRows.Count,
                 Users = sectionUsers.Count,
                 Teams = groups.Count,
+                ActiveTasks = activeGroupTasks.Count,
                 TeamsWorkload = teamsWorkload,
                 LearningObjectivesOverview = new SectionHeadLearningObjectivesOverviewDto
                 {
@@ -1084,6 +1155,7 @@ public class DashboardService : IDashboardService
                     Uncompleted = loUncompleted,
                     Total = learningObjectiveRows.Count,
                 },
+                SubjectsOverview = subjectsOverview,
                 TasksOverview = new SectionHeadTasksOverviewDto
                 {
                     ToDo = toDoCount,
@@ -1245,6 +1317,36 @@ public class DashboardService : IDashboardService
         var flaggedCount = userTasks.Count(t => t.Flagged && t.Status != TaskStatusEnum.Done);
         var doneCount = userTasks.Count(t => t.Status == TaskStatusEnum.Done);
         var totalTasks = userTasks.Count;
+
+        var activeUserTasks = userTasks
+            .Where(
+                t =>
+                    t.Status != TaskStatusEnum.Done
+                    && t.Status != TaskStatusEnum.Rollback
+            )
+            .ToList();
+
+        var subjectsOverview = activeUserTasks
+            .GroupBy(
+                t =>
+                    new
+                    {
+                        Id = t.LearningObjective.Lesson.Unit.Subject.Id,
+                        Name = t.LearningObjective.Lesson.Unit.Subject.Name,
+                    }
+            )
+            .Select(
+                g =>
+                    new MemberSubjectOverviewDto
+                    {
+                        Id = g.Key.Id,
+                        Name = g.Key.Name,
+                        ActiveTasks = g.Count(),
+                    }
+            )
+            .OrderByDescending(s => s.ActiveTasks)
+            .Take(9)
+            .ToList();
 
         var groupMemberTasks = await _context.Tasks
             .Where(
@@ -1440,12 +1542,14 @@ public class DashboardService : IDashboardService
                 LearningObjectives = learningObjectives.Count,
                 LearningObjectivesThisMonth = loCompletedThisMonth,
                 TeamPerformance = teamPerformance,
+                ActiveTasks = activeUserTasks.Count,
                 LearningObjectivesOverview = new MemberLearningObjectivesOverviewDto
                 {
                     Completed = loCompleted,
                     Uncompleted = loUncompleted,
                     Total = learningObjectives.Count
                 },
+                SubjectsOverview = subjectsOverview,
                 TasksOverview = new MemberTasksOverviewDto
                 {
                     ToDo = toDoCount,

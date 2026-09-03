@@ -8,8 +8,10 @@ public class GetMemberDashboardDto
     public int LearningObjectives { get; set; }
     public int LearningObjectivesThisMonth { get; set; }
     public double TeamPerformance { get; set; }
+    public int ActiveTasks { get; set; }
     public MemberLearningObjectivesOverviewDto LearningObjectivesOverview { get; set; } =
         new MemberLearningObjectivesOverviewDto();
+    public List<MemberSubjectOverviewDto> SubjectsOverview { get; set; } = new();
     public MemberTasksOverviewDto TasksOverview { get; set; } = new MemberTasksOverviewDto();
     public List<MemberTaskBoardItemDto> ToDoTasks { get; set; } = new();
     public List<MemberTaskBoardItemDto> InProgressTasks { get; set; } = new();
@@ -17,6 +19,13 @@ public class GetMemberDashboardDto
     public List<MemberSprintDeadlineDto> SprintDeadlines { get; set; } = new();
     public List<MemberEscalatedTaskDto> EscalatedTasks { get; set; } = new();
     public List<MemberWorkUpdateDto> WorkUpdates { get; set; } = new();
+}
+
+public class MemberSubjectOverviewDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public int ActiveTasks { get; set; }
 }
 
 public class MemberLearningObjectivesOverviewDto

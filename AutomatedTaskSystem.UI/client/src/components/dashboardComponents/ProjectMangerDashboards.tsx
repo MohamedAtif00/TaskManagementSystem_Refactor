@@ -11,9 +11,12 @@ import {
     ProgressBar,
     StatCard,
     StatusPill,
+    SubjectsOverviewCard,
 } from "./dashboardShared";
 
 const WORKLOAD_COLORS = ["#3B82F6", "#F59E0B"];
+const TABLE_PREVIEW_COUNT = 4;
+const LIST_PREVIEW_COUNT = 3;
 
 const ProjectManagerDashboard = () => {
     const [dashboard, setDashboard] = useState<ProjectManagerDashboard>();
@@ -51,7 +54,6 @@ const ProjectManagerDashboard = () => {
         );
     }
 
-    const loOverview = dashboard.learningObjectivesOverview;
     const tasksOverview = dashboard.tasksOverview;
 
     return (
@@ -65,7 +67,7 @@ const ProjectManagerDashboard = () => {
                 subtitle="High-level operational stats and system health monitors."
             />
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
                 <StatCard label="Projects" value={dashboard.projects} />
                 <StatCard label="Sprints" value={dashboard.sprints} />
                 <StatCard
@@ -73,6 +75,7 @@ const ProjectManagerDashboard = () => {
                     value={dashboard.learningObjectives}
                 />
                 <StatCard label="Users" value={dashboard.users} />
+                <StatCard label="Active Tasks" value={dashboard.activeTasks} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
@@ -115,23 +118,7 @@ const ProjectManagerDashboard = () => {
                     </div>
                 </div>
 
-                <DonutChart
-                    title="Learning Objectives Overview"
-                    segments={[
-                        {
-                            label: "Uncompleted",
-                            color: "#D1D5DB",
-                            value: loOverview.uncompleted,
-                        },
-                        {
-                            label: "Completed",
-                            color: "#10B981",
-                            value: loOverview.completed,
-                        },
-                    ]}
-                    centerValue={loOverview.total}
-                    centerSubLabel="TOTAL LO"
-                />
+                <SubjectsOverviewCard subjects={dashboard.subjectsOverview} />
 
                 <DonutChart
                     title="Tasks Overview"
@@ -148,7 +135,7 @@ const ProjectManagerDashboard = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-                <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-100">
+                <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-100 max-h-[311px] overflow-hidden">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold text-gray-800">
                             Projects Overview
@@ -182,7 +169,9 @@ const ProjectManagerDashboard = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    dashboard.projectsTable.map((project) => (
+                                    dashboard.projectsTable
+                                        .slice(0, TABLE_PREVIEW_COUNT)
+                                        .map((project) => (
                                         <tr
                                             key={project.id}
                                             className="border-b border-gray-50 last:border-0"
@@ -211,14 +200,14 @@ const ProjectManagerDashboard = () => {
                                                 {project.deadline}
                                             </td>
                                         </tr>
-                                    ))
+                                        ))
                                 )}
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl p-6 border border-gray-100">
+                <div className="bg-white rounded-xl p-6 border border-gray-100 max-h-[311px] overflow-hidden">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">
                         Tasks Flagged & Rollbacked
                     </h3>
@@ -228,7 +217,9 @@ const ProjectManagerDashboard = () => {
                                 No flagged or rollback tasks
                             </p>
                         ) : (
-                            dashboard.flaggedRollbackTasks.map((task) => (
+                            dashboard.flaggedRollbackTasks
+                                .slice(0, LIST_PREVIEW_COUNT)
+                                .map((task) => (
                                 <Link
                                     key={`${task.taskId}-${task.type}`}
                                     href={`/tasks/${task.projectId}/board?taskId=${task.taskId}`}
@@ -261,14 +252,14 @@ const ProjectManagerDashboard = () => {
                                         </p>
                                     </div>
                                 </Link>
-                            ))
+                                ))
                         )}
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-100">
+                <div className="lg:col-span-2 bg-white rounded-xl p-6 border border-gray-100 max-h-[311px] overflow-hidden">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold text-gray-800">
                             Sprints Overview
@@ -303,7 +294,9 @@ const ProjectManagerDashboard = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    dashboard.sprintsTable.map((sprint) => (
+                                    dashboard.sprintsTable
+                                        .slice(0, TABLE_PREVIEW_COUNT)
+                                        .map((sprint) => (
                                         <tr
                                             key={sprint.id}
                                             className="border-b border-gray-50 last:border-0"
@@ -335,20 +328,22 @@ const ProjectManagerDashboard = () => {
                                                 {sprint.deadline}
                                             </td>
                                         </tr>
-                                    ))
+                                        ))
                                 )}
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl p-6 border border-gray-100">
+                <div className="bg-white rounded-xl p-6 border border-gray-100 max-h-[311px] overflow-hidden">
                     <h3 className="text-lg font-bold text-gray-800 mb-4">Activity Log</h3>
                     <div className="flex flex-col gap-4">
                         {dashboard.activityLog.length === 0 ? (
                             <p className="text-sm text-gray-400">No recent activity</p>
                         ) : (
-                            dashboard.activityLog.map((activity) => (
+                            dashboard.activityLog
+                                .slice(0, LIST_PREVIEW_COUNT)
+                                .map((activity) => (
                                 <div
                                     key={activity.id}
                                     className="flex items-start gap-3 border-b border-gray-50 pb-3 last:border-0 last:pb-0"
@@ -368,7 +363,7 @@ const ProjectManagerDashboard = () => {
                                         </p>
                                     </div>
                                 </div>
-                            ))
+                                ))
                         )}
                     </div>
                 </div>

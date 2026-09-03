@@ -1,14 +1,22 @@
+interface SubjectOverviewItem {
+    id: number;
+    name: string;
+    activeTasks: number;
+}
+
 interface ProjectManagerDashboard {
     projects: number;
     sprints: number;
     learningObjectives: number;
     users: number;
+    activeTasks: number;
     teamsWorkload: ProjectManagerTeamWorkload[];
     learningObjectivesOverview: {
         completed: number;
         uncompleted: number;
         total: number;
     };
+    subjectsOverview: SubjectOverviewItem[];
     tasksOverview: {
         toDo: number;
         doing: number;
@@ -72,12 +80,14 @@ interface TeamLeaderDashboard {
     learningObjectives: number;
     users: number;
     teamPerformance: number;
+    activeTasks: number;
     membersWorkload: TeamLeaderMemberWorkload[];
     learningObjectivesOverview: {
         completed: number;
         uncompleted: number;
         total: number;
     };
+    subjectsOverview: SubjectOverviewItem[];
     tasksOverview: {
         toDo: number;
         doing: number;
@@ -141,12 +151,14 @@ interface SectionHeadDashboard {
     learningObjectives: number;
     users: number;
     teams: number;
+    activeTasks: number;
     teamsWorkload: SectionHeadTeamWorkload[];
     learningObjectivesOverview: {
         completed: number;
         uncompleted: number;
         total: number;
     };
+    subjectsOverview: SubjectOverviewItem[];
     tasksOverview: {
         toDo: number;
         doing: number;
@@ -211,11 +223,13 @@ interface MemberDashboard {
     learningObjectives: number;
     learningObjectivesThisMonth: number;
     teamPerformance: number;
+    activeTasks: number;
     learningObjectivesOverview: {
         completed: number;
         uncompleted: number;
         total: number;
     };
+    subjectsOverview: SubjectOverviewItem[];
     tasksOverview: {
         toDo: number;
         doing: number;

@@ -120,6 +120,44 @@ export const StatCard = ({
     </div>
 );
 
+export type SubjectOverviewItem = {
+    id: number;
+    name: string;
+    activeTasks: number;
+};
+
+export const SubjectsOverviewCard = ({
+    subjects,
+}: {
+    subjects: SubjectOverviewItem[];
+}) => (
+    <div className="bg-white rounded-xl p-6 border border-gray-100 h-full">
+        <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base font-bold text-[#29313D]">Subjects Overview</h3>
+            <span className="text-xs text-gray-400">Per active tasks</span>
+        </div>
+        <div className="flex flex-col gap-3">
+            {subjects.length === 0 ? (
+                <p className="text-sm text-gray-400">No active subjects</p>
+            ) : (
+                subjects.map((subject) => (
+                    <div
+                        key={subject.id}
+                        className="flex items-center justify-between gap-3"
+                    >
+                        <span className="text-sm font-medium text-gray-800 truncate">
+                            {subject.name}
+                        </span>
+                        <span className="text-sm font-semibold text-blue-500 shrink-0">
+                            {subject.activeTasks}
+                        </span>
+                    </div>
+                ))
+            )}
+        </div>
+    </div>
+);
+
 export const DashboardHeader = ({
     title,
     subtitle,

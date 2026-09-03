@@ -7,14 +7,23 @@ public class GetSectionHeadDashboardDto
     public int LearningObjectives { get; set; }
     public int Users { get; set; }
     public int Teams { get; set; }
+    public int ActiveTasks { get; set; }
     public List<SectionHeadTeamWorkloadDto> TeamsWorkload { get; set; } = new();
     public SectionHeadLearningObjectivesOverviewDto LearningObjectivesOverview { get; set; } =
         new();
+    public List<SectionHeadSubjectOverviewDto> SubjectsOverview { get; set; } = new();
     public SectionHeadTasksOverviewDto TasksOverview { get; set; } = new();
     public List<SectionHeadProjectRowDto> ProjectsTable { get; set; } = new();
     public List<SectionHeadFlaggedRollbackDto> FlaggedRollbackTasks { get; set; } = new();
     public List<SectionHeadSprintRowDto> SprintsTable { get; set; } = new();
     public List<SectionHeadActivityDto> ActivityLog { get; set; } = new();
+}
+
+public class SectionHeadSubjectOverviewDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public int ActiveTasks { get; set; }
 }
 
 public class SectionHeadTeamWorkloadDto

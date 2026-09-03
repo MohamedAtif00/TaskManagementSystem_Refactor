@@ -7,14 +7,23 @@ public class GetTeamLeaderDashboardDto
     public int LearningObjectives { get; set; }
     public int Users { get; set; }
     public double TeamPerformance { get; set; }
+    public int ActiveTasks { get; set; }
     public List<TeamLeaderMemberWorkloadDto> MembersWorkload { get; set; } = new();
     public TeamLeaderLearningObjectivesOverviewDto LearningObjectivesOverview { get; set; } =
         new();
+    public List<TeamLeaderSubjectOverviewDto> SubjectsOverview { get; set; } = new();
     public TeamLeaderTasksOverviewDto TasksOverview { get; set; } = new();
     public List<TeamLeaderProjectRowDto> ProjectsTable { get; set; } = new();
     public List<TeamLeaderFlaggedRollbackDto> FlaggedRollbackTasks { get; set; } = new();
     public List<TeamLeaderSprintRowDto> SprintsTable { get; set; } = new();
     public List<TeamLeaderActivityDto> ActivityLog { get; set; } = new();
+}
+
+public class TeamLeaderSubjectOverviewDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public int ActiveTasks { get; set; }
 }
 
 public class TeamLeaderMemberWorkloadDto

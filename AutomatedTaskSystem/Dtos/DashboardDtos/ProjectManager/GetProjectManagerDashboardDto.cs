@@ -6,14 +6,23 @@ public class GetProjectManagerDashboardDto
     public int Sprints { get; set; }
     public int LearningObjectives { get; set; }
     public int Users { get; set; }
+    public int ActiveTasks { get; set; }
     public List<ProjectManagerTeamWorkloadDto> TeamsWorkload { get; set; } = new();
     public ProjectManagerLearningObjectivesOverviewDto LearningObjectivesOverview { get; set; } =
         new();
+    public List<ProjectManagerSubjectOverviewDto> SubjectsOverview { get; set; } = new();
     public ProjectManagerTasksOverviewDto TasksOverview { get; set; } = new();
     public List<ProjectManagerProjectRowDto> ProjectsTable { get; set; } = new();
     public List<ProjectManagerFlaggedRollbackDto> FlaggedRollbackTasks { get; set; } = new();
     public List<ProjectManagerSprintRowDto> SprintsTable { get; set; } = new();
     public List<ProjectManagerActivityDto> ActivityLog { get; set; } = new();
+}
+
+public class ProjectManagerSubjectOverviewDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public int ActiveTasks { get; set; }
 }
 
 public class ProjectManagerTeamWorkloadDto
