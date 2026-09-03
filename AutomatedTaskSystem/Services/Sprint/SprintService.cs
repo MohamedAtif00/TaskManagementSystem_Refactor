@@ -122,48 +122,6 @@ namespace AutomatedTaskSystem.Services.Sprint
             return clauses;
         }
 
-        /// <summary>
-        /// Resolves the distinct curriculum project names the given learning objectives belong to.
-        /// </summary>
-        private async Task<List<string>> GetProjectNamesForLearningObjectivesAsync(IEnumerable<int> learningObjectiveIds)
-        {
-            var ids = learningObjectiveIds.Distinct().ToList();
-            if (ids.Count == 0)
-            {
-                return new List<string>();
-            }
-
-            var names = await dataContext.LearningObjectives
-                .AsNoTracking()
-                .Where(lo => ids.Contains(lo.Id))
-                .Select(lo => lo.Lesson.Unit.Subject.SubjectGroup.Term.Project.Name)
-                .Distinct()
-                .ToListAsync();
-
-            return names
-                .Select(name => (name ?? "").Trim())
-                .Where(name => name.Length > 0)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(name => name)
-                .ToList();
-        }
-
-        /// <summary>
-        /// A sprint is scoped to a single curriculum project; returns an error message when the
-        /// learning objectives span more than one, otherwise null.
-        /// </summary>
-        private async Task<string?> ValidateSingleProjectScopeAsync(IEnumerable<int> learningObjectiveIds)
-        {
-            var projectNames = await GetProjectNamesForLearningObjectivesAsync(learningObjectiveIds);
-            if (projectNames.Count <= 1)
-            {
-                return null;
-            }
-
-            return "All learning objectives in a sprint must belong to the same project. "
-                + $"The selected learning objectives span {projectNames.Count} projects: {string.Join(", ", projectNames)}.";
-        }
-
         private static bool SprintMatchesProject(SprintDTO sprint, string? projectName)
         {
             if (string.IsNullOrWhiteSpace(projectName))
@@ -579,14 +537,6 @@ namespace AutomatedTaskSystem.Services.Sprint
                         return response;
                     }
 
-                    var scopeError = await ValidateSingleProjectScopeAsync(learningObjectiveIdsToAssociate);
-                    if (scopeError != null)
-                    {
-                        response.Error = true;
-                        response.Message = scopeError;
-                        return response;
-                    }
-
                     // Create SprintLearningObjective entries for the many-to-many relationship
                     foreach (var lo in existingLearningObjectives)
                     {
@@ -691,14 +641,6 @@ namespace AutomatedTaskSystem.Services.Sprint
                 // 4. Manage Learning Objectives (many-to-many relationship)
                 var currentLoIds = sprintToUpdate.SprintLearningObjectives.Select(slo => slo.LearningObjectiveId).ToList();
                 var requestedLoIds = request.Los ?? new List<int>();
-
-                var scopeError = await ValidateSingleProjectScopeAsync(requestedLoIds);
-                if (scopeError != null)
-                {
-                    response.Error = true;
-                    response.Message = scopeError;
-                    return response;
-                }
 
                 // LOs to remove: In current but not in requested
                 var loIdsToRemove = currentLoIds.Except(requestedLoIds).ToList();

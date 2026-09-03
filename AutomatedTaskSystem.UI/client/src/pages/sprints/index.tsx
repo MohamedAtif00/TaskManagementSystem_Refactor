@@ -110,14 +110,7 @@ const Sprints = () => {
         router.push(`/sprints/charts/${sprintChartId}`);
     }
 
-    const createSprintQuery = useMemo(() => {
-        const query: Record<string, string> = { form: "create-sprint" };
-        if (filters[0]) query.yearName = filters[0];
-        if (filters[1]) query.projectName = filters[1];
-        if (filters[2]) query.termName = filters[2];
-        if (filters[3]) query.subjectGroupName = filters[3];
-        return query;
-    }, [filters]);
+    const createSprintQuery = { form: "create-sprint" };
 
     const sprintFilterOptions = useMemo(() => {
         const options = filterOptions.map((opts) => [...opts]);
@@ -343,7 +336,7 @@ const Sprints = () => {
                         }}
                     />
                 </div>
-                <CreateSprint onCreated={() => fetchSprints(activeTab === 'archived')} />
+                <CreateSprint onSprintCreated={() => fetchSprints(activeTab === 'archived')} />
             </div>
 
 
