@@ -1,0 +1,31 @@
+<Solution>
+  <Folder Name="/src/Api/">
+    <Project Path="src/Api/TaskManagementSystem.Api/TaskManagementSystem.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/TaskManagementSystem.BuildingBlocks/TaskManagementSystem.BuildingBlocks.csproj" />
+    <Project Path="src/BuildingBlocks/TaskManagementSystem.BuildingBlocks.Persistence/TaskManagementSystem.BuildingBlocks.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/src/Database/">
+    <Project Path="src/Database/DatabaseMigrator/DatabaseMigrator.csproj" />
+    <Project Path="src/Database/TaskManagementSystem.Database/TaskManagementSystem.Database.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/Curriculum/TaskManagementSystem.Modules.Curriculum/TaskManagementSystem.Modules.Curriculum.csproj" />
+    <Project Path="src/Modules/HR/TaskManagementSystem.Modules.HR/TaskManagementSystem.Modules.HR.csproj" />
+    <Project Path="src/Modules/Identity/TaskManagementSystem.Modules.Identity/TaskManagementSystem.Modules.Identity.csproj" />
+    <Project Path="src/Modules/Notifications/TaskManagementSystem.Modules.Notifications/TaskManagementSystem.Modules.Notifications.csproj" />
+    <Project Path="src/Modules/Organization/TaskManagementSystem.Modules.Organization/TaskManagementSystem.Modules.Organization.csproj" />
+    <Project Path="src/Modules/Sprints/TaskManagementSystem.Modules.Sprints/TaskManagementSystem.Modules.Sprints.csproj" />
+    <Project Path="src/Modules/Ticket/TaskManagementSystem.Modules.Ticket/TaskManagementSystem.Modules.Ticket.csproj" />
+    <Project Path="src/Modules/Workflows/TaskManagementSystem.Modules.Workflows/TaskManagementSystem.Modules.Workflows.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TaskManagementSystem.Api.IntegrationTests/TaskManagementSystem.Api.IntegrationTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.ArchitectureTests/TaskManagementSystem.ArchitectureTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.BuildingBlocks.UnitTests/TaskManagementSystem.BuildingBlocks.UnitTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.Modules.Identity.UnitTests/TaskManagementSystem.Modules.Identity.UnitTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.Modules.UnitTests/TaskManagementSystem.Modules.UnitTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.TestCommon/TaskManagementSystem.TestCommon.csproj" />
+  </Folder>
+</Solution>
