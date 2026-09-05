@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Api\TaskManagementSystem.Api\TaskManagementSystem.Api.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\TaskManagementSystem.BuildingBlocks\TaskManagementSystem.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\src\BuildingBlocks\TaskManagementSystem.BuildingBlocks.Persistence\TaskManagementSystem.BuildingBlocks.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Curriculum\TaskManagementSystem.Modules.Curriculum\TaskManagementSystem.Modules.Curriculum.csproj" />
+    <ProjectReference Include="..\..\src\Modules\HR\TaskManagementSystem.Modules.HR\TaskManagementSystem.Modules.HR.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\TaskManagementSystem.Modules.Identity\TaskManagementSystem.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Notifications\TaskManagementSystem.Modules.Notifications\TaskManagementSystem.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Organization\TaskManagementSystem.Modules.Organization\TaskManagementSystem.Modules.Organization.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sprints\TaskManagementSystem.Modules.Sprints\TaskManagementSystem.Modules.Sprints.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Ticket\TaskManagementSystem.Modules.Ticket\TaskManagementSystem.Modules.Ticket.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Workflows\TaskManagementSystem.Modules.Workflows\TaskManagementSystem.Modules.Workflows.csproj" />
+  </ItemGroup>
+</Project>

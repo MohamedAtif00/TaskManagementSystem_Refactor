@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\TaskManagementSystem.TestCommon\TaskManagementSystem.TestCommon.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Notifications\TaskManagementSystem.Modules.Notifications\TaskManagementSystem.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Ticket\TaskManagementSystem.Modules.Ticket\TaskManagementSystem.Modules.Ticket.csproj" />
+  </ItemGroup>
+</Project>

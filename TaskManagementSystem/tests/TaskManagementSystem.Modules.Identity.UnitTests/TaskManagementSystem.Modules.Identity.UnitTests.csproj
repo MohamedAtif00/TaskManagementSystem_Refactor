@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="11.11.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TaskManagementSystem.TestCommon\TaskManagementSystem.TestCommon.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\TaskManagementSystem.Modules.Identity\TaskManagementSystem.Modules.Identity.csproj" />
+  </ItemGroup>
+</Project>
