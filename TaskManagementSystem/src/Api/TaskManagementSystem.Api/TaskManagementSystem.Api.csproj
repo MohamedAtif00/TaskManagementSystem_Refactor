@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.18.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.14.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\BuildingBlocks\TaskManagementSystem.BuildingBlocks\TaskManagementSystem.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\TaskManagementSystem.BuildingBlocks.Persistence\TaskManagementSystem.BuildingBlocks.Persistence.csproj" />
+    <ProjectReference Include="..\..\Modules\Curriculum\TaskManagementSystem.Modules.Curriculum\TaskManagementSystem.Modules.Curriculum.csproj" />
+    <ProjectReference Include="..\..\Modules\HR\TaskManagementSystem.Modules.HR\TaskManagementSystem.Modules.HR.csproj" />
+    <ProjectReference Include="..\..\Modules\Identity\TaskManagementSystem.Modules.Identity\TaskManagementSystem.Modules.Identity.csproj" />
+    <ProjectReference Include="..\..\Modules\Notifications\TaskManagementSystem.Modules.Notifications\TaskManagementSystem.Modules.Notifications.csproj" />
+    <ProjectReference Include="..\..\Modules\Organization\TaskManagementSystem.Modules.Organization\TaskManagementSystem.Modules.Organization.csproj" />
+    <ProjectReference Include="..\..\Modules\Sprints\TaskManagementSystem.Modules.Sprints\TaskManagementSystem.Modules.Sprints.csproj" />
+    <ProjectReference Include="..\..\Modules\Ticket\TaskManagementSystem.Modules.Ticket\TaskManagementSystem.Modules.Ticket.csproj" />
+    <ProjectReference Include="..\..\Modules\Workflows\TaskManagementSystem.Modules.Workflows\TaskManagementSystem.Modules.Workflows.csproj" />
+  </ItemGroup>
+</Project>
