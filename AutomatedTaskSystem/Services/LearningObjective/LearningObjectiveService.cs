@@ -1,5 +1,6 @@
 using AutomatedTaskSystem.Data;
 using AutomatedTaskSystem.Models;
+using AutomatedTaskSystem.Models.Enums.TaskStatus;
 using AutomatedTaskSystem.Services.ResponseService;
 
 namespace AutomatedTaskSystem.Services.LearningObjectiveService;
@@ -24,7 +25,7 @@ public class LearningObjectiveService : ILearningObjectiveService
             .Where(p => !p.Archived && p.Id == subjectId)
             .Include(p => p.Units)
             .ThenInclude(u => u.Lessons)
-            .ThenInclude(l => l.LearningObjectives.Where(x => x.DoneAt == null && !x.Archived))
+            .ThenInclude(l => l.LearningObjectives.Where(x => !x.Archived))
             .FirstOrDefaultAsync();
 
         if (subject is null)
@@ -34,15 +35,39 @@ public class LearningObjectiveService : ILearningObjectiveService
                 Message = "Subject is not found"
             };
 
-        var los = new List<LearningObjective>();
+        var candidateLos = subject.Units
+            .Where(unit => !unit.Archived)
+            .SelectMany(unit => unit.Lessons)
+            .Where(lesson => !lesson.Archived)
+            .SelectMany(lesson => lesson.LearningObjectives)
+            .Where(lo => !lo.Archived && !IsOldLearningObjectiveName(lo.Name))
+            .ToList();
 
-        foreach (var unit in subject.Units)
-            if (!unit.Archived)
-                foreach (var lesson in unit.Lessons)
-                    if (!lesson.Archived)
-                        foreach (var lo in lesson.LearningObjectives)
-                            if (!lo.Archived && !IsOldLearningObjectiveName(lo.Name))
-                                los.Add(lo);
+        var staleCompletedLoIds = candidateLos
+            .Where(lo => lo.DoneAt != null)
+            .Select(lo => lo.Id)
+            .ToList();
+
+        if (staleCompletedLoIds.Count > 0)
+        {
+            var remainingLoIds = (await _context.Tasks
+                .Where(t =>
+                    !t.Archived
+                    && staleCompletedLoIds.Contains(t.LearningObjectiveId)
+                    && t.Status != TaskStatusEnum.Done)
+                .Select(t => t.LearningObjectiveId)
+                .Distinct()
+                .ToListAsync())
+                .ToHashSet();
+
+            foreach (var lo in candidateLos.Where(lo => remainingLoIds.Contains(lo.Id)))
+                lo.DoneAt = null;
+
+            if (remainingLoIds.Count > 0)
+                await _context.SaveChangesAsync();
+        }
+
+        var los = candidateLos.Where(lo => lo.DoneAt == null).ToList();
 
         return new ResponseService<List<LearningObjective>>
         {

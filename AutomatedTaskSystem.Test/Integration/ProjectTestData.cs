@@ -69,19 +69,47 @@ public sealed class ProjectTestData
             await db.SaveChangesAsync();
         }
 
-        var rootFolder = await db.Folders.FirstOrDefaultAsync(f => f.Name == "IntegrationRoot" && f.ParentFolderId == null);
-        if (rootFolder is null)
+        var academicYear = await db.AcademicYears.FirstOrDefaultAsync(y => y.Name == "2025-2026");
+        if (academicYear is null)
         {
-            rootFolder = new Folder { Name = "IntegrationRoot" };
-            db.Folders.Add(rootFolder);
+            academicYear = new AcademicYear { Name = "2025-2026", Description = "Integration test year" };
+            db.AcademicYears.Add(academicYear);
             await db.SaveChangesAsync();
         }
 
-        var leafFolder = await db.Folders.FirstOrDefaultAsync(f => f.Name == "IntegrationLeaf" && f.ParentFolderId == rootFolder.Id);
-        if (leafFolder is null)
+        var curriculumProject = await db.CurriculumProjects.FirstOrDefaultAsync(p => p.Name == "Integration Curriculum Project");
+        if (curriculumProject is null)
         {
-            leafFolder = new Folder { Name = "IntegrationLeaf", ParentFolderId = rootFolder.Id };
-            db.Folders.Add(leafFolder);
+            curriculumProject = new CurriculumProject
+            {
+                Name = "Integration Curriculum Project",
+                Year = academicYear,
+            };
+            db.CurriculumProjects.Add(curriculumProject);
+            await db.SaveChangesAsync();
+        }
+
+        var term = await db.CurriculumTerms.FirstOrDefaultAsync(t => t.Name == "Integration Term");
+        if (term is null)
+        {
+            term = new CurriculumTerm
+            {
+                Name = "Integration Term",
+                Project = curriculumProject,
+            };
+            db.CurriculumTerms.Add(term);
+            await db.SaveChangesAsync();
+        }
+
+        var subjectGroup = await db.SubjectGroups.FirstOrDefaultAsync(g => g.Name == "Integration Subject Group");
+        if (subjectGroup is null)
+        {
+            subjectGroup = new SubjectGroup
+            {
+                Name = "Integration Subject Group",
+                Term = term,
+            };
+            db.SubjectGroups.Add(subjectGroup);
             await db.SaveChangesAsync();
         }
 
@@ -92,7 +120,7 @@ public sealed class ProjectTestData
             {
                 Name = "Integration Test Project",
                 Description = "Seeded for SubjectController integration tests",
-                FolderId = leafFolder.Id,
+                SubjectGroup = subjectGroup,
                 Status = ProjectStatusEnum.Active,
             };
             db.Subjects.Add(subject);
@@ -102,7 +130,7 @@ public sealed class ProjectTestData
         return new ProjectTestData
         {
             YearId = year.Id,
-            FolderId = leafFolder.Id,
+            FolderId = subjectGroup.Id,
             OwnerUserId = owner.Id,
             MemberUserId = member.Id,
             ProjectId = subject.Id,

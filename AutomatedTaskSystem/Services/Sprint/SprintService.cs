@@ -854,6 +854,30 @@ namespace AutomatedTaskSystem.Services.Sprint
                     .Where(lo => requestedNames.Contains(lo.Name))
                     .ToListAsync();
 
+                var staleCompletedLoIds = candidates
+                    .Where(lo => lo.DoneAt != null)
+                    .Select(lo => lo.Id)
+                    .ToList();
+
+                if (staleCompletedLoIds.Count > 0)
+                {
+                    var remainingLoIds = (await dataContext.Tasks
+                        .Where(t =>
+                            !t.Archived
+                            && staleCompletedLoIds.Contains(t.LearningObjectiveId)
+                            && t.Status != TaskStatusEnum.Done)
+                        .Select(t => t.LearningObjectiveId)
+                        .Distinct()
+                        .ToListAsync())
+                        .ToHashSet();
+
+                    foreach (var lo in candidates.Where(lo => remainingLoIds.Contains(lo.Id)))
+                        lo.DoneAt = null;
+
+                    if (remainingLoIds.Count > 0)
+                        await dataContext.SaveChangesAsync();
+                }
+
                 var byName = candidates
                     .GroupBy(lo => (lo.Name ?? "").Trim(), StringComparer.OrdinalIgnoreCase)
                     .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
