@@ -72,16 +72,24 @@ public static class AuthenticationExtensions
         return services;
     }
 
-    public static IServiceCollection AddFrontendCors(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddFrontendCors(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        var allowedOrigins =
+            configuration.GetSection("Cors:AllowedOrigins")
+                .Get<string[]>()
             ??
             [
                 "http://localhost:3000",
+                "http://localhost:4200",
+                "https://localhost:4200",
                 "http://stdigital.stp.local",
                 "http://localhost:8081",
                 "https://localhost",
                 "https://localhost:443",
+                "https://localhost:61172",
+                "http://localhost:61173",
                 "https://ats.stp.local"
             ];
 

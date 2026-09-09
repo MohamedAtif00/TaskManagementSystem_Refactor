@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.Modules.Identity.Application;
 
 namespace TaskManagementSystem.Modules.Identity.Features.Logout;
@@ -6,28 +7,29 @@ namespace TaskManagementSystem.Modules.Identity.Features.Logout;
 public sealed class LogoutCommandHandler(
     IIdentityUnitOfWork unitOfWork,
     TimeProvider timeProvider)
-    : IRequestHandler<LogoutCommand>
+    : IRequestHandler<LogoutCommand, Result<NoValue>>
 {
-    public async Task Handle(LogoutCommand request, CancellationToken cancellationToken)
+    public async Task<Result<NoValue>> Handle(LogoutCommand request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.RefreshToken))
         {
-            throw new InvalidRefreshTokenException("Invalid refesh token");
+            return Result.Fail(IdentityErrors.InvalidRefreshToken("Invalid refesh token"));
         }
 
-        var token = await unitOfWork.RefreshTokens.GetByTokenAsync(request.RefreshToken, cancellationToken);
-        if (token is null)
+        var existingToken = await unitOfWork.RefreshTokens.GetByTokenAsync(request.RefreshToken, cancellationToken);
+        if (existingToken is null)
         {
-            throw new InvalidRefreshTokenException("Invalid refesh token");
+            return Result.Fail(IdentityErrors.InvalidRefreshToken("Invalid refesh token"));
         }
 
-        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
-        if (token.Used && token.IsExpired(utcNow))
+        if (existingToken.IsExpired(timeProvider.GetUtcNow().UtcDateTime))
         {
-            throw new InvalidRefreshTokenException("Token expired");
+            return Result.Fail(IdentityErrors.InvalidRefreshToken("Token expired"));
         }
 
-        token.MarkUsed();
+        existingToken.MarkUsed();
         await unitOfWork.CommitAsync(cancellationToken);
+
+        return Result.Ok();
     }
 }

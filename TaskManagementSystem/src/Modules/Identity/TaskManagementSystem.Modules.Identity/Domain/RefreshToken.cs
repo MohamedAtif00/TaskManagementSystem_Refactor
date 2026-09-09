@@ -9,7 +9,7 @@ public sealed class RefreshToken : Entity
     }
 
     public string Token { get; internal set; } = string.Empty;
-    public DateTime Created { get; internal set; }
+    public DateTime Created { get; internal init; }
     public DateTime Expires { get; internal set; }
     public bool Used { get; internal set; }
     public int UserId { get; internal set; }
@@ -25,6 +25,11 @@ public sealed class RefreshToken : Entity
         };
 
     public bool IsExpired(DateTime utcNow) => utcNow >= Expires;
+
+    public Result<NoValue> CanRotate(DateTime utcNow) =>
+        Used || IsExpired(utcNow)
+            ? Result.Fail<NoValue>(new ResultError("invalid_refresh_token", "Token expired"))
+            : Result.Ok();
 
     public void MarkUsed() => Used = true;
 

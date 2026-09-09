@@ -22,7 +22,7 @@ builder.Services.AddBuildingBlocks(
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddRealtime();
-builder.Services.AddExceptionHandler<LegacyExceptionHandler>();
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();

@@ -1,5 +1,7 @@
 using MediatR;
-using TaskManagementSystem.Api.Contracts.Legacy;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Api.Contracts.Auth;
+using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.Identity.Features.AboutMe;
 using TaskManagementSystem.Modules.Identity.Features.Authenticate;
@@ -29,19 +31,17 @@ public static class AuthEndpoints
     {
         var userId = currentUser.GetRequiredUserId();
         var result = await mediator.Send(new AboutMeQuery(userId), cancellationToken);
-        return Results.Ok(new ResponseService<AuthResponses.AuthInfoDto>
+
+        return result.ToHttpResult(profile => Results.Ok(new AuthInfoResponse
         {
-            Data = new AuthResponses.AuthInfoDto
-            {
-                Id = result.Id,
-                Name = result.Name,
-                Role = result.Role,
-                Group = result.Group,
-                Notifications = result.Notifications
-            },
-            Error = false,
-            Message = "User info"
-        });
+            Id = profile.Id,
+            Name = profile.Name,
+            Role = profile.Role,
+            RoleName = profile.RoleName,
+            Permissions = profile.Permissions.ToArray(),
+            Group = profile.Group,
+            Notifications = profile.Notifications
+        }));
     }
 
     private static async Task<IResult> LogoutAsync(
@@ -49,24 +49,35 @@ public static class AuthEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        await mediator.Send(new LogoutCommand(httpContext.Request.Cookies["refreshToken"]), cancellationToken);
-        httpContext.Response.Cookies.Delete("refreshToken");
-        return Results.Ok(new BaseResponseService { Error = false, Message = "User logout" });
+        var refreshToken = await ResolveRefreshTokenAsync(httpContext);
+        var result = await mediator.Send(new LogoutCommand(refreshToken), cancellationToken);
+
+        return result.ToHttpResult(_ =>
+        {
+            httpContext.Response.Cookies.Delete(
+                AuthCookieOptions.RefreshTokenName,
+                AuthCookieOptions.CreateDeleteRefreshTokenCookieOptions(httpContext.Request.IsHttps));
+
+            return Results.NoContent();
+        });
     }
 
     private static async Task<IResult> LoginAsync(
-        AuthRequests.LoginDto request,
+        LoginRequest request,
         IMediator mediator,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await mediator.Send(new AuthenticateCommand(request.Code), cancellationToken);
-        SetRefreshTokenCookie(httpContext.Response, result.RefreshToken.Token, result.RefreshToken.Expires);
-        return Results.Ok(new ResponseService<string>
+
+        return result.ToHttpResult(authenticateResult =>
         {
-            Data = result.AccessToken,
-            Error = false,
-            Message = "User authenticated"
+            SetRefreshTokenCookie(
+                httpContext,
+                authenticateResult.RefreshToken.Token,
+                authenticateResult.RefreshToken.Expires);
+
+            return Results.Ok(new AccessTokenResponse(authenticateResult.AccessToken));
         });
     }
 
@@ -75,26 +86,42 @@ public static class AuthEndpoints
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
-        var refreshToken = httpContext.Request.Cookies["refreshToken"];
+        var refreshToken = await ResolveRefreshTokenAsync(httpContext);
         var result = await mediator.Send(new RefreshSessionCommand(refreshToken ?? string.Empty), cancellationToken);
-        SetRefreshTokenCookie(httpContext.Response, result.RefreshToken.Token, result.RefreshToken.Expires);
-        return Results.Ok(new ResponseService<string>
+
+        return result.ToHttpResult(refreshResult =>
         {
-            Data = result.AccessToken,
-            Error = false,
-            Message = "Token refreshed"
+            SetRefreshTokenCookie(
+                httpContext,
+                refreshResult.RefreshToken.Token,
+                refreshResult.RefreshToken.Expires);
+
+            return Results.Ok(new AccessTokenResponse(refreshResult.AccessToken));
         });
     }
 
-    private static void SetRefreshTokenCookie(HttpResponse response, string token, DateTime expires)
+    private static async Task<string?> ResolveRefreshTokenAsync(HttpContext httpContext)
     {
-        response.Cookies.Append(
-            "refreshToken",
+        var cookieToken = httpContext.Request.Cookies[AuthCookieOptions.RefreshTokenName];
+        if (!string.IsNullOrWhiteSpace(cookieToken))
+        {
+            return cookieToken;
+        }
+
+        if (!httpContext.Request.HasJsonContentType())
+        {
+            return null;
+        }
+
+        var body = await httpContext.Request.ReadFromJsonAsync<RefreshTokenRequest>(httpContext.RequestAborted);
+        return string.IsNullOrWhiteSpace(body?.RefreshToken) ? null : body.RefreshToken;
+    }
+
+    private static void SetRefreshTokenCookie(HttpContext httpContext, string token, DateTime expires)
+    {
+        httpContext.Response.Cookies.Append(
+            AuthCookieOptions.RefreshTokenName,
             token,
-            new CookieOptions
-            {
-                HttpOnly = true,
-                Expires = expires
-            });
+            AuthCookieOptions.CreateRefreshTokenCookieOptions(expires, httpContext.Request.IsHttps));
     }
 }
