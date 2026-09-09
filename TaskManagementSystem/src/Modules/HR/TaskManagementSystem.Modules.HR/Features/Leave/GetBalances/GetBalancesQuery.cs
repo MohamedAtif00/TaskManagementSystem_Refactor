@@ -36,18 +36,13 @@ public sealed class GetBalancesQueryHandler(
             return Result.Fail<BalancesResult>(HrErrors.UserNotFound);
         }
 
-        var pendingAnnual = await unitOfWork.LeaveRequests.SumPendingWorkingDaysAsync(
+        var pendingByType = await unitOfWork.LeaveRequests.SumPendingWorkingDaysByTypeAsync(
             request.UserId,
-            Domain.LeaveType.Annual,
+            [Domain.LeaveType.Annual, Domain.LeaveType.Emergency, Domain.LeaveType.FromNextBalance],
             cancellationToken: cancellationToken);
-        var pendingEmergency = await unitOfWork.LeaveRequests.SumPendingWorkingDaysAsync(
-            request.UserId,
-            Domain.LeaveType.Emergency,
-            cancellationToken: cancellationToken);
-        var pendingFromNext = await unitOfWork.LeaveRequests.SumPendingWorkingDaysAsync(
-            request.UserId,
-            Domain.LeaveType.FromNextBalance,
-            cancellationToken: cancellationToken);
+        var pendingAnnual = pendingByType.GetValueOrDefault(Domain.LeaveType.Annual);
+        var pendingEmergency = pendingByType.GetValueOrDefault(Domain.LeaveType.Emergency);
+        var pendingFromNext = pendingByType.GetValueOrDefault(Domain.LeaveType.FromNextBalance);
 
         return Result.Ok(new BalancesResult(
             balance.AnnualLeave,

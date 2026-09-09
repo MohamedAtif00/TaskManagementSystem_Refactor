@@ -22,6 +22,12 @@ public interface ILeaveRequestRepository
         int? excludeLeaveRequestId = null,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyDictionary<LeaveType, int>> SumPendingWorkingDaysByTypeAsync(
+        int userId,
+        IReadOnlyCollection<LeaveType> types,
+        int? excludeLeaveRequestId = null,
+        CancellationToken cancellationToken = default);
+
     Task<LeaveRequestSearchResult> SearchAsync(
         LeaveRequestSearchCriteria criteria,
         CancellationToken cancellationToken = default);

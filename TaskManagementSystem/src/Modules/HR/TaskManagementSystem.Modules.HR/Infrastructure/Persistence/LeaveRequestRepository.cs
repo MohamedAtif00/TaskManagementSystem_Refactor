@@ -43,19 +43,36 @@ internal sealed class LeaveRequestRepository(HrDbContext context)
         int? excludeLeaveRequestId = null,
         CancellationToken cancellationToken = default)
     {
+        var totals = await SumPendingWorkingDaysByTypeAsync(
+            userId,
+            [type],
+            excludeLeaveRequestId,
+            cancellationToken);
+
+        return totals.GetValueOrDefault(type);
+    }
+
+    public async Task<IReadOnlyDictionary<LeaveType, int>> SumPendingWorkingDaysByTypeAsync(
+        int userId,
+        IReadOnlyCollection<LeaveType> types,
+        int? excludeLeaveRequestId = null,
+        CancellationToken cancellationToken = default)
+    {
         var query = Set.AsNoTracking()
             .Where(leave =>
                 leave.UserId == userId &&
-                leave.Type == type &&
-                leave.Status == LeaveStatus.Pending);
+                leave.Status == LeaveStatus.Pending &&
+                types.Contains(leave.Type));
 
         if (excludeLeaveRequestId.HasValue)
         {
             query = query.Where(leave => leave.Id != excludeLeaveRequestId.Value);
         }
 
-        var requests = await query.ToListAsync(cancellationToken);
-        return requests.Sum(leave => leave.WorkingDays);
+        return await query
+            .GroupBy(leave => leave.Type)
+            .Select(group => new { Type = group.Key, Total = group.Sum(leave => leave.WorkingDays) })
+            .ToDictionaryAsync(row => row.Type, row => row.Total, cancellationToken);
     }
 
     public async Task<LeaveRequestSearchResult> SearchAsync(
