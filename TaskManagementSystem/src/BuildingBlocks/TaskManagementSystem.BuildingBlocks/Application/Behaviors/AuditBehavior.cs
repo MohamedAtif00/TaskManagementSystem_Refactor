@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.BuildingBlocks.Domain;
 
 namespace TaskManagementSystem.BuildingBlocks.Application.Behaviors;
 
@@ -24,7 +25,7 @@ public sealed class AuditBehavior<TRequest, TResponse>(
         try
         {
             var response = await next(cancellationToken);
-            success = true;
+            success = response is IResult result ? result.IsSuccess : true;
             return response;
         }
         finally

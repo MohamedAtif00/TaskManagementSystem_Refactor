@@ -3,6 +3,7 @@ using MediatR;
 using NSubstitute;
 using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Application.Behaviors;
+using TaskManagementSystem.BuildingBlocks.Domain;
 using Xunit;
 
 namespace TaskManagementSystem.BuildingBlocks.UnitTests;
@@ -80,6 +81,32 @@ public sealed class AuditBehaviorTests
 
         response.Should().Be("ok");
         await auditStore.DidNotReceiveWithAnyArgs().AppendAsync(default!, default);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCommandReturnsFailedResult_AppendsFailedAuditEntry()
+    {
+        var auditContext = Substitute.For<IAuditContext>();
+        auditContext.CorrelationId.Returns("trace-789");
+
+        var auditStore = Substitute.For<IAuditStore>();
+        AuditEntry? capturedEntry = null;
+        auditStore
+            .AppendAsync(Arg.Do<AuditEntry>(entry => capturedEntry = entry), Arg.Any<CancellationToken>())
+            .Returns(Task.CompletedTask);
+
+        var behavior = new AuditBehavior<TestCommand, Result<string>>(
+            auditContext,
+            auditStore,
+            TimeProvider.System);
+        var next = Substitute.For<RequestHandlerDelegate<Result<string>>>();
+        next.Invoke().Returns(Result.Fail<string>(new ResultError("bad", "bad")));
+
+        var response = await behavior.Handle(new TestCommand(), next, CancellationToken.None);
+
+        response.IsSuccess.Should().BeFalse();
+        capturedEntry.Should().NotBeNull();
+        capturedEntry!.Success.Should().BeFalse();
     }
 
     private sealed record TestCommand : ICommand<string>;
