@@ -10,6 +10,7 @@ namespace TaskManagementSystem.Api.Configuration;
 public static class AuthenticationExtensions
 {
     public const string CorsPolicyName = "FrontendCors";
+    public const string ApidogCorsPolicyName = "ApidogCors";
 
     public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
@@ -102,6 +103,22 @@ public static class AuthenticationExtensions
                     .AllowAnyMethod()
                     .WithOrigins(allowedOrigins)
                     .AllowCredentials());
+        });
+
+        return services;
+    }
+
+    public static IServiceCollection AddApidogCors(
+        this IServiceCollection services)
+    {
+        services.AddCors(options =>
+        {
+            options.AddPolicy(
+                ApidogCorsPolicyName,
+                policy => policy
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowAnyOrigin());
         });
 
         return services;

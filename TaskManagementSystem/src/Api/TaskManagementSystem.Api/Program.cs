@@ -25,6 +25,7 @@ builder.Services.AddBuildingBlocks(
     typeof(RequestLeaveCommand).Assembly);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddFrontendCors(builder.Configuration);
+builder.Services.AddApidogCors();
 builder.Services.AddRealtime();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -35,6 +36,7 @@ app.UseExceptionHandler();
 app.UseCors(AuthenticationExtensions.CorsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapOpenApiEndpoints();
 app.MapAuthEndpoints();
 app.MapHrEndpoints();
 app.MapRealtimeHub();
