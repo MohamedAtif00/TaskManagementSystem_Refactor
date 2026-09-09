@@ -6,7 +6,7 @@ Living snapshot of the new solution. Update this file as the refactor grows.
 
 
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-07
 
 
 
@@ -26,7 +26,7 @@ Related: [OTLP / OpenTelemetry](OTLP.md), [Database / DbUp](DATABASE.md)
 
 
 
-The solution has **real cross-cutting infrastructure** and the **Identity auth slice** (code-only login). Other product features (tickets, leave, etc.) are not ported yet.
+The solution has **real cross-cutting infrastructure**, the **Identity auth slice** (code-only login), and the **HR leave complete slice** (all leave types, opinions, from-next, medical upload, role-scoped search). Other product features (tickets, etc.) are not ported yet.
 
 
 
@@ -40,17 +40,19 @@ The solution has **real cross-cutting infrastructure** and the **Identity auth s
 
 | API host | Done — observability, realtime hub, JWT auth, Minimal API `/auth/*` endpoints |
 
-| Identity module (auth) | Done — login, refresh, logout, about-me (legacy-compatible) |
+| Identity module (auth) | Done — login, refresh, logout, about-me (modern HTTP API) |
+
+| HR module (leave complete) | Done — all leave types, opinions, from-next/preview, medical upload, search |
 
 | Other module business logic | Not started |
 
 | Persistence (DbUp + SQL scripts) | Done — per-module schemas, DatabaseMigrator, initial DDL |
 
-| EF Core / repositories | Done — Identity `IdentityDbContext` + repositories |
+| EF Core / repositories | Done — Identity `IdentityDbContext`, HR `HrDbContext` + repositories |
 
 | Frontend | Not started |
 
-| Automated tests | Done — 45 tests across unit, integration, and architecture |
+| Automated tests | Done — 105 tests across unit, integration, and architecture |
 
 
 
@@ -62,21 +64,16 @@ Suggested next slice: **Organization** (Teams/Sections CRUD) or **Ticket** execu
 
 
 
-Legacy-compatible auth preserved for the existing frontend:
+Modern HTTP API — direct JSON success bodies and RFC 7807 ProblemDetails errors (no `{ data, error, message }` envelope).
 
 
 
-| Endpoint | Purpose |
-
-|---|---|
-
-| `POST /auth/login` | `{ code }` → JWT in body + `refreshToken` HttpOnly cookie |
-
-| `POST /auth/refresh-token` | Rotate refresh token + new JWT |
-
-| `POST /auth/logout` | Invalidate refresh token |
-
-| `POST /auth/about-me` | Current user profile (`.RequireAuthorization()`) |
+| Endpoint | Purpose | Success |
+|---|---|---|
+| `POST /auth/login` | `{ code }` → JWT + `refreshToken` HttpOnly cookie | 200 `{ accessToken }` |
+| `POST /auth/refresh-token` | Rotate refresh token + new JWT | 200 `{ accessToken }` |
+| `POST /auth/logout` | Invalidate refresh token | 204 No Content |
+| `POST /auth/about-me` | Current user profile (`.RequireAuthorization()`) | 200 profile JSON |
 
 
 
@@ -84,21 +81,100 @@ Legacy-compatible auth preserved for the existing frontend:
 
 - **JWT claims** — `"Id"`, `ClaimTypes.Role`, `ClaimTypes.NameIdentifier` (same as old ATS)
 
-- **Response envelope** — `{ data, error, message }`
-
-- **`about-me.group`** — team name from `organization.Teams` (property kept for frontend compat; Groups removed)
+- **`about-me.group`** — team name from `organization.Teams`
 
 - **Config** — `AppSetting:Token` signing key in `appsettings.json`
 
 - **Auth at API boundary** — `.RequireAuthorization()` on minimal API routes; `ICurrentUserAccessor` reads JWT claims and passes explicit `UserId` into MediatR. Module handlers never use `IHttpContextAccessor`.
 
-- **HTTP style** — auth routes are **Minimal API** in [`Endpoints/AuthEndpoints.cs`](../src/Api/TaskManagementSystem.Api/Endpoints/AuthEndpoints.cs). Future modules: `Endpoints/{Module}Endpoints.cs` + `Map{Module}Endpoints()`.
+- **HTTP style** — auth routes are **Minimal API** in [`Endpoints/AuthEndpoints.cs`](../src/Api/TaskManagementSystem.Api/Endpoints/AuthEndpoints.cs). HR routes are grouped under [`Endpoints/HR/`](../src/Api/TaskManagementSystem.Api/Endpoints/HR/) (`Leave/`, `Holidays/`) with `MapHrEndpoints()` as the composition root.
 
 - **Role policies** — registered in `AuthenticationExtensions` for `.RequireAuthorization("TeamLeader")` on future endpoints
 
-- **Endpoints are happy-path only** — auth handlers extract HTTP inputs, dispatch MediatR, and map success to `Results.Ok(...)`. No per-route try/catch.
+- **Endpoints map `Result<T>`** — handlers dispatch MediatR, then [`ResultHttpMapper`](../src/Api/TaskManagementSystem.Api/Infrastructure/ResultHttpMapper.cs) maps success to direct JSON (`Results.Ok`, `Results.NoContent`) and failures to ProblemDetails with `code` extension (`invalid_login_code` → 404, others → 400). No per-route try/catch.
 
-- **Legacy error mapping** — [`Infrastructure/LegacyExceptionHandler.cs`](../src/Api/TaskManagementSystem.Api/Infrastructure/LegacyExceptionHandler.cs) implements `IExceptionHandler` and maps Identity application exceptions to legacy `{ error, message }` JSON with the correct status codes (`InvalidLoginCodeException` → 404, `InvalidRefreshTokenException` / `UserNotFoundException` → 400). Registered via `AddExceptionHandler<LegacyExceptionHandler>()` and `UseExceptionHandler()` in `Program.cs`. Unhandled exceptions fall through to the default 500 response. Future modules should throw application exceptions; extend the handler (or a shared base type) as new legacy routes are added.
+- **Validation errors** — FluentValidation throws `ValidationException`; [`ApiExceptionHandler`](../src/Api/TaskManagementSystem.Api/Infrastructure/ApiExceptionHandler.cs) returns 400 ProblemDetails with `code: validation_failed` and `errors` field map.
+
+- **Unexpected errors** — `ApiExceptionHandler` returns 500 ProblemDetails (`code: unexpected_error`). Expected Identity failures return `Result<T>` instead of throwing.
+
+
+
+## HR (Leave — complete slice)
+
+
+
+Complete leave slice: **all leave types**, from-next split/preview, sick medical upload, multi-level opinions (TL/PM/SectionHead record; Owner final approve/reject), role-scoped search, and leave settings. Permission, WFH, email, SignalR notifications, and background jobs remain deferred.
+
+
+
+| Endpoint | Purpose | Auth |
+|---|---|---|
+| `GET /hr/leave/balances` | Current user's leave balances (includes pending days in available) | Required |
+| `GET /hr/leave/leave-settings` | Read-only leave windows (from-next, emergency blackout, reset) | Required |
+| `POST /hr/leave/leave-requests/preview` | Preview annual from-next need before confirming | Required |
+| `POST /hr/leave/leave-requests` | Create leave request (JSON or multipart for sick + medical cert) | Required |
+| `GET /hr/leave/leave-requests` | List own leave requests | Required |
+| `GET /hr/leave/leave-requests/search` | Role-scoped paginated list with filters | Required |
+| `GET /hr/leave/leave-requests/pending` | Pending queue (Owner compat) | Owner |
+| `GET /hr/leave/leave-requests/{id}` | Get leave request with opinions | Required / Owner |
+| `GET /hr/leave/leave-requests/{id}/medical-certificate` | Download sick-leave medical certificate | Requester / Owner |
+| `POST /hr/leave/leave-requests/{id}/opinions` | Record opinion or Owner approve/reject | TL+ / Owner |
+| `POST /hr/leave/leave-requests/opinions/bulk` | Bulk Owner approve/reject | Owner |
+| `PUT /hr/leave/leave-requests/{id}/cancel` | Cancel pending or future approved leave (type-aware refund) | Required |
+| `POST /hr/leave/leave-requests/{id}/approve` | Owner approve alias → opinion approve | Owner |
+| `GET /hr/holidays` | List public holidays (optional date filter) | Required |
+| `POST /hr/holidays` | Create public holiday (single day or range) | ProjectManger+ |
+| `PUT /hr/holidays/{id}` | Update public holiday | ProjectManger+ |
+| `DELETE /hr/holidays/{id}` | Delete public holiday | ProjectManger+ |
+
+
+
+### Opinions workflow
+
+```mermaid
+flowchart LR
+  Create[Create leave] --> Pending[Status: Pending]
+  Pending --> TL[TL/PM/SectionHead opinion]
+  TL --> Pending
+  Pending --> Owner{Owner opinion}
+  Owner -->|approve| Approved[Approved + deduct balance]
+  Owner -->|reject| Rejected[Rejected, no balance change]
+```
+
+
+
+- **Owner + `IsApproved=true`** — approve and deduct balance by leave type; sick medical file deleted on approve
+- **Owner + `IsApproved=false`** — reject (`Rejected`, no balance change)
+- **TeamLeader / ProjectManger / SectionHead** — record opinion only; leave stays `Pending`
+- **`POST .../approve`** — thin alias to Owner opinion approve (MVP compat)
+
+
+
+- **Module layout** — [`TaskManagementSystem.Modules.HR`](../src/Modules/HR/TaskManagementSystem.Modules.HR/) follows the Identity vertical-slice template: `Domain/`, `Application/`, `Features/`, `Infrastructure/`. Features are grouped by submodule:
+  - `Features/Leave/` — leave requests, opinions, preview, balances, medical certificate
+  - `Features/Holidays/` — public holiday CRUD
+  - `Features/Permission/` — (future)
+  - `Features/WorkFromHome/` — (future)
+- **Leave types** — Annual, Sick, Emergency, UnpaidLeave, FromNextBalance with type-specific balance rules
+- **From-next split** — when annual exceeds available and user confirms, two `LeaveRequest` rows (Annual + FromNextBalance) in one transaction
+- **Working days** — Friday and Saturday excluded, plus admin-managed public holidays from `hr.PublicHolidays` via [`IWorkingDayCalculator`](../src/Modules/HR/TaskManagementSystem.Modules.HR/Application/IWorkingDayCalculator.cs). `WorkingDays` is persisted on each leave request at creation time.
+- **Public holidays** — Owner/ProjectManager manage holidays through `/hr/holidays`; excluded from leave preview, validation, split, and balance calculations
+- **Leave settings** — `LeaveSettings` section in [`appsettings.json`](../src/Api/TaskManagementSystem.Api/appsettings.json); exposed via `GET /hr/leave/leave-settings`
+- **Cross-schema balance access** — leave balances live on `identity.Users`. HR maps a narrow `EmployeeBalanceEntity` in [`HrDbContext`](../src/Modules/HR/TaskManagementSystem.Modules.HR/Infrastructure/Persistence/HrDbContext.cs) and reads/writes balance columns in the same transaction as `hr.LeaveRequests`. Org read models (`Sections`, `SectionTeams`) support role-scoped search. HR does **not** reference the Identity or Organization projects
+- **HTTP** — [`Endpoints/HR/`](../src/Api/TaskManagementSystem.Api/Endpoints/HR/) (`HrEndpoints.cs` composition root; one file per route under `Leave/` and `Holidays/`), contracts in [`Contracts/HR/`](../src/Api/TaskManagementSystem.Api/Contracts/HR/); error codes via [`ResultHttpMapper`](../src/Api/TaskManagementSystem.Api/Infrastructure/ResultHttpMapper.cs) (`leave_request_not_found`, `leave_medical_not_found`, `user_not_found` → 404; `leave_opinion_not_authorized` → 403)
+- **OpenAPI (Apidog)** — HR + Auth spec at [`openapi/hr-openapi.json`](../src/Api/TaskManagementSystem.Api/openapi/hr-openapi.json); served at `GET /openapi/v1.json`. Import into Apidog via **Import → OpenAPI**. **Authenticate first:** run `POST /auth/login` with `{ "code": "TST001" }` (dev seed Owner), then set **Bearer {accessToken}** in Apidog before calling HR routes.
+- **Integration tests** — seed data from [`011_identity_SeedUsers.sql`](../src/Database/TaskManagementSystem.Database/Scripts/Migrations/011_identity_SeedUsers.sql) via [`IntegrationTestDataSeeder`](../tests/TaskManagementSystem.TestCommon/Integration/IntegrationTestDataSeeder.cs)
+
+
+
+### Module endpoint template (all future modules)
+
+1. Dispatch MediatR command/query returning `Result<T>`
+2. `return result.ToHttpResult(dto => Results.Ok(...))` or `Results.Created(...)` / `Results.NoContent()`
+3. Never wrap in `{ data, error, message }`
+4. Never catch expected failures — global exception handler covers validation and unexpected errors only
+
+Contracts live under [`Contracts/{Module}/`](../src/Api/TaskManagementSystem.Api/Contracts/) (e.g. [`Contracts/Auth/`](../src/Api/TaskManagementSystem.Api/Contracts/Auth/)).
 
 
 
@@ -114,9 +190,20 @@ private static async Task<IResult> AboutMeAsync(
 {
     var userId = currentUser.GetRequiredUserId();
     var result = await mediator.Send(new AboutMeQuery(userId), ct);
-    return Results.Ok(...);
+    return result.ToHttpResult(profile => Results.Ok(new AuthInfoResponse { ... }));
 }
 ```
+
+
+
+### Frontend migration (deferred)
+
+The Angular client in `TaskManagementSystem_Frontend` still expects the legacy envelope. When updating the frontend:
+
+- Remove `ResponseService` / `toResult()` envelope parsing in `api-client.service.ts`
+- Parse ProblemDetails `code` extension on HTTP errors (stop inferring codes from message text)
+- Update MSW mocks in `identity.mock-handlers.ts` to return direct JSON on success and ProblemDetails on failure
+- Expect `204` from logout instead of `{ error: false, message: "..." }`
 
 
 
@@ -266,10 +353,11 @@ Shared kernel used by every module. Third-party packages allowed here: **MediatR
 | `BusinessRuleValidationException` | Thrown when `Entity.CheckRule` finds a broken rule |
 
 | `IDomainEvent` / `DomainEventBase` | `Id`, `OccurredOn` on every domain event |
+| `IResult` / `Result<T>` / `ResultError` / `NoValue` | Discriminated union for expected failures; safe `Value`/`Error` access; `Map` / `Bind` / `Match`; static `Result.Ok()` / `Result.Fail<T>()` factories |
 
 
 
-Broken business rules **throw** (Grzybek-style), they do not return result objects.
+Broken **hard invariants** still **throw** via `Entity.CheckRule` (Grzybek-style). **Expected application failures** (invalid login code, expired refresh token, archived user) return `Result<T>` from handlers — they do not throw. **HTTP status codes are mapped at the API boundary** from error codes (e.g. `invalid_login_code` → 404); `ResultError` carries only `Code` and `Message`.
 
 
 
@@ -291,7 +379,7 @@ Broken business rules **throw** (Grzybek-style), they do not return result objec
 
 | `LoggingBehavior` | Logs request name + success/failure via `ILogger` (includes trace/kind/module scope) |
 | `TracingBehavior` | OpenTelemetry spans + metrics for every command/query via `Telemetry.Mediator` |
-| `AuditBehavior` | Persists command audit rows (`app.AuditLog`) — commands only, no payload |
+| `AuditBehavior` | Persists command audit rows (`app.AuditLog`) — commands only; uses `IResult.IsSuccess` when handler returns `Result<T>` |
 | `ValidationBehavior` | Runs FluentValidation validators; throws `ValidationException` |
 
 | `AddBuildingBlocks(assemblies…)` | Registers MediatR, both pipeline behaviors, and validators |
@@ -379,7 +467,7 @@ Every module uses the same shape:
 
 | `Domain/` | Aggregates, value objects, business rules |
 
-| `Features/` | Vertical slices (one folder per use case: command, query, handler, validator) |
+| `Features/` | Vertical slices grouped by submodule (`Leave/`, `Holidays/`); one folder per use case inside each group |
 
 | `Infrastructure/` | Persistence, module composition root |
 
@@ -409,7 +497,7 @@ Every module uses the same shape:
 
 | Notifications | Notifications (visible alerts only) | `Contracts/NotificationRealtime` (visible alerts) |
 
-| HR | Leave, Permissions, WorkFromHome | Project shell only |
+| HR | Leave (complete), Permissions, WorkFromHome | Leave complete — all types + opinions + search; Permission/WFH deferred |
 
 
 
@@ -481,7 +569,7 @@ Traces, metrics, and logs are configured on the host via `AddObservability()`. M
 
 
 
-34 automated tests (all passing). Shared packages and versions live in [`tests/Directory.Build.props`](../tests/Directory.Build.props).
+122 automated tests (all passing). Shared packages and versions live in [`tests/Directory.Build.props`](../tests/Directory.Build.props).
 
 
 
@@ -489,13 +577,17 @@ Traces, metrics, and logs are configured on the host via `AddObservability()`. M
 
 |---|---|---|---|
 
-| `BuildingBlocks.UnitTests` | Unit | 19 | Entity rules/events, ValueObject equality, pipeline behaviors, `AddBuildingBlocks` DI |
+| `BuildingBlocks.UnitTests` | Unit | 45 | Entity rules/events, ValueObject equality, pipeline behaviors, `AddBuildingBlocks` DI, `SqlScriptSeeder` |
 
 | `Modules.UnitTests` | Unit | 2 | `TicketRealtime`, `NotificationRealtime` contract factories |
 
-| `Api.IntegrationTests` | Integration | 6 | Host startup, MediatR pipeline, SignalR hub join/leave, group publish delivery |
+| `Modules.Identity.UnitTests` | Unit | 8 | Auth handlers, JWT, validators |
 
-| `ArchitectureTests` | Architecture | 7 | SignalR/OpenTelemetry boundaries, Notifications↛Ticket, hub location |
+| `Modules.HR.UnitTests` | Unit | 32 | Working days, holidays, leave types, settings, opinions, handlers, validators |
+
+| `Api.IntegrationTests` | Integration | 26 | Auth, HR leave flow + holidays, audit, SignalR hub |
+
+| `ArchitectureTests` | Architecture | 9 | SignalR/OpenTelemetry boundaries, Notifications↛Ticket, hub location |
 
 | `TestCommon` | Shared | — | Bogus builders, sample MediatR commands, `TmsWebApplicationFactory` |
 

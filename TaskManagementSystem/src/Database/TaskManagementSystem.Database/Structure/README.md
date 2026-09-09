@@ -8,4 +8,4 @@ When changing the schema:
 2. Add a new numbered migration script (or update the initial schema script during bootstrap only).
 3. Run `DatabaseMigrator`.
 
-Initial bootstrap uses migrations `000`–`010` (including optional reference data in `010_seeds_ReferenceData.sql`). Additional seeds live under `Scripts/Seeds/` for manual use.
+Initial bootstrap uses migrations `000`–`011` (including optional reference data in `010_seeds_ReferenceData.sql`). Additional seeds live under `Scripts/Seeds/` for manual use (`002_IntegrationTestData.sql` mirrors `011_identity_SeedUsers.sql`).

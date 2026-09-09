@@ -108,4 +108,4 @@ The API does **not** run DbUp on startup yet — run `DatabaseMigrator` explicit
 | `008_notifications_Tables.sql` | Notifications inbox |
 | `009_hr_Tables.sql` | Leave, permissions, WFH |
 | `010_seeds_ReferenceData.sql` | Reference seed data |
-| `011_identity_SeedUsers.sql` | Dev/test user `TST001` + Test Team |
+| `011_identity_SeedUsers.sql` | Integration/dev test user `TST001` + Integration Test Team |
