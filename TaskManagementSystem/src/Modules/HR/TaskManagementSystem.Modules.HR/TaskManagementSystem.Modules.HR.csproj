@@ -1,5 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>TaskManagementSystem.Modules.HR</RootNamespace>
+  </PropertyGroup>
+
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="11.11.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TaskManagementSystem.Modules.HR.UnitTests" />
+    <InternalsVisibleTo Include="TaskManagementSystem.TestCommon" />
     <ProjectReference Include="..\..\..\BuildingBlocks\TaskManagementSystem.BuildingBlocks\TaskManagementSystem.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\TaskManagementSystem.BuildingBlocks.Persistence\TaskManagementSystem.BuildingBlocks.Persistence.csproj" />
   </ItemGroup>
 </Project>

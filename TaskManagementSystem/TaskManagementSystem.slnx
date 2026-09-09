@@ -24,6 +24,7 @@
     <Project Path="tests/TaskManagementSystem.Api.IntegrationTests/TaskManagementSystem.Api.IntegrationTests.csproj" />
     <Project Path="tests/TaskManagementSystem.ArchitectureTests/TaskManagementSystem.ArchitectureTests.csproj" />
     <Project Path="tests/TaskManagementSystem.BuildingBlocks.UnitTests/TaskManagementSystem.BuildingBlocks.UnitTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.Modules.HR.UnitTests/TaskManagementSystem.Modules.HR.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.Modules.Identity.UnitTests/TaskManagementSystem.Modules.Identity.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.Modules.UnitTests/TaskManagementSystem.Modules.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.TestCommon/TaskManagementSystem.TestCommon.csproj" />
