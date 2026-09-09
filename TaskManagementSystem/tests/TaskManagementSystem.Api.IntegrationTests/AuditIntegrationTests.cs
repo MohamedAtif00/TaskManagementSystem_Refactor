@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using TaskManagementSystem.BuildingBlocks.Persistence.Audit;
 using TaskManagementSystem.Modules.Identity.Features.Authenticate;
-using TaskManagementSystem.Modules.Identity.Infrastructure.Testing;
 using TaskManagementSystem.TestCommon.Integration;
 using Xunit;
 
@@ -21,7 +20,7 @@ public sealed class AuditIntegrationTests(TmsWebApplicationFactory factory) : IC
         });
         await factory.SeedTestUserAsync();
 
-        var response = await client.PostAsJsonAsync("/auth/login", new { code = IdentityTestDataSeeder.TestUserCode });
+        var response = await client.PostAsJsonAsync("/auth/login", new { code = IntegrationTestDataSeeder.TestUserCode });
 
         response.EnsureSuccessStatusCode();
 

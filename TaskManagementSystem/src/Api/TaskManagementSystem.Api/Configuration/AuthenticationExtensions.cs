@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.Identity.Domain;
 
 namespace TaskManagementSystem.Api.Configuration;
@@ -11,11 +12,12 @@ public static class AuthenticationExtensions
 {
     public const string CorsPolicyName = "FrontendCors";
     public const string ApidogCorsPolicyName = "ApidogCors";
-
     public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
         var secret = configuration.GetSection("AppSetting:Token").Value
             ?? throw new InvalidOperationException("AppSetting:Token is not configured.");
+
+        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -69,13 +71,22 @@ public static class AuthenticationExtensions
                     nameof(UserRole.SectionHead),
                     nameof(UserRole.ProjectManger),
                     nameof(UserRole.Owner)));
+
+            options.AddPolicy(PermissionPolicyNames.PermissionsManage, policy =>
+                policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.PermissionsManage)));
+            options.AddPolicy(PermissionPolicyNames.RolesManage, policy =>
+                policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.RolesManage)));
+            options.AddPolicy(PermissionPolicyNames.UsersAssignRole, policy =>
+                policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.UsersAssignRole)));
         });
         return services;
     }
 
+
+
     public static IServiceCollection AddFrontendCors(
-        this IServiceCollection services,
-        IConfiguration configuration)
+       this IServiceCollection services,
+       IConfiguration configuration)
     {
         var allowedOrigins =
             configuration.GetSection("Cors:AllowedOrigins")

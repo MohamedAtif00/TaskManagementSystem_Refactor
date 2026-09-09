@@ -7,12 +7,53 @@ namespace TaskManagementSystem.Modules.Identity.Infrastructure.Persistence;
 public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> options) : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     internal DbSet<TeamReadModel> Teams => Set<TeamReadModel>();
     internal DbSet<NotificationReadModel> Notifications => Set<NotificationReadModel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.ToTable("Roles", "identity");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).ValueGeneratedNever();
+            entity.Property(x => x.Name).HasMaxLength(100);
+            entity.Property(x => x.Description).HasMaxLength(500);
+            entity.HasIndex(x => x.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.ToTable("Permissions", "identity");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Code).HasMaxLength(200);
+            entity.Property(x => x.Name).HasMaxLength(200);
+            entity.Property(x => x.Description).HasMaxLength(500);
+            entity.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<Role>()
+            .HasMany(role => role.Permissions)
+            .WithMany(permission => permission.Roles)
+            .UsingEntity<Dictionary<string, object>>(
+                "RolePermissions",
+                right => right
+                    .HasOne<Permission>()
+                    .WithMany()
+                    .HasForeignKey("PermissionId"),
+                left => left
+                    .HasOne<Role>()
+                    .WithMany()
+                    .HasForeignKey("RoleId"),
+                join =>
+                {
+                    join.ToTable("RolePermissions", "identity");
+                    join.HasKey("RoleId", "PermissionId");
+                });
+
         modelBuilder.Entity<User>(entity =>
         {
             entity.ToTable("Users", "identity");
@@ -21,7 +62,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             entity.Property(x => x.Code).HasColumnName("Code").HasMaxLength(6);
             entity.Property(x => x.Name).HasColumnName("Name");
             entity.Property(x => x.HrCode).HasColumnName("HR_code");
-            entity.Property(x => x.Role).HasColumnName("Role");
+            entity.Property(x => x.RoleId).HasColumnName("Role");
             entity.Property(x => x.AccountType).HasColumnName("AccountType");
             entity.Property(x => x.OnBoard).HasColumnName("OnBoard");
             entity.Property(x => x.Archived).HasColumnName("Archived");
@@ -39,6 +80,9 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             entity.Property(x => x.FromNextBalanceDaysUsed).HasColumnName("FromNextBalanceDaysUsed");
             entity.Property(x => x.OldAnnualBalance).HasColumnName("OldAnnualBalance");
             entity.HasIndex(x => x.Code).IsUnique();
+            entity.HasOne(x => x.Role)
+                .WithMany(role => role.Users)
+                .HasForeignKey(x => x.RoleId);
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>

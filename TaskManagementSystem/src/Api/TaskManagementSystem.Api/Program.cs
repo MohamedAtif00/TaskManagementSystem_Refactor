@@ -38,6 +38,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapOpenApiEndpoints();
 app.MapAuthEndpoints();
+app.MapIdentityEndpoints();
 app.MapHrEndpoints();
 app.MapRealtimeHub();
 

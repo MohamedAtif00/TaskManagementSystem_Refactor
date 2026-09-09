@@ -20,9 +20,14 @@ internal sealed class JwtTokenGenerator(IConfiguration configuration, TimeProvid
         var claims = new List<Claim>
         {
             new("Id", user.Id.ToString()),
-            new(ClaimTypes.Role, user.Role.ToString()),
+            new(ClaimTypes.Role, user.RoleName),
             new(ClaimTypes.NameIdentifier, user.Id.ToString())
         };
+
+        foreach (var permissionCode in user.PermissionCodes)
+        {
+            claims.Add(new Claim(IdentityClaimTypes.Permission, permissionCode));
+        }
 
         var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256Signature);
         var expires = timeProvider.GetUtcNow().UtcDateTime.AddDays(AccessTokenDays);

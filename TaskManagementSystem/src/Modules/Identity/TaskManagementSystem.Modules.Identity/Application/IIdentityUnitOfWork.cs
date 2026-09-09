@@ -1,5 +1,4 @@
 using TaskManagementSystem.BuildingBlocks.Application;
-using TaskManagementSystem.Modules.Identity.Domain;
 
 namespace TaskManagementSystem.Modules.Identity.Application;
 
@@ -10,6 +9,10 @@ public interface IIdentityUnitOfWork : IUnitOfWork
     IRefreshTokenRepository RefreshTokens { get; }
 
     IAboutMeRepository AboutMe { get; }
+
+    IPermissionRepository Permissions { get; }
+
+    IRoleRepository Roles { get; }
 }
 
 public interface IAboutMeRepository
@@ -20,6 +23,8 @@ public interface IAboutMeRepository
 public sealed record AboutMeReadModel(
     int Id,
     string Name,
-    UserRole Role,
+    int RoleId,
+    string RoleName,
+    IReadOnlyList<string> Permissions,
     string? TeamName,
     int Notifications);

@@ -9,6 +9,8 @@ internal sealed class AboutMeRepository(IdentityDbContext context) : IAboutMeRep
     {
         var user = await context.Users
             .AsNoTracking()
+            .Include(u => u.Role!)
+            .ThenInclude(role => role.Permissions)
             .Active()
             .FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
@@ -36,7 +38,9 @@ internal sealed class AboutMeRepository(IdentityDbContext context) : IAboutMeRep
         return new AboutMeReadModel(
             user.Id,
             user.Name,
-            user.Role,
+            user.RoleId,
+            user.RoleName,
+            user.PermissionCodes.ToList(),
             teamName,
             unreadNotifications);
     }
