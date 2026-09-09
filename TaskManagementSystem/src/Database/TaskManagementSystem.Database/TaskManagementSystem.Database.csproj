@@ -10,6 +10,11 @@
   <ItemGroup>
     <Compile Remove="**/*" />
     <Compile Include="Placeholder.cs" />
+    <Compile Include="SqlScriptSeeder.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.1" />
   </ItemGroup>
 
   <ItemGroup>

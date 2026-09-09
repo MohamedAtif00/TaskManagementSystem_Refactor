@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="TaskManagementSystem.Modules.Identity.UnitTests" />
+    <InternalsVisibleTo Include="TaskManagementSystem.TestCommon" />
     <ProjectReference Include="..\..\..\BuildingBlocks\TaskManagementSystem.BuildingBlocks\TaskManagementSystem.BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\TaskManagementSystem.BuildingBlocks.Persistence\TaskManagementSystem.BuildingBlocks.Persistence.csproj" />
   </ItemGroup>

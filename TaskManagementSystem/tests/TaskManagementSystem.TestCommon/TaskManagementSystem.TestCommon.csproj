@@ -17,5 +17,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Api\TaskManagementSystem.Api\TaskManagementSystem.Api.csproj" />
     <ProjectReference Include="..\..\src\BuildingBlocks\TaskManagementSystem.BuildingBlocks\TaskManagementSystem.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\src\Database\TaskManagementSystem.Database\TaskManagementSystem.Database.csproj" />
   </ItemGroup>
 </Project>

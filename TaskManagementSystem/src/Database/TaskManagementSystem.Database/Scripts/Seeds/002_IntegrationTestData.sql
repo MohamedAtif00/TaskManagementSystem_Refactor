@@ -1,3 +1,6 @@
+-- Manual re-seed for integration / local dev test user.
+-- Same data as Migrations/011_identity_SeedUsers.sql (keep in sync).
+
 IF NOT EXISTS (SELECT 1 FROM [organization].[Teams] WHERE [Name] = N'Integration Test Team')
 BEGIN
     INSERT INTO [organization].[Teams] ([Name], [Archived])
