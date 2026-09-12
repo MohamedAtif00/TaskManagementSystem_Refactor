@@ -18,10 +18,14 @@ namespace TaskManagementSystem.TestCommon.Integration;
 public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
 {
     public const string TestJwtSigningKey = "TaskManagementSystemTestSigningKeyMustBe32Chars!";
-    private readonly string _databaseSuffix = Guid.NewGuid().ToString("N");
+    private readonly string _databaseName = $"TmsTests_{Guid.NewGuid():N}";
     private readonly SemaphoreSlim _seedLock = new(1, 1);
+    private bool _databaseInitialized;
     private bool _seeded;
     private HttpClient? _authenticatedClient;
+
+    private string ConnectionString =>
+        $"Server=(localdb)\\MSSQLLocalDB;Database={_databaseName};Trusted_Connection=True;TrustServerCertificate=True";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -31,6 +35,7 @@ public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["ConnectionStrings:DefaultConnection"] = ConnectionString,
                 ["OpenTelemetry:OtlpEndpoint"] = string.Empty,
                 ["AppSetting:Token"] = TestJwtSigningKey,
                 ["LeaveSettings:FromNextBalanceMaxDays"] = "3",
@@ -44,8 +49,8 @@ public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
-            ReplaceInMemoryDbContext<IdentityDbContext>(services, $"IdentityTests_{_databaseSuffix}");
-            ReplaceInMemoryDbContext<HrDbContext>(services, $"HrTests_{_databaseSuffix}");
+            ReplaceSqlServerDbContext<IdentityDbContext>(services, ConnectionString);
+            ReplaceSqlServerDbContext<HrDbContext>(services, ConnectionString);
 
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
@@ -61,12 +66,12 @@ public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
         });
     }
 
-    private static void ReplaceInMemoryDbContext<TContext>(IServiceCollection services, string databaseName)
+    private static void ReplaceSqlServerDbContext<TContext>(IServiceCollection services, string connectionString)
         where TContext : DbContext
     {
         services.RemoveAll<DbContextOptions<TContext>>();
         services.RemoveAll<TContext>();
-        services.AddDbContext<TContext>(options => options.UseInMemoryDatabase(databaseName));
+        services.AddDbContext<TContext>(options => options.UseSqlServer(connectionString));
     }
 
     public async Task<HttpClient> CreateAuthenticatedClientAsync()
@@ -92,6 +97,12 @@ public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
         await _seedLock.WaitAsync();
         try
         {
+            if (!_databaseInitialized)
+            {
+                await IntegrationTestDatabaseBootstrap.InitializeAsync(ConnectionString);
+                _databaseInitialized = true;
+            }
+
             if (_seeded)
             {
                 return;

@@ -2,12 +2,14 @@ using Microsoft.Extensions.Options;
 using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
+using TaskManagementSystem.Modules.HR.Infrastructure.Persistence.Queries;
 
 namespace TaskManagementSystem.Modules.HR.Infrastructure;
 
 public sealed class LeaveRequestPlanner(
     IOptions<LeaveSettingsOptions> leaveSettings,
-    IWorkingDayCalculator workingDayCalculator)
+    IWorkingDayCalculator workingDayCalculator,
+    OrgLookupQueries orgLookupQueries)
 {
     public LeaveSettingsOptions Settings => leaveSettings.Value;
 
@@ -33,7 +35,7 @@ public sealed class LeaveRequestPlanner(
         int? sectionHeadId = null;
         if (request.RequesterRole == "TeamLeader" && balance.TeamId.HasValue)
         {
-            sectionHeadId = await unitOfWork.OrgLookup.GetSectionHeadIdForTeamAsync(balance.TeamId.Value, cancellationToken);
+            sectionHeadId = await orgLookupQueries.GetSectionHeadIdForTeamAsync(balance.TeamId.Value, cancellationToken);
         }
 
         var validation = await ValidateTypeRulesAsync(unitOfWork, balance, request, cancellationToken);

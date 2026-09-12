@@ -34,10 +34,6 @@ public sealed class JwtTokenGeneratorTests
         user.Name = "Test User";
         user.HrCode = "999999";
         user.AccountType = AccountType.Internal;
-        user.AnnualLeaveMax = 30;
-        user.EmergencyLeaveMax = 5;
-        user.PermissionMax = 10;
-        user.WorkFromHomeMax = 5;
 
         var token = generator.CreateAccessToken(user);
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);

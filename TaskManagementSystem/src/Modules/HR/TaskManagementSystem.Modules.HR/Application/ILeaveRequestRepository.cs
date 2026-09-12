@@ -37,7 +37,6 @@ public sealed record LeaveRequestSearchCriteria(
     int ViewerUserId,
     string ViewerRole,
     int? ViewerTeamId,
-    IReadOnlyList<int> SectionTeamIds,
     int Page,
     int PageSize,
     string? Search,

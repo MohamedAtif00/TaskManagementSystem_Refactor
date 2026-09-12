@@ -8,14 +8,14 @@ public interface IIdentityUnitOfWork : IUnitOfWork
 
     IRefreshTokenRepository RefreshTokens { get; }
 
-    IAboutMeRepository AboutMe { get; }
+    IAboutMeQueries AboutMe { get; }
 
     IPermissionRepository Permissions { get; }
 
     IRoleRepository Roles { get; }
 }
 
-public interface IAboutMeRepository
+public interface IAboutMeQueries
 {
     Task<AboutMeReadModel?> GetAsync(int userId, CancellationToken cancellationToken = default);
 }

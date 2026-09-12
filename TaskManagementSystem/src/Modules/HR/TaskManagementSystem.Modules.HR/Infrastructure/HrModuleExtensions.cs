@@ -2,9 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using TaskManagementSystem.BuildingBlocks.Persistence.Data;
 using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
 using TaskManagementSystem.Modules.HR.Infrastructure.Persistence;
+using TaskManagementSystem.Modules.HR.Infrastructure.Persistence.Queries;
 using TaskManagementSystem.Modules.HR.Infrastructure.Storage;
 
 namespace TaskManagementSystem.Modules.HR.Infrastructure;
@@ -19,20 +21,19 @@ public static class HrModuleExtensions
         IHostEnvironment environment)
     {
         services.Configure<LeaveSettingsOptions>(configuration.GetSection(LeaveSettingsOptions.SectionName));
+        services.AddSqlConnectionFactory(configuration);
+        services.AddScoped<LeaveRequestSearchQueries>();
+        services.AddScoped<OrgLookupQueries>();
 
         services.AddDbContext<HrDbContext>(options =>
         {
-            if (environment.IsEnvironment("Testing"))
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
+            if (string.IsNullOrWhiteSpace(connectionString))
             {
-                options.UseInMemoryDatabase(TestingDatabaseName);
+                throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
             }
-            else
-            {
-                var connectionString = configuration.GetConnectionString("DefaultConnection")
-                    ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
 
-                options.UseSqlServer(connectionString);
-            }
+            options.UseSqlServer(connectionString);
         });
 
         services.AddScoped<IHrUnitOfWork, HrUnitOfWork>();

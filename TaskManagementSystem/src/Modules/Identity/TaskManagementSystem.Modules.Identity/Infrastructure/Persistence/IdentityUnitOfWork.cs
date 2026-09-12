@@ -1,9 +1,12 @@
 using TaskManagementSystem.BuildingBlocks.Persistence;
 using TaskManagementSystem.Modules.Identity.Application;
+using TaskManagementSystem.Modules.Identity.Infrastructure.Persistence.Queries;
 
 namespace TaskManagementSystem.Modules.Identity.Infrastructure.Persistence;
 
-internal sealed class IdentityUnitOfWork(IdentityDbContext context)
+internal sealed class IdentityUnitOfWork(
+    IdentityDbContext context,
+    AboutMeQueries aboutMeQueries)
     : UnitOfWork<IdentityDbContext>(context), IIdentityUnitOfWork
 {
     private readonly Lazy<UserRepository> _users =
@@ -11,9 +14,6 @@ internal sealed class IdentityUnitOfWork(IdentityDbContext context)
 
     private readonly Lazy<RefreshTokenRepository> _refreshTokens =
         LazyRepositoryFactory.Create(() => new RefreshTokenRepository(context));
-
-    private readonly Lazy<AboutMeRepository> _aboutMe =
-        LazyRepositoryFactory.Create(() => new AboutMeRepository(context));
 
     private readonly Lazy<PermissionRepository> _permissions =
         LazyRepositoryFactory.Create(() => new PermissionRepository(context));
@@ -25,7 +25,7 @@ internal sealed class IdentityUnitOfWork(IdentityDbContext context)
 
     public IRefreshTokenRepository RefreshTokens => _refreshTokens.Value;
 
-    public IAboutMeRepository AboutMe => _aboutMe.Value;
+    public IAboutMeQueries AboutMe => aboutMeQueries;
 
     public IPermissionRepository Permissions => _permissions.Value;
 

@@ -27,16 +27,11 @@ public sealed class SearchLeaveRequestsQueryHandler(IHrUnitOfWork unitOfWork)
         SearchLeaveRequestsQuery request,
         CancellationToken cancellationToken)
     {
-        var sectionTeamIds = request.ViewerRole == "SectionHead"
-            ? await unitOfWork.OrgLookup.GetTeamIdsForSectionHeadAsync(request.ViewerUserId, cancellationToken)
-            : [];
-
         var searchResult = await unitOfWork.LeaveRequests.SearchAsync(
             new LeaveRequestSearchCriteria(
                 request.ViewerUserId,
                 request.ViewerRole,
                 request.ViewerTeamId,
-                sectionTeamIds,
                 request.Page,
                 request.PageSize,
                 request.Search,

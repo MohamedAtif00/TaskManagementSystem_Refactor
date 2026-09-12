@@ -39,7 +39,7 @@ src/Database/
 | `ticket` | Ticket | `Tasks`, `TaskActivities`, `TaskWorkTimes`, `Comments`, `Rollbacks`, `RollbackIssues` |
 | `sprints` | Sprints | `Sprints`, `SprintLearningObjectives` |
 | `notifications` | Notifications | `Notifications` |
-| `hr` | HR | `LeaveRequests`, `LeaveResetLogs`, `Permissions`, `WorkFromHomeRequests`, `Opinions` |
+| `hr` | HR | `LeaveRequests`, `LeaveResetLogs`, `Permissions`, `WorkFromHomeRequests`, `Opinions`, `EmployeeBalances`, `PublicHolidays` |
 
 **Not ported:** legacy `Groups`, `SectionGroups`, `Years` (use `curriculum.AcademicYears`).
 

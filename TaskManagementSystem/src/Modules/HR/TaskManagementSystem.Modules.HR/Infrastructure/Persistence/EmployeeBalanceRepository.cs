@@ -12,7 +12,7 @@ internal sealed class EmployeeBalanceRepository(HrDbContext context) : IEmployee
     {
         var entity = await context.EmployeeBalances
             .AsNoTracking()
-            .FirstOrDefaultAsync(balance => balance.Id == userId, cancellationToken);
+            .FirstOrDefaultAsync(balance => balance.UserId == userId, cancellationToken);
 
         return entity is null ? null : MapToModel(entity);
     }
@@ -20,7 +20,7 @@ internal sealed class EmployeeBalanceRepository(HrDbContext context) : IEmployee
     public async Task DeductLeaveAsync(LeaveRequest leaveRequest, CancellationToken cancellationToken = default)
     {
         var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.Id == leaveRequest.UserId, cancellationToken);
+            .FirstAsync(balance => balance.UserId == leaveRequest.UserId, cancellationToken);
 
         switch (leaveRequest.Type)
         {
@@ -42,7 +42,7 @@ internal sealed class EmployeeBalanceRepository(HrDbContext context) : IEmployee
     public async Task RefundLeaveAsync(LeaveRequest leaveRequest, CancellationToken cancellationToken = default)
     {
         var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.Id == leaveRequest.UserId, cancellationToken);
+            .FirstAsync(balance => balance.UserId == leaveRequest.UserId, cancellationToken);
 
         switch (leaveRequest.Type)
         {
@@ -64,21 +64,21 @@ internal sealed class EmployeeBalanceRepository(HrDbContext context) : IEmployee
     public async Task DeductAnnualLeaveAsync(int userId, int workingDays, CancellationToken cancellationToken = default)
     {
         var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.Id == userId, cancellationToken);
+            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
         entity.AnnualLeave += workingDays;
     }
 
     public async Task RefundAnnualLeaveAsync(int userId, int workingDays, CancellationToken cancellationToken = default)
     {
         var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.Id == userId, cancellationToken);
+            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
         entity.AnnualLeave = Math.Max(0, entity.AnnualLeave - workingDays);
     }
 
-    private static EmployeeBalance MapToModel(EmployeeBalanceEntity entity) =>
+    private static EmployeeBalance MapToModel(EmployeeBalanceRecord entity) =>
         new()
         {
-            Id = entity.Id,
+            Id = entity.UserId,
             TeamId = entity.TeamId,
             TeamleaderId = entity.TeamleaderId,
             AnnualLeave = entity.AnnualLeave,

@@ -10,7 +10,5 @@ public interface IHrUnitOfWork : IUnitOfWork
 
     IOpinionRepository Opinions { get; }
 
-    IOrgLookupRepository OrgLookup { get; }
-
     IHolidayRepository Holidays { get; }
 }

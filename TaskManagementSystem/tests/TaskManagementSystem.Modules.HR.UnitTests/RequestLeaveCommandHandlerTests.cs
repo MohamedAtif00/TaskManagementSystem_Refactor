@@ -1,10 +1,12 @@
 using FluentAssertions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using TaskManagementSystem.BuildingBlocks.Application.Data;
 using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
 using TaskManagementSystem.Modules.HR.Features.Leave.RequestLeave;
 using TaskManagementSystem.Modules.HR.Infrastructure;
+using TaskManagementSystem.Modules.HR.Infrastructure.Persistence.Queries;
 using Xunit;
 
 namespace TaskManagementSystem.Modules.HR.UnitTests;
@@ -48,7 +50,8 @@ public sealed class RequestLeaveCommandHandlerTests
                 FromNextBalanceStartDate = "01-01",
                 FromNextBalanceEndDate = "12-31"
             }),
-            new WorkingDayCalculatorService(holidayRepository));
+            new WorkingDayCalculatorService(holidayRepository),
+            new OrgLookupQueries(Substitute.For<ISqlConnectionFactory>()));
 
         var medicalStorage = Substitute.For<IMedicalCertificateStorage>();
         var timeProvider = Substitute.For<TimeProvider>();
@@ -113,7 +116,8 @@ public sealed class RequestLeaveCommandHandlerTests
 
         var planner = new LeaveRequestPlanner(
             Options.Create(new LeaveSettingsOptions()),
-            new WorkingDayCalculatorService(holidayRepository));
+            new WorkingDayCalculatorService(holidayRepository),
+            new OrgLookupQueries(Substitute.For<ISqlConnectionFactory>()));
         var medicalStorage = Substitute.For<IMedicalCertificateStorage>();
         var timeProvider = Substitute.For<TimeProvider>();
         timeProvider.GetUtcNow().Returns(new DateTimeOffset(UtcNow));

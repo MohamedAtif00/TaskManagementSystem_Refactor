@@ -1,7 +1,10 @@
 using System.Reflection;
+using Microsoft.EntityFrameworkCore;
 using NetArchTest.Rules;
 using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.BuildingBlocks.Persistence;
+using TaskManagementSystem.Modules.HR.Infrastructure.Persistence;
+using TaskManagementSystem.Modules.Identity.Infrastructure.Persistence;
 using Xunit;
 
 namespace TaskManagementSystem.ArchitectureTests;
@@ -47,6 +50,44 @@ public sealed class PersistenceBoundaryTests
             .GetResult();
 
         Assert.True(result.IsSuccessful, Format(result));
+    }
+
+    [Fact]
+    public void IdentityDbContext_ShouldMapOnlyIdentitySchema()
+    {
+        using var context = CreateIdentityDbContext();
+        foreach (var entityType in context.Model.GetEntityTypes())
+        {
+            Assert.Equal("identity", entityType.GetSchema());
+        }
+    }
+
+    [Fact]
+    public void HrDbContext_ShouldMapOnlyHrSchema()
+    {
+        using var context = CreateHrDbContext();
+        foreach (var entityType in context.Model.GetEntityTypes())
+        {
+            Assert.Equal("hr", entityType.GetSchema());
+        }
+    }
+
+    private static IdentityDbContext CreateIdentityDbContext()
+    {
+        var options = new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseInMemoryDatabase("identity-schema-test")
+            .Options;
+
+        return new IdentityDbContext(options);
+    }
+
+    private static HrDbContext CreateHrDbContext()
+    {
+        var options = new DbContextOptionsBuilder<HrDbContext>()
+            .UseInMemoryDatabase("hr-schema-test")
+            .Options;
+
+        return new HrDbContext(options);
     }
 
     private static string Format(TestResult result) =>

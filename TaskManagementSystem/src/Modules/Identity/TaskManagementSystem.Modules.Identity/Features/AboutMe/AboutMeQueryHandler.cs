@@ -19,7 +19,7 @@ public sealed class AboutMeQueryHandler(IIdentityUnitOfWork unitOfWork)
             profile.Id,
             profile.Name,
             profile.RoleId,
-            profile.RoleName,
+            profile.RoleName,   
             profile.Permissions,
             profile.TeamName,
             profile.Notifications));

@@ -160,7 +160,9 @@ flowchart LR
 - **Working days** — Friday and Saturday excluded, plus admin-managed public holidays from `hr.PublicHolidays` via [`IWorkingDayCalculator`](../src/Modules/HR/TaskManagementSystem.Modules.HR/Application/IWorkingDayCalculator.cs). `WorkingDays` is persisted on each leave request at creation time.
 - **Public holidays** — Owner/ProjectManager manage holidays through `/hr/holidays`; excluded from leave preview, validation, split, and balance calculations
 - **Leave settings** — `LeaveSettings` section in [`appsettings.json`](../src/Api/TaskManagementSystem.Api/appsettings.json); exposed via `GET /hr/leave/leave-settings`
-- **Cross-schema balance access** — leave balances live on `identity.Users`. HR maps a narrow `EmployeeBalanceEntity` in [`HrDbContext`](../src/Modules/HR/TaskManagementSystem.Modules.HR/Infrastructure/Persistence/HrDbContext.cs) and reads/writes balance columns in the same transaction as `hr.LeaveRequests`. Org read models (`Sections`, `SectionTeams`) support role-scoped search. HR does **not** reference the Identity or Organization projects
+- **Cross-schema reads** — Dapper query classes under `Infrastructure/Persistence/Queries/` using [`ISqlConnectionFactory`](../src/BuildingBlocks/TaskManagementSystem.BuildingBlocks/Application/Data/ISqlConnectionFactory.cs). Examples: About Me (identity + organization + notifications), leave search (hr + identity + organization), org section lookup for leave planning. Handlers call module UoW ports; Infrastructure runs the SQL. No foreign-schema EF `DbSet`s and no repositories for another module's tables.
+- **Leave balances** — owned in `hr.EmployeeBalances`; HR reads/writes balances via EF in the same transaction as `hr.LeaveRequests`. HR does **not** reference the Identity or Organization projects.
+- **DbContext mapping** — one `IEntityTypeConfiguration<>` per owned table under `Infrastructure/Persistence/Configurations/`; DbContext applies configurations from its assembly only. Map only columns owned by the module aggregate (e.g. Identity `User` maps auth/profile fields, not HR leave balances or Organization team navigations). Legacy columns may remain in SQL but are read via Dapper when another module needs them.
 - **HTTP** — [`Endpoints/HR/`](../src/Api/TaskManagementSystem.Api/Endpoints/HR/) (`HrEndpoints.cs` composition root; one file per route under `Leave/` and `Holidays/`), contracts in [`Contracts/HR/`](../src/Api/TaskManagementSystem.Api/Contracts/HR/); error codes via [`ResultHttpMapper`](../src/Api/TaskManagementSystem.Api/Infrastructure/ResultHttpMapper.cs) (`leave_request_not_found`, `leave_medical_not_found`, `user_not_found` → 404; `leave_opinion_not_authorized` → 403)
 - **OpenAPI (Apidog)** — HR + Auth spec at [`openapi/hr-openapi.json`](../src/Api/TaskManagementSystem.Api/openapi/hr-openapi.json); served at `GET /openapi/v1.json`. Import into Apidog via **Import → OpenAPI**. **Authenticate first:** run `POST /auth/login` with `{ "code": "TST001" }` (dev seed Owner), then set **Bearer {accessToken}** in Apidog before calling HR routes.
 - **Integration tests** — seed data from [`011_identity_SeedUsers.sql`](../src/Database/TaskManagementSystem.Database/Scripts/Migrations/011_identity_SeedUsers.sql) via [`IntegrationTestDataSeeder`](../tests/TaskManagementSystem.TestCommon/Integration/IntegrationTestDataSeeder.cs)
@@ -412,7 +414,7 @@ public interface IIdentityUnitOfWork : IUnitOfWork
 }
 ```
 
-Cross-table reads use read repositories on the UoW (e.g. `IAboutMeRepository`) — not separate read services.
+Cross-schema reads use Dapper query classes (`Infrastructure/Persistence/Queries/`) behind UoW repositories (e.g. `IAboutMeRepository`, `ILeaveRequestRepository.SearchAsync`). Owned-table reads/writes stay on EF via the module DbContext.
 
 **Future module template (e.g. Organization Teams/Sections):**
 

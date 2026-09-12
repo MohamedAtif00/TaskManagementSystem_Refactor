@@ -45,3 +45,47 @@ BEGIN
     );
 END
 GO
+
+DECLARE @SeededUserId INT = (SELECT TOP 1 [Id] FROM [identity].[Users] WHERE [Code] = N'TST001');
+
+IF @SeededUserId IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM [hr].[EmployeeBalances] WHERE [UserId] = @SeededUserId)
+BEGIN
+    INSERT INTO [hr].[EmployeeBalances]
+    (
+        [UserId],
+        [TeamId],
+        [TeamleaderId],
+        [Role],
+        [AnnualLeave],
+        [AnnualLeaveMax],
+        [EmergencyLeave],
+        [EmergencyLeaveMax],
+        [SickLeave],
+        [Permission],
+        [PermissionMax],
+        [WorkFromHome],
+        [WorkFromHomeMax],
+        [FromNextBalanceDaysUsed],
+        [OldAnnualBalance]
+    )
+    SELECT
+        u.[Id],
+        u.[TeamId],
+        u.[TeamleaderId],
+        u.[Role],
+        u.[Annual_leave],
+        u.[Annual_leave_MAX],
+        u.[Emergency_leave],
+        u.[Emergency_leave_MAX],
+        u.[Sick_leave],
+        u.[Permission],
+        u.[Permission_MAX],
+        u.[WorkFromHome],
+        u.[WorkFromHome_MAX],
+        u.[FromNextBalanceDaysUsed],
+        u.[OldAnnualBalance]
+    FROM [identity].[Users] AS u
+    WHERE u.[Id] = @SeededUserId;
+END
+GO
