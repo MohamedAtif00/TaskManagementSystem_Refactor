@@ -301,7 +301,7 @@ Each module --> BuildingBlocks
 
 ```csharp
 
-builder.AddObservability();                  // traces, metrics, logs (OTLP optional)
+builder.AddObservability();                  // traces, metrics, logs (OTLP optional; see docs/OTLP.md)
 
 builder.Services.AddBuildingBlocks(
 
@@ -325,6 +325,8 @@ app.MapRealtimeHub();                        // single WebSocket at /realtime
 
 
 Auth is exposed via **Minimal API** at `/auth/*` ([`AuthEndpoints.cs`](../src/Api/TaskManagementSystem.Api/Endpoints/AuthEndpoints.cs)). Other product HTTP endpoints are not ported yet.
+
+**Local observability** — run `docker compose -f docker-compose.observability.yml up -d`, then start the API in Development. Open http://localhost:18888 (Aspire dashboard). OTLP export, validation/unhandled-exception logging, and MediatR tracing are documented in [OTLP.md](OTLP.md).
 
 
 
