@@ -68,7 +68,7 @@ public sealed class LeaveRequestExtendedTests
     [Fact]
     public void Opinion_Create_ReturnsOpinionWithValues()
     {
-        var result = Opinion.Create(5, 2, true, "Looks good", UtcNow);
+        var result = Opinion.CreateForLeave(5, 2, true, "Looks good", UtcNow);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.LeaveRequestId.Should().Be(5);
