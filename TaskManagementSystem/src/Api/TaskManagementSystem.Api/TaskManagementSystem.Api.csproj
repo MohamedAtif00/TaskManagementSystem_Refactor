@@ -1,6 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
     <Content Update="openapi\hr-openapi.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="openapi\tms-openapi.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="openapi\forgot-clock-openapi.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="openapi\apidog\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />

@@ -1,9 +1,9 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "TMS HR API (Dev)",
+    "title": "Task Management System API (Dev)",
     "version": "1.0.0",
-    "description": "HR Leave, Permissions, Work From Home, Forgot Clock, and Public Holidays endpoints for Task Management System.\n\n## Authentication (required)\nAll HR endpoints require a JWT Bearer token. Authenticate first using the **Auth** endpoints below.\n\n### Apidog quick start\n1. Run **POST /auth/login** with body `{ \"code\": \"TST001\" }` (seed Owner user from dev DB).\n2. Copy `accessToken` from the response.\n3. In Apidog: **Environment** or **Auth** → Bearer Token → paste the token (or set variable `accessToken` and use `Bearer {{accessToken}}`).\n4. Call any HR endpoint — requests without a valid token return **401**.\n\nRefresh: `POST /auth/refresh-token` uses the HttpOnly `refreshToken` cookie set on login."
+    "description": "Complete OpenAPI spec for the Task Management System refactor — Auth, Identity RBAC, and HR modules.\n\n## Apidog quick start (auto token)\n1. Import **openapi/apidog/environment.local-dev.json** → select environment **TMS Local Dev**.\n2. Import this spec. Set **bearerAuth** default token to `{{accessToken}}` (Components → Security Schemes → bearerAuth).\n3. On **POST /auth/login** and **POST /auth/refresh-token**, add Post-processor **Extract Variable**: JSONPath `$.accessToken` → env var `accessToken` (or use script from `openapi/apidog/scripts/save-access-token.js`).\n4. **POST /auth/login** with `{ \"code\": \"{{userCode}}\" }` — token is saved automatically; all secured endpoints inherit Bearer auth.\n\nSee **openapi/apidog/post-processors.json** for full setup and test scenario.\n\nRefresh: **POST /auth/refresh-token** (HttpOnly refreshToken cookie from login).\nLogout: **POST /auth/logout** (clears refresh cookie; optional clear-access-token post-processor).\n\n## Modules included\n- **Auth** — login, refresh, logout, about-me\n- **Identity** — RBAC permissions, roles, user role assignment\n- **HR** — leave, holidays, time-off permissions, work from home, forgot clock"
   },
   "servers": [
     {
@@ -16,7 +16,8 @@
     }
   ],
   "tags": [
-    { "name": "Auth", "description": "Login and session — call before HR endpoints" },
+    { "name": "Auth", "description": "Login, session, and user profile" },
+    { "name": "Identity", "description": "RBAC — permissions, roles, user role assignment" },
     { "name": "HR Leave", "description": "Leave balances, requests, opinions, and settings" },
     { "name": "HR Holidays", "description": "Public holiday CRUD" },
     { "name": "HR Permissions", "description": "Permission requests, opinions, and search" },
@@ -31,21 +32,25 @@
         "summary": "Login with user code (dev seed: TST001)",
         "operationId": "login",
         "security": [],
+        "description": "Apidog: add Post-processor Extract Variable — JSONPath `$.accessToken` → environment `accessToken` (see openapi/apidog/post-processors.json).",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/LoginRequest" },
-              "example": { "code": "TST001" }
+              "example": { "code": "{{userCode}}" }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Access token (refresh token set as HttpOnly cookie)",
+            "description": "Access token (refresh token set as HttpOnly cookie). Apidog post-processor saves `accessToken` to env.",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AccessTokenResponse" }
+                "schema": { "$ref": "#/components/schemas/AccessTokenResponse" },
+                "example": {
+                  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IlRlc3QgT3duZXIifQ.example"
+                }
               }
             }
           },
@@ -60,15 +65,31 @@
         "summary": "Refresh access token using refreshToken cookie",
         "operationId": "refreshToken",
         "security": [],
+        "description": "Apidog: same post-processor as login — Extract Variable `$.accessToken` → environment `accessToken`.",
         "responses": {
           "200": {
-            "description": "New access token",
+            "description": "New access token (Apidog post-processor updates env `accessToken`)",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AccessTokenResponse" }
+                "schema": { "$ref": "#/components/schemas/AccessTokenResponse" },
+                "example": {
+                  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IlRlc3QgT3duZXIifQ.refreshed"
+                }
               }
             }
           },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Logout and invalidate refresh token",
+        "operationId": "logout",
+        "security": [],
+        "responses": {
+          "204": { "description": "Logged out (refresh cookie cleared)" },
           "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
@@ -84,11 +105,355 @@
             "description": "Current user profile",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AuthInfoResponse" }
+                "schema": { "$ref": "#/components/schemas/AuthInfoResponse" },
+                "example": {
+                  "id": 1,
+                  "name": "Test Owner",
+                  "role": 1,
+                  "roleName": "Owner",
+                  "permissions": ["permissions.manage", "roles.manage", "users.assign_role"],
+                  "group": "Engineering",
+                  "notifications": 0
+                }
               }
             }
           },
           "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/identity/permissions": {
+      "get": {
+        "tags": ["Identity"],
+        "summary": "List RBAC permissions",
+        "operationId": "listIdentityPermissions",
+        "responses": {
+          "200": {
+            "description": "All permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/IdentityPermissionResponse" }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "code": "permissions.manage",
+                    "name": "Manage Permissions",
+                    "description": "Create, update, delete permissions",
+                    "isSystem": true
+                  }
+                ]
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Identity"],
+        "summary": "Create RBAC permission",
+        "operationId": "createIdentityPermission",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateIdentityPermissionRequest" },
+              "example": {
+                "code": "reports.view",
+                "name": "View Reports",
+                "description": "Access reporting dashboard"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Permission created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IdentityPermissionResponse" },
+                "example": {
+                  "id": 10,
+                  "code": "reports.view",
+                  "name": "View Reports",
+                  "description": "Access reporting dashboard",
+                  "isSystem": false
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/identity/permissions/{id}": {
+      "put": {
+        "tags": ["Identity"],
+        "summary": "Update RBAC permission",
+        "operationId": "updateIdentityPermission",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 10 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateIdentityPermissionRequest" },
+              "example": { "name": "View Reports", "description": "Updated description" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated permission",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/IdentityPermissionResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Identity"],
+        "summary": "Delete RBAC permission",
+        "operationId": "deleteIdentityPermission",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 10 }
+        ],
+        "responses": {
+          "204": { "description": "Permission deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/identity/roles": {
+      "get": {
+        "tags": ["Identity"],
+        "summary": "List roles",
+        "operationId": "listRoles",
+        "responses": {
+          "200": {
+            "description": "All roles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/RoleResponse" }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "name": "Owner",
+                    "description": "System owner",
+                    "isSystem": true,
+                    "permissionCodes": ["permissions.manage", "roles.manage", "users.assign_role"]
+                  }
+                ]
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Identity"],
+        "summary": "Create role",
+        "operationId": "createRole",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateRoleRequest" },
+              "example": {
+                "name": "Auditor",
+                "description": "Read-only audit access",
+                "permissionIds": [1, 2]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Role created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RoleResponse" },
+                "example": {
+                  "id": 5,
+                  "name": "Auditor",
+                  "description": "Read-only audit access",
+                  "isSystem": false,
+                  "permissionCodes": ["permissions.manage", "roles.manage"]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/identity/roles/{id}": {
+      "put": {
+        "tags": ["Identity"],
+        "summary": "Update role",
+        "operationId": "updateRole",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 5 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateRoleRequest" },
+              "example": { "name": "Auditor", "description": "Updated role description" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated role",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RoleResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Identity"],
+        "summary": "Delete role",
+        "operationId": "deleteRole",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 5 }
+        ],
+        "responses": {
+          "204": { "description": "Role deleted" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/identity/roles/{id}/permissions": {
+      "put": {
+        "tags": ["Identity"],
+        "summary": "Replace all permissions on a role",
+        "operationId": "setRolePermissions",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 5 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SetRolePermissionsRequest" },
+              "example": { "permissionIds": [1, 2, 3] }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role with updated permissions",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RoleResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/identity/roles/{id}/permissions/{permissionId}": {
+      "post": {
+        "tags": ["Identity"],
+        "summary": "Add permission to role",
+        "operationId": "addRolePermission",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 5 },
+          { "name": "permissionId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 2 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated role",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RoleResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Identity"],
+        "summary": "Remove permission from role",
+        "operationId": "removeRolePermission",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 5 },
+          { "name": "permissionId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 2 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated role",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/RoleResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/identity/users/{userId}/role": {
+      "put": {
+        "tags": ["Identity"],
+        "summary": "Assign role to user",
+        "operationId": "assignUserRole",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 2 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AssignUserRoleRequest" },
+              "example": { "roleId": 3 }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Role assigned" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
     },
@@ -632,6 +997,180 @@
         }
       }
     },
+    "/hr/permissions/search": {
+      "get": {
+        "tags": ["HR Permissions"],
+        "summary": "Search permission requests (role-scoped)",
+        "operationId": "searchPermissionRequests",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "search", "in": "query", "schema": { "type": "string", "nullable": true } },
+          { "name": "date", "in": "query", "schema": { "type": "string", "format": "date-time", "nullable": true } },
+          { "name": "fromDate", "in": "query", "schema": { "type": "string", "format": "date-time", "nullable": true } },
+          { "name": "toDate", "in": "query", "schema": { "type": "string", "format": "date-time", "nullable": true } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["Pending", "Approved", "Rejected", "Cancelled"], "nullable": true } },
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["EarlyDeparture", "LateArrival"], "nullable": true } },
+          { "name": "myStatus", "in": "query", "schema": { "type": "string", "nullable": true } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated permission requests",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PermissionRequestListResponse" },
+                "example": {
+                  "items": [
+                    {
+                      "id": 1,
+                      "userId": 1,
+                      "type": "EarlyDeparture",
+                      "status": "Pending",
+                      "permissionDate": "2027-02-02T00:00:00",
+                      "fromTime": "09:00:00",
+                      "toTime": "11:00:00",
+                      "reason": "Appointment",
+                      "createdAt": "2027-01-15T10:00:00",
+                      "updatedAt": null,
+                      "opinions": null
+                    }
+                  ],
+                  "totalCount": 1
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/hr/permissions/pending": {
+      "get": {
+        "tags": ["HR Permissions"],
+        "summary": "List pending permission requests (Owner only)",
+        "operationId": "getPendingPermissionRequests",
+        "responses": {
+          "200": {
+            "description": "Pending permission requests",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/PermissionRequestResponse" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/hr/permissions/{id}/opinions": {
+      "post": {
+        "tags": ["HR Permissions"],
+        "summary": "Record opinion or Owner approve/reject",
+        "operationId": "givePermissionOpinion",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GivePermissionOpinionRequest" },
+              "example": { "isApproved": true, "comment": "Approved" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated permission request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PermissionRequestResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/hr/permissions/opinions/bulk": {
+      "post": {
+        "tags": ["HR Permissions"],
+        "summary": "Bulk approve or reject (Owner only)",
+        "operationId": "giveBulkPermissionOpinion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GiveBulkPermissionOpinionRequest" },
+              "example": { "permissionIds": [1, 2], "isApproved": true, "comment": "Bulk approved" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bulk operation summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BulkPermissionOpinionResponse" },
+                "example": { "succeeded": 2, "failed": 0, "failedPermissionIds": [] }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/hr/permissions/{id}/cancel": {
+      "put": {
+        "tags": ["HR Permissions"],
+        "summary": "Cancel permission request",
+        "operationId": "cancelPermissionRequest",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled permission request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PermissionRequestResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/hr/permissions/{id}/approve": {
+      "post": {
+        "tags": ["HR Permissions"],
+        "summary": "Owner approve alias",
+        "operationId": "approvePermissionRequest",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approved permission request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/PermissionRequestResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
     "/hr/work-from-home": {
       "get": {
         "tags": ["HR Work From Home"],
@@ -677,6 +1216,207 @@
           },
           "401": { "$ref": "#/components/responses/Unauthorized" },
           "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/hr/work-from-home/search": {
+      "get": {
+        "tags": ["HR Work From Home"],
+        "summary": "Search work from home requests (role-scoped)",
+        "operationId": "searchWorkFromHomeRequests",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "search", "in": "query", "schema": { "type": "string", "nullable": true } },
+          { "name": "fromDate", "in": "query", "schema": { "type": "string", "format": "date-time", "nullable": true } },
+          { "name": "toDate", "in": "query", "schema": { "type": "string", "format": "date-time", "nullable": true } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["Pending", "Approved", "Rejected", "Cancelled"], "nullable": true } },
+          { "name": "myStatus", "in": "query", "schema": { "type": "string", "nullable": true } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated WFH requests",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WorkFromHomeRequestListResponse" },
+                "example": {
+                  "items": [
+                    {
+                      "id": 1,
+                      "userId": 1,
+                      "date": "2027-02-03T00:00:00",
+                      "status": "Pending",
+                      "noteForManager": "Focus work",
+                      "dateCreated": "2027-01-20T09:00:00",
+                      "opinions": null
+                    }
+                  ],
+                  "totalCount": 1
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/hr/work-from-home/pending": {
+      "get": {
+        "tags": ["HR Work From Home"],
+        "summary": "List pending WFH requests (Owner only)",
+        "operationId": "getPendingWorkFromHomeRequests",
+        "responses": {
+          "200": {
+            "description": "Pending WFH requests",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/WorkFromHomeRequestResponse" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/hr/work-from-home/{id}": {
+      "get": {
+        "tags": ["HR Work From Home"],
+        "summary": "Get WFH request by id",
+        "operationId": "getWorkFromHomeRequestById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "WFH request with opinions",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WorkFromHomeRequestResponse" },
+                "example": {
+                  "id": 1,
+                  "userId": 1,
+                  "date": "2027-02-03T00:00:00",
+                  "status": "Approved",
+                  "noteForManager": "Focus work",
+                  "dateCreated": "2027-01-20T09:00:00",
+                  "opinions": [
+                    { "id": 5, "userId": 99, "isApproved": true, "comment": "Approved", "createdAt": "2027-01-21T10:00:00" }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/hr/work-from-home/{id}/opinions": {
+      "post": {
+        "tags": ["HR Work From Home"],
+        "summary": "Record opinion or Owner approve/reject",
+        "operationId": "giveWorkFromHomeOpinion",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GiveWorkFromHomeOpinionRequest" },
+              "example": { "isApproved": true, "comment": "Approved" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated WFH request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WorkFromHomeRequestResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/hr/work-from-home/opinions/bulk": {
+      "post": {
+        "tags": ["HR Work From Home"],
+        "summary": "Bulk approve or reject (Owner only)",
+        "operationId": "giveBulkWorkFromHomeOpinion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GiveBulkWorkFromHomeOpinionRequest" },
+              "example": { "workFromHomeRequestIds": [1, 2], "isApproved": true, "comment": "Bulk approved" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bulk operation summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BulkWorkFromHomeOpinionResponse" },
+                "example": { "succeeded": 2, "failed": 0, "failedWorkFromHomeRequestIds": [] }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/hr/work-from-home/{id}/cancel": {
+      "put": {
+        "tags": ["HR Work From Home"],
+        "summary": "Cancel WFH request",
+        "operationId": "cancelWorkFromHomeRequest",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled WFH request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WorkFromHomeRequestResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/hr/work-from-home/{id}/approve": {
+      "post": {
+        "tags": ["HR Work From Home"],
+        "summary": "Owner approve alias",
+        "operationId": "approveWorkFromHomeRequest",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approved WFH request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WorkFromHomeRequestResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
     },
@@ -1046,7 +1786,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "JWT access token from POST /auth/login — required for all HR endpoints"
+        "description": "JWT from POST /auth/login. In Apidog set default Token to {{accessToken}} after adding login post-processor (see openapi/apidog/post-processors.json)."
       }
     },
     "schemas": {
@@ -1061,6 +1801,9 @@
         "type": "object",
         "properties": {
           "accessToken": { "type": "string", "description": "JWT bearer token for Authorization header" }
+        },
+        "example": {
+          "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IlRlc3QgT3duZXIifQ.example"
         }
       },
       "AuthInfoResponse": {
@@ -1073,7 +1816,104 @@
           "permissions": { "type": "array", "items": { "type": "string" } },
           "group": { "type": "string", "nullable": true },
           "notifications": { "type": "integer", "format": "int32" }
+        },
+        "example": {
+          "id": 1,
+          "name": "Test Owner",
+          "role": 1,
+          "roleName": "Owner",
+          "permissions": ["permissions.manage", "roles.manage", "users.assign_role"],
+          "group": "Engineering",
+          "notifications": 0
         }
+      },
+      "CreateIdentityPermissionRequest": {
+        "type": "object",
+        "required": ["code", "name"],
+        "properties": {
+          "code": { "type": "string", "example": "reports.view" },
+          "name": { "type": "string", "example": "View Reports" },
+          "description": { "type": "string", "nullable": true, "example": "Access reporting dashboard" }
+        },
+        "example": { "code": "reports.view", "name": "View Reports", "description": "Access reporting dashboard" }
+      },
+      "UpdateIdentityPermissionRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "example": "View Reports" },
+          "description": { "type": "string", "nullable": true }
+        },
+        "example": { "name": "View Reports", "description": "Updated description" }
+      },
+      "IdentityPermissionResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32", "example": 1 },
+          "code": { "type": "string", "example": "permissions.manage" },
+          "name": { "type": "string", "example": "Manage Permissions" },
+          "description": { "type": "string", "nullable": true },
+          "isSystem": { "type": "boolean", "example": true }
+        },
+        "example": {
+          "id": 1,
+          "code": "permissions.manage",
+          "name": "Manage Permissions",
+          "description": "Create, update, delete permissions",
+          "isSystem": true
+        }
+      },
+      "CreateRoleRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "example": "Auditor" },
+          "description": { "type": "string", "nullable": true },
+          "permissionIds": { "type": "array", "items": { "type": "integer", "format": "int32" }, "example": [1, 2] }
+        },
+        "example": { "name": "Auditor", "description": "Read-only audit access", "permissionIds": [1, 2] }
+      },
+      "UpdateRoleRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "example": "Auditor" },
+          "description": { "type": "string", "nullable": true }
+        },
+        "example": { "name": "Auditor", "description": "Updated role description" }
+      },
+      "SetRolePermissionsRequest": {
+        "type": "object",
+        "required": ["permissionIds"],
+        "properties": {
+          "permissionIds": { "type": "array", "items": { "type": "integer", "format": "int32" }, "example": [1, 2, 3] }
+        },
+        "example": { "permissionIds": [1, 2, 3] }
+      },
+      "RoleResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32", "example": 1 },
+          "name": { "type": "string", "example": "Owner" },
+          "description": { "type": "string", "nullable": true },
+          "isSystem": { "type": "boolean", "example": true },
+          "permissionCodes": { "type": "array", "items": { "type": "string" }, "example": ["permissions.manage", "roles.manage"] }
+        },
+        "example": {
+          "id": 1,
+          "name": "Owner",
+          "description": "System owner",
+          "isSystem": true,
+          "permissionCodes": ["permissions.manage", "roles.manage", "users.assign_role"]
+        }
+      },
+      "AssignUserRoleRequest": {
+        "type": "object",
+        "required": ["roleId"],
+        "properties": {
+          "roleId": { "type": "integer", "format": "int32", "example": 3 }
+        },
+        "example": { "roleId": 3 }
       },
       "CreateLeaveRequest": {
         "type": "object",
@@ -1157,7 +1997,49 @@
           "fromTime": { "type": "string", "example": "09:00" },
           "toTime": { "type": "string", "example": "11:00" },
           "reason": { "type": "string", "nullable": true }
+        },
+        "example": {
+          "type": "EarlyDeparture",
+          "permissionDate": "2027-02-02T00:00:00",
+          "fromTime": "09:00",
+          "toTime": "11:00",
+          "reason": "Appointment"
         }
+      },
+      "PermissionRequestListResponse": {
+        "type": "object",
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/PermissionRequestResponse" } },
+          "totalCount": { "type": "integer", "format": "int32", "example": 1 }
+        }
+      },
+      "GivePermissionOpinionRequest": {
+        "type": "object",
+        "required": ["isApproved"],
+        "properties": {
+          "isApproved": { "type": "boolean", "example": true },
+          "comment": { "type": "string", "nullable": true, "example": "Approved" }
+        },
+        "example": { "isApproved": true, "comment": "Approved" }
+      },
+      "GiveBulkPermissionOpinionRequest": {
+        "type": "object",
+        "required": ["permissionIds", "isApproved"],
+        "properties": {
+          "permissionIds": { "type": "array", "items": { "type": "integer", "format": "int32" }, "example": [1, 2] },
+          "isApproved": { "type": "boolean", "example": true },
+          "comment": { "type": "string", "nullable": true }
+        },
+        "example": { "permissionIds": [1, 2], "isApproved": true, "comment": "Bulk approved" }
+      },
+      "BulkPermissionOpinionResponse": {
+        "type": "object",
+        "properties": {
+          "succeeded": { "type": "integer", "format": "int32", "example": 2 },
+          "failed": { "type": "integer", "format": "int32", "example": 0 },
+          "failedPermissionIds": { "type": "array", "items": { "type": "integer", "format": "int32" }, "example": [] }
+        },
+        "example": { "succeeded": 2, "failed": 0, "failedPermissionIds": [] }
       },
       "PermissionRequestResponse": {
         "type": "object",
@@ -1185,7 +2067,43 @@
         "properties": {
           "date": { "type": "string", "format": "date-time" },
           "noteForManager": { "type": "string", "nullable": true }
+        },
+        "example": { "date": "2027-02-03T00:00:00", "noteForManager": "Focus work" }
+      },
+      "WorkFromHomeRequestListResponse": {
+        "type": "object",
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/WorkFromHomeRequestResponse" } },
+          "totalCount": { "type": "integer", "format": "int32", "example": 1 }
         }
+      },
+      "GiveWorkFromHomeOpinionRequest": {
+        "type": "object",
+        "required": ["isApproved"],
+        "properties": {
+          "isApproved": { "type": "boolean", "example": true },
+          "comment": { "type": "string", "nullable": true, "example": "Approved" }
+        },
+        "example": { "isApproved": true, "comment": "Approved" }
+      },
+      "GiveBulkWorkFromHomeOpinionRequest": {
+        "type": "object",
+        "required": ["workFromHomeRequestIds", "isApproved"],
+        "properties": {
+          "workFromHomeRequestIds": { "type": "array", "items": { "type": "integer", "format": "int32" }, "example": [1, 2] },
+          "isApproved": { "type": "boolean", "example": true },
+          "comment": { "type": "string", "nullable": true }
+        },
+        "example": { "workFromHomeRequestIds": [1, 2], "isApproved": true, "comment": "Bulk approved" }
+      },
+      "BulkWorkFromHomeOpinionResponse": {
+        "type": "object",
+        "properties": {
+          "succeeded": { "type": "integer", "format": "int32", "example": 2 },
+          "failed": { "type": "integer", "format": "int32", "example": 0 },
+          "failedWorkFromHomeRequestIds": { "type": "array", "items": { "type": "integer", "format": "int32" }, "example": [] }
+        },
+        "example": { "succeeded": 2, "failed": 0, "failedWorkFromHomeRequestIds": [] }
       },
       "WorkFromHomeRequestResponse": {
         "type": "object",
@@ -1470,6 +2388,20 @@
         "content": {
           "application/problem+json": {
             "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict (duplicate code/name or resource in use)",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+            "example": {
+              "title": "Conflict",
+              "status": 409,
+              "detail": "Permission code already exists.",
+              "code": "duplicate_permission_code"
+            }
           }
         }
       }

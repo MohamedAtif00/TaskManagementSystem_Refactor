@@ -1,0 +1,770 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "TMS HR — Forgot Clock API",
+    "version": "1.0.0",
+    "description": "Forgot clock in/out (attendance) requests for Task Management System.\n\n## Apidog quick start\n1. **POST /auth/login** with `{ \"code\": \"TST001\" }` (dev seed Owner).\n2. Copy `accessToken` from the response.\n3. Set **Auth → Bearer Token** to the token (or `Bearer {{accessToken}}`).\n4. Call any `/hr/forgot-clock` endpoint.\n\n## Business rules\n- One request = one missing punch (`ClockIn` or `ClockOut`) with date, intended time, and optional reason.\n- Past/today attendance dates allowed; future dates rejected.\n- No employee balance — Owner approval is HR acknowledgment only.\n- TL/PM/SectionHead record opinions; Owner final approve/reject."
+  },
+  "servers": [
+    { "url": "http://localhost:61173", "description": "Local development (HTTP)" },
+    { "url": "https://localhost:61172", "description": "Local development (HTTPS)" }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "Login — required before HR endpoints" },
+    { "name": "HR Forgot Clock", "description": "Forgot clock in/out requests, opinions, and search" }
+  ],
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Login with user code (dev seed: TST001)",
+        "operationId": "login",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginRequest" },
+              "example": { "code": "TST001" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Access token (refresh token set as HttpOnly cookie)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AccessTokenResponse" },
+                "example": {
+                  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hr/forgot-clock": {
+      "get": {
+        "tags": ["HR Forgot Clock"],
+        "summary": "List own forgot clock requests",
+        "operationId": "getForgotClockRequests",
+        "responses": {
+          "200": {
+            "description": "Forgot clock requests for the authenticated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ForgotClockRequestResponse" }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "userId": 1,
+                    "punchType": "ClockIn",
+                    "status": "Pending",
+                    "attendanceDate": "2026-09-05T00:00:00",
+                    "intendedTime": "09:00:00",
+                    "reason": "Forgot to punch in on the attendance device",
+                    "createdAt": "2026-09-07T10:30:00",
+                    "updatedAt": null,
+                    "opinions": null
+                  },
+                  {
+                    "id": 2,
+                    "userId": 1,
+                    "punchType": "ClockOut",
+                    "status": "Approved",
+                    "attendanceDate": "2026-09-04T00:00:00",
+                    "intendedTime": "17:00:00",
+                    "reason": "Left early without clocking out",
+                    "createdAt": "2026-09-05T08:00:00",
+                    "updatedAt": "2026-09-05T09:00:00",
+                    "opinions": null
+                  }
+                ]
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["HR Forgot Clock"],
+        "summary": "Create a forgot clock request",
+        "description": "Notify HR that you forgot to clock in or out on the attendance device.",
+        "operationId": "requestForgotClock",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateForgotClockRequest" },
+              "examples": {
+                "clockIn": {
+                  "summary": "Forgot clock in",
+                  "value": {
+                    "punchType": "ClockIn",
+                    "attendanceDate": "2026-09-05T00:00:00",
+                    "intendedTime": "09:00:00",
+                    "reason": "Forgot to punch in on the attendance device"
+                  }
+                },
+                "clockOut": {
+                  "summary": "Forgot clock out",
+                  "value": {
+                    "punchType": "ClockOut",
+                    "attendanceDate": "2026-09-05T00:00:00",
+                    "intendedTime": "17:00:00",
+                    "reason": "Left the office without clocking out"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created forgot clock request",
+            "headers": {
+              "Location": {
+                "description": "URL of the created request",
+                "schema": { "type": "string" },
+                "example": "/hr/forgot-clock/1"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ForgotClockRequestResponse" },
+                "example": {
+                  "id": 1,
+                  "userId": 1,
+                  "punchType": "ClockIn",
+                  "status": "Pending",
+                  "attendanceDate": "2026-09-05T00:00:00",
+                  "intendedTime": "09:00:00",
+                  "reason": "Forgot to punch in on the attendance device",
+                  "createdAt": "2026-09-07T10:30:00",
+                  "updatedAt": null,
+                  "opinions": null
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation or business rule failure",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "examples": {
+                  "duplicatePunch": {
+                    "summary": "Duplicate active request",
+                    "value": {
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "You already have an active forgot clock request for this date and punch type.",
+                      "code": "forgot_clock_duplicate_punch"
+                    }
+                  },
+                  "invalidDate": {
+                    "summary": "Future attendance date",
+                    "value": {
+                      "title": "Bad Request",
+                      "status": 400,
+                      "detail": "Attendance date cannot be in the future.",
+                      "code": "forgot_clock_invalid_date"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/hr/forgot-clock/search": {
+      "get": {
+        "tags": ["HR Forgot Clock"],
+        "summary": "Search forgot clock requests (role-scoped)",
+        "operationId": "searchForgotClockRequests",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1, "minimum": 1 }, "example": 1 },
+          { "name": "pageSize", "in": "query", "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 }, "example": 20 },
+          { "name": "search", "in": "query", "description": "Search by employee name or reason", "schema": { "type": "string", "nullable": true }, "example": "forgot" },
+          { "name": "date", "in": "query", "description": "Exact attendance date filter", "schema": { "type": "string", "format": "date-time", "nullable": true }, "example": "2026-09-05T00:00:00" },
+          { "name": "fromDate", "in": "query", "schema": { "type": "string", "format": "date-time", "nullable": true }, "example": "2026-09-01T00:00:00" },
+          { "name": "toDate", "in": "query", "schema": { "type": "string", "format": "date-time", "nullable": true }, "example": "2026-09-30T00:00:00" },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["Pending", "Approved", "Rejected", "Cancelled"], "nullable": true },
+            "example": "Pending"
+          },
+          {
+            "name": "punchType",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["ClockIn", "ClockOut"], "nullable": true },
+            "example": "ClockIn"
+          },
+          {
+            "name": "myStatus",
+            "in": "query",
+            "description": "Filter by status alias: pending, approved, rejected",
+            "schema": { "type": "string", "enum": ["pending", "approved", "rejected"], "nullable": true },
+            "example": "pending"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated forgot clock request list",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ForgotClockRequestListResponse" },
+                "example": {
+                  "items": [
+                    {
+                      "id": 1,
+                      "userId": 1,
+                      "punchType": "ClockIn",
+                      "status": "Pending",
+                      "attendanceDate": "2026-09-05T00:00:00",
+                      "intendedTime": "09:00:00",
+                      "reason": "Forgot to punch in",
+                      "createdAt": "2026-09-07T10:30:00",
+                      "updatedAt": null,
+                      "opinions": null
+                    }
+                  ],
+                  "totalCount": 1
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/hr/forgot-clock/pending": {
+      "get": {
+        "tags": ["HR Forgot Clock"],
+        "summary": "List pending forgot clock requests (Owner only)",
+        "operationId": "getPendingForgotClockRequests",
+        "responses": {
+          "200": {
+            "description": "Pending queue for HR review",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ForgotClockRequestResponse" }
+                },
+                "example": [
+                  {
+                    "id": 1,
+                    "userId": 1,
+                    "punchType": "ClockIn",
+                    "status": "Pending",
+                    "attendanceDate": "2026-09-05T00:00:00",
+                    "intendedTime": "09:00:00",
+                    "reason": "Forgot to punch in",
+                    "createdAt": "2026-09-07T10:30:00",
+                    "updatedAt": null,
+                    "opinions": null
+                  }
+                ]
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/hr/forgot-clock/{id}": {
+      "get": {
+        "tags": ["HR Forgot Clock"],
+        "summary": "Get forgot clock request by id (with opinions)",
+        "operationId": "getForgotClockRequestById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Forgot clock request detail",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ForgotClockRequestResponse" },
+                "example": {
+                  "id": 1,
+                  "userId": 1,
+                  "punchType": "ClockIn",
+                  "status": "Approved",
+                  "attendanceDate": "2026-09-05T00:00:00",
+                  "intendedTime": "09:00:00",
+                  "reason": "Forgot to punch in on the attendance device",
+                  "createdAt": "2026-09-07T10:30:00",
+                  "updatedAt": "2026-09-07T11:00:00",
+                  "opinions": [
+                    {
+                      "id": 10,
+                      "userId": 99,
+                      "isApproved": true,
+                      "comment": "HR will update attendance records",
+                      "createdAt": "2026-09-07T11:00:00"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": {
+            "description": "Request not found",
+            "content": {
+              "application/problem+json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+                "example": {
+                  "title": "Not Found",
+                  "status": 404,
+                  "detail": "Forgot clock request not found.",
+                  "code": "forgot_clock_request_not_found"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hr/forgot-clock/{id}/opinions": {
+      "post": {
+        "tags": ["HR Forgot Clock"],
+        "summary": "Record opinion or Owner approve/reject",
+        "description": "TeamLeader / ProjectManager / SectionHead record opinion only (status stays Pending). Owner approve/reject sets final status.",
+        "operationId": "giveForgotClockOpinion",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 1 }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GiveForgotClockOpinionRequest" },
+              "examples": {
+                "approve": {
+                  "summary": "Owner approve",
+                  "value": { "isApproved": true, "comment": "HR will update attendance records" }
+                },
+                "reject": {
+                  "summary": "Owner reject",
+                  "value": { "isApproved": false, "comment": "Insufficient justification" }
+                },
+                "teamLeaderOpinion": {
+                  "summary": "TL opinion only (no status change)",
+                  "value": { "isApproved": true, "comment": "Confirmed with employee" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated forgot clock request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ForgotClockRequestResponse" },
+                "example": {
+                  "id": 1,
+                  "userId": 1,
+                  "punchType": "ClockIn",
+                  "status": "Approved",
+                  "attendanceDate": "2026-09-05T00:00:00",
+                  "intendedTime": "09:00:00",
+                  "reason": "Forgot to punch in on the attendance device",
+                  "createdAt": "2026-09-07T10:30:00",
+                  "updatedAt": "2026-09-07T11:00:00",
+                  "opinions": [
+                    {
+                      "id": 10,
+                      "userId": 99,
+                      "isApproved": true,
+                      "comment": "HR will update attendance records",
+                      "createdAt": "2026-09-07T11:00:00"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/hr/forgot-clock/opinions/bulk": {
+      "post": {
+        "tags": ["HR Forgot Clock"],
+        "summary": "Bulk approve or reject (Owner only)",
+        "operationId": "giveBulkForgotClockOpinion",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GiveBulkForgotClockOpinionRequest" },
+              "example": {
+                "forgotClockRequestIds": [1, 2, 3],
+                "isApproved": true,
+                "comment": "Bulk approved by HR"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Bulk operation summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/BulkForgotClockOpinionResponse" },
+                "example": {
+                  "succeeded": 2,
+                  "failed": 1,
+                  "failedForgotClockRequestIds": [3]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/hr/forgot-clock/{id}/cancel": {
+      "put": {
+        "tags": ["HR Forgot Clock"],
+        "summary": "Cancel own pending or same-day approved request",
+        "operationId": "cancelForgotClockRequest",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancelled forgot clock request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ForgotClockRequestResponse" },
+                "example": {
+                  "id": 1,
+                  "userId": 1,
+                  "punchType": "ClockIn",
+                  "status": "Cancelled",
+                  "attendanceDate": "2026-09-05T00:00:00",
+                  "intendedTime": "09:00:00",
+                  "reason": "Forgot to punch in on the attendance device",
+                  "createdAt": "2026-09-07T10:30:00",
+                  "updatedAt": "2026-09-07T12:00:00",
+                  "opinions": null
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/hr/forgot-clock/{id}/approve": {
+      "post": {
+        "tags": ["HR Forgot Clock"],
+        "summary": "Owner approve alias (no request body)",
+        "operationId": "approveForgotClockRequest",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" }, "example": 1 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Approved forgot clock request",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ForgotClockRequestResponse" },
+                "example": {
+                  "id": 1,
+                  "userId": 1,
+                  "punchType": "ClockIn",
+                  "status": "Approved",
+                  "attendanceDate": "2026-09-05T00:00:00",
+                  "intendedTime": "09:00:00",
+                  "reason": "Forgot to punch in on the attendance device",
+                  "createdAt": "2026-09-07T10:30:00",
+                  "updatedAt": "2026-09-07T11:00:00",
+                  "opinions": [
+                    {
+                      "id": 10,
+                      "userId": 99,
+                      "isApproved": true,
+                      "comment": null,
+                      "createdAt": "2026-09-07T11:00:00"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT access token from POST /auth/login"
+      }
+    },
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": ["code"],
+        "properties": {
+          "code": { "type": "string", "description": "User login code", "example": "TST001" }
+        },
+        "example": { "code": "TST001" }
+      },
+      "AccessTokenResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": { "type": "string", "description": "JWT bearer token" }
+        },
+        "example": { "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example" }
+      },
+      "CreateForgotClockRequest": {
+        "type": "object",
+        "required": ["punchType", "attendanceDate", "intendedTime"],
+        "properties": {
+          "punchType": {
+            "type": "string",
+            "enum": ["ClockIn", "ClockOut"],
+            "description": "Which punch was missed",
+            "example": "ClockIn"
+          },
+          "attendanceDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date of the missed punch (past or today only)",
+            "example": "2026-09-05T00:00:00"
+          },
+          "intendedTime": {
+            "type": "string",
+            "description": "Time you should have punched (HH:mm:ss)",
+            "example": "09:00:00"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Optional message to HR",
+            "example": "Forgot to punch in on the attendance device"
+          }
+        },
+        "example": {
+          "punchType": "ClockIn",
+          "attendanceDate": "2026-09-05T00:00:00",
+          "intendedTime": "09:00:00",
+          "reason": "Forgot to punch in on the attendance device"
+        }
+      },
+      "ForgotClockRequestResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32", "example": 1 },
+          "userId": { "type": "integer", "format": "int32", "example": 1 },
+          "punchType": { "type": "string", "enum": ["ClockIn", "ClockOut"], "example": "ClockIn" },
+          "status": { "type": "string", "enum": ["Pending", "Approved", "Rejected", "Cancelled"], "example": "Pending" },
+          "attendanceDate": { "type": "string", "format": "date-time", "example": "2026-09-05T00:00:00" },
+          "intendedTime": { "type": "string", "example": "09:00:00" },
+          "reason": { "type": "string", "nullable": true, "example": "Forgot to punch in on the attendance device" },
+          "createdAt": { "type": "string", "format": "date-time", "example": "2026-09-07T10:30:00" },
+          "updatedAt": { "type": "string", "format": "date-time", "nullable": true, "example": null },
+          "opinions": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/OpinionResponse" }
+          }
+        },
+        "example": {
+          "id": 1,
+          "userId": 1,
+          "punchType": "ClockIn",
+          "status": "Pending",
+          "attendanceDate": "2026-09-05T00:00:00",
+          "intendedTime": "09:00:00",
+          "reason": "Forgot to punch in on the attendance device",
+          "createdAt": "2026-09-07T10:30:00",
+          "updatedAt": null,
+          "opinions": null
+        }
+      },
+      "ForgotClockRequestListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ForgotClockRequestResponse" }
+          },
+          "totalCount": { "type": "integer", "format": "int32", "example": 1 }
+        },
+        "example": {
+          "items": [
+            {
+              "id": 1,
+              "userId": 1,
+              "punchType": "ClockIn",
+              "status": "Pending",
+              "attendanceDate": "2026-09-05T00:00:00",
+              "intendedTime": "09:00:00",
+              "reason": "Forgot to punch in",
+              "createdAt": "2026-09-07T10:30:00",
+              "updatedAt": null,
+              "opinions": null
+            }
+          ],
+          "totalCount": 1
+        }
+      },
+      "OpinionResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32", "example": 10 },
+          "userId": { "type": "integer", "format": "int32", "example": 99 },
+          "isApproved": { "type": "boolean", "example": true },
+          "comment": { "type": "string", "nullable": true, "example": "HR will update attendance records" },
+          "createdAt": { "type": "string", "format": "date-time", "example": "2026-09-07T11:00:00" }
+        },
+        "example": {
+          "id": 10,
+          "userId": 99,
+          "isApproved": true,
+          "comment": "HR will update attendance records",
+          "createdAt": "2026-09-07T11:00:00"
+        }
+      },
+      "GiveForgotClockOpinionRequest": {
+        "type": "object",
+        "required": ["isApproved"],
+        "properties": {
+          "isApproved": { "type": "boolean", "example": true },
+          "comment": { "type": "string", "nullable": true, "example": "HR will update attendance records" }
+        },
+        "example": { "isApproved": true, "comment": "HR will update attendance records" }
+      },
+      "GiveBulkForgotClockOpinionRequest": {
+        "type": "object",
+        "required": ["forgotClockRequestIds", "isApproved"],
+        "properties": {
+          "forgotClockRequestIds": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int32" },
+            "example": [1, 2, 3]
+          },
+          "isApproved": { "type": "boolean", "example": true },
+          "comment": { "type": "string", "nullable": true, "example": "Bulk approved by HR" }
+        },
+        "example": {
+          "forgotClockRequestIds": [1, 2, 3],
+          "isApproved": true,
+          "comment": "Bulk approved by HR"
+        }
+      },
+      "BulkForgotClockOpinionResponse": {
+        "type": "object",
+        "properties": {
+          "succeeded": { "type": "integer", "format": "int32", "example": 2 },
+          "failed": { "type": "integer", "format": "int32", "example": 1 },
+          "failedForgotClockRequestIds": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int32" },
+            "example": [3]
+          }
+        },
+        "example": {
+          "succeeded": 2,
+          "failed": 1,
+          "failedForgotClockRequestIds": [3]
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "nullable": true },
+          "title": { "type": "string", "nullable": true },
+          "status": { "type": "integer", "format": "int32", "nullable": true },
+          "detail": { "type": "string", "nullable": true },
+          "code": {
+            "type": "string",
+            "description": "Application error code",
+            "example": "forgot_clock_request_not_found"
+          }
+        },
+        "example": {
+          "title": "Not Found",
+          "status": 404,
+          "detail": "Forgot clock request not found.",
+          "code": "forgot_clock_request_not_found"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad request or domain validation failure",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing or invalid JWT",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Authenticated but not authorized",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+            "example": {
+              "title": "Forbidden",
+              "status": 403,
+              "detail": "You are not authorized to give opinions on this request.",
+              "code": "forgot_clock_opinion_not_authorized"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/problem+json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" },
+            "example": {
+              "title": "Not Found",
+              "status": 404,
+              "detail": "Forgot clock request not found.",
+              "code": "forgot_clock_request_not_found"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -24,7 +24,11 @@ public sealed class LeaveBalancesResponse
 
     public int PermissionMax { get; set; }
 
+    public int AvailablePermission { get; set; }
+
     public int WorkFromHome { get; set; }
 
     public int WorkFromHomeMax { get; set; }
+
+    public int AvailableWorkFromHome { get; set; }
 }

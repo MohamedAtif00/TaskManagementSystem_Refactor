@@ -1,0 +1,21 @@
+{
+  "name": "TMS Local Dev",
+  "variables": [
+    {
+      "name": "accessToken",
+      "value": "",
+      "description": "JWT from POST /auth/login or /auth/refresh-token. Set automatically by post-processors.",
+      "isSecret": true
+    },
+    {
+      "name": "userCode",
+      "value": "TST001",
+      "description": "Dev seed user login code (Owner)"
+    },
+    {
+      "name": "baseUrl",
+      "value": "http://localhost:61173",
+      "description": "API base URL (HTTP local dev)"
+    }
+  ]
+}

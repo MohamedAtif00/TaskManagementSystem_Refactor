@@ -35,8 +35,10 @@ public static class GetBalancesEndpoint
             FromNextBalanceMaxDays = balances.FromNextBalanceMaxDays,
             Permission = balances.Permission,
             PermissionMax = balances.PermissionMax,
+            AvailablePermission = balances.AvailablePermission,
             WorkFromHome = balances.WorkFromHome,
-            WorkFromHomeMax = balances.WorkFromHomeMax
+            WorkFromHomeMax = balances.WorkFromHomeMax,
+            AvailableWorkFromHome = balances.AvailableWorkFromHome
         }));
     }
 }

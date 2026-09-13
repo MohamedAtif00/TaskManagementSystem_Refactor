@@ -1,0 +1,75 @@
+{
+  "$schema": "TMS Apidog post-processor setup (manual or Public Scripts)",
+  "setup": {
+    "importOpenApi": "openapi/tms-openapi.json",
+    "importEnvironment": "openapi/apidog/environment.local-dev.json",
+    "selectEnvironment": "TMS Local Dev",
+    "configureBearerAuth": {
+      "securityScheme": "bearerAuth",
+      "token": "{{accessToken}}",
+      "note": "Components → Security Schemes → bearerAuth → Default Auth Value → Token = {{accessToken}}. Or set Auth on the API root folder to Bearer Token with {{accessToken}}."
+    }
+  },
+  "publicScripts": [
+    {
+      "name": "TMS — Save Access Token",
+      "file": "openapi/apidog/scripts/save-access-token.js",
+      "attachTo": ["POST /auth/login", "POST /auth/refresh-token"]
+    },
+    {
+      "name": "TMS — Clear Access Token",
+      "file": "openapi/apidog/scripts/clear-access-token.js",
+      "attachTo": ["POST /auth/logout"]
+    }
+  ],
+  "postProcessors": [
+    {
+      "endpoint": "POST /auth/login",
+      "processors": [
+        {
+          "type": "extractVariable",
+          "variableName": "accessToken",
+          "scope": "environment",
+          "source": "responseJson",
+          "jsonPath": "$.accessToken",
+          "description": "Visual alternative to the custom script — use Extract Variable instead of Custom Script if preferred."
+        },
+        {
+          "type": "customScript",
+          "file": "openapi/apidog/scripts/save-access-token.js",
+          "description": "Use Public Script or paste script content. Do not add both Extract Variable and Custom Script unless you disable one."
+        }
+      ]
+    },
+    {
+      "endpoint": "POST /auth/refresh-token",
+      "processors": [
+        {
+          "type": "extractVariable",
+          "variableName": "accessToken",
+          "scope": "environment",
+          "source": "responseJson",
+          "jsonPath": "$.accessToken"
+        }
+      ]
+    },
+    {
+      "endpoint": "POST /auth/logout",
+      "processors": [
+        {
+          "type": "customScript",
+          "file": "openapi/apidog/scripts/clear-access-token.js"
+        }
+      ]
+    }
+  ],
+  "workflow": [
+    "1. Import tms-openapi.json into Apidog.",
+    "2. Import environment.local-dev.json (Environment Management → … → Import).",
+    "3. Select environment 'TMS Local Dev'.",
+    "4. Settings → Public Scripts → create scripts from scripts/*.js (or add Custom Script post-processors manually).",
+    "5. On POST /auth/login and POST /auth/refresh-token: Post-processors → + Add → Extract Variable OR Public Script 'TMS — Save Access Token'.",
+    "6. Set bearerAuth default token to {{accessToken}} (see configureBearerAuth above).",
+    "7. Send POST /auth/login with body { \"code\": \"{{userCode}}\" } — all secured endpoints then use the token automatically."
+  ]
+}

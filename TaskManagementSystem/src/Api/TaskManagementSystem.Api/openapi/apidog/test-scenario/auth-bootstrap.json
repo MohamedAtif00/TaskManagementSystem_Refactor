@@ -1,0 +1,46 @@
+{
+  "name": "TMS Auth Bootstrap",
+  "description": "Login once and save accessToken to the environment. Import as a Test Scenario or use as a reference for post-processors.",
+  "steps": [
+    {
+      "type": "customHttp",
+      "name": "1. Login (save accessToken)",
+      "customHttpRequest": {
+        "path": "{{baseUrl}}/auth/login",
+        "method": "post",
+        "requestBody": {
+          "type": "application/json",
+          "data": "{\"code\":\"{{userCode}}\"}"
+        },
+        "postProcessors": [
+          {
+            "type": "customScript",
+            "enable": true,
+            "data": "pm.test('login returns 200', function () { pm.response.to.have.status(200); });\nvar body = pm.response.json();\nif (!body || !body.accessToken) { throw new Error('Response JSON missing accessToken'); }\npm.environment.set('accessToken', body.accessToken);\nconsole.log('accessToken saved to environment');"
+          }
+        ]
+      }
+    },
+    {
+      "type": "customHttp",
+      "name": "2. About Me (verify token)",
+      "customHttpRequest": {
+        "path": "{{baseUrl}}/auth/about-me",
+        "method": "post",
+        "auth": {
+          "type": "bearer",
+          "bearer": {
+            "token": "{{accessToken}}"
+          }
+        },
+        "postProcessors": [
+          {
+            "type": "customScript",
+            "enable": true,
+            "data": "pm.test('about-me returns 200', function () { pm.response.to.have.status(200); });\npm.test('profile has name', function () {\n  var body = pm.response.json();\n  pm.expect(body.name).to.be.a('string').and.not.empty;\n});"
+          }
+        ]
+      }
+    }
+  ]
+}
