@@ -1,5 +1,6 @@
 using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Endpoints;
+using TaskManagementSystem.Api.Endpoints.Organization;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.BuildingBlocks.Application;
@@ -8,6 +9,8 @@ using TaskManagementSystem.Modules.HR.Features.Leave.RequestLeave;
 using TaskManagementSystem.Modules.HR.Infrastructure;
 using TaskManagementSystem.Modules.Identity.Features.Authenticate;
 using TaskManagementSystem.Modules.Identity.Infrastructure;
+using TaskManagementSystem.Modules.Organization.Features.Teams.CreateTeam;
+using TaskManagementSystem.Modules.Organization.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,12 +20,14 @@ builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
 builder.Services.AddScoped<IAuditContext, AuditContext>();
 builder.Services.AddIdentityModule(builder.Configuration, builder.Environment);
 builder.Services.AddHrModule(builder.Configuration, builder.Environment);
+builder.Services.AddOrganizationModule(builder.Configuration, builder.Environment);
 builder.Services.AddAuditLog(builder.Configuration, builder.Environment);
 builder.Services.AddBuildingBlocks(
     typeof(Program).Assembly,
     typeof(Entity).Assembly,
     typeof(AuthenticateCommand).Assembly,
-    typeof(RequestLeaveCommand).Assembly);
+    typeof(RequestLeaveCommand).Assembly,
+    typeof(CreateTeamCommand).Assembly);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddApidogCors();
@@ -40,6 +45,7 @@ app.MapOpenApiEndpoints();
 app.MapAuthEndpoints();
 app.MapIdentityEndpoints();
 app.MapHrEndpoints();
+app.MapOrganizationEndpoints();
 app.MapRealtimeHub();
 
 app.Run();
