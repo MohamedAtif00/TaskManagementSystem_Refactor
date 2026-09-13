@@ -2,7 +2,7 @@
 
 How this solution emits and exports telemetry. Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-**Last updated:** 2026-09-05
+**Last updated:** 2026-09-12
 
 ## Signals
 
@@ -50,6 +50,52 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 `http://localhost:4317` is the usual gRPC OTLP port for Aspire dashboard, Jaeger, Grafana Alloy, or the OpenTelemetry Collector.
 
 Leave `OtlpEndpoint` as `""` for local runs with no collector.
+
+Development export is enabled via [`appsettings.Development.json`](../src/Api/TaskManagementSystem.Api/appsettings.Development.json) (`OtlpEndpoint: http://localhost:4317`).
+
+## Local Aspire dashboard (recommended)
+
+Start the dashboard collector:
+
+```bash
+docker compose -f docker-compose.observability.yml up -d
+```
+
+| Endpoint | URL |
+|---|---|
+| Dashboard UI | http://localhost:18888 |
+| OTLP gRPC ingest | http://localhost:4317 |
+
+Then run the API in Development:
+
+```bash
+dotnet run --project src/Api/TaskManagementSystem.Api
+```
+
+What to verify:
+
+- **Traces** — ASP.NET Core requests and MediatR command/query spans
+- **Metrics** — `tms.mediatr.requests`, `tms.mediatr.duration_ms`, runtime metrics
+- **Logs** — structured `ILogger` output exported via OpenTelemetry
+
+Stop the dashboard:
+
+```bash
+docker compose -f docker-compose.observability.yml down
+```
+
+## HTTP boundary logging
+
+[`ApiExceptionHandler.cs`](../src/Api/TaskManagementSystem.Api/Infrastructure/ApiExceptionHandler.cs) logs at the API edge:
+
+| Case | Level | When |
+|---|---|---|
+| FluentValidation / invalid input | Warning | `ValidationException` → 400 `validation_failed` |
+| Unexpected failure | Error | Unhandled exception → 500 `unexpected_error` |
+
+Validation logging stays at the HTTP boundary only (not in `ValidationBehavior`) to avoid duplicate noise. MediatR handler failures are still logged by `LoggingBehavior` with the same `TraceId` scope.
+
+Example invalid login body → check dashboard **Logs** for `Validation failed for POST /auth/login` with `ValidationCode=validation_failed`.
 
 ## MediatR observability (automatic)
 
