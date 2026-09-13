@@ -433,6 +433,144 @@
         }
       }
     },
+    "/identity/users": {
+      "get": {
+        "tags": ["Identity"],
+        "summary": "List active users",
+        "operationId": "listUsers",
+        "responses": {
+          "200": {
+            "description": "Active users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/UserListItemResponse" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Identity"],
+        "summary": "Create user",
+        "operationId": "createUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateUserRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created user",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserDetailResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/identity/users/team-leaders": {
+      "get": {
+        "tags": ["Identity"],
+        "summary": "List team leaders and section heads",
+        "operationId": "listTeamLeaders",
+        "responses": {
+          "200": {
+            "description": "Team leaders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/TeamLeaderResponse" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/identity/users/{userId}": {
+      "get": {
+        "tags": ["Identity"],
+        "summary": "Get user by id",
+        "operationId": "getUserById",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "User detail",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserDetailResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Identity"],
+        "summary": "Update user",
+        "operationId": "updateUser",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateUserRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserDetailResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      },
+      "delete": {
+        "tags": ["Identity"],
+        "summary": "Archive user",
+        "operationId": "archiveUser",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "204": { "description": "User archived" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
     "/identity/users/{userId}/role": {
       "put": {
         "tags": ["Identity"],
@@ -2653,6 +2791,77 @@
             "type": "array",
             "items": { "$ref": "#/components/schemas/SectionTeamResponse" }
           }
+        }
+      },
+      "CreateUserRequest": {
+        "type": "object",
+        "required": ["name", "hrCode", "roleId", "accountType"],
+        "properties": {
+          "name": { "type": "string" },
+          "hrCode": { "type": "string" },
+          "email": { "type": "string", "nullable": true },
+          "phone": { "type": "string", "nullable": true },
+          "title": { "type": "string", "nullable": true },
+          "roleId": { "type": "integer", "format": "int32" },
+          "accountType": { "type": "integer", "format": "int32" },
+          "teamId": { "type": "integer", "format": "int32", "nullable": true },
+          "teamleaderId": { "type": "integer", "format": "int32", "nullable": true }
+        }
+      },
+      "UpdateUserRequest": {
+        "type": "object",
+        "required": ["name", "hrCode", "roleId", "accountType"],
+        "properties": {
+          "name": { "type": "string" },
+          "hrCode": { "type": "string" },
+          "email": { "type": "string", "nullable": true },
+          "phone": { "type": "string", "nullable": true },
+          "title": { "type": "string", "nullable": true },
+          "roleId": { "type": "integer", "format": "int32" },
+          "accountType": { "type": "integer", "format": "int32" },
+          "teamId": { "type": "integer", "format": "int32", "nullable": true },
+          "teamleaderId": { "type": "integer", "format": "int32", "nullable": true }
+        }
+      },
+      "UserListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "roleId": { "type": "integer", "format": "int32" },
+          "roleName": { "type": "string" },
+          "teamId": { "type": "integer", "format": "int32", "nullable": true },
+          "teamName": { "type": "string", "nullable": true }
+        }
+      },
+      "UserDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "hrCode": { "type": "string" },
+          "email": { "type": "string", "nullable": true },
+          "phone": { "type": "string", "nullable": true },
+          "title": { "type": "string", "nullable": true },
+          "roleId": { "type": "integer", "format": "int32" },
+          "roleName": { "type": "string" },
+          "accountType": { "type": "integer", "format": "int32" },
+          "onBoard": { "type": "boolean" },
+          "teamId": { "type": "integer", "format": "int32", "nullable": true },
+          "teamName": { "type": "string", "nullable": true },
+          "teamleaderId": { "type": "integer", "format": "int32", "nullable": true },
+          "teamleaderName": { "type": "string", "nullable": true }
+        }
+      },
+      "TeamLeaderResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "roleId": { "type": "integer", "format": "int32" },
+          "roleName": { "type": "string" }
         }
       },
       "ProblemDetails": {

@@ -78,6 +78,10 @@ public static class AuthenticationExtensions
                 policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.RolesManage)));
             options.AddPolicy(PermissionPolicyNames.UsersAssignRole, policy =>
                 policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.UsersAssignRole)));
+            options.AddPolicy(PermissionPolicyNames.UsersView, policy =>
+                policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.UsersView)));
+            options.AddPolicy(PermissionPolicyNames.UsersManage, policy =>
+                policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.UsersManage)));
         });
         return services;
     }

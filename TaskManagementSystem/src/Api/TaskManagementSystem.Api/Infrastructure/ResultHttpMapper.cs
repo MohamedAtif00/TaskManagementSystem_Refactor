@@ -48,6 +48,8 @@ public static class ResultHttpMapper
             "duplicate_permission_code" => StatusCodes.Status409Conflict,
             "duplicate_role_name" => StatusCodes.Status409Conflict,
             "role_in_use" => StatusCodes.Status409Conflict,
+            "email_already_exists" => StatusCodes.Status409Conflict,
+            "user_is_section_head" => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest
         };
 }

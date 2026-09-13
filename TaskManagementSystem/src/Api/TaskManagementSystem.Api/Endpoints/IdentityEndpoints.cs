@@ -6,7 +6,14 @@ using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.Identity.Application;
 using TaskManagementSystem.Modules.Identity.Features.Permissions;
 using TaskManagementSystem.Modules.Identity.Features.Roles;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Modules.Identity.Features.Users;
+using TaskManagementSystem.Modules.Identity.Features.Users.ArchiveUser;
+using TaskManagementSystem.Modules.Identity.Features.Users.CreateUser;
+using TaskManagementSystem.Modules.Identity.Features.Users.GetTeamLeaders;
+using TaskManagementSystem.Modules.Identity.Features.Users.GetUserById;
+using TaskManagementSystem.Modules.Identity.Features.Users.ListUsers;
+using TaskManagementSystem.Modules.Identity.Features.Users.UpdateUser;
 
 namespace TaskManagementSystem.Api.Endpoints;
 
@@ -39,6 +46,19 @@ public static class IdentityEndpoints
             .RequirePermission(PermissionPolicyNames.RolesManage);
         group.MapDelete("/roles/{id:int}/permissions/{permissionId:int}", RemoveRolePermissionAsync)
             .RequirePermission(PermissionPolicyNames.RolesManage);
+
+        group.MapGet("/users", ListUsersAsync)
+            .RequirePermission(PermissionPolicyNames.UsersView);
+        group.MapGet("/users/team-leaders", GetTeamLeadersAsync)
+            .RequirePermission(PermissionPolicyNames.UsersView);
+        group.MapGet("/users/{userId:int}", GetUserByIdAsync)
+            .RequirePermission(PermissionPolicyNames.UsersView);
+        group.MapPost("/users", CreateUserAsync)
+            .RequirePermission(PermissionPolicyNames.UsersManage);
+        group.MapPut("/users/{userId:int}", UpdateUserAsync)
+            .RequirePermission(PermissionPolicyNames.UsersManage);
+        group.MapDelete("/users/{userId:int}", ArchiveUserAsync)
+            .RequirePermission(PermissionPolicyNames.UsersManage);
 
         group.MapPut("/users/{userId:int}/role", AssignUserRoleAsync)
             .RequirePermission(PermissionPolicyNames.UsersAssignRole);
@@ -163,6 +183,84 @@ public static class IdentityEndpoints
         return result.ToHttpResult(role => Results.Ok(ToRoleResponse(role)));
     }
 
+    private static async Task<IResult> ListUsersAsync(
+        IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new ListUsersQuery(), cancellationToken);
+        return result.ToHttpResult(users => Results.Ok(users.Select(ToUserListItemResponse)));
+    }
+
+    private static async Task<IResult> GetTeamLeadersAsync(
+        IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new GetTeamLeadersQuery(), cancellationToken);
+        return result.ToHttpResult(leaders => Results.Ok(leaders.Select(ToTeamLeaderResponse)));
+    }
+
+    private static async Task<IResult> GetUserByIdAsync(
+        int userId,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new GetUserByIdQuery(userId), cancellationToken);
+        return result.ToHttpResult(user => Results.Ok(ToUserDetailResponse(user)));
+    }
+
+    private static async Task<IResult> CreateUserAsync(
+        CreateUserRequest request,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(
+            new CreateUserCommand(
+                request.Name,
+                request.HrCode,
+                request.Email,
+                request.Phone,
+                request.Title,
+                request.RoleId,
+                (AccountType)request.AccountType,
+                request.TeamId,
+                request.TeamleaderId),
+            cancellationToken);
+
+        return result.ToHttpResult(user => Results.Created($"/identity/users/{user.Id}", ToUserDetailResponse(user)));
+    }
+
+    private static async Task<IResult> UpdateUserAsync(
+        int userId,
+        UpdateUserRequest request,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(
+            new UpdateUserCommand(
+                userId,
+                request.Name,
+                request.HrCode,
+                request.Email,
+                request.Phone,
+                request.Title,
+                request.RoleId,
+                (AccountType)request.AccountType,
+                request.TeamId,
+                request.TeamleaderId),
+            cancellationToken);
+
+        return result.ToHttpResult(user => Results.Ok(ToUserDetailResponse(user)));
+    }
+
+    private static async Task<IResult> ArchiveUserAsync(
+        int userId,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        var result = await mediator.Send(new ArchiveUserCommand(userId), cancellationToken);
+        return result.ToHttpResult(_ => Results.NoContent());
+    }
+
     private static async Task<IResult> AssignUserRoleAsync(
         int userId,
         AssignUserRoleRequest request,
@@ -191,5 +289,46 @@ public static class IdentityEndpoints
             Description = role.Description,
             IsSystem = role.IsSystem,
             PermissionCodes = role.PermissionCodes.ToArray()
+        };
+
+    private static UserListItemResponse ToUserListItemResponse(UserListItemResult user) =>
+        new()
+        {
+            Id = user.Id,
+            Code = user.Code,
+            Name = user.Name,
+            RoleId = user.RoleId,
+            RoleName = user.RoleName,
+            TeamId = user.TeamId,
+            TeamName = user.TeamName
+        };
+
+    private static UserDetailResponse ToUserDetailResponse(UserDetailResult user) =>
+        new()
+        {
+            Id = user.Id,
+            Code = user.Code,
+            Name = user.Name,
+            HrCode = user.HrCode,
+            Email = user.Email,
+            Phone = user.Phone,
+            Title = user.Title,
+            RoleId = user.RoleId,
+            RoleName = user.RoleName,
+            AccountType = user.AccountType,
+            OnBoard = user.OnBoard,
+            TeamId = user.TeamId,
+            TeamName = user.TeamName,
+            TeamleaderId = user.TeamleaderId,
+            TeamleaderName = user.TeamleaderName
+        };
+
+    private static TeamLeaderResponse ToTeamLeaderResponse(TeamLeaderResult leader) =>
+        new()
+        {
+            Id = leader.Id,
+            Name = leader.Name,
+            RoleId = leader.RoleId,
+            RoleName = leader.RoleName
         };
 }

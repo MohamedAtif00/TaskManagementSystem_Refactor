@@ -60,7 +60,7 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 
 
 
-Suggested next slice: **Ticket** execution (after Workflows + Curriculum) or **Identity user CRUD**.
+Suggested next slice: **Workflows** module (unblocks Tickets) or **Identity user audit** (`UserChanges`).
 
 
 
@@ -102,6 +102,28 @@ Modern HTTP API — direct JSON success bodies and RFC 7807 ProblemDetails error
 - **Unexpected errors** — `ApiExceptionHandler` returns 500 ProblemDetails (`code: unexpected_error`). Expected Identity failures return `Result<T>` instead of throwing.
 
 - **RBAC admin** — `/identity/*` endpoints for permissions, roles, role-permission mapping, and user role assignment (permission-gated).
+
+- **User admin (MVP)** — list/get/create/update/archive users with `TeamId` assignment; seeds `hr.EmployeeBalances` on create. Permissions: `identity.users.view`, `identity.users.manage`.
+
+
+
+## Identity user admin
+
+
+
+| Endpoint | Purpose | Permission |
+|---|---|---|
+| `GET /identity/users` | List active users | `identity.users.view` |
+| `GET /identity/users/{id}` | User detail | `identity.users.view` |
+| `GET /identity/users/team-leaders` | TeamLeader + SectionHead lookup | `identity.users.view` |
+| `POST /identity/users` | Create user (auto 6-char code) | `identity.users.manage` |
+| `PUT /identity/users/{id}` | Update profile, team, role | `identity.users.manage` |
+| `DELETE /identity/users/{id}` | Soft-archive user | `identity.users.manage` |
+| `PUT /identity/users/{id}/role` | Assign role only | `identity.users.assign-role` |
+
+- **Cross-schema validation** — `TeamId` validated via Dapper against `organization.Teams`; section-head check blocks archive.
+- **HR sync** — create inserts `hr.EmployeeBalances`; update syncs team/role metadata only (balances owned by HR).
+- **Deferred** — `UserChanges` audit trail.
 
 
 
@@ -771,7 +793,7 @@ When a module gains domain logic and handlers:
 
 
 
-- Identity user CRUD and `UserChanges` audit
+- Identity `UserChanges` audit
 
 - Module facades (`ITicketModule.ExecuteCommandAsync`, etc.)
 

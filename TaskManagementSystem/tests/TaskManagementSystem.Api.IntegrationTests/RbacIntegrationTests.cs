@@ -25,6 +25,8 @@ public sealed class RbacIntegrationTests(TmsWebApplicationFactory factory) : ICl
         body.Permissions.Should().Contain(IdentityPermissionCodes.PermissionsManage);
         body.Permissions.Should().Contain(IdentityPermissionCodes.RolesManage);
         body.Permissions.Should().Contain(IdentityPermissionCodes.UsersAssignRole);
+        body.Permissions.Should().Contain(IdentityPermissionCodes.UsersView);
+        body.Permissions.Should().Contain(IdentityPermissionCodes.UsersManage);
     }
 
     [Fact]
