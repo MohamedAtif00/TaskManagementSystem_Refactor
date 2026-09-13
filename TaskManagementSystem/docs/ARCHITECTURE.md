@@ -6,7 +6,7 @@ Living snapshot of the new solution. Update this file as the refactor grows.
 
 
 
-**Last updated:** 2026-09-12
+**Last updated:** 2026-09-13
 
 
 
@@ -26,7 +26,7 @@ Related: [OTLP / OpenTelemetry](OTLP.md), [Database / DbUp](DATABASE.md)
 
 
 
-The solution has **real cross-cutting infrastructure**, the **Identity auth slice** (code-only login), and the **HR leave complete slice** (all leave types, opinions, from-next, medical upload, role-scoped search). Other product features (tickets, etc.) are not ported yet.
+The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays). Other product features (tickets, curriculum, workflows, etc.) are not ported yet.
 
 
 
@@ -40,7 +40,9 @@ The solution has **real cross-cutting infrastructure**, the **Identity auth slic
 
 | API host | Done — observability, realtime hub, JWT auth, Minimal API `/auth/*` endpoints |
 
-| Identity module (auth) | Done — login, refresh, logout, about-me (modern HTTP API) |
+| Identity module (auth + RBAC) | Done — login, refresh, logout, about-me; `/identity/*` permissions, roles, user role assignment |
+
+| Organization module | Done — teams and sections CRUD with `SectionTeams` links |
 
 | HR module (leave complete) | Done — all leave types, opinions, from-next/preview, medical upload, search |
 | HR module (permission + WFH) | Done — request, search, opinions, cancel, balance deduct/refund |
@@ -50,15 +52,15 @@ The solution has **real cross-cutting infrastructure**, the **Identity auth slic
 
 | Persistence (DbUp + SQL scripts) | Done — per-module schemas, DatabaseMigrator, initial DDL |
 
-| EF Core / repositories | Done — Identity `IdentityDbContext`, HR `HrDbContext` + repositories |
+| EF Core / repositories | Done — Identity, HR, and Organization DbContexts + repositories |
 
 | Frontend | Not started |
 
-| Automated tests | Done — 105 tests across unit, integration, and architecture |
+| Automated tests | Done — unit, integration, and architecture tests (Organization unit tests added) |
 
 
 
-Suggested next slice: **Organization** (Teams/Sections CRUD) or **Ticket** execution.
+Suggested next slice: **Ticket** execution (after Workflows + Curriculum) or **Identity user CRUD**.
 
 
 
@@ -98,6 +100,35 @@ Modern HTTP API — direct JSON success bodies and RFC 7807 ProblemDetails error
 - **Validation errors** — FluentValidation throws `ValidationException`; [`ApiExceptionHandler`](../src/Api/TaskManagementSystem.Api/Infrastructure/ApiExceptionHandler.cs) returns 400 ProblemDetails with `code: validation_failed` and `errors` field map.
 
 - **Unexpected errors** — `ApiExceptionHandler` returns 500 ProblemDetails (`code: unexpected_error`). Expected Identity failures return `Result<T>` instead of throwing.
+
+- **RBAC admin** — `/identity/*` endpoints for permissions, roles, role-permission mapping, and user role assignment (permission-gated).
+
+
+
+## Organization (Teams + Sections)
+
+
+
+Team-only org model: **Teams**, **Sections**, and **`SectionTeams`** join links. No org-level Groups.
+
+
+
+| Endpoint | Purpose | Auth |
+|---|---|---|
+| `GET /organization/teams` | List active teams with member counts | Required |
+| `GET /organization/teams/{id}` | Team detail with active members | Required |
+| `POST /organization/teams` | Create team | Required |
+| `PUT /organization/teams/{id}` | Update team name | Required |
+| `DELETE /organization/teams/{id}` | Archive team | Required |
+| `GET /organization/sections` | List active sections | Required |
+| `GET /organization/sections/{id}` | Section detail with head and linked teams | Required |
+| `POST /organization/sections` | Create section + team links | Required |
+| `PUT /organization/sections/{id}` | Update section + replace team links | Required |
+| `DELETE /organization/sections/{id}` | Archive section | Required |
+
+- **Module layout** — [`TaskManagementSystem.Modules.Organization`](../src/Modules/Organization/TaskManagementSystem.Modules.Organization/) with `Domain/`, `Application/`, `Features/Teams/`, `Features/Sections/`, `Infrastructure/`.
+- **Cross-schema reads** — member counts and section head validation use Dapper against `identity.Users` (modules do not reference each other).
+- **HTTP style** — Minimal API in [`Endpoints/Organization/`](../src/Api/TaskManagementSystem.Api/Endpoints/Organization/OrganizationEndpoints.cs).
 
 
 
@@ -544,9 +575,9 @@ Every module uses the same shape:
 
 |---|---|---|
 
-| Identity | Authenticate, RefreshToken, AboutMe, Logout | Done — MediatR slices + EF Core + JWT |
+| Identity | Authenticate, RefreshToken, AboutMe, Logout, RBAC admin | Done — auth + `/identity/*` RBAC |
 
-| Organization | **Teams**, **Sections** (no Groups) | Project shell only |
+| Organization | **Teams**, **Sections** (no Groups) | Done — teams/sections CRUD + `SectionTeams` |
 
 | Workflows | Schemas, Nodes, Steps, TaskBank | Project shell only |
 
@@ -558,7 +589,7 @@ Every module uses the same shape:
 
 | Notifications | Notifications (visible alerts only) | `Contracts/NotificationRealtime` (visible alerts) |
 
-| HR | Leave, Permissions, WorkFromHome, Holidays | Leave + Permission + WFH complete; email/SignalR deferred |
+| HR | Leave, Permissions, WorkFromHome, ForgotClock, Holidays | Done — email/SignalR/annual reset job deferred |
 
 
 
@@ -646,7 +677,9 @@ Traces, metrics, and logs are configured on the host via `AddObservability()`. M
 
 | `Modules.HR.UnitTests` | Unit | 32 | Working days, holidays, leave types, settings, opinions, handlers, validators |
 
-| `Api.IntegrationTests` | Integration | 26 | Auth, HR leave flow + holidays, audit, SignalR hub |
+| `Modules.Organization.UnitTests` | Unit | 7 | Team/section domain rules and create-team handler |
+
+| `Api.IntegrationTests` | Integration | 28 | Auth, RBAC, HR, Organization, audit, SignalR hub |
 
 | `ArchitectureTests` | Architecture | 9 | SignalR/OpenTelemetry boundaries, Notifications↛Ticket, hub location |
 
@@ -726,7 +759,11 @@ When a module gains domain logic and handlers:
 
 - DbUp database layer: per-module SQL schemas, `DatabaseMigrator`, initial DDL (Groups removed; TeamId on TaskBank/Tasks)
 
-- Identity auth: code-only login, JWT + refresh cookies, legacy `/auth/*` contract
+- Identity auth: code-only login, JWT + refresh cookies, `/auth/*` + `/identity/*` RBAC admin
+
+- Organization: teams and sections CRUD with `OrganizationDbContext`
+
+- HR: leave, permissions, WFH, forgot clock, holidays — full HTTP API under `/hr/*`
 
 
 
@@ -734,11 +771,7 @@ When a module gains domain logic and handlers:
 
 
 
-- Module aggregates and handlers outside Identity
-
-- HTTP endpoints outside auth
-
-- EF Core for modules other than Identity
+- Identity user CRUD and `UserChanges` audit
 
 - Module facades (`ITicketModule.ExecuteCommandAsync`, etc.)
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "Task Management System API (Dev)",
     "version": "1.0.0",
-    "description": "Complete OpenAPI spec for the Task Management System refactor — Auth, Identity RBAC, and HR modules.\n\n## Apidog quick start (auto token)\n1. Import **openapi/apidog/environment.local-dev.json** → select environment **TMS Local Dev**.\n2. Import this spec. Set **bearerAuth** default token to `{{accessToken}}` (Components → Security Schemes → bearerAuth).\n3. On **POST /auth/login** and **POST /auth/refresh-token**, add Post-processor **Extract Variable**: JSONPath `$.accessToken` → env var `accessToken` (or use script from `openapi/apidog/scripts/save-access-token.js`).\n4. **POST /auth/login** with `{ \"code\": \"{{userCode}}\" }` — token is saved automatically; all secured endpoints inherit Bearer auth.\n\nSee **openapi/apidog/post-processors.json** for full setup and test scenario.\n\nRefresh: **POST /auth/refresh-token** (HttpOnly refreshToken cookie from login).\nLogout: **POST /auth/logout** (clears refresh cookie; optional clear-access-token post-processor).\n\n## Modules included\n- **Auth** — login, refresh, logout, about-me\n- **Identity** — RBAC permissions, roles, user role assignment\n- **HR** — leave, holidays, time-off permissions, work from home, forgot clock"
+    "description": "Complete OpenAPI spec for the Task Management System refactor — Auth, Identity RBAC, Organization, and HR modules.\n\n## Apidog quick start (auto token)\n1. Import **openapi/apidog/environment.local-dev.json** → select environment **TMS Local Dev**.\n2. Import this spec. Set **bearerAuth** default token to `{{accessToken}}` (Components → Security Schemes → bearerAuth).\n3. On **POST /auth/login** and **POST /auth/refresh-token**, add Post-processor **Extract Variable**: JSONPath `$.accessToken` → env var `accessToken` (or use script from `openapi/apidog/scripts/save-access-token.js`).\n4. **POST /auth/login** with `{ \"code\": \"{{userCode}}\" }` — token is saved automatically; all secured endpoints inherit Bearer auth.\n\nSee **openapi/apidog/post-processors.json** for full setup and test scenario.\n\nRefresh: **POST /auth/refresh-token** (HttpOnly refreshToken cookie from login).\nLogout: **POST /auth/logout** (clears refresh cookie; optional clear-access-token post-processor).\n\n## Modules included\n- **Auth** — login, refresh, logout, about-me\n- **Identity** — RBAC permissions, roles, user role assignment\n- **Organization** — teams and sections CRUD\n- **HR** — leave, holidays, time-off permissions, work from home, forgot clock"
   },
   "servers": [
     {
@@ -22,7 +22,8 @@
     { "name": "HR Holidays", "description": "Public holiday CRUD" },
     { "name": "HR Permissions", "description": "Permission requests, opinions, and search" },
     { "name": "HR Work From Home", "description": "Work from home requests, opinions, and search" },
-    { "name": "HR Forgot Clock", "description": "Forgot clock in/out attendance requests, opinions, and search" }
+    { "name": "HR Forgot Clock", "description": "Forgot clock in/out attendance requests, opinions, and search" },
+    { "name": "Organization", "description": "Teams and sections CRUD" }
   ],
   "security": [{ "bearerAuth": [] }],
   "paths": {
@@ -1778,6 +1779,228 @@
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
+    },
+    "/organization/teams": {
+      "get": {
+        "tags": ["Organization"],
+        "summary": "List active teams",
+        "operationId": "listTeams",
+        "responses": {
+          "200": {
+            "description": "Active teams with member counts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/TeamListItemResponse" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Organization"],
+        "summary": "Create team",
+        "operationId": "createTeam",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateTeamRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Team created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TeamListItemResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/organization/teams/{id}": {
+      "get": {
+        "tags": ["Organization"],
+        "summary": "Get team by id",
+        "operationId": "getTeamById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Team detail with members",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TeamDetailResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Organization"],
+        "summary": "Update team",
+        "operationId": "updateTeam",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateTeamRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated team",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TeamListItemResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Organization"],
+        "summary": "Archive team",
+        "operationId": "archiveTeam",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "204": { "description": "Team archived" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/organization/sections": {
+      "get": {
+        "tags": ["Organization"],
+        "summary": "List active sections",
+        "operationId": "listSections",
+        "responses": {
+          "200": {
+            "description": "Active sections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/SectionListItemResponse" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Organization"],
+        "summary": "Create section",
+        "operationId": "createSection",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateSectionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Section created",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SectionDetailResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/organization/sections/{id}": {
+      "get": {
+        "tags": ["Organization"],
+        "summary": "Get section by id",
+        "operationId": "getSectionById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Section detail with head and linked teams",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SectionDetailResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Organization"],
+        "summary": "Update section",
+        "operationId": "updateSection",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UpdateSectionRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated section",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/SectionDetailResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      },
+      "delete": {
+        "tags": ["Organization"],
+        "summary": "Archive section",
+        "operationId": "archiveSection",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }
+        ],
+        "responses": {
+          "204": { "description": "Section archived" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
     }
   },
   "components": {
@@ -2333,6 +2556,103 @@
           "endDate": { "type": "string", "format": "date-time" },
           "createdAt": { "type": "string", "format": "date-time" },
           "createdByUserId": { "type": "integer", "format": "int32" }
+        }
+      },
+      "CreateTeamRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" }
+        }
+      },
+      "UpdateTeamRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" }
+        }
+      },
+      "TeamListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "members": { "type": "integer", "format": "int32" }
+        }
+      },
+      "TeamMemberResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" }
+        }
+      },
+      "TeamDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "members": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/TeamMemberResponse" }
+          }
+        }
+      },
+      "CreateSectionRequest": {
+        "type": "object",
+        "required": ["name", "headId"],
+        "properties": {
+          "name": { "type": "string" },
+          "headId": { "type": "integer", "format": "int32" },
+          "teamIds": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int32" }
+          }
+        }
+      },
+      "UpdateSectionRequest": {
+        "type": "object",
+        "required": ["name", "headId"],
+        "properties": {
+          "name": { "type": "string" },
+          "headId": { "type": "integer", "format": "int32" },
+          "teamIds": {
+            "type": "array",
+            "items": { "type": "integer", "format": "int32" }
+          }
+        }
+      },
+      "SectionListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" }
+        }
+      },
+      "IdNameResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" }
+        }
+      },
+      "SectionTeamResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" }
+        }
+      },
+      "SectionDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "head": { "$ref": "#/components/schemas/IdNameResponse" },
+          "teams": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/SectionTeamResponse" }
+          }
         }
       },
       "ProblemDetails": {
