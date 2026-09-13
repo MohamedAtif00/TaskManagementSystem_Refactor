@@ -20,6 +20,9 @@ public static class IdentityModuleExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddSqlConnectionFactory(configuration);
         services.AddScoped<AboutMeQueries>();
+        services.AddScoped<IUserAdminQueries, UserAdminQueries>();
+        services.AddScoped<OrganizationLookupQueries>();
+        services.AddScoped<EmployeeBalanceCommands>();
 
         services.AddDbContext<IdentityDbContext>(options =>
         {

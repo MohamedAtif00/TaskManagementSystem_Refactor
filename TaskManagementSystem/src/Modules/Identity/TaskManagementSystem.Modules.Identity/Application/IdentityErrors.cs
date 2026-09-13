@@ -45,4 +45,16 @@ public static class IdentityErrors
 
     public static ResultError InvalidRoleName(string message) =>
         new("invalid_role_name", message);
+
+    public static ResultError EmailAlreadyExists =>
+        new("email_already_exists", "Email is already in use.");
+
+    public static ResultError TeamInvalid =>
+        new("team_invalid", "Team was not found.");
+
+    public static ResultError TeamLeaderInvalid =>
+        new("team_leader_invalid", "Team leader was not found or is not eligible.");
+
+    public static ResultError UserIsSectionHead =>
+        new("user_is_section_head", "User is assigned as a section head and cannot be archived.");
 }
