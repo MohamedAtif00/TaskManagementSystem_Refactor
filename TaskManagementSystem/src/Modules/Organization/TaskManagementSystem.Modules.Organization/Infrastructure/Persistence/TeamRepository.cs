@@ -20,6 +20,22 @@ internal sealed class TeamRepository(OrganizationDbContext context)
             .OrderBy(team => team.Name)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Team>> GetActiveByIdsAsync(
+        IReadOnlyCollection<int> teamIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (teamIds.Count == 0)
+        {
+            return [];
+        }
+
+        var distinctIds = teamIds.Distinct().ToArray();
+        return await Set.AsNoTracking()
+            .Where(team => !team.Archived && distinctIds.Contains(team.Id))
+            .OrderBy(team => team.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<bool> ExistsActiveByIdAsync(int id, CancellationToken cancellationToken = default) =>
         ExistsReadOnlyAsync(team => team.Id == id && !team.Archived, cancellationToken);
 

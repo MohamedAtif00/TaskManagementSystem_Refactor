@@ -47,6 +47,6 @@ public sealed class CreateSectionCommandHandler(
         await unitOfWork.Sections.AddAsync(createResult.Value, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
 
-        return await SectionDetailMapper.MapAsync(createResult.Value, unitOfWork, identityLookupQueries, cancellationToken);
+        return await SectionDetailMapper.MapAsync(createResult.Value, head, unitOfWork, cancellationToken);
     }
 }

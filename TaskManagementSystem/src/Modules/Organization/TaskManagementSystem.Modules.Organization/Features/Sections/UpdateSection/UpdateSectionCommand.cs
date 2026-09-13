@@ -55,6 +55,6 @@ public sealed class UpdateSectionCommandHandler(
         section.ReplaceTeamLinks(request.TeamIds);
         await unitOfWork.CommitAsync(cancellationToken);
 
-        return await SectionDetailMapper.MapAsync(section, unitOfWork, identityLookupQueries, cancellationToken);
+        return await SectionDetailMapper.MapAsync(section, head, unitOfWork, cancellationToken);
     }
 }

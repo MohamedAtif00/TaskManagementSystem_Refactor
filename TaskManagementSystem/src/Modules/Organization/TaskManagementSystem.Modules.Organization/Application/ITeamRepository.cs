@@ -10,6 +10,10 @@ public interface ITeamRepository
 
     Task<IReadOnlyList<Team>> ListActiveAsync(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Team>> GetActiveByIdsAsync(
+        IReadOnlyCollection<int> teamIds,
+        CancellationToken cancellationToken = default);
+
     Task<bool> ExistsActiveByIdAsync(int id, CancellationToken cancellationToken = default);
 
     Task<bool> AllActiveExistAsync(IReadOnlyCollection<int> teamIds, CancellationToken cancellationToken = default);
