@@ -6,7 +6,7 @@ Living snapshot of the new solution. Update this file as the refactor grows.
 
 
 
-**Last updated:** 2026-09-07
+**Last updated:** 2026-09-12
 
 
 
@@ -43,6 +43,8 @@ The solution has **real cross-cutting infrastructure**, the **Identity auth slic
 | Identity module (auth) | Done — login, refresh, logout, about-me (modern HTTP API) |
 
 | HR module (leave complete) | Done — all leave types, opinions, from-next/preview, medical upload, search |
+| HR module (permission + WFH) | Done — request, search, opinions, cancel, balance deduct/refund |
+| HR module (forgot clock) | Done — request, search, opinions, cancel (no balance) |
 
 | Other module business logic | Not started |
 
@@ -103,7 +105,7 @@ Modern HTTP API — direct JSON success bodies and RFC 7807 ProblemDetails error
 
 
 
-Complete leave slice: **all leave types**, from-next split/preview, sick medical upload, multi-level opinions (TL/PM/SectionHead record; Owner final approve/reject), role-scoped search, and leave settings. Permission, WFH, email, SignalR notifications, and background jobs remain deferred.
+Complete HR slice: **leave** (all types, from-next split/preview, sick medical upload), **permissions**, and **work from home**, with multi-level opinions (TL/PM/SectionHead record; Owner final approve/reject), role-scoped Dapper search, and shared balances. Email, SignalR notifications, and background jobs remain deferred.
 
 
 
@@ -126,6 +128,60 @@ Complete leave slice: **all leave types**, from-next split/preview, sick medical
 | `POST /hr/holidays` | Create public holiday (single day or range) | ProjectManger+ |
 | `PUT /hr/holidays/{id}` | Update public holiday | ProjectManger+ |
 | `DELETE /hr/holidays/{id}` | Delete public holiday | ProjectManger+ |
+
+
+
+## HR (Permissions)
+
+
+
+| Endpoint | Purpose | Auth |
+|---|---|---|
+| `POST /hr/permissions` | Create permission request | Required |
+| `GET /hr/permissions` | List own permission requests | Required |
+| `GET /hr/permissions/search` | Role-scoped paginated list with filters | Required |
+| `GET /hr/permissions/pending` | Pending queue | Owner |
+| `GET /hr/permissions/{id}` | Get permission request with opinions | Required / Owner |
+| `POST /hr/permissions/{id}/opinions` | Record opinion or Owner approve/reject | TL+ / Owner |
+| `POST /hr/permissions/opinions/bulk` | Bulk Owner approve/reject | Owner |
+| `PUT /hr/permissions/{id}/cancel` | Cancel pending or future approved permission (refund) | Required |
+| `POST /hr/permissions/{id}/approve` | Owner approve alias | Owner |
+
+
+
+## HR (Work From Home)
+
+
+
+| Endpoint | Purpose | Auth |
+|---|---|---|
+| `POST /hr/work-from-home` | Create WFH request | Required |
+| `GET /hr/work-from-home` | List own WFH requests | Required |
+| `GET /hr/work-from-home/search` | Role-scoped paginated list with filters | Required |
+| `GET /hr/work-from-home/pending` | Pending queue | Owner |
+| `GET /hr/work-from-home/{id}` | Get WFH request with opinions | Required / Owner |
+| `POST /hr/work-from-home/{id}/opinions` | Record opinion or Owner approve/reject | TL+ / Owner |
+| `POST /hr/work-from-home/opinions/bulk` | Bulk Owner approve/reject | Owner |
+| `PUT /hr/work-from-home/{id}/cancel` | Cancel pending or future approved WFH (refund) | Required |
+| `POST /hr/work-from-home/{id}/approve` | Owner approve alias | Owner |
+
+
+
+## HR (Forgot Clock)
+
+
+
+| Endpoint | Purpose | Auth |
+|---|---|---|
+| `POST /hr/forgot-clock` | Create forgot clock in/out request | Required |
+| `GET /hr/forgot-clock` | List own forgot clock requests | Required |
+| `GET /hr/forgot-clock/search` | Role-scoped paginated list with filters | Required |
+| `GET /hr/forgot-clock/pending` | Pending queue | Owner |
+| `GET /hr/forgot-clock/{id}` | Get forgot clock request with opinions | Required / Owner |
+| `POST /hr/forgot-clock/{id}/opinions` | Record opinion or Owner approve/reject | TL+ / Owner |
+| `POST /hr/forgot-clock/opinions/bulk` | Bulk Owner approve/reject | Owner |
+| `PUT /hr/forgot-clock/{id}/cancel` | Cancel pending or same-day approved request | Required |
+| `POST /hr/forgot-clock/{id}/approve` | Owner approve alias | Owner |
 
 
 
@@ -153,8 +209,9 @@ flowchart LR
 - **Module layout** — [`TaskManagementSystem.Modules.HR`](../src/Modules/HR/TaskManagementSystem.Modules.HR/) follows the Identity vertical-slice template: `Domain/`, `Application/`, `Features/`, `Infrastructure/`. Features are grouped by submodule:
   - `Features/Leave/` — leave requests, opinions, preview, balances, medical certificate
   - `Features/Holidays/` — public holiday CRUD
-  - `Features/Permission/` — (future)
-  - `Features/WorkFromHome/` — (future)
+  - `Features/Permissions/` — permission requests, opinions, search
+  - `Features/WorkFromHome/` — WFH requests, opinions, search
+  - `Features/ForgotClock/` — forgot clock in/out requests, opinions, search
 - **Leave types** — Annual, Sick, Emergency, UnpaidLeave, FromNextBalance with type-specific balance rules
 - **From-next split** — when annual exceeds available and user confirms, two `LeaveRequest` rows (Annual + FromNextBalance) in one transaction
 - **Working days** — Friday and Saturday excluded, plus admin-managed public holidays from `hr.PublicHolidays` via [`IWorkingDayCalculator`](../src/Modules/HR/TaskManagementSystem.Modules.HR/Application/IWorkingDayCalculator.cs). `WorkingDays` is persisted on each leave request at creation time.
@@ -499,7 +556,7 @@ Every module uses the same shape:
 
 | Notifications | Notifications (visible alerts only) | `Contracts/NotificationRealtime` (visible alerts) |
 
-| HR | Leave (complete), Permissions, WorkFromHome | Leave complete — all types + opinions + search; Permission/WFH deferred |
+| HR | Leave, Permissions, WorkFromHome, Holidays | Leave + Permission + WFH complete; email/SignalR deferred |
 
 
 
