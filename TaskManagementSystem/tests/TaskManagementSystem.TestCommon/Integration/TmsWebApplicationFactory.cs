@@ -12,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using TaskManagementSystem.Modules.HR.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.Identity.Infrastructure.Persistence;
+using TaskManagementSystem.Modules.Organization.Infrastructure.Persistence;
 
 namespace TaskManagementSystem.TestCommon.Integration;
 
@@ -51,6 +52,7 @@ public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
         {
             ReplaceSqlServerDbContext<IdentityDbContext>(services, ConnectionString);
             ReplaceSqlServerDbContext<HrDbContext>(services, ConnectionString);
+            ReplaceSqlServerDbContext<OrganizationDbContext>(services, ConnectionString);
 
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
