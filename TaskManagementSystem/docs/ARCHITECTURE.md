@@ -26,7 +26,7 @@ Related: [OTLP / OpenTelemetry](OTLP.md), [Database / DbUp](DATABASE.md)
 
 
 
-The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays). Other product features (tickets, curriculum, workflows, etc.) are not ported yet.
+The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), **Workflows** (schemas, nodes, task bank, steps), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays). Other product features (tickets, curriculum, etc.) are not ported yet.
 
 
 
@@ -43,6 +43,7 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 | Identity module (auth + RBAC) | Done — login, refresh, logout, about-me; `/identity/*` permissions, roles, user role assignment |
 
 | Organization module | Done — teams and sections CRUD with `SectionTeams` links |
+| Workflows module | Done — schema types, schemas, nodes, task bank, steps CRUD |
 
 | HR module (leave complete) | Done — all leave types, opinions, from-next/preview, medical upload, search |
 | HR module (permission + WFH) | Done — request, search, opinions, cancel, balance deduct/refund |
@@ -52,15 +53,15 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 
 | Persistence (DbUp + SQL scripts) | Done — per-module schemas, DatabaseMigrator, initial DDL |
 
-| EF Core / repositories | Done — Identity, HR, and Organization DbContexts + repositories |
+| EF Core / repositories | Done — Identity, HR, Organization, and Workflows DbContexts + repositories |
 
 | Frontend | Not started |
 
-| Automated tests | Done — unit, integration, and architecture tests (Organization unit tests added) |
+| Automated tests | Done — unit, integration, and architecture tests (Organization + Workflows unit tests added) |
 
 
 
-Suggested next slice: **Workflows** module (unblocks Tickets) or **Identity user audit** (`UserChanges`).
+Suggested next slice: **Curriculum** module (unblocks Tickets) or **Identity user audit** (`UserChanges`).
 
 
 
@@ -151,6 +152,42 @@ Team-only org model: **Teams**, **Sections**, and **`SectionTeams`** join links.
 - **Module layout** — [`TaskManagementSystem.Modules.Organization`](../src/Modules/Organization/TaskManagementSystem.Modules.Organization/) with `Domain/`, `Application/`, `Features/Teams/`, `Features/Sections/`, `Infrastructure/`.
 - **Cross-schema reads** — member counts and section head validation use Dapper against `identity.Users` (modules do not reference each other).
 - **HTTP style** — Minimal API in [`Endpoints/Organization/`](../src/Api/TaskManagementSystem.Api/Endpoints/Organization/OrganizationEndpoints.cs).
+
+
+
+## Workflows (Schemas, Nodes, TaskBank, Steps)
+
+
+
+Workflow definition MVP: **SchemaTypes**, **Schemas**, **Nodes** (ordered, start/end flags), **TaskBank** (team-scoped task templates), and **Steps** (node + task bank links). **NodeSequences** deferred.
+
+
+
+| Endpoint | Purpose | Auth |
+|---|---|---|
+| `GET /workflows/schema-types` | List schema types | Required |
+| `GET /workflows/schemas` | List active schemas | Required |
+| `GET /workflows/schemas/{id}` | Schema detail | Required |
+| `POST /workflows/schemas` | Create schema | Required |
+| `PUT /workflows/schemas/{id}` | Update schema | Required |
+| `DELETE /workflows/schemas/{id}` | Archive schema | Required |
+| `GET /workflows/schemas/{schemaId}/nodes` | List nodes for schema | Required |
+| `POST /workflows/schemas/{schemaId}/nodes` | Create node (auto order) | Required |
+| `PUT /workflows/nodes/{id}` | Update node | Required |
+| `DELETE /workflows/nodes/{id}` | Archive node | Required |
+| `GET /workflows/task-bank` | List active task bank items | Required |
+| `POST /workflows/task-bank` | Create task bank item | Required |
+| `PUT /workflows/task-bank/{id}` | Update task bank item | Required |
+| `DELETE /workflows/task-bank/{id}` | Deactivate task bank item | Required |
+| `GET /workflows/nodes/{nodeId}/steps` | List steps for node | Required |
+| `POST /workflows/nodes/{nodeId}/steps` | Create step (auto order) | Required |
+| `PUT /workflows/steps/{id}` | Update step | Required |
+| `DELETE /workflows/steps/{id}` | Archive step | Required |
+
+- **Module layout** — [`TaskManagementSystem.Modules.Workflows`](../src/Modules/Workflows/TaskManagementSystem.Modules.Workflows/) with `Domain/`, `Application/`, `Features/`, `Infrastructure/`.
+- **Cross-schema validation** — `TeamId` on TaskBank validated via Dapper against `organization.Teams` (no project references between modules).
+- **HTTP style** — Minimal API in [`Endpoints/Workflows/`](../src/Api/TaskManagementSystem.Api/Endpoints/Workflows/WorkflowsEndpoints.cs).
+- **Deferred** — NodeSequences / rollback graph rules from legacy ATS.
 
 
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "Task Management System API (Dev)",
     "version": "1.0.0",
-    "description": "Complete OpenAPI spec for the Task Management System refactor — Auth, Identity RBAC, Organization, and HR modules.\n\n## Apidog quick start (auto token)\n1. Import **openapi/apidog/environment.local-dev.json** → select environment **TMS Local Dev**.\n2. Import this spec. Set **bearerAuth** default token to `{{accessToken}}` (Components → Security Schemes → bearerAuth).\n3. On **POST /auth/login** and **POST /auth/refresh-token**, add Post-processor **Extract Variable**: JSONPath `$.accessToken` → env var `accessToken` (or use script from `openapi/apidog/scripts/save-access-token.js`).\n4. **POST /auth/login** with `{ \"code\": \"{{userCode}}\" }` — token is saved automatically; all secured endpoints inherit Bearer auth.\n\nSee **openapi/apidog/post-processors.json** for full setup and test scenario.\n\nRefresh: **POST /auth/refresh-token** (HttpOnly refreshToken cookie from login).\nLogout: **POST /auth/logout** (clears refresh cookie; optional clear-access-token post-processor).\n\n## Modules included\n- **Auth** — login, refresh, logout, about-me\n- **Identity** — RBAC permissions, roles, user role assignment\n- **Organization** — teams and sections CRUD\n- **HR** — leave, holidays, time-off permissions, work from home, forgot clock"
+    "description": "Complete OpenAPI spec for the Task Management System refactor — Auth, Identity RBAC, Organization, Workflows, and HR modules.\n\n## Apidog quick start (auto token)\n1. Import **openapi/apidog/environment.local-dev.json** → select environment **TMS Local Dev**.\n2. Import this spec. Set **bearerAuth** default token to `{{accessToken}}` (Components → Security Schemes → bearerAuth).\n3. On **POST /auth/login** and **POST /auth/refresh-token**, add Post-processor **Extract Variable**: JSONPath `$.accessToken` → env var `accessToken` (or use script from `openapi/apidog/scripts/save-access-token.js`).\n4. **POST /auth/login** with `{ \"code\": \"{{userCode}}\" }` — token is saved automatically; all secured endpoints inherit Bearer auth.\n\nSee **openapi/apidog/post-processors.json** for full setup and test scenario.\n\nRefresh: **POST /auth/refresh-token** (HttpOnly refreshToken cookie from login).\nLogout: **POST /auth/logout** (clears refresh cookie; optional clear-access-token post-processor).\n\n## Modules included\n- **Auth** — login, refresh, logout, about-me\n- **Identity** — RBAC permissions, roles, user role assignment\n- **Organization** — teams and sections CRUD\n- **Workflows** — schemas, nodes, task bank, steps\n- **HR** — leave, holidays, time-off permissions, work from home, forgot clock"
   },
   "servers": [
     {
@@ -23,7 +23,8 @@
     { "name": "HR Permissions", "description": "Permission requests, opinions, and search" },
     { "name": "HR Work From Home", "description": "Work from home requests, opinions, and search" },
     { "name": "HR Forgot Clock", "description": "Forgot clock in/out attendance requests, opinions, and search" },
-    { "name": "Organization", "description": "Teams and sections CRUD" }
+    { "name": "Organization", "description": "Teams and sections CRUD" },
+    { "name": "Workflows", "description": "Workflow schemas, nodes, task bank, and steps" }
   ],
   "security": [{ "bearerAuth": [] }],
   "paths": {
@@ -2139,6 +2140,279 @@
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
+    },
+    "/workflows/schema-types": {
+      "get": {
+        "tags": ["Workflows"],
+        "summary": "List schema types",
+        "operationId": "listSchemaTypes",
+        "responses": {
+          "200": {
+            "description": "Schema types",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SchemaTypeResponse" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/workflows/schemas": {
+      "get": {
+        "tags": ["Workflows"],
+        "summary": "List active schemas",
+        "operationId": "listSchemas",
+        "responses": {
+          "200": {
+            "description": "Active schemas",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SchemaListItemResponse" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Workflows"],
+        "summary": "Create schema",
+        "operationId": "createSchema",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateSchemaRequest" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Schema created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SchemaDetailResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/workflows/schemas/{id}": {
+      "get": {
+        "tags": ["Workflows"],
+        "summary": "Get schema by id",
+        "operationId": "getSchemaById",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Schema detail", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SchemaDetailResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Workflows"],
+        "summary": "Update schema",
+        "operationId": "updateSchema",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateSchemaRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Updated schema", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SchemaDetailResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Workflows"],
+        "summary": "Archive schema",
+        "operationId": "archiveSchema",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "204": { "description": "Schema archived" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/workflows/schemas/{schemaId}/nodes": {
+      "get": {
+        "tags": ["Workflows"],
+        "summary": "List nodes for schema",
+        "operationId": "listNodesBySchema",
+        "parameters": [{ "name": "schemaId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": {
+            "description": "Nodes",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/NodeListItemResponse" } } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "tags": ["Workflows"],
+        "summary": "Create node",
+        "operationId": "createNode",
+        "parameters": [{ "name": "schemaId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateNodeRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Node created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NodeListItemResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/workflows/nodes/{id}": {
+      "put": {
+        "tags": ["Workflows"],
+        "summary": "Update node",
+        "operationId": "updateNode",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateNodeRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Updated node", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NodeListItemResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Workflows"],
+        "summary": "Archive node",
+        "operationId": "archiveNode",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "204": { "description": "Node archived" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/workflows/task-bank": {
+      "get": {
+        "tags": ["Workflows"],
+        "summary": "List active task bank items",
+        "operationId": "listTaskBank",
+        "responses": {
+          "200": {
+            "description": "Task bank items",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TaskBankListItemResponse" } } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Workflows"],
+        "summary": "Create task bank item",
+        "operationId": "createTaskBankItem",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateTaskBankItemRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Task bank item created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaskBankListItemResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/workflows/task-bank/{id}": {
+      "put": {
+        "tags": ["Workflows"],
+        "summary": "Update task bank item",
+        "operationId": "updateTaskBankItem",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateTaskBankItemRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Updated task bank item", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaskBankListItemResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Workflows"],
+        "summary": "Deactivate task bank item",
+        "operationId": "deactivateTaskBankItem",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "204": { "description": "Task bank item deactivated" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/workflows/nodes/{nodeId}/steps": {
+      "get": {
+        "tags": ["Workflows"],
+        "summary": "List steps for node",
+        "operationId": "listStepsByNode",
+        "parameters": [{ "name": "nodeId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": {
+            "description": "Steps",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/StepListItemResponse" } } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "tags": ["Workflows"],
+        "summary": "Create step",
+        "operationId": "createStep",
+        "parameters": [{ "name": "nodeId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateStepRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Step created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StepListItemResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/workflows/steps/{id}": {
+      "put": {
+        "tags": ["Workflows"],
+        "summary": "Update step",
+        "operationId": "updateStep",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateStepRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Updated step", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StepListItemResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Workflows"],
+        "summary": "Archive step",
+        "operationId": "archiveStep",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "204": { "description": "Step archived" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
     }
   },
   "components": {
@@ -2862,6 +3136,141 @@
           "name": { "type": "string" },
           "roleId": { "type": "integer", "format": "int32" },
           "roleName": { "type": "string" }
+        }
+      },
+      "SchemaTypeResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      },
+      "CreateSchemaRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "typeId": { "type": "integer", "format": "int32", "nullable": true }
+        }
+      },
+      "UpdateSchemaRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "typeId": { "type": "integer", "format": "int32", "nullable": true }
+        }
+      },
+      "SchemaListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "typeId": { "type": "integer", "format": "int32", "nullable": true }
+        }
+      },
+      "SchemaDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "typeId": { "type": "integer", "format": "int32", "nullable": true }
+        }
+      },
+      "CreateTaskBankItemRequest": {
+        "type": "object",
+        "required": ["name", "duration", "type", "teamId"],
+        "properties": {
+          "name": { "type": "string" },
+          "duration": { "type": "integer", "format": "int32" },
+          "type": { "type": "string", "enum": ["Creation", "Review"] },
+          "teamLeaderOnly": { "type": "boolean" },
+          "teamId": { "type": "integer", "format": "int32" }
+        }
+      },
+      "UpdateTaskBankItemRequest": {
+        "type": "object",
+        "required": ["name", "duration", "type", "teamId"],
+        "properties": {
+          "name": { "type": "string" },
+          "duration": { "type": "integer", "format": "int32" },
+          "type": { "type": "string", "enum": ["Creation", "Review"] },
+          "teamLeaderOnly": { "type": "boolean" },
+          "teamId": { "type": "integer", "format": "int32" }
+        }
+      },
+      "TaskBankListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "duration": { "type": "integer", "format": "int32" },
+          "type": { "type": "string", "enum": ["Creation", "Review"] },
+          "teamLeaderOnly": { "type": "boolean" },
+          "teamId": { "type": "integer", "format": "int32" }
+        }
+      },
+      "CreateNodeRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "isStart": { "type": "boolean" },
+          "isEnd": { "type": "boolean" }
+        }
+      },
+      "UpdateNodeRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "isStart": { "type": "boolean" },
+          "isEnd": { "type": "boolean" }
+        }
+      },
+      "NodeListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "order": { "type": "integer", "format": "int32" },
+          "isStart": { "type": "boolean" },
+          "isEnd": { "type": "boolean" },
+          "schemaId": { "type": "integer", "format": "int32" }
+        }
+      },
+      "CreateStepRequest": {
+        "type": "object",
+        "required": ["taskBankId", "duration", "priority"],
+        "properties": {
+          "taskBankId": { "type": "integer", "format": "int32" },
+          "duration": { "type": "integer", "format": "int32" },
+          "priority": { "type": "integer", "format": "int32" }
+        }
+      },
+      "UpdateStepRequest": {
+        "type": "object",
+        "required": ["taskBankId", "duration", "priority"],
+        "properties": {
+          "taskBankId": { "type": "integer", "format": "int32" },
+          "duration": { "type": "integer", "format": "int32" },
+          "priority": { "type": "integer", "format": "int32" }
+        }
+      },
+      "StepListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "order": { "type": "integer", "format": "int32" },
+          "duration": { "type": "integer", "format": "int32" },
+          "priority": { "type": "integer", "format": "int32" },
+          "nodeId": { "type": "integer", "format": "int32" },
+          "taskBankId": { "type": "integer", "format": "int32" }
         }
       },
       "ProblemDetails": {
