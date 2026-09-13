@@ -50,6 +50,18 @@ public sealed class EmployeeBalance
         int requestedDays,
         int pendingFromNextDays) =>
         AvailableFromNextBalance(settings, pendingFromNextDays) >= requestedDays;
+
+    public int AvailablePermission(int pendingPermissionCount) =>
+        PermissionMax - Permission - pendingPermissionCount;
+
+    public bool HasAvailablePermission(int pendingPermissionCount) =>
+        AvailablePermission(pendingPermissionCount) >= 1;
+
+    public int AvailableWorkFromHome(int pendingWorkFromHomeCount) =>
+        WorkFromHomeMax - WorkFromHome - pendingWorkFromHomeCount;
+
+    public bool HasAvailableWorkFromHome(int pendingWorkFromHomeCount) =>
+        AvailableWorkFromHome(pendingWorkFromHomeCount) >= 1;
 }
 
 public sealed record LeaveSettingsSnapshot(

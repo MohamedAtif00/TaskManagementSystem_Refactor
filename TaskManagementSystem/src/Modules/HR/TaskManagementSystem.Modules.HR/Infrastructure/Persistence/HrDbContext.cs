@@ -6,6 +6,9 @@ namespace TaskManagementSystem.Modules.HR.Infrastructure.Persistence;
 public sealed class HrDbContext(DbContextOptions<HrDbContext> options) : DbContext(options)
 {
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
+    public DbSet<PermissionRequest> PermissionRequests => Set<PermissionRequest>();
+    public DbSet<WorkFromHomeRequest> WorkFromHomeRequests => Set<WorkFromHomeRequest>();
+    public DbSet<ForgotClockRequest> ForgotClockRequests => Set<ForgotClockRequest>();
     public DbSet<Opinion> Opinions => Set<Opinion>();
     public DbSet<PublicHoliday> PublicHolidays => Set<PublicHoliday>();
     internal DbSet<EmployeeBalanceRecord> EmployeeBalances => Set<EmployeeBalanceRecord>();

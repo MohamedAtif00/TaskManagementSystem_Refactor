@@ -23,6 +23,9 @@ public static class HrModuleExtensions
         services.Configure<LeaveSettingsOptions>(configuration.GetSection(LeaveSettingsOptions.SectionName));
         services.AddSqlConnectionFactory(configuration);
         services.AddScoped<LeaveRequestSearchQueries>();
+        services.AddScoped<PermissionRequestSearchQueries>();
+        services.AddScoped<WorkFromHomeRequestSearchQueries>();
+        services.AddScoped<ForgotClockRequestSearchQueries>();
         services.AddScoped<OrgLookupQueries>();
 
         services.AddDbContext<HrDbContext>(options =>
@@ -42,6 +45,9 @@ public static class HrModuleExtensions
         services.AddScoped<IMedicalCertificateStorage, LocalMedicalCertificateStorage>();
         services.AddScoped<LeaveRequestPlanner>();
         services.AddScoped<LeaveOpinionProcessor>();
+        services.AddScoped<PermissionOpinionProcessor>();
+        services.AddScoped<WorkFromHomeOpinionProcessor>();
+        services.AddScoped<ForgotClockOpinionProcessor>();
 
         return services;
     }

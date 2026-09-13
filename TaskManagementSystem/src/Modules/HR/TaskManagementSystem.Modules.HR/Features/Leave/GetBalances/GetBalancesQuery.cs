@@ -20,8 +20,10 @@ public sealed record BalancesResult(
     int FromNextBalanceMaxDays,
     int Permission,
     int PermissionMax,
+    int AvailablePermission,
     int WorkFromHome,
-    int WorkFromHomeMax);
+    int WorkFromHomeMax,
+    int AvailableWorkFromHome);
 
 public sealed class GetBalancesQueryHandler(
     IHrUnitOfWork unitOfWork,
@@ -43,6 +45,8 @@ public sealed class GetBalancesQueryHandler(
         var pendingAnnual = pendingByType.GetValueOrDefault(Domain.LeaveType.Annual);
         var pendingEmergency = pendingByType.GetValueOrDefault(Domain.LeaveType.Emergency);
         var pendingFromNext = pendingByType.GetValueOrDefault(Domain.LeaveType.FromNextBalance);
+        var pendingPermissions = await unitOfWork.PermissionRequests.CountPendingAsync(request.UserId, cancellationToken: cancellationToken);
+        var pendingWorkFromHome = await unitOfWork.WorkFromHomeRequests.CountPendingAsync(request.UserId, cancellationToken: cancellationToken);
 
         return Result.Ok(new BalancesResult(
             balance.AnnualLeave,
@@ -56,7 +60,9 @@ public sealed class GetBalancesQueryHandler(
             planner.Settings.FromNextBalanceMaxDays,
             balance.Permission,
             balance.PermissionMax,
+            balance.AvailablePermission(pendingPermissions),
             balance.WorkFromHome,
-            balance.WorkFromHomeMax));
+            balance.WorkFromHomeMax,
+            balance.AvailableWorkFromHome(pendingWorkFromHome)));
     }
 }

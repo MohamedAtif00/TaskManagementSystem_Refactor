@@ -6,6 +6,12 @@ public interface IHrUnitOfWork : IUnitOfWork
 {
     ILeaveRequestRepository LeaveRequests { get; }
 
+    IPermissionRequestRepository PermissionRequests { get; }
+
+    IWorkFromHomeRequestRepository WorkFromHomeRequests { get; }
+
+    IForgotClockRequestRepository ForgotClockRequests { get; }
+
     IEmployeeBalanceRepository EmployeeBalances { get; }
 
     IOpinionRepository Opinions { get; }

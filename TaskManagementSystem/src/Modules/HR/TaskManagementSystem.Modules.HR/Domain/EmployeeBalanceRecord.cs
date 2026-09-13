@@ -26,11 +26,11 @@ public sealed class EmployeeBalanceRecord : Entity, IAggregateRoot
 
     public int SickLeave { get; internal set; }
 
-    public int Permission { get; internal set; }
+    public int Permission { get; set; }
 
     public int PermissionMax { get; internal set; }
 
-    public int WorkFromHome { get; internal set; }
+    public int WorkFromHome { get; set; }
 
     public int WorkFromHomeMax { get; internal set; }
 

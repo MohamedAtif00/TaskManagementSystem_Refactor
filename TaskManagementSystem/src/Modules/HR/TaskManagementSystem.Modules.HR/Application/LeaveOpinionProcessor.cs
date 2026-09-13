@@ -42,12 +42,12 @@ public sealed class LeaveOpinionProcessor(
             return Result.Fail<LeaveRequest>(HrErrors.LeaveCannotCancel);
         }
 
-        if (await unitOfWork.Opinions.ExistsForUserAsync(leaveRequestId, actorUserId, cancellationToken))
+        if (await unitOfWork.Opinions.ExistsForLeaveUserAsync(leaveRequestId, actorUserId, cancellationToken))
         {
             return Result.Fail<LeaveRequest>(HrErrors.LeaveOpinionAlreadyGiven);
         }
 
-        var opinionResult = Opinion.Create(leaveRequestId, actorUserId, isApproved, comment, utcNow);
+        var opinionResult = Opinion.CreateForLeave(leaveRequestId, actorUserId, isApproved, comment, utcNow);
         if (!opinionResult.IsSuccess)
         {
             return Result.Fail<LeaveRequest>(HrResultMapper.ToApplicationError(opinionResult.Error));

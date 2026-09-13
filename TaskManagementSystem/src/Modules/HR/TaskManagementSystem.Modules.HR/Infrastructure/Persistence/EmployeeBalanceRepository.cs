@@ -75,6 +75,34 @@ internal sealed class EmployeeBalanceRepository(HrDbContext context) : IEmployee
         entity.AnnualLeave = Math.Max(0, entity.AnnualLeave - workingDays);
     }
 
+    public async Task DeductPermissionAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var entity = await context.EmployeeBalances
+            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
+        entity.Permission += 1;
+    }
+
+    public async Task RefundPermissionAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var entity = await context.EmployeeBalances
+            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
+        entity.Permission = Math.Max(0, entity.Permission - 1);
+    }
+
+    public async Task DeductWorkFromHomeAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var entity = await context.EmployeeBalances
+            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
+        entity.WorkFromHome += 1;
+    }
+
+    public async Task RefundWorkFromHomeAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var entity = await context.EmployeeBalances
+            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
+        entity.WorkFromHome = Math.Max(0, entity.WorkFromHome - 1);
+    }
+
     private static EmployeeBalance MapToModel(EmployeeBalanceRecord entity) =>
         new()
         {

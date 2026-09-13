@@ -3,7 +3,7 @@ using TaskManagementSystem.BuildingBlocks.Application.Data;
 
 namespace TaskManagementSystem.Modules.HR.Infrastructure.Persistence.Queries;
 
-internal sealed class OrgLookupQueries(ISqlConnectionFactory connectionFactory)
+public sealed class OrgLookupQueries(ISqlConnectionFactory connectionFactory)
 {
     public async Task<int?> GetSectionHeadIdForTeamAsync(int teamId, CancellationToken cancellationToken = default)
     {

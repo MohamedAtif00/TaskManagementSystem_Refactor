@@ -13,6 +13,14 @@ public interface IEmployeeBalanceRepository
     Task DeductAnnualLeaveAsync(int userId, int workingDays, CancellationToken cancellationToken = default);
 
     Task RefundAnnualLeaveAsync(int userId, int workingDays, CancellationToken cancellationToken = default);
+
+    Task DeductPermissionAsync(int userId, CancellationToken cancellationToken = default);
+
+    Task RefundPermissionAsync(int userId, CancellationToken cancellationToken = default);
+
+    Task DeductWorkFromHomeAsync(int userId, CancellationToken cancellationToken = default);
+
+    Task RefundWorkFromHomeAsync(int userId, CancellationToken cancellationToken = default);
 }
 
 public static class LeaveBalanceOperations

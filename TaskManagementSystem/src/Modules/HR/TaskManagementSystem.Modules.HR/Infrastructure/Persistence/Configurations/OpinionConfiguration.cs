@@ -12,6 +12,9 @@ internal sealed class OpinionConfiguration : IEntityTypeConfiguration<Opinion>
         entity.HasKey(x => x.Id);
         entity.Property(x => x.Comment);
         entity.HasIndex(x => x.LeaveRequestId);
+        entity.HasIndex(x => x.PermissionId);
+        entity.HasIndex(x => x.WorkFromHomeRequestId);
+        entity.HasIndex(x => x.ForgotClockRequestId);
         entity.HasIndex(x => x.UserId);
     }
 }
