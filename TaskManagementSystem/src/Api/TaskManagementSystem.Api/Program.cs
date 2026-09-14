@@ -2,6 +2,7 @@ using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Endpoints;
 using TaskManagementSystem.Api.Endpoints.Organization;
 using TaskManagementSystem.Api.Endpoints.Curriculum;
+using TaskManagementSystem.Api.Endpoints.Ticket;
 using TaskManagementSystem.Api.Endpoints.Workflows;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -15,6 +16,8 @@ using TaskManagementSystem.Modules.Organization.Features.Teams.CreateTeam;
 using TaskManagementSystem.Modules.Organization.Infrastructure;
 using TaskManagementSystem.Modules.Curriculum.Features.AcademicYears.CreateAcademicYear;
 using TaskManagementSystem.Modules.Curriculum.Infrastructure;
+using TaskManagementSystem.Modules.Ticket.Features.Tickets.CreateTicket;
+using TaskManagementSystem.Modules.Ticket.Infrastructure;
 using TaskManagementSystem.Modules.Workflows.Features.Schemas.CreateSchema;
 using TaskManagementSystem.Modules.Workflows.Infrastructure;
 
@@ -29,6 +32,7 @@ builder.Services.AddHrModule(builder.Configuration, builder.Environment);
 builder.Services.AddOrganizationModule(builder.Configuration, builder.Environment);
 builder.Services.AddWorkflowsModule(builder.Configuration, builder.Environment);
 builder.Services.AddCurriculumModule(builder.Configuration, builder.Environment);
+builder.Services.AddTicketModule(builder.Configuration, builder.Environment);
 builder.Services.AddAuditLog(builder.Configuration, builder.Environment);
 builder.Services.AddBuildingBlocks(
     typeof(Program).Assembly,
@@ -37,7 +41,8 @@ builder.Services.AddBuildingBlocks(
     typeof(RequestLeaveCommand).Assembly,
     typeof(CreateTeamCommand).Assembly,
     typeof(CreateSchemaCommand).Assembly,
-    typeof(CreateAcademicYearCommand).Assembly);
+    typeof(CreateAcademicYearCommand).Assembly,
+    typeof(CreateTicketCommand).Assembly);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddApidogCors();
@@ -58,6 +63,7 @@ app.MapHrEndpoints();
 app.MapOrganizationEndpoints();
 app.MapWorkflowsEndpoints();
 app.MapCurriculumEndpoints();
+app.MapTicketEndpoints();
 app.MapRealtimeHub();
 
 app.Run();
