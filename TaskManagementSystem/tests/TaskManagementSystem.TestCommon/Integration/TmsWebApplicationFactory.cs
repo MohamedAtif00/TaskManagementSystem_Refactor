@@ -14,6 +14,7 @@ using TaskManagementSystem.Modules.HR.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.Identity.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.Organization.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.Curriculum.Infrastructure.Persistence;
+using TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.Workflows.Infrastructure.Persistence;
 
 namespace TaskManagementSystem.TestCommon.Integration;
@@ -57,6 +58,7 @@ public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
             ReplaceSqlServerDbContext<OrganizationDbContext>(services, ConnectionString);
             ReplaceSqlServerDbContext<WorkflowsDbContext>(services, ConnectionString);
             ReplaceSqlServerDbContext<CurriculumDbContext>(services, ConnectionString);
+            ReplaceSqlServerDbContext<TicketDbContext>(services, ConnectionString);
 
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
