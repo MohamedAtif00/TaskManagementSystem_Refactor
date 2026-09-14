@@ -1,0 +1,24 @@
+{
+  "name": "ATS / TaskManagementSystem",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "TMS API (modular)",
+      "command": "source \"$HOME/.tms-dev-env.sh\" && cd TaskManagementSystem && ConnectionStrings__DefaultConnection=\"$TMS_CONNECTION\" dotnet run --project src/Api/TaskManagementSystem.Api --no-build"
+    },
+    {
+      "name": "Legacy API",
+      "command": "source \"$HOME/.tms-dev-env.sh\" && cd AutomatedTaskSystem && ConnectionStrings__DefaultConnection=\"$LEGACY_CONNECTION\" dotnet run --project AutomatedTaskSystem.csproj --no-build"
+    },
+    {
+      "name": "UI (Next.js)",
+      "command": "cd AutomatedTaskSystem.UI/client && npm run dev"
+    }
+  ],
+  "ports": [
+    { "name": "UI (Next.js)", "port": 3000 },
+    { "name": "Legacy API", "port": 5238 },
+    { "name": "TMS API (modular)", "port": 61173 }
+  ]
+}

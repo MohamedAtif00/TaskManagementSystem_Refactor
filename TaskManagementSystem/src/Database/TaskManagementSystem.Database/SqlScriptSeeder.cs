@@ -10,7 +10,7 @@ namespace TaskManagementSystem.Database;
 public static class SqlScriptSeeder
 {
     public const string IdentityIntegrationTestSeedScript =
-        "src/Database/TaskManagementSystem.Database/Scripts/Migrations/011_identity_SeedUsers.sql";
+        "src/Database/TaskManagementSystem.Database/Scripts/Migrations/018_identity_SeedUsers.sql";
 
     public static string ResolveScriptPath(string relativePathFromSolutionRoot)
     {
