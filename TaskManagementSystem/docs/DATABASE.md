@@ -72,7 +72,7 @@ dotnet run --project src/Database/DatabaseMigrator `
 ```sql
 SELECT name FROM sys.schemas ORDER BY name;
 SELECT COUNT(*) FROM app.MigrationsJournal;
--- Expect 12 migration entries (000-011)
+-- Expect 18 migration entries (000-018, no 011)
 ```
 
 ## Connection string (API)
@@ -90,7 +90,7 @@ The API does **not** run DbUp on startup yet — run `DatabaseMigrator` explicit
 ## Adding a schema change
 
 1. Edit the table under `Structure/{schema}/Tables/`.
-2. Add a new script `Scripts/Migrations/011_description.sql`.
+2. Add a new script `Scripts/Migrations/019_description.sql` (seed scripts must sort after the table DDL they depend on).
 3. Run `DatabaseMigrator` again (DbUp skips scripts already in the journal).
 
 ## Migration order
@@ -108,4 +108,10 @@ The API does **not** run DbUp on startup yet — run `DatabaseMigrator` explicit
 | `008_notifications_Tables.sql` | Notifications inbox |
 | `009_hr_Tables.sql` | Leave, permissions, WFH |
 | `010_seeds_ReferenceData.sql` | Reference seed data |
-| `011_identity_SeedUsers.sql` | Integration/dev test user `TST001` + Integration Test Team |
+| `012_app_AuditLog.sql` | Command audit log table (`app.AuditLog`) |
+| `013_hr_PublicHolidays.sql` | Public holidays table |
+| `014_identity_Rbac.sql` | RBAC permissions/roles seed |
+| `015_hr_EmployeeBalances.sql` | Employee leave balances table |
+| `016_hr_ForgotClockRequests.sql` | Forgot clock requests table |
+| `017_identity_UserAdminPermissions.sql` | User-admin permission seed |
+| `018_identity_SeedUsers.sql` | Integration/dev test user `TST001` + Integration Test Team (runs after `015` creates `hr.EmployeeBalances`) |
