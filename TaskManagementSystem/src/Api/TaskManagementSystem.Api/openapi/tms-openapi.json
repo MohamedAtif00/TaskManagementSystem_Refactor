@@ -3,7 +3,7 @@
   "info": {
     "title": "Task Management System API (Dev)",
     "version": "1.0.0",
-    "description": "Complete OpenAPI spec for the Task Management System refactor — Auth, Identity RBAC, Organization, Workflows, and HR modules.\n\n## Apidog quick start (auto token)\n1. Import **openapi/apidog/environment.local-dev.json** → select environment **TMS Local Dev**.\n2. Import this spec. Set **bearerAuth** default token to `{{accessToken}}` (Components → Security Schemes → bearerAuth).\n3. On **POST /auth/login** and **POST /auth/refresh-token**, add Post-processor **Extract Variable**: JSONPath `$.accessToken` → env var `accessToken` (or use script from `openapi/apidog/scripts/save-access-token.js`).\n4. **POST /auth/login** with `{ \"code\": \"{{userCode}}\" }` — token is saved automatically; all secured endpoints inherit Bearer auth.\n\nSee **openapi/apidog/post-processors.json** for full setup and test scenario.\n\nRefresh: **POST /auth/refresh-token** (HttpOnly refreshToken cookie from login).\nLogout: **POST /auth/logout** (clears refresh cookie; optional clear-access-token post-processor).\n\n## Modules included\n- **Auth** — login, refresh, logout, about-me\n- **Identity** — RBAC permissions, roles, user role assignment\n- **Organization** — teams and sections CRUD\n- **Workflows** — schemas, nodes, task bank, steps\n- **HR** — leave, holidays, time-off permissions, work from home, forgot clock"
+    "description": "Complete OpenAPI spec for the Task Management System refactor — Auth, Identity RBAC, Organization, Workflows, Curriculum, and HR modules.\n\n## Apidog quick start (auto token)\n1. Import **openapi/apidog/environment.local-dev.json** → select environment **TMS Local Dev**.\n2. Import this spec. Set **bearerAuth** default token to `{{accessToken}}` (Components → Security Schemes → bearerAuth).\n3. On **POST /auth/login** and **POST /auth/refresh-token**, add Post-processor **Extract Variable**: JSONPath `$.accessToken` → env var `accessToken` (or use script from `openapi/apidog/scripts/save-access-token.js`).\n4. **POST /auth/login** with `{ \"code\": \"{{userCode}}\" }` — token is saved automatically; all secured endpoints inherit Bearer auth.\n\nSee **openapi/apidog/post-processors.json** for full setup and test scenario.\n\nRefresh: **POST /auth/refresh-token** (HttpOnly refreshToken cookie from login).\nLogout: **POST /auth/logout** (clears refresh cookie; optional clear-access-token post-processor).\n\n## Modules included\n- **Auth** — login, refresh, logout, about-me\n- **Identity** — RBAC permissions, roles, user role assignment\n- **Organization** — teams and sections CRUD\n- **Workflows** — schemas, nodes, task bank, steps\n- **Curriculum** — years, projects, terms, subjects, units, lessons, learning objectives\n- **HR** — leave, holidays, time-off permissions, work from home, forgot clock"
   },
   "servers": [
     {
@@ -24,7 +24,8 @@
     { "name": "HR Work From Home", "description": "Work from home requests, opinions, and search" },
     { "name": "HR Forgot Clock", "description": "Forgot clock in/out attendance requests, opinions, and search" },
     { "name": "Organization", "description": "Teams and sections CRUD" },
-    { "name": "Workflows", "description": "Workflow schemas, nodes, task bank, and steps" }
+    { "name": "Workflows", "description": "Workflow schemas, nodes, task bank, and steps" },
+    { "name": "Curriculum", "description": "Academic years, projects, terms, subjects, units, lessons, and learning objectives" }
   ],
   "security": [{ "bearerAuth": [] }],
   "paths": {
@@ -2413,6 +2414,126 @@
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
+    },
+    "/curriculum/years": {
+      "get": {
+        "tags": ["Curriculum"],
+        "summary": "List active academic years",
+        "operationId": "listAcademicYears",
+        "responses": {
+          "200": {
+            "description": "Academic years",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/AcademicYearListItemResponse" } }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Curriculum"],
+        "summary": "Create academic year",
+        "operationId": "createAcademicYear",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateAcademicYearRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Academic year created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AcademicYearDetailResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/curriculum/years/{yearId}/tree": {
+      "get": {
+        "tags": ["Curriculum"],
+        "summary": "Get nested year tree",
+        "operationId": "getYearTree",
+        "parameters": [{ "name": "yearId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Year tree", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/YearTreeResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/curriculum/years/{yearId}/projects": {
+      "get": {
+        "tags": ["Curriculum"],
+        "summary": "List projects for year",
+        "operationId": "listProjectsByYear",
+        "parameters": [{ "name": "yearId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Projects", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/CurriculumProjectListItemResponse" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "tags": ["Curriculum"],
+        "summary": "Create project for year",
+        "operationId": "createProject",
+        "parameters": [{ "name": "yearId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateProjectRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Project created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CurriculumProjectDetailResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/curriculum/subjects/{id}/users": {
+      "get": {
+        "tags": ["Curriculum"],
+        "summary": "List users assigned to subject",
+        "operationId": "listSubjectUsers",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Assigned users", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SubjectUserResponse" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "tags": ["Curriculum"],
+        "summary": "Assign users to subject",
+        "operationId": "assignSubjectUsers",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AssignSubjectUsersRequest" } } }
+        },
+        "responses": {
+          "204": { "description": "Users assigned" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/curriculum/lessons/{lessonId}/learning-objectives": {
+      "post": {
+        "tags": ["Curriculum"],
+        "summary": "Create learning objective for lesson",
+        "operationId": "createLearningObjective",
+        "parameters": [{ "name": "lessonId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateLearningObjectiveRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Learning objective created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LearningObjectiveDetailResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
     }
   },
   "components": {
@@ -3271,6 +3392,105 @@
           "priority": { "type": "integer", "format": "int32" },
           "nodeId": { "type": "integer", "format": "int32" },
           "taskBankId": { "type": "integer", "format": "int32" }
+        }
+      },
+      "CreateAcademicYearRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
+      "AcademicYearListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
+      "AcademicYearDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
+      "CreateProjectRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
+      "CurriculumProjectListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "yearId": { "type": "integer", "format": "int32" }
+        }
+      },
+      "CurriculumProjectDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "yearId": { "type": "integer", "format": "int32" }
+        }
+      },
+      "CreateLearningObjectiveRequest": {
+        "type": "object",
+        "required": ["schemaId", "name"],
+        "properties": {
+          "schemaId": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "tag": { "type": "string" },
+          "template": { "type": "string" },
+          "environment": { "type": "string" }
+        }
+      },
+      "LearningObjectiveDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "tag": { "type": "string" },
+          "template": { "type": "string" },
+          "environment": { "type": "string" },
+          "createAt": { "type": "string", "format": "date-time" },
+          "startedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "doneAt": { "type": "string", "format": "date-time", "nullable": true },
+          "lessonId": { "type": "integer", "format": "int32" },
+          "schemaId": { "type": "integer", "format": "int32" }
+        }
+      },
+      "AssignSubjectUsersRequest": {
+        "type": "object",
+        "required": ["userIds"],
+        "properties": {
+          "userIds": { "type": "array", "items": { "type": "integer", "format": "int32" } }
+        }
+      },
+      "SubjectUserResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" }
+        }
+      },
+      "YearTreeResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "projects": { "type": "array", "items": { "type": "object" } }
         }
       },
       "ProblemDetails": {

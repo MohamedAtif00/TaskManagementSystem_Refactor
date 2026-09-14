@@ -6,7 +6,7 @@ Living snapshot of the new solution. Update this file as the refactor grows.
 
 
 
-**Last updated:** 2026-09-13
+**Last updated:** 2026-09-14
 
 
 
@@ -26,7 +26,7 @@ Related: [OTLP / OpenTelemetry](OTLP.md), [Database / DbUp](DATABASE.md)
 
 
 
-The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), **Workflows** (schemas, nodes, task bank, steps), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays). Other product features (tickets, curriculum, etc.) are not ported yet.
+The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), **Workflows** (schemas, nodes, task bank, steps), **Curriculum** (years through learning objectives, subject user assignment), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays). Other product features (tickets, etc.) are not ported yet.
 
 
 
@@ -34,7 +34,7 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 
 |---|---|
 
-| Solution + 8 module projects | Done — folder structure only |
+| Solution + 8 module projects | Done — Identity, HR, Organization, Workflows, Curriculum implemented |
 
 | BuildingBlocks (DDD + CQRS) | Done — domain primitives, MediatR pipeline |
 
@@ -44,24 +44,25 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 
 | Organization module | Done — teams and sections CRUD with `SectionTeams` links |
 | Workflows module | Done — schema types, schemas, nodes, task bank, steps CRUD |
+| Curriculum module | Done — years, projects, terms, subject groups, subjects, units, lessons, learning objectives, subject user assignment |
 
 | HR module (leave complete) | Done — all leave types, opinions, from-next/preview, medical upload, search |
 | HR module (permission + WFH) | Done — request, search, opinions, cancel, balance deduct/refund |
 | HR module (forgot clock) | Done — request, search, opinions, cancel (no balance) |
 
-| Other module business logic | Not started |
+| Other module business logic | Not started (Tickets, Sprints, Notifications) |
 
 | Persistence (DbUp + SQL scripts) | Done — per-module schemas, DatabaseMigrator, initial DDL |
 
-| EF Core / repositories | Done — Identity, HR, Organization, and Workflows DbContexts + repositories |
+| EF Core / repositories | Done — Identity, HR, Organization, Workflows, and Curriculum DbContexts + repositories |
 
 | Frontend | Not started |
 
-| Automated tests | Done — unit, integration, and architecture tests (Organization + Workflows unit tests added) |
+| Automated tests | Done — unit, integration, and architecture tests (Organization, Workflows, Curriculum unit tests added) |
 
 
 
-Suggested next slice: **Curriculum** module (unblocks Tickets) or **Identity user audit** (`UserChanges`).
+Suggested next slice: **Tickets** module (unblocked by Curriculum + Workflows) or **Identity user audit** (`UserChanges`).
 
 
 
@@ -188,6 +189,69 @@ Workflow definition MVP: **SchemaTypes**, **Schemas**, **Nodes** (ordered, start
 - **Cross-schema validation** — `TeamId` on TaskBank validated via Dapper against `organization.Teams` (no project references between modules).
 - **HTTP style** — Minimal API in [`Endpoints/Workflows/`](../src/Api/TaskManagementSystem.Api/Endpoints/Workflows/WorkflowsEndpoints.cs).
 - **Deferred** — NodeSequences / rollback graph rules from legacy ATS.
+
+
+
+## Curriculum (Years, Projects, Terms, Subjects, LOs)
+
+
+
+Curriculum definition MVP: **AcademicYears**, **CurriculumProjects**, **CurriculumTerms**, **SubjectGroups**, **Subjects** (with status), **Units**, **Lessons**, **LearningObjectives** (linked to workflow schemas), and **SubjectUser** assignments. Ticket spawn from LOs deferred.
+
+
+
+| Endpoint | Purpose | Auth |
+|---|---|---|
+| `GET /curriculum/years` | List active academic years | Required |
+| `GET /curriculum/years/{id}` | Academic year detail | Required |
+| `POST /curriculum/years` | Create academic year | Required |
+| `PUT /curriculum/years/{id}` | Update academic year | Required |
+| `DELETE /curriculum/years/{id}` | Archive academic year | Required |
+| `GET /curriculum/years/{yearId}/tree` | Nested year tree (projects → terms → groups → subjects) | Required |
+| `GET /curriculum/years/{yearId}/projects` | List projects for year | Required |
+| `POST /curriculum/years/{yearId}/projects` | Create project | Required |
+| `GET /curriculum/projects/{id}` | Project detail | Required |
+| `PUT /curriculum/projects/{id}` | Update project | Required |
+| `DELETE /curriculum/projects/{id}` | Archive project | Required |
+| `GET /curriculum/projects/{projectId}/terms` | List terms for project | Required |
+| `POST /curriculum/projects/{projectId}/terms` | Create term | Required |
+| `GET /curriculum/terms/{id}` | Term detail | Required |
+| `PUT /curriculum/terms/{id}` | Update term | Required |
+| `DELETE /curriculum/terms/{id}` | Archive term | Required |
+| `GET /curriculum/terms/{termId}/subject-groups` | List subject groups for term | Required |
+| `POST /curriculum/terms/{termId}/subject-groups` | Create subject group | Required |
+| `GET /curriculum/subject-groups/{id}` | Subject group detail | Required |
+| `PUT /curriculum/subject-groups/{id}` | Update subject group | Required |
+| `DELETE /curriculum/subject-groups/{id}` | Archive subject group | Required |
+| `GET /curriculum/subject-groups/{subjectGroupId}/subjects` | List subjects for group | Required |
+| `POST /curriculum/subject-groups/{subjectGroupId}/subjects` | Create subject | Required |
+| `GET /curriculum/subjects/{id}` | Subject detail | Required |
+| `PUT /curriculum/subjects/{id}` | Update subject | Required |
+| `DELETE /curriculum/subjects/{id}` | Archive subject | Required |
+| `PUT /curriculum/subjects/{id}/status` | Update subject status | Required |
+| `GET /curriculum/subjects/{id}/users` | List assigned users | Required |
+| `POST /curriculum/subjects/{id}/users` | Assign users to subject | Required |
+| `POST /curriculum/subjects/{id}/users/unassign` | Unassign users from subject | Required |
+| `GET /curriculum/subjects/{subjectId}/units` | List units for subject | Required |
+| `POST /curriculum/subjects/{subjectId}/units` | Create unit | Required |
+| `GET /curriculum/units/{id}` | Unit detail | Required |
+| `PUT /curriculum/units/{id}` | Update unit | Required |
+| `DELETE /curriculum/units/{id}` | Archive unit | Required |
+| `GET /curriculum/units/{unitId}/lessons` | List lessons for unit | Required |
+| `POST /curriculum/units/{unitId}/lessons` | Create lesson | Required |
+| `GET /curriculum/lessons/{id}` | Lesson detail | Required |
+| `PUT /curriculum/lessons/{id}` | Update lesson | Required |
+| `DELETE /curriculum/lessons/{id}` | Archive lesson | Required |
+| `GET /curriculum/lessons/{lessonId}/learning-objectives` | List LOs for lesson | Required |
+| `POST /curriculum/lessons/{lessonId}/learning-objectives` | Create learning objective | Required |
+| `GET /curriculum/learning-objectives/{id}` | Learning objective detail | Required |
+| `PUT /curriculum/learning-objectives/{id}` | Update learning objective | Required |
+| `DELETE /curriculum/learning-objectives/{id}` | Archive learning objective | Required |
+
+- **Module layout** — [`TaskManagementSystem.Modules.Curriculum`](../src/Modules/Curriculum/TaskManagementSystem.Modules.Curriculum/) with `Domain/`, `Application/`, `Features/`, `Infrastructure/`.
+- **Cross-schema validation** — `SchemaId` on LOs validated via Dapper against `workflows.Schemas`; user assignment validated against `identity.Users` (no project references between modules).
+- **HTTP style** — Minimal API in [`Endpoints/Curriculum/`](../src/Api/TaskManagementSystem.Api/Endpoints/Curriculum/CurriculumEndpoints.cs).
+- **Deferred** — Ticket spawn from learning objectives.
 
 
 
