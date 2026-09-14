@@ -28,6 +28,7 @@
     <Project Path="tests/TaskManagementSystem.Modules.Identity.UnitTests/TaskManagementSystem.Modules.Identity.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.Modules.Organization.UnitTests/TaskManagementSystem.Modules.Organization.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.Modules.Workflows.UnitTests/TaskManagementSystem.Modules.Workflows.UnitTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.Modules.Curriculum.UnitTests/TaskManagementSystem.Modules.Curriculum.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.Modules.UnitTests/TaskManagementSystem.Modules.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.TestCommon/TaskManagementSystem.TestCommon.csproj" />
   </Folder>
