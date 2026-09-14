@@ -25,7 +25,8 @@
     { "name": "HR Forgot Clock", "description": "Forgot clock in/out attendance requests, opinions, and search" },
     { "name": "Organization", "description": "Teams and sections CRUD" },
     { "name": "Workflows", "description": "Workflow schemas, nodes, task bank, and steps" },
-    { "name": "Curriculum", "description": "Academic years, projects, terms, subjects, units, lessons, and learning objectives" }
+    { "name": "Curriculum", "description": "Academic years, projects, terms, subjects, units, lessons, and learning objectives" },
+    { "name": "Tickets", "description": "Tasks spawned from learning objectives, comments, and work time tracking" }
   ],
   "security": [{ "bearerAuth": [] }],
   "paths": {
@@ -2534,6 +2535,159 @@
           "404": { "$ref": "#/components/responses/NotFound" }
         }
       }
+    },
+    "/tickets": {
+      "post": {
+        "tags": ["Tickets"],
+        "summary": "Create ticket from learning objective and task bank item",
+        "operationId": "createTicket",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateTicketRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Ticket created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TicketDetailResponse" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/tickets/{id}": {
+      "get": {
+        "tags": ["Tickets"],
+        "summary": "Get ticket by id",
+        "operationId": "getTicketById",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Ticket detail", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TicketDetailResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/tickets/{id}/assign": {
+      "patch": {
+        "tags": ["Tickets"],
+        "summary": "Assign user to ticket",
+        "operationId": "assignTicket",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AssignTicketRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "Assigned ticket", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TicketDetailResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/tickets/{id}/proceed": {
+      "patch": {
+        "tags": ["Tickets"],
+        "summary": "Proceed ticket to next workflow step",
+        "operationId": "proceedTicket",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Updated ticket", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TicketDetailResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/tickets/{id}/complete": {
+      "patch": {
+        "tags": ["Tickets"],
+        "summary": "Complete ticket",
+        "operationId": "completeTicket",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Completed ticket", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TicketDetailResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/tickets/{id}/comments": {
+      "get": {
+        "tags": ["Tickets"],
+        "summary": "List ticket comments",
+        "operationId": "listTicketComments",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Comments", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/CommentListItemResponse" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "tags": ["Tickets"],
+        "summary": "Add comment to ticket",
+        "operationId": "addTicketComment",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddCommentRequest" } } }
+        },
+        "responses": {
+          "201": { "description": "Comment created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CommentListItemResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/tickets/{id}/work-times/start": {
+      "post": {
+        "tags": ["Tickets"],
+        "summary": "Start work time for current user",
+        "operationId": "startTicketWorkTime",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Work time started", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaskWorkTimeResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/tickets/{id}/work-times/stop": {
+      "post": {
+        "tags": ["Tickets"],
+        "summary": "Stop open work time for current user",
+        "operationId": "stopTicketWorkTime",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Work time stopped", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TaskWorkTimeResponse" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/subjects/{subjectId}/tickets": {
+      "get": {
+        "tags": ["Tickets"],
+        "summary": "List tickets for subject",
+        "operationId": "listTicketsBySubject",
+        "parameters": [{ "name": "subjectId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Tickets", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TicketListItemResponse" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/learning-objectives/{loId}/tickets": {
+      "get": {
+        "tags": ["Tickets"],
+        "summary": "List tickets for learning objective",
+        "operationId": "listTicketsByLearningObjective",
+        "parameters": [{ "name": "loId", "in": "path", "required": true, "schema": { "type": "integer", "format": "int32" } }],
+        "responses": {
+          "200": { "description": "Tickets", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/TicketListItemResponse" } } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
     }
   },
   "components": {
@@ -3491,6 +3645,90 @@
           "name": { "type": "string" },
           "description": { "type": "string", "nullable": true },
           "projects": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "CreateTicketRequest": {
+        "type": "object",
+        "required": ["learningObjectiveId", "taskBankItemId"],
+        "properties": {
+          "learningObjectiveId": { "type": "integer", "format": "int32" },
+          "taskBankItemId": { "type": "integer", "format": "int32" },
+          "userId": { "type": "integer", "format": "int32", "nullable": true }
+        }
+      },
+      "AssignTicketRequest": {
+        "type": "object",
+        "required": ["userId"],
+        "properties": {
+          "userId": { "type": "integer", "format": "int32" }
+        }
+      },
+      "AddCommentRequest": {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+          "content": { "type": "string" }
+        }
+      },
+      "TicketListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "status": { "type": "integer", "format": "int32" },
+          "priority": { "type": "integer", "format": "int32" },
+          "duration": { "type": "integer", "format": "int32" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "learningObjectiveId": { "type": "integer", "format": "int32" },
+          "stepId": { "type": "integer", "format": "int32", "nullable": true },
+          "userId": { "type": "integer", "format": "int32", "nullable": true },
+          "teamId": { "type": "integer", "format": "int32", "nullable": true }
+        }
+      },
+      "TicketDetailResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "name": { "type": "string" },
+          "status": { "type": "integer", "format": "int32" },
+          "priority": { "type": "integer", "format": "int32" },
+          "duration": { "type": "integer", "format": "int32" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "pause": { "type": "boolean" },
+          "attention": { "type": "boolean" },
+          "flagged": { "type": "boolean" },
+          "tl": { "type": "boolean" },
+          "isReview": { "type": "boolean" },
+          "isRollback": { "type": "boolean" },
+          "rollbackCount": { "type": "integer", "format": "int32" },
+          "learningObjectiveId": { "type": "integer", "format": "int32" },
+          "stepId": { "type": "integer", "format": "int32", "nullable": true },
+          "userId": { "type": "integer", "format": "int32", "nullable": true },
+          "teamId": { "type": "integer", "format": "int32", "nullable": true },
+          "fromId": { "type": "integer", "format": "int32", "nullable": true }
+        }
+      },
+      "CommentListItemResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "content": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "timestamp": { "type": "string", "format": "date-time" },
+          "userId": { "type": "integer", "format": "int32" },
+          "learningObjectiveId": { "type": "integer", "format": "int32" },
+          "taskId": { "type": "integer", "format": "int32", "nullable": true }
+        }
+      },
+      "TaskWorkTimeResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "format": "int32" },
+          "startDate": { "type": "string", "format": "date-time" },
+          "endDate": { "type": "string", "format": "date-time", "nullable": true },
+          "duration": { "type": "number", "format": "double" },
+          "taskId": { "type": "integer", "format": "int32" },
+          "userId": { "type": "integer", "format": "int32" }
         }
       },
       "ProblemDetails": {

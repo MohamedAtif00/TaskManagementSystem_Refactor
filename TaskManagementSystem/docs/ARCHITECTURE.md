@@ -26,7 +26,7 @@ Related: [OTLP / OpenTelemetry](OTLP.md), [Database / DbUp](DATABASE.md)
 
 
 
-The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), **Workflows** (schemas, nodes, task bank, steps), **Curriculum** (years through learning objectives, subject user assignment), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays). Other product features (tickets, etc.) are not ported yet.
+The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), **Workflows** (schemas, nodes, task bank, steps), **Curriculum** (years through learning objectives, subject user assignment), **Ticket** (tasks, comments, work time), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays). Sprints and Notifications are not ported yet.
 
 
 
@@ -34,7 +34,7 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 
 |---|---|
 
-| Solution + 8 module projects | Done — Identity, HR, Organization, Workflows, Curriculum implemented |
+| Solution + 8 module projects | Done — Identity, HR, Organization, Workflows, Curriculum, Ticket implemented |
 
 | BuildingBlocks (DDD + CQRS) | Done — domain primitives, MediatR pipeline |
 
@@ -45,24 +45,25 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 | Organization module | Done — teams and sections CRUD with `SectionTeams` links |
 | Workflows module | Done — schema types, schemas, nodes, task bank, steps CRUD |
 | Curriculum module | Done — years, projects, terms, subject groups, subjects, units, lessons, learning objectives, subject user assignment |
+| Ticket module | Done — create/get/list tickets, assign, proceed, complete, comments, work time |
 
 | HR module (leave complete) | Done — all leave types, opinions, from-next/preview, medical upload, search |
 | HR module (permission + WFH) | Done — request, search, opinions, cancel, balance deduct/refund |
 | HR module (forgot clock) | Done — request, search, opinions, cancel (no balance) |
 
-| Other module business logic | Not started (Tickets, Sprints, Notifications) |
+| Other module business logic | Not started (Sprints, Notifications) |
 
 | Persistence (DbUp + SQL scripts) | Done — per-module schemas, DatabaseMigrator, initial DDL |
 
-| EF Core / repositories | Done — Identity, HR, Organization, Workflows, and Curriculum DbContexts + repositories |
+| EF Core / repositories | Done — Identity, HR, Organization, Workflows, Curriculum, and Ticket DbContexts + repositories |
 
 | Frontend | Not started |
 
-| Automated tests | Done — unit, integration, and architecture tests (Organization, Workflows, Curriculum unit tests added) |
+| Automated tests | Done — unit, integration, and architecture tests (Organization, Workflows, Curriculum, Ticket unit tests added) |
 
 
 
-Suggested next slice: **Tickets** module (unblocked by Curriculum + Workflows) or **Identity user audit** (`UserChanges`).
+Suggested next slice: **Sprints** module or **Identity user audit** (`UserChanges`).
 
 
 
@@ -196,7 +197,7 @@ Workflow definition MVP: **SchemaTypes**, **Schemas**, **Nodes** (ordered, start
 
 
 
-Curriculum definition MVP: **AcademicYears**, **CurriculumProjects**, **CurriculumTerms**, **SubjectGroups**, **Subjects** (with status), **Units**, **Lessons**, **LearningObjectives** (linked to workflow schemas), and **SubjectUser** assignments. Ticket spawn from LOs deferred.
+Curriculum definition MVP: **AcademicYears**, **CurriculumProjects**, **CurriculumTerms**, **SubjectGroups**, **Subjects** (with status), **Units**, **Lessons**, **LearningObjectives** (linked to workflow schemas), and **SubjectUser** assignments.
 
 
 
@@ -251,7 +252,36 @@ Curriculum definition MVP: **AcademicYears**, **CurriculumProjects**, **Curricul
 - **Module layout** — [`TaskManagementSystem.Modules.Curriculum`](../src/Modules/Curriculum/TaskManagementSystem.Modules.Curriculum/) with `Domain/`, `Application/`, `Features/`, `Infrastructure/`.
 - **Cross-schema validation** — `SchemaId` on LOs validated via Dapper against `workflows.Schemas`; user assignment validated against `identity.Users` (no project references between modules).
 - **HTTP style** — Minimal API in [`Endpoints/Curriculum/`](../src/Api/TaskManagementSystem.Api/Endpoints/Curriculum/CurriculumEndpoints.cs).
-- **Deferred** — Ticket spawn from learning objectives.
+
+
+
+## Ticket (Tasks, Comments, Work Time)
+
+
+
+Ticket MVP: **Tasks** spawned from learning objectives + task bank workflow steps, **Comments**, and **TaskWorkTimes**. Rollback, TaskActivities audit, and sprint-scoped views deferred.
+
+
+
+| Endpoint | Purpose | Auth |
+|---|---|---|
+| `POST /tickets` | Create ticket from LO + task bank item | Required |
+| `GET /tickets/{id}` | Ticket detail | Required |
+| `GET /subjects/{subjectId}/tickets` | List tickets for subject (Dapper curriculum join) | Required |
+| `GET /learning-objectives/{loId}/tickets` | List tickets for learning objective | Required |
+| `PATCH /tickets/{id}/assign` | Assign user to ticket | Required |
+| `PATCH /tickets/{id}/proceed` | Advance to next workflow step (or complete if last) | Required |
+| `PATCH /tickets/{id}/complete` | Mark ticket completed | Required |
+| `POST /tickets/{id}/comments` | Add comment (current user from JWT) | Required |
+| `GET /tickets/{id}/comments` | List ticket comments | Required |
+| `POST /tickets/{id}/work-times/start` | Start work time for current user | Required |
+| `POST /tickets/{id}/work-times/stop` | Stop open work time for current user | Required |
+
+- **Module layout** — [`TaskManagementSystem.Modules.Ticket`](../src/Modules/Ticket/TaskManagementSystem.Modules.Ticket/) with `Domain/`, `Application/`, `Features/`, `Infrastructure/`, `Contracts/TicketRealtime`.
+- **Cross-schema validation** — LO, task bank, workflow steps, users, and teams validated via Dapper lookup ports (no module references).
+- **Realtime** — mutating handlers publish `TicketRealtime.SilentUpdate` via `IRealtimePublisher` (BuildingBlocks port; no SignalR in module).
+- **HTTP style** — Minimal API in [`Endpoints/Ticket/`](../src/Api/TaskManagementSystem.Api/Endpoints/Ticket/TicketEndpoints.cs).
+- **Deferred** — Rollback, RollbackIssues, TaskActivities, sprint routes, notifications integration.
 
 
 
@@ -876,6 +906,8 @@ When a module gains domain logic and handlers:
 
 - OpenTelemetry host pipeline (OTLP export optional)
 
+- Realtime silent board updates from Ticket mutating handlers
+
 - Architecture boundary tests
 
 - Full testing foundation (unit + integration + shared TestCommon)
@@ -899,8 +931,6 @@ When a module gains domain logic and handlers:
 - Module facades (`ITicketModule.ExecuteCommandAsync`, etc.)
 
 - Integration event bus, outbox/inbox
-
-- Publishing silent/visible events from real domain handlers
 
 - Port of ATS product behavior (~25 controllers, workflow engine)
 
