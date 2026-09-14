@@ -1,6 +1,7 @@
 using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Endpoints;
 using TaskManagementSystem.Api.Endpoints.Organization;
+using TaskManagementSystem.Api.Endpoints.Curriculum;
 using TaskManagementSystem.Api.Endpoints.Workflows;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -12,6 +13,8 @@ using TaskManagementSystem.Modules.Identity.Features.Authenticate;
 using TaskManagementSystem.Modules.Identity.Infrastructure;
 using TaskManagementSystem.Modules.Organization.Features.Teams.CreateTeam;
 using TaskManagementSystem.Modules.Organization.Infrastructure;
+using TaskManagementSystem.Modules.Curriculum.Features.AcademicYears.CreateAcademicYear;
+using TaskManagementSystem.Modules.Curriculum.Infrastructure;
 using TaskManagementSystem.Modules.Workflows.Features.Schemas.CreateSchema;
 using TaskManagementSystem.Modules.Workflows.Infrastructure;
 
@@ -25,6 +28,7 @@ builder.Services.AddIdentityModule(builder.Configuration, builder.Environment);
 builder.Services.AddHrModule(builder.Configuration, builder.Environment);
 builder.Services.AddOrganizationModule(builder.Configuration, builder.Environment);
 builder.Services.AddWorkflowsModule(builder.Configuration, builder.Environment);
+builder.Services.AddCurriculumModule(builder.Configuration, builder.Environment);
 builder.Services.AddAuditLog(builder.Configuration, builder.Environment);
 builder.Services.AddBuildingBlocks(
     typeof(Program).Assembly,
@@ -32,7 +36,8 @@ builder.Services.AddBuildingBlocks(
     typeof(AuthenticateCommand).Assembly,
     typeof(RequestLeaveCommand).Assembly,
     typeof(CreateTeamCommand).Assembly,
-    typeof(CreateSchemaCommand).Assembly);
+    typeof(CreateSchemaCommand).Assembly,
+    typeof(CreateAcademicYearCommand).Assembly);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddApidogCors();
@@ -52,6 +57,7 @@ app.MapIdentityEndpoints();
 app.MapHrEndpoints();
 app.MapOrganizationEndpoints();
 app.MapWorkflowsEndpoints();
+app.MapCurriculumEndpoints();
 app.MapRealtimeHub();
 
 app.Run();
