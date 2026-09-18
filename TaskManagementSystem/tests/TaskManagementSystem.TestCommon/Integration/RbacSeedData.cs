@@ -13,17 +13,8 @@ public static class RbacSeedData
             return;
         }
 
-        var permissions = IdentityPermissionCodes.SystemCodes
-            .Select(code => Permission.Create(
-                code,
-                code switch
-                {
-                    IdentityPermissionCodes.PermissionsManage => "Manage permissions",
-                    IdentityPermissionCodes.RolesManage => "Manage roles",
-                    _ => "Assign user roles"
-                },
-                null,
-                isSystem: true).Value!)
+        var permissions = PermissionCodes.All
+            .Select(code => Permission.Create(code, code, null, isSystem: true).Value!)
             .ToList();
 
         var roles = new List<Role>
@@ -36,7 +27,7 @@ public static class RbacSeedData
         };
 
         var ownerRole = roles.Single(role => role.Id == (int)UserRole.Owner);
-        foreach (var permission in permissions)
+        foreach (var permission in permissions.Where(p => p.Code.EndsWith($".{PermissionCodes.Manage}", StringComparison.Ordinal)))
         {
             ownerRole.Permissions.Add(permission);
         }

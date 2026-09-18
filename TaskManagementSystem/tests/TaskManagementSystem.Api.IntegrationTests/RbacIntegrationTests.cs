@@ -12,7 +12,7 @@ namespace TaskManagementSystem.Api.IntegrationTests;
 public sealed class RbacIntegrationTests(TmsWebApplicationFactory factory) : IClassFixture<TmsWebApplicationFactory>
 {
     [Fact]
-    public async Task AboutMe_WhenAuthenticated_ReturnsRoleNameAndPermissions()
+    public async Task AboutMe_WhenAuthenticated_ReturnsRoleNameAndManagePermissions()
     {
         var client = await factory.CreateAuthenticatedClientAsync();
 
@@ -22,46 +22,25 @@ public sealed class RbacIntegrationTests(TmsWebApplicationFactory factory) : ICl
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         body!.Role.Should().Be((int)UserRole.Owner);
         body.RoleName.Should().Be(nameof(UserRole.Owner));
-        body.Permissions.Should().Contain(IdentityPermissionCodes.PermissionsManage);
-        body.Permissions.Should().Contain(IdentityPermissionCodes.RolesManage);
-        body.Permissions.Should().Contain(IdentityPermissionCodes.UsersAssignRole);
-        body.Permissions.Should().Contain(IdentityPermissionCodes.UsersView);
-        body.Permissions.Should().Contain(IdentityPermissionCodes.UsersManage);
+        body.Permissions.Should().Contain(PermissionCodes.Organization.Manage);
+        body.Permissions.Should().Contain(PermissionCodes.IdentityRoles.Manage);
+        body.Permissions.Should().Contain(PermissionCodes.IdentityUsers.Manage);
     }
 
     [Fact]
-    public async Task ListPermissions_WhenOwner_ReturnsSeededAndCustomPermissions()
+    public async Task ListPermissions_WhenOwner_ReturnsSeededCatalog()
     {
         var client = await factory.CreateAuthenticatedClientAsync();
-
-        var createResponse = await client.PostAsJsonAsync(
-            "/identity/permissions",
-            new CreatePermissionRequest
-            {
-                Code = "reports.view",
-                Name = "View reports",
-                Description = "Can view reports"
-            });
-        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
 
         var listResponse = await client.GetAsync("/identity/permissions");
         var permissions = await listResponse.Content.ReadFromJsonAsync<List<PermissionResponse>>();
 
         listResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        permissions!.Should().Contain(permission => permission.Code == "reports.view");
-        permissions.Should().Contain(permission => permission.Code == IdentityPermissionCodes.PermissionsManage);
-    }
-
-    [Fact]
-    public async Task DeletePermission_WhenSystemPermission_ReturnsBadRequest()
-    {
-        var client = await factory.CreateAuthenticatedClientAsync();
-        var permissions = await client.GetFromJsonAsync<List<PermissionResponse>>("/identity/permissions");
-        var systemPermission = permissions!.Single(permission => permission.Code == IdentityPermissionCodes.PermissionsManage);
-
-        var response = await client.DeleteAsync($"/identity/permissions/{systemPermission.Id}");
-
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        permissions!.Should().Contain(permission => permission.Code == PermissionCodes.Organization.Read);
+        permissions.Should().OnlyContain(permission => permission.IsSystem);
+        permissions.Select(permission => permission.Code)
+            .Should()
+            .BeEquivalentTo(PermissionCodes.All);
     }
 
     [Fact]
@@ -70,7 +49,7 @@ public sealed class RbacIntegrationTests(TmsWebApplicationFactory factory) : ICl
         var client = await factory.CreateAuthenticatedClientAsync();
         var permissions = await client.GetFromJsonAsync<List<PermissionResponse>>("/identity/permissions");
         var permissionIds = permissions!
-            .Where(permission => permission.Code == IdentityPermissionCodes.RolesManage)
+            .Where(permission => permission.Code == PermissionCodes.IdentityRoles.Manage)
             .Select(permission => permission.Id)
             .ToArray();
 
@@ -86,7 +65,32 @@ public sealed class RbacIntegrationTests(TmsWebApplicationFactory factory) : ICl
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var role = await response.Content.ReadFromJsonAsync<RoleResponse>();
         role!.Name.Should().Be("Auditor");
-        role.PermissionCodes.Should().Contain(IdentityPermissionCodes.RolesManage);
+        role.PermissionCodes.Should().Contain(PermissionCodes.IdentityRoles.Manage);
+    }
+
+    [Fact]
+    public async Task OrganizationRead_WhenOwnerHasManagePermission_Succeeds()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync();
+
+        var aboutMeResponse = await client.PostAsJsonAsync("/auth/about-me", new { });
+        var aboutMe = await aboutMeResponse.Content.ReadFromJsonAsync<AuthInfoResponse>();
+        aboutMe!.Permissions.Should().Contain(PermissionCodes.Organization.Manage);
+        aboutMe.Permissions.Should().NotContain(PermissionCodes.Organization.Read);
+
+        var response = await client.GetAsync("/organization/teams");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task OrganizationTeams_WhenUnauthenticated_ReturnUnauthorized()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/organization/teams");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
     [Fact]

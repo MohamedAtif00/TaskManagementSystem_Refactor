@@ -14,13 +14,17 @@ internal sealed class PermissionAuthorizationHandler : AuthorizationHandler<Perm
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
-        var hasPermission = context.User.Claims.Any(claim =>
-            claim.Type == IdentityClaimTypes.Permission &&
-            string.Equals(claim.Value, requirement.PermissionCode, StringComparison.Ordinal));
+        var heldPermissions = context.User.Claims
+            .Where(claim => claim.Type == IdentityClaimTypes.Permission)
+            .Select(claim => claim.Value);
 
-        if (hasPermission)
+        foreach (var heldPermission in heldPermissions)
         {
-            context.Succeed(requirement);
+            if (PermissionCodes.IsSatisfiedBy(heldPermission, requirement.PermissionCode))
+            {
+                context.Succeed(requirement);
+                break;
+            }
         }
 
         return Task.CompletedTask;

@@ -6,4 +6,7 @@ public static class AuthorizationEndpointExtensions
 {
     public static RouteHandlerBuilder RequirePermission(this RouteHandlerBuilder builder, string policyName) =>
         builder.RequireAuthorization(policyName);
+
+    public static RouteHandlerBuilder RequirePermissionCode(this RouteHandlerBuilder builder, string permissionCode) =>
+        builder.RequireAuthorization(PermissionPolicyNames.For(permissionCode));
 }

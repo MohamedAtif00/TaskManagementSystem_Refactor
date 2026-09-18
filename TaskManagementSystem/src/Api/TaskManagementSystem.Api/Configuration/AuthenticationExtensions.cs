@@ -50,38 +50,12 @@ public static class AuthenticationExtensions
 
         services.AddAuthorization(options =>
         {
-            options.AddPolicy(nameof(UserRole.Owner), policy => policy.RequireRole(nameof(UserRole.Owner)));
-            options.AddPolicy(nameof(UserRole.ProjectManger), policy =>
-                policy.RequireRole(nameof(UserRole.ProjectManger), nameof(UserRole.Owner)));
-            options.AddPolicy(nameof(UserRole.SectionHead), policy =>
-                policy.RequireRole(
-                    nameof(UserRole.SectionHead),
-                    nameof(UserRole.ProjectManger),
-                    nameof(UserRole.Owner)));
-            options.AddPolicy(nameof(UserRole.TeamLeader), policy =>
-                policy.RequireRole(
-                    nameof(UserRole.TeamLeader),
-                    nameof(UserRole.SectionHead),
-                    nameof(UserRole.ProjectManger),
-                    nameof(UserRole.Owner)));
-            options.AddPolicy(nameof(UserRole.Member), policy =>
-                policy.RequireRole(
-                    nameof(UserRole.Member),
-                    nameof(UserRole.TeamLeader),
-                    nameof(UserRole.SectionHead),
-                    nameof(UserRole.ProjectManger),
-                    nameof(UserRole.Owner)));
-
-            options.AddPolicy(PermissionPolicyNames.PermissionsManage, policy =>
-                policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.PermissionsManage)));
-            options.AddPolicy(PermissionPolicyNames.RolesManage, policy =>
-                policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.RolesManage)));
-            options.AddPolicy(PermissionPolicyNames.UsersAssignRole, policy =>
-                policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.UsersAssignRole)));
-            options.AddPolicy(PermissionPolicyNames.UsersView, policy =>
-                policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.UsersView)));
-            options.AddPolicy(PermissionPolicyNames.UsersManage, policy =>
-                policy.AddRequirements(new PermissionRequirement(IdentityPermissionCodes.UsersManage)));
+            foreach (var permissionCode in PermissionCodes.All)
+            {
+                options.AddPolicy(
+                    PermissionPolicyNames.For(permissionCode),
+                    policy => policy.AddRequirements(new PermissionRequirement(permissionCode)));
+            }
         });
         return services;
     }
