@@ -64,12 +64,16 @@
     }
   ],
   "workflow": [
-    "1. Import tms-openapi.json into Apidog.",
+    "0. Local SQL Server: run DatabaseMigrator on Scripts/Migrations/, then ./scripts/seed-database.ps1 (creates TST001). Start API on http://localhost:61173.",
+    "1. Import openapi/tms-openapi.json into Apidog (full API — all 8 modules).",
     "2. Import environment.local-dev.json (Environment Management → … → Import).",
     "3. Select environment 'TMS Local Dev'.",
     "4. Settings → Public Scripts → create scripts from scripts/*.js (or add Custom Script post-processors manually).",
     "5. On POST /auth/login and POST /auth/refresh-token: Post-processors → + Add → Extract Variable OR Public Script 'TMS — Save Access Token'.",
     "6. Set bearerAuth default token to {{accessToken}} (see configureBearerAuth above).",
-    "7. Send POST /auth/login with body { \"code\": \"{{userCode}}\" } — all secured endpoints then use the token automatically."
-  ]
+    "7. Send POST /auth/login with body { \"code\": \"{{userCode}}\" } — all secured endpoints then use the token automatically.",
+    "8. Optional: import test-scenario/auth-bootstrap.json for a login + about-me smoke test.",
+    "9. GET timing: import test-scenario/get-queries-timing.json and run the scenario. Regenerate: ./scripts/generate-apidog-get-timing-scenario.ps1"
+  ],
+  "queryTimingScenario": "openapi/apidog/test-scenario/get-queries-timing.json"
 }

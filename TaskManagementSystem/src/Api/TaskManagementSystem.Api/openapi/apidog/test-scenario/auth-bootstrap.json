@@ -1,6 +1,6 @@
 {
   "name": "TMS Auth Bootstrap",
-  "description": "Login once and save accessToken to the environment. Import as a Test Scenario or use as a reference for post-processors.",
+  "description": "Login once and save accessToken to the environment. Requires migrations + ./scripts/seed-database.ps1 (TST001). Import as a Test Scenario or use as a reference for post-processors.",
   "steps": [
     {
       "type": "customHttp",

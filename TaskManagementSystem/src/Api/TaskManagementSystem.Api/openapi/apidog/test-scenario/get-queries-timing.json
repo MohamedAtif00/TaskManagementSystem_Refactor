@@ -1,0 +1,1820 @@
+{
+    "description":  "Runs all GET endpoints from tms-openapi.json and records HTTP response time per request. Import environment.local-dev.json, run API + migrations, then execute this scenario. See openapi/apidog/scripts/log-response-time.js and print-timing-summary.js. Generated: 2026-09-18 16:47:56 | GET count: 63",
+    "name":  "TMS GET Query Timing",
+    "steps":  [
+                  {
+                      "name":  "0. Login (save accessToken)",
+                      "customHttpRequest":  {
+                                                "path":  "{{baseUrl}}/auth/login",
+                                                "method":  "post",
+                                                "requestBody":  {
+                                                                    "type":  "application/json",
+                                                                    "data":  "{\"code\":\"{{userCode}}\"}"
+                                                                },
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "// Apidog Public Script: TMS â€” Save Access Token\r\n// Attach as a Post-processor on POST /auth/login and POST /auth/refresh-token.\r\n// Scope: Environment variable `accessToken` (used by bearerAuth as {{accessToken}}).\r\n\r\npm.test(\"Login/refresh returns 200\", function () {\r\n  pm.response.to.have.status(200);\r\n});\r\n\r\nconst body = pm.response.json();\r\n\r\nif (!body || !body.accessToken) {\r\n  throw new Error(\"Response JSON missing accessToken field.\");\r\n}\r\n\r\npm.environment.set(\"accessToken\", body.accessToken);\r\nconsole.log(\"accessToken saved to environment (length: \" + body.accessToken.length + \")\");\r\n",
+                                                                           "type":  "customScript"
+                                                                       },
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "pm.environment.set(\"queryTimings\", \"[]\");",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "auth":  null
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: teamId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027teamId\u0027, String(value));\r\n  console.log(\u0027Set teamId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/organization/teams",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: sectionId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027sectionId\u0027, String(value));\r\n  console.log(\u0027Set sectionId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/organization/sections",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: schemaId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027schemaId\u0027, String(value));\r\n  console.log(\u0027Set schemaId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/workflows/schemas",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: yearId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027yearId\u0027, String(value));\r\n  console.log(\u0027Set yearId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/years",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: sprintId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027sprintId\u0027, String(value));\r\n  console.log(\u0027Set sprintId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/sprints",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: userId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027userId\u0027, String(value));\r\n  console.log(\u0027Set userId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/identity/users",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: notificationId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027notificationId\u0027, String(value));\r\n  console.log(\u0027Set notificationId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/notifications",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: leaveRequestId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027leaveRequestId\u0027, String(value));\r\n  console.log(\u0027Set leaveRequestId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/leave/leave-requests",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: hrPermissionId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027hrPermissionId\u0027, String(value));\r\n  console.log(\u0027Set hrPermissionId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/permissions",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: wfhRequestId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027wfhRequestId\u0027, String(value));\r\n  console.log(\u0027Set wfhRequestId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/work-from-home",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: forgotClockId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027forgotClockId\u0027, String(value));\r\n  console.log(\u0027Set forgotClockId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/forgot-clock",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: projectId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027projectId\u0027, String(value));\r\n  console.log(\u0027Set projectId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/years/{{yearId}}/projects",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: nodeId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027nodeId\u0027, String(value));\r\n  console.log(\u0027Set nodeId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/workflows/schemas/{{schemaId}}/nodes",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: termId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027termId\u0027, String(value));\r\n  console.log(\u0027Set termId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/projects/{{projectId}}/terms",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: stepId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027stepId\u0027, String(value));\r\n  console.log(\u0027Set stepId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/workflows/nodes/{{nodeId}}/steps",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: subjectGroupId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027subjectGroupId\u0027, String(value));\r\n  console.log(\u0027Set subjectGroupId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/terms/{{termId}}/subject-groups",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: ticketId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027ticketId\u0027, String(value));\r\n  console.log(\u0027Set ticketId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/learning-objectives/{{loId}}/tickets",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: subjectId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027subjectId\u0027, String(value));\r\n  console.log(\u0027Set subjectId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/subject-groups/{{subjectGroupId}}/subjects",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: unitId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027unitId\u0027, String(value));\r\n  console.log(\u0027Set unitId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/subjects/{{subjectId}}/units",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: lessonId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027lessonId\u0027, String(value));\r\n  console.log(\u0027Set lessonId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/units/{{unitId}}/lessons",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "Setup: loId",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n  if (match) { value = parseInt(match[1], 10); }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027loId\u0027, String(value));\r\n  console.log(\u0027Set loId = \u0027 + value);\r\n}",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/lessons/{{lessonId}}/learning-objectives",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "01. GET /curriculum/learning-objectives/{id} - Get learning objective by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getLearningObjectiveById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/learning-objectives/{{{loId}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "02. GET /curriculum/lessons/{id} - Get lesson by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getLessonById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/lessons/{{{lessonId}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "03. GET /curriculum/lessons/{lessonId}/learning-objectives - List learning objectives for lesson",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listLearningObjectivesByLesson\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/lessons/{{lessonId}}/learning-objectives",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "04. GET /curriculum/projects/{id} - Get project by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getProjectById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/projects/{{{projectId}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "05. GET /curriculum/projects/{projectId}/terms - List terms for project",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTermsByProject\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/projects/{{projectId}}/terms",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "06. GET /curriculum/subject-groups/{id} - Get subject group by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getSubjectGroupById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/subject-groups/{{{subjectGroupId}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "07. GET /curriculum/subject-groups/{subjectGroupId}/subjects - List subjects for subject group",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listSubjectsBySubjectGroup\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/subject-groups/{{subjectGroupId}}/subjects",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "08. GET /curriculum/subjects/{id} - Get subject by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getSubjectById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/subjects/{{{{subjectId}}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "09. GET /curriculum/subjects/{id}/users - List users assigned to subject",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listSubjectUsers\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/subjects/{{{{subjectId}}}}/users",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "10. GET /curriculum/subjects/{subjectId}/units - List units for subject",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listUnitsBySubject\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/subjects/{{{subjectId}}}/units",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "11. GET /curriculum/terms/{id} - Get term by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getTermById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/terms/{{{termId}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "12. GET /curriculum/terms/{termId}/subject-groups - List subject groups for term",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listSubjectGroupsByTerm\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/terms/{{termId}}/subject-groups",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "13. GET /curriculum/units/{id} - Get unit by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getUnitById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/units/{{{unitId}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "14. GET /curriculum/units/{unitId}/lessons - List lessons for unit",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listLessonsByUnit\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/units/{{unitId}}/lessons",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "15. GET /curriculum/years - List active academic years",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listAcademicYears\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/years",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "16. GET /curriculum/years/{id} - Get academic year by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getAcademicYearById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/years/{{{yearId}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "17. GET /curriculum/years/{yearId}/projects - List projects for year",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listProjectsByYear\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/years/{{yearId}}/projects",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "18. GET /curriculum/years/{yearId}/tree - Get nested year tree",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getYearTree\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/curriculum/years/{{yearId}}/tree",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "19. GET /hr/forgot-clock - List own forgot clock requests",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getForgotClockRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/forgot-clock",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "20. GET /hr/forgot-clock/{id} - Get forgot clock request by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getForgotClockRequestById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/forgot-clock/{{forgotClockId}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "21. GET /hr/forgot-clock/pending - List pending forgot clock requests (Owner only)",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getPendingForgotClockRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/forgot-clock/pending",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "22. GET /hr/forgot-clock/search - Search forgot clock requests with role-scoped filters",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027searchForgotClockRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/forgot-clock/search",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "23. GET /hr/holidays - List public holidays",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listHolidays\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/holidays",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "24. GET /hr/leave/balances - Get current user leave balances",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getLeaveBalances\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/leave/balances",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "25. GET /hr/leave/leave-requests - List own leave requests",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getLeaveRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/leave/leave-requests",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "26. GET /hr/leave/leave-requests/{id} - Get leave request by ID",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getLeaveRequestById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/leave/leave-requests/{{leaveRequestId}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "27. GET /hr/leave/leave-requests/{id}/medical-certificate - Download sick leave medical certificate",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getMedicalCertificate\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/leave/leave-requests/{{leaveRequestId}}/medical-certificate",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "28. GET /hr/leave/leave-requests/pending - List pending leave requests (Owner only)",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getPendingLeaveRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/leave/leave-requests/pending",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "29. GET /hr/leave/leave-requests/search - Search leave requests with role-scoped filters",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027searchLeaveRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/leave/leave-requests/search",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "30. GET /hr/leave/leave-settings - Get read-only leave configuration windows",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getLeaveSettings\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/leave/leave-settings",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "31. GET /hr/permissions - List own permission requests",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getPermissionRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/permissions",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "32. GET /hr/permissions/{id} - Get permission request by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getPermissionRequestById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/permissions/{{hrPermissionId}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "33. GET /hr/permissions/pending - List pending permission requests (Owner only)",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getPendingPermissionRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/permissions/pending",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "34. GET /hr/permissions/search - Search permission requests (role-scoped)",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027searchPermissionRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/permissions/search",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "35. GET /hr/work-from-home - List own work from home requests",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getWorkFromHomeRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/work-from-home",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "36. GET /hr/work-from-home/{id} - Get WFH request by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getWorkFromHomeRequestById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/work-from-home/{{wfhRequestId}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "37. GET /hr/work-from-home/pending - List pending WFH requests (Owner only)",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getPendingWorkFromHomeRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/work-from-home/pending",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "38. GET /hr/work-from-home/search - Search work from home requests (role-scoped)",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027searchWorkFromHomeRequests\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/hr/work-from-home/search",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "39. GET /identity/permissions - List RBAC permissions",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listIdentityPermissions\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/identity/permissions",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "40. GET /identity/roles - List roles",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listRoles\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/identity/roles",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "41. GET /identity/users - List active users",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listUsers\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/identity/users",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "42. GET /identity/users/{userId} - Get user by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getUserById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/identity/users/{userId}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "43. GET /identity/users/team-leaders - List team leaders and section heads",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTeamLeaders\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/identity/users/team-leaders",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "44. GET /learning-objectives/{loId}/tickets - List tickets for learning objective",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTicketsByLearningObjective\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/learning-objectives/{{loId}}/tickets",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "45. GET /notifications - List current user notifications",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listMyNotifications\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "page=1\u0026pageSize=20",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "46. GET /notifications/{id} - Get notification by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getNotificationById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/notifications/{{notificationId}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "47. GET /organization/sections - List active sections",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listSections\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/organization/sections",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "48. GET /organization/sections/{id} - Get section by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getSectionById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/organization/sections/{{sectionId}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "49. GET /organization/teams - List active teams",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTeams\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/organization/teams",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "50. GET /organization/teams/{id} - Get team by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getTeamById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/organization/teams/{{teamId}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "51. GET /sprints - List sprints",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listSprints\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "archived=false",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "52. GET /sprints/{id} - Get sprint by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getSprintById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/sprints/{{{{sprintId}}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "53. GET /sprints/{id}/learning-objectives - List sprint learning objective ids",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listSprintLearningObjectives\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/sprints/{{{{sprintId}}}}/learning-objectives",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "54. GET /sprints/{sprintId}/tickets - List tickets for sprint learning objectives",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTicketsBySprint\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/sprints/{{{sprintId}}}/tickets",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "55. GET /subjects/{subjectId}/tickets - List tickets for subject",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTicketsBySubject\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/subjects/{{{subjectId}}}/tickets",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "56. GET /tickets/{id} - Get ticket by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getTicketById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/tickets/{{{ticketId}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "57. GET /tickets/{id}/comments - List ticket comments",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTicketComments\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/tickets/{{{ticketId}}}/comments",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "58. GET /workflows/nodes/{nodeId}/steps - List steps for node",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listStepsByNode\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/workflows/nodes/{{nodeId}}/steps",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "59. GET /workflows/schemas - List active schemas",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listSchemas\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/workflows/schemas",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "60. GET /workflows/schemas/{id} - Get schema by id",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027getSchemaById\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/workflows/schemas/{{{schemaId}}}",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "61. GET /workflows/schemas/{schemaId}/nodes - List nodes for schema",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listNodesBySchema\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/workflows/schemas/{{schemaId}}/nodes",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "62. GET /workflows/schema-types - List schema types",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listSchemaTypes\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/workflows/schema-types",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "63. GET /workflows/task-bank - List active task bank items",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTaskBank\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/workflows/task-bank",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "method":  "get"
+                                            },
+                      "type":  "customHttp"
+                  },
+                  {
+                      "name":  "ZZ. Print timing summary",
+                      "customHttpRequest":  {
+                                                "postProcessors":  [
+                                                                       {
+                                                                           "enable":  true,
+                                                                           "data":  "// Apidog Public Script: TMS â€” Print Query Timing Summary\r\n// Attach as the final step of get-queries-timing.json test scenario.\r\n\r\nvar timings = JSON.parse(pm.environment.get(\"queryTimings\") || \"[]\");\r\n\r\nif (timings.length === 0) {\r\n  throw new Error(\"No timings recorded. Ensure log-response-time.js ran on GET steps.\");\r\n}\r\n\r\ntimings.sort(function (a, b) {\r\n  return b.ms - a.ms;\r\n});\r\n\r\nconsole.log(\"=== TMS GET Query Timing Summary (\" + timings.length + \" requests) ===\");\r\nconsole.table(\r\n  timings.map(function (t) {\r\n    return {\r\n      ms: t.ms,\r\n      status: t.status,\r\n      path: t.path,\r\n      operationId: t.operationId || \"\"\r\n    };\r\n  })\r\n);\r\n\r\nvar totalMs = timings.reduce(function (sum, t) {\r\n  return sum + t.ms;\r\n}, 0);\r\n\r\nvar successCount = timings.filter(function (t) {\r\n  return t.status \u003e= 200 \u0026\u0026 t.status \u003c 300;\r\n}).length;\r\n\r\nconsole.log(\r\n  \"Total: \" + totalMs + \" ms | Avg: \" + Math.round(totalMs / timings.length) + \" ms | 2xx: \" + successCount + \"/\" + timings.length\r\n);\r\n\r\npm.test(\"At least one GET returned 2xx\", function () {\r\n  pm.expect(successCount).to.be.above(0);\r\n});\r\n",
+                                                                           "type":  "customScript"
+                                                                       }
+                                                                   ],
+                                                "path":  "{{baseUrl}}/auth/about-me",
+                                                "auth":  {
+                                                             "bearer":  {
+                                                                            "token":  "{{accessToken}}"
+                                                                        },
+                                                             "type":  "bearer"
+                                                         },
+                                                "requestBody":  {
+                                                                    "type":  "application/json",
+                                                                    "data":  "{}"
+                                                                },
+                                                "method":  "post"
+                                            },
+                      "type":  "customHttp"
+                  }
+              ]
+}
