@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\TaskManagementSystem.TestCommon\TaskManagementSystem.TestCommon.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Sprints\TaskManagementSystem.Modules.Sprints\TaskManagementSystem.Modules.Sprints.csproj" />
+  </ItemGroup>
+</Project>
