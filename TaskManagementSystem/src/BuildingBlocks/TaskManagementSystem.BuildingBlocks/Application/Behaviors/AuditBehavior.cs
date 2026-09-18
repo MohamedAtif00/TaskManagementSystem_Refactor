@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using TaskManagementSystem.BuildingBlocks.Domain;
 
 namespace TaskManagementSystem.BuildingBlocks.Application.Behaviors;
@@ -6,7 +7,8 @@ namespace TaskManagementSystem.BuildingBlocks.Application.Behaviors;
 public sealed class AuditBehavior<TRequest, TResponse>(
     IAuditContext auditContext,
     IAuditStore auditStore,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<AuditBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
@@ -30,14 +32,21 @@ public sealed class AuditBehavior<TRequest, TResponse>(
         }
         finally
         {
-            await auditStore.AppendAsync(
-                new AuditEntry(
-                    auditContext.CorrelationId,
-                    auditContext.UserId,
-                    typeof(TRequest).Name,
-                    timeProvider.GetUtcNow().UtcDateTime,
-                    success),
-                cancellationToken);
+            try
+            {
+                await auditStore.AppendAsync(
+                    new AuditEntry(
+                        auditContext.CorrelationId,
+                        auditContext.UserId,
+                        typeof(TRequest).Name,
+                        timeProvider.GetUtcNow().UtcDateTime,
+                        success),
+                    cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Failed to append audit entry for {RequestType}.", typeof(TRequest).Name);
+            }
         }
     }
 }

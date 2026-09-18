@@ -10,14 +10,6 @@ public abstract class Entity
 
     public void ClearDomainEvents() => _domainEvents.Clear();
 
-    protected static void CheckRule(IBusinessRule rule)
-    {
-        if (rule.IsBroken())
-        {
-            throw new BusinessRuleValidationException(rule);
-        }
-    }
-
     public override bool Equals(object? obj)
     {
         if (obj is not Entity other)

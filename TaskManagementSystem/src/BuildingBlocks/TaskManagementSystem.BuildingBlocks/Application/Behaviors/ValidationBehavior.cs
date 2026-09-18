@@ -1,6 +1,7 @@
 using System.Text;
 using FluentValidation;
 using MediatR;
+using TaskManagementSystem.BuildingBlocks.Domain;
 
 namespace TaskManagementSystem.BuildingBlocks.Application.Behaviors;
 
@@ -29,6 +30,12 @@ public sealed class ValidationBehavior<TRequest, TResponse>(
         if (failures.Count == 0)
         {
             return await next(cancellationToken);
+        }
+
+        if (typeof(TResponse).IsGenericType
+            && typeof(TResponse).GetGenericTypeDefinition() == typeof(Result<>))
+        {
+            return (TResponse)ValidationResultFactory.CreateFailure(typeof(TResponse), failures);
         }
 
         var message = new StringBuilder("Validation failed:");
