@@ -58,6 +58,9 @@ public sealed class HrPermissionWorkFromHomeIntegrationTests(TmsWebApplicationFa
     {
         var client = await factory.CreateAuthenticatedClientAsync();
 
+        var balancesBefore = await (await client.GetAsync("/hr/leave/balances"))
+            .Content.ReadFromJsonAsync<LeaveBalancesResponse>();
+
         var createResponse = await client.PostAsJsonAsync(
             "/hr/work-from-home",
             new CreateWorkFromHomeRequest(WfhDate, "Focus work"));
@@ -73,8 +76,8 @@ public sealed class HrPermissionWorkFromHomeIntegrationTests(TmsWebApplicationFa
 
         var balances = await (await client.GetAsync("/hr/leave/balances"))
             .Content.ReadFromJsonAsync<LeaveBalancesResponse>();
-        balances!.WorkFromHome.Should().Be(1);
-        balances.AvailableWorkFromHome.Should().Be(4);
+        balances!.WorkFromHome.Should().Be(balancesBefore!.WorkFromHome + 1);
+        balances.AvailableWorkFromHome.Should().Be(balancesBefore.AvailableWorkFromHome - 1);
     }
 
     [Fact]

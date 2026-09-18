@@ -1,7 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
+using Dapper;
 using FluentAssertions;
+using Microsoft.Data.SqlClient;
 using TaskManagementSystem.Api.Contracts.Curriculum;
+using TaskManagementSystem.Api.Contracts.Notifications;
 using TaskManagementSystem.Api.Contracts.Ticket;
 using TaskManagementSystem.Api.Contracts.Workflows;
 using TaskManagementSystem.Modules.Ticket.Domain;
@@ -77,6 +80,90 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
         subjectTickets!.Should().ContainSingle(item => item.Id == ticket.Id);
     }
 
+    [Fact]
+    public async Task AssignTicket_WritesNotificationViaOutbox()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync();
+        var setup = await CreateTicketSetupAsync(client);
+
+        var createTicketResponse = await client.PostAsJsonAsync(
+            "/tickets",
+            new CreateTicketRequest
+            {
+                LearningObjectiveId = setup.LearningObjectiveId,
+                TaskBankItemId = setup.TaskBankItemId
+            });
+        createTicketResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var ticket = await createTicketResponse.Content.ReadFromJsonAsync<TicketDetailResponse>();
+
+        var usersResponse = await client.GetAsync("/identity/users");
+        var users = await usersResponse.Content.ReadFromJsonAsync<List<IdentityUserListItemResponse>>();
+        var testUser = users!.Single(user => user.Name == IntegrationTestDataSeeder.TestUserName);
+
+        var assignResponse = await client.PatchAsJsonAsync(
+            $"/tickets/{ticket!.Id}/assign",
+            new AssignTicketRequest { UserId = testUser.Id });
+        assignResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        NotificationListItemResponse? notification = null;
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            await factory.DrainOutboxesAsync();
+
+            var notificationsResponse = await client.GetAsync("/notifications?page=1&pageSize=20");
+            notificationsResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+            var notifications = await notificationsResponse.Content.ReadFromJsonAsync<NotificationListPageResponse>();
+            notification = notifications!.Items.FirstOrDefault(item =>
+                item.Title == "Task assigned" && item.RelatedEntityId == ticket.Id);
+
+            if (notification is not null)
+            {
+                break;
+            }
+
+            await Task.Delay(250);
+        }
+
+        notification.Should().NotBeNull();
+
+        await using var connection = new SqlConnection(factory.ConnectionString);
+        var outboxCount = await connection.ExecuteScalarAsync<int>(
+            """
+            SELECT COUNT(*)
+            FROM [ticket].[OutboxMessages]
+            WHERE [Payload] LIKE @TicketIdPattern
+            """,
+            new { TicketIdPattern = $"%\"ticketId\":{ticket!.Id}%" });
+
+        outboxCount.Should().BeGreaterThan(0);
+
+        var inboxCount = await connection.ExecuteScalarAsync<int>(
+            """
+            SELECT COUNT(*)
+            FROM [notifications].[InboxMessages]
+            WHERE [ConsumerName] = @ConsumerName
+              AND [Payload] LIKE @TicketIdPattern
+            """,
+            new
+            {
+                ConsumerName = "Notifications.OnTicketAssigned",
+                TicketIdPattern = $"%\"ticketId\":{ticket.Id}%"
+            });
+
+        inboxCount.Should().Be(1);
+
+        var notificationCount = await connection.ExecuteScalarAsync<int>(
+            """
+            SELECT COUNT(*)
+            FROM [notifications].[Notifications]
+            WHERE [RelatedEntityId] = @TicketId
+              AND [Title] = 'Task assigned'
+            """,
+            new { TicketId = ticket.Id });
+
+        notificationCount.Should().Be(1);
+    }
+
     private static async Task<TicketSetup> CreateTicketSetupAsync(HttpClient client)
     {
         var createYearResponse = await client.PostAsJsonAsync(
@@ -117,16 +204,22 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
         var createSchemaResponse = await client.PostAsJsonAsync(
             "/workflows/schemas",
             new CreateSchemaRequest { Name = "Ticket Schema", Description = "Ticket workflow" });
-        var schema = await createSchemaResponse.Content.ReadFromJsonAsync<SchemaDetailResponse>();
+        var schema = await IntegrationHttpAssertions.EnsureAsync<SchemaDetailResponse>(
+            createSchemaResponse,
+            HttpStatusCode.Created);
 
         var createNodeResponse = await client.PostAsJsonAsync(
-            $"/workflows/schemas/{schema!.Id}/nodes",
+            $"/workflows/schemas/{schema.Id}/nodes",
             new CreateNodeRequest { Name = "Start", IsStart = true, IsEnd = true });
-        var node = await createNodeResponse.Content.ReadFromJsonAsync<NodeListItemResponse>();
+        var node = await IntegrationHttpAssertions.EnsureAsync<NodeListItemResponse>(
+            createNodeResponse,
+            HttpStatusCode.Created);
 
         var teamsResponse = await client.GetAsync("/organization/teams");
-        var teams = await teamsResponse.Content.ReadFromJsonAsync<List<TeamListItemResponse>>();
-        var team = teams!.First();
+        var teams = await IntegrationHttpAssertions.EnsureAsync<List<TeamListItemResponse>>(
+            teamsResponse,
+            HttpStatusCode.OK);
+        var team = teams.First();
 
         var createTaskBankResponse = await client.PostAsJsonAsync(
             "/workflows/task-bank",
@@ -138,17 +231,21 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
                 TeamLeaderOnly = false,
                 TeamId = team.Id
             });
-        var taskBank = await createTaskBankResponse.Content.ReadFromJsonAsync<TaskBankListItemResponse>();
+        var taskBank = await IntegrationHttpAssertions.EnsureAsync<TaskBankListItemResponse>(
+            createTaskBankResponse,
+            HttpStatusCode.Created);
 
         var createStepResponse = await client.PostAsJsonAsync(
-            $"/workflows/nodes/{node!.Id}/steps",
+            $"/workflows/nodes/{node.Id}/steps",
             new CreateStepRequest
             {
-                TaskBankId = taskBank!.Id,
+                TaskBankId = taskBank.Id,
                 Duration = 60,
                 Priority = 2
             });
-        var step = await createStepResponse.Content.ReadFromJsonAsync<StepListItemResponse>();
+        var step = await IntegrationHttpAssertions.EnsureAsync<StepListItemResponse>(
+            createStepResponse,
+            HttpStatusCode.Created);
 
         var createLoResponse = await client.PostAsJsonAsync(
             $"/curriculum/lessons/{lesson!.Id}/learning-objectives",
@@ -160,13 +257,15 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
                 Template = "template",
                 Environment = "lab"
             });
-        var learningObjective = await createLoResponse.Content.ReadFromJsonAsync<LearningObjectiveDetailResponse>();
+        var learningObjective = await IntegrationHttpAssertions.EnsureAsync<LearningObjectiveDetailResponse>(
+            createLoResponse,
+            HttpStatusCode.Created);
 
         return new TicketSetup(
-            subject.Id,
-            learningObjective!.Id,
+            subject!.Id,
+            learningObjective.Id,
             taskBank.Id,
-            step!.Id);
+            step.Id);
     }
 
     private sealed record TicketSetup(

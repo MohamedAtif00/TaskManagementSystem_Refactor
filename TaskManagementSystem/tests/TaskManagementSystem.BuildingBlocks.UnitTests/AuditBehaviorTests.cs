@@ -1,5 +1,6 @@
 using FluentAssertions;
 using MediatR;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Application.Behaviors;
@@ -24,7 +25,11 @@ public sealed class AuditBehaviorTests
             .Returns(Task.CompletedTask);
 
         var timeProvider = TimeProvider.System;
-        var behavior = new AuditBehavior<TestCommand, string>(auditContext, auditStore, timeProvider);
+        var behavior = new AuditBehavior<TestCommand, string>(
+            auditContext,
+            auditStore,
+            timeProvider,
+            NullLogger<AuditBehavior<TestCommand, string>>.Instance);
         var next = Substitute.For<RequestHandlerDelegate<string>>();
         next.Invoke().Returns("ok");
 
@@ -53,7 +58,8 @@ public sealed class AuditBehaviorTests
         var behavior = new AuditBehavior<TestCommand, string>(
             auditContext,
             auditStore,
-            TimeProvider.System);
+            TimeProvider.System,
+            NullLogger<AuditBehavior<TestCommand, string>>.Instance);
         var next = Substitute.For<RequestHandlerDelegate<string>>();
         next.Invoke().Returns<Task<string>>(_ => throw new InvalidOperationException("boom"));
 
@@ -73,7 +79,8 @@ public sealed class AuditBehaviorTests
         var behavior = new AuditBehavior<TestQuery, string>(
             auditContext,
             auditStore,
-            TimeProvider.System);
+            TimeProvider.System,
+            NullLogger<AuditBehavior<TestQuery, string>>.Instance);
         var next = Substitute.For<RequestHandlerDelegate<string>>();
         next.Invoke().Returns("ok");
 
@@ -98,7 +105,8 @@ public sealed class AuditBehaviorTests
         var behavior = new AuditBehavior<TestCommand, Result<string>>(
             auditContext,
             auditStore,
-            TimeProvider.System);
+            TimeProvider.System,
+            NullLogger<AuditBehavior<TestCommand, Result<string>>>.Instance);
         var next = Substitute.For<RequestHandlerDelegate<Result<string>>>();
         next.Invoke().Returns(Result.Fail<string>(new ResultError("bad", "bad")));
 

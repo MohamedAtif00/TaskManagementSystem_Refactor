@@ -5,15 +5,20 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using TaskManagementSystem.BuildingBlocks.Application.Data;
+using TaskManagementSystem.BuildingBlocks.Persistence.Data;
 using Microsoft.IdentityModel.Tokens;
 using TaskManagementSystem.Modules.HR.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.Identity.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.Organization.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.Curriculum.Infrastructure.Persistence;
+using TaskManagementSystem.Modules.Notifications.Infrastructure.Persistence;
+using TaskManagementSystem.Modules.Sprints.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.Workflows.Infrastructure.Persistence;
 
@@ -28,8 +33,8 @@ public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
     private bool _seeded;
     private HttpClient? _authenticatedClient;
 
-    private string ConnectionString =>
-        $"Server=(localdb)\\MSSQLLocalDB;Database={_databaseName};Trusted_Connection=True;TrustServerCertificate=True";
+    public string ConnectionString =>
+        $"Server=localhost;Database={_databaseName};Trusted_Connection=True;TrustServerCertificate=True";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -53,12 +58,17 @@ public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            services.RemoveAll<ISqlConnectionFactory>();
+            services.AddSingleton<ISqlConnectionFactory>(_ => new SqlConnectionFactory(ConnectionString));
+
             ReplaceSqlServerDbContext<IdentityDbContext>(services, ConnectionString);
             ReplaceSqlServerDbContext<HrDbContext>(services, ConnectionString);
             ReplaceSqlServerDbContext<OrganizationDbContext>(services, ConnectionString);
             ReplaceSqlServerDbContext<WorkflowsDbContext>(services, ConnectionString);
             ReplaceSqlServerDbContext<CurriculumDbContext>(services, ConnectionString);
+            ReplaceSqlServerDbContext<SprintsDbContext>(services, ConnectionString);
             ReplaceSqlServerDbContext<TicketDbContext>(services, ConnectionString);
+            ReplaceSqlServerDbContext<NotificationsDbContext>(services, ConnectionString);
 
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
@@ -99,6 +109,9 @@ public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
         _authenticatedClient = client;
         return client;
     }
+
+    public Task DrainOutboxesAsync(CancellationToken cancellationToken = default) =>
+        IntegrationOutboxSupport.DrainAllAsync(Services, cancellationToken);
 
     public async Task SeedTestUserAsync()
     {
@@ -141,6 +154,34 @@ public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
 
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", loginBody.AccessToken);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing && _databaseInitialized)
+        {
+            try
+            {
+                using var connection = new SqlConnection(
+                    "Server=localhost;Database=master;Trusted_Connection=True;TrustServerCertificate=True");
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText = $"""
+                    IF DB_ID(N'{_databaseName}') IS NOT NULL
+                    BEGIN
+                        ALTER DATABASE [{_databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                        DROP DATABASE [{_databaseName}];
+                    END
+                    """;
+                command.ExecuteNonQuery();
+            }
+            catch
+            {
+                // Best-effort cleanup; do not fail test teardown.
+            }
+        }
+
+        base.Dispose(disposing);
     }
 
     private sealed class LoginResponse

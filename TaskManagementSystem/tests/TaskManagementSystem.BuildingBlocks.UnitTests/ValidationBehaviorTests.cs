@@ -4,6 +4,7 @@ using FluentValidation.Results;
 using MediatR;
 using NSubstitute;
 using TaskManagementSystem.BuildingBlocks.Application.Behaviors;
+using TaskManagementSystem.BuildingBlocks.Domain;
 using Xunit;
 
 namespace TaskManagementSystem.BuildingBlocks.UnitTests;
@@ -46,6 +47,21 @@ public sealed class ValidationBehaviorTests
 
         await act.Should().ThrowAsync<ValidationException>()
             .WithMessage("*Name is required.*");
+        await next.DidNotReceive().Invoke();
+    }
+
+    [Fact]
+    public async Task Handle_WhenValidationFailsForResultResponse_ReturnsFailedResult()
+    {
+        var behavior = new ValidationBehavior<TestRequest, Result<string>>([new FailureValidator()]);
+        var next = Substitute.For<RequestHandlerDelegate<Result<string>>>();
+
+        var response = await behavior.Handle(new TestRequest(string.Empty), next, CancellationToken.None);
+
+        response.IsSuccess.Should().BeFalse();
+        response.Error.Code.Should().Be("validation_failed");
+        response.Error.ValidationErrors.Should().ContainKey("Name");
+        response.Error.ValidationErrors!["Name"].Should().Contain("Name is required.");
         await next.DidNotReceive().Invoke();
     }
 

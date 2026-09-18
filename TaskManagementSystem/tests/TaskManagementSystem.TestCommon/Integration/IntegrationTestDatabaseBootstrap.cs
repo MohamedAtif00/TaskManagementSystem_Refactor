@@ -20,6 +20,9 @@ public static class IntegrationTestDatabaseBootstrap
         {
             await SqlScriptSeeder.ExecuteFileAsync(connectionString, migrationFile, cancellationToken);
         }
+
+        var seedScript = SqlScriptSeeder.ResolveScriptPath(SqlScriptSeeder.IdentityIntegrationTestSeedScript);
+        await SqlScriptSeeder.ExecuteFileAsync(connectionString, seedScript, cancellationToken);
     }
 
     private static async Task EnsureDatabaseExistsAsync(string connectionString, CancellationToken cancellationToken)

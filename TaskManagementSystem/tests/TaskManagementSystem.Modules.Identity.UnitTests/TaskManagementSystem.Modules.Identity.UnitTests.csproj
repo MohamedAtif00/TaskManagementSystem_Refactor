@@ -4,6 +4,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TaskManagementSystem.TestCommon\TaskManagementSystem.TestCommon.csproj" />
+    <ProjectReference Include="..\..\src\Database\TaskManagementSystem.Database\TaskManagementSystem.Database.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\TaskManagementSystem.Modules.Identity\TaskManagementSystem.Modules.Identity.csproj" />
   </ItemGroup>
 </Project>

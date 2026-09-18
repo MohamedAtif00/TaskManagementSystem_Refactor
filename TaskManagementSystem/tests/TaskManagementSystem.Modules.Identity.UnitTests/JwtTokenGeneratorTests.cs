@@ -24,7 +24,7 @@ public sealed class JwtTokenGeneratorTests
         var ownerRole = Role.Create(nameof(UserRole.Owner), null, isSystem: true).Value;
         ownerRole.Id = (int)UserRole.Owner;
         ownerRole.Permissions.Add(
-            Permission.Create(IdentityPermissionCodes.PermissionsManage, "Manage permissions", null, true).Value);
+            Permission.Create(PermissionCodes.Organization.Manage, "Manage organization", null, true).Value);
 
         var user = User.CreateForPersistence();
         user.Id = 42;
@@ -42,7 +42,7 @@ public sealed class JwtTokenGeneratorTests
         jwt.Claims.Should().Contain(claim => claim.Type == ClaimTypes.Role && claim.Value == nameof(UserRole.Owner));
         jwt.Claims.Should().Contain(claim =>
             claim.Type == IdentityClaimTypes.Permission &&
-            claim.Value == IdentityPermissionCodes.PermissionsManage);
+            claim.Value == PermissionCodes.Organization.Manage);
         jwt.Claims.Should().Contain(claim => claim.Type == ClaimTypes.NameIdentifier && claim.Value == "42");
     }
 }

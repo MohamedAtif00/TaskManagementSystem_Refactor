@@ -28,7 +28,7 @@ public sealed class PermissionTests
     [Fact]
     public void CanDelete_WhenSystemPermission_ReturnsError()
     {
-        var permission = Permission.Create(IdentityPermissionCodes.RolesManage, "Manage roles", null, true).Value;
+        var permission = Permission.Create(PermissionCodes.IdentityRoles.Manage, "Manage roles", null, true).Value;
 
         var result = permission.CanDelete();
 

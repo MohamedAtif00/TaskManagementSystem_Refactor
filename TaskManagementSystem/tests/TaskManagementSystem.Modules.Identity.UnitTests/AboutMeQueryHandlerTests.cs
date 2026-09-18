@@ -40,7 +40,7 @@ public sealed class AboutMeQueryHandlerTests
 
                 nameof(UserRole.Owner),
 
-                [IdentityPermissionCodes.PermissionsManage],
+                [PermissionCodes.IdentityRoles.Manage],
 
                 "Team A",
 
@@ -72,7 +72,7 @@ public sealed class AboutMeQueryHandlerTests
 
         result.Value.RoleName.Should().Be(nameof(UserRole.Owner));
 
-        result.Value.Permissions.Should().Contain(IdentityPermissionCodes.PermissionsManage);
+        result.Value.Permissions.Should().Contain(PermissionCodes.IdentityRoles.Manage);
 
         result.Value.Group.Should().Be("Team A");
 

@@ -42,8 +42,9 @@ public sealed class IdentityUserAdminIntegrationTests(TmsWebApplicationFactory f
                 TeamId = teamId
             });
 
-        createResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var created = await createResponse.Content.ReadFromJsonAsync<UserDetailResponse>();
+        var created = await IntegrationHttpAssertions.EnsureAsync<UserDetailResponse>(
+            createResponse,
+            HttpStatusCode.Created);
         created!.Name.Should().Be("Integration Member");
         created.Code.Should().HaveLength(6);
         created.TeamId.Should().Be(teamId);

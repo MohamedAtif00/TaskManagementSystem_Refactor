@@ -61,20 +61,23 @@ public sealed class CurriculumIntegrationTests(TmsWebApplicationFactory factory)
         var createSchemaResponse = await client.PostAsJsonAsync(
             "/workflows/schemas",
             new CreateSchemaRequest { Name = "Curriculum Schema", Description = "For LO tests" });
-        var schema = await createSchemaResponse.Content.ReadFromJsonAsync<SchemaDetailResponse>();
+        var schema = await IntegrationHttpAssertions.EnsureAsync<SchemaDetailResponse>(
+            createSchemaResponse,
+            HttpStatusCode.Created);
 
         var createLoResponse = await client.PostAsJsonAsync(
             $"/curriculum/lessons/{lesson!.Id}/learning-objectives",
             new CreateLearningObjectiveRequest
             {
-                SchemaId = schema!.Id,
+                SchemaId = schema.Id,
                 Name = "Understand forces",
                 Tag = "PHY-1",
                 Template = "template",
                 Environment = "lab"
             });
-        createLoResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var learningObjective = await createLoResponse.Content.ReadFromJsonAsync<LearningObjectiveDetailResponse>();
+        var learningObjective = await IntegrationHttpAssertions.EnsureAsync<LearningObjectiveDetailResponse>(
+            createLoResponse,
+            HttpStatusCode.Created);
         learningObjective!.SchemaId.Should().Be(schema.Id);
 
         var usersResponse = await client.GetAsync("/identity/users");

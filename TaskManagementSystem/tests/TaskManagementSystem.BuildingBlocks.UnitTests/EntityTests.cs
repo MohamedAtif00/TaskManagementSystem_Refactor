@@ -1,13 +1,5 @@
 using FluentAssertions;
-using FluentValidation;
-using MediatR;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using NSubstitute;
-using TaskManagementSystem.BuildingBlocks.Application;
-using TaskManagementSystem.BuildingBlocks.Application.Behaviors;
 using TaskManagementSystem.BuildingBlocks.Domain;
-using TaskManagementSystem.TestCommon.MediatR;
 using Xunit;
 
 namespace TaskManagementSystem.BuildingBlocks.UnitTests;
@@ -15,28 +7,9 @@ namespace TaskManagementSystem.BuildingBlocks.UnitTests;
 public sealed class EntityTests
 {
     [Fact]
-    public void CheckRule_WhenRuleIsBroken_ThrowsBusinessRuleValidationException()
-    {
-        var rule = new AlwaysBrokenRule();
-
-        var exception = Assert.Throws<BusinessRuleValidationException>(() =>
-            SampleEntity.Create(rule));
-
-        Assert.Same(rule, exception.BrokenRule);
-    }
-
-    [Fact]
-    public void CheckRule_WhenRuleIsValid_DoesNotThrow()
-    {
-        var entity = SampleEntity.Create(new NeverBrokenRule());
-
-        Assert.NotNull(entity);
-    }
-
-    [Fact]
     public void AddDomainEvent_AddsEventToCollection()
     {
-        var entity = SampleEntity.Create(new NeverBrokenRule());
+        var entity = new SampleEntity(1);
         var domainEvent = new SampleDomainEvent();
 
         entity.Raise(domainEvent);
@@ -47,7 +20,7 @@ public sealed class EntityTests
     [Fact]
     public void ClearDomainEvents_RemovesAllEvents()
     {
-        var entity = SampleEntity.Create(new NeverBrokenRule());
+        var entity = new SampleEntity(1);
         entity.Raise(new SampleDomainEvent());
 
         entity.ClearDomainEvents();
@@ -83,20 +56,9 @@ public sealed class EntityTests
         entity.Equals(otherEntity).Should().BeFalse();
     }
 
-    private sealed class SampleEntity : Entity
+    private sealed class SampleEntity(int id) : Entity
     {
-        public SampleEntity(int id)
-        {
-            Id = id;
-        }
-
-        public int Id { get; }
-
-        public static SampleEntity Create(IBusinessRule rule)
-        {
-            CheckRule(rule);
-            return new SampleEntity(1);
-        }
+        public int Id { get; } = id;
 
         public void Raise(IDomainEvent domainEvent) => AddDomainEvent(domainEvent);
 
@@ -115,18 +77,4 @@ public sealed class EntityTests
     }
 
     private sealed record SampleDomainEvent : DomainEventBase;
-
-    private sealed class AlwaysBrokenRule : IBusinessRule
-    {
-        public bool IsBroken() => true;
-
-        public string Message => "Rule is broken.";
-    }
-
-    private sealed class NeverBrokenRule : IBusinessRule
-    {
-        public bool IsBroken() => false;
-
-        public string Message => string.Empty;
-    }
 }

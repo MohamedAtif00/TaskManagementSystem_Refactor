@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NSubstitute;
+using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Infrastructure.Realtime;
 using TaskManagementSystem.Modules.Ticket.Application;
 using TaskManagementSystem.Modules.Ticket.Domain;
