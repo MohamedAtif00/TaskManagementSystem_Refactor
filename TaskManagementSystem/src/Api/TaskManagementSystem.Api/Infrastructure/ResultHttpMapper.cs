@@ -17,11 +17,20 @@ public static class ResultHttpMapper
         return ToProblemResult(result.Error);
     }
 
-    public static HttpResult ToProblemResult(ResultError error) =>
-        Results.Problem(
+    public static HttpResult ToProblemResult(ResultError error)
+    {
+        var extensions = new Dictionary<string, object?> { ["code"] = error.Code };
+
+        if (error.ValidationErrors is { Count: > 0 })
+        {
+            extensions["errors"] = error.ValidationErrors;
+        }
+
+        return Results.Problem(
             detail: error.Message,
             statusCode: MapStatusCode(error.Code),
-            extensions: new Dictionary<string, object?> { ["code"] = error.Code });
+            extensions: extensions);
+    }
 
     internal static int MapStatusCode(string code) =>
         code switch
@@ -53,9 +62,14 @@ public static class ResultHttpMapper
             "ticket_not_found" => StatusCodes.Status404NotFound,
             "comment_not_found" => StatusCodes.Status404NotFound,
             "work_time_not_found" => StatusCodes.Status404NotFound,
+            "sprint_not_found" => StatusCodes.Status404NotFound,
+            "sprint_learning_objective_not_found" => StatusCodes.Status404NotFound,
+            "notification_not_found" => StatusCodes.Status404NotFound,
             "parent_archived" => StatusCodes.Status404NotFound,
             "work_time_already_open" => StatusCodes.Status409Conflict,
             "ticket_already_completed" => StatusCodes.Status409Conflict,
+            "sprint_already_archived" => StatusCodes.Status409Conflict,
+            "notification_already_read" => StatusCodes.Status409Conflict,
             "section_already_exists" => StatusCodes.Status409Conflict,
             "leave_opinion_not_authorized" => StatusCodes.Status403Forbidden,
             "permission_opinion_not_authorized" => StatusCodes.Status403Forbidden,

@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using FluentValidation;
-using FluentValidation.Results;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using TaskManagementSystem.BuildingBlocks.Application.Behaviors;
 
 namespace TaskManagementSystem.Api.Infrastructure;
 
@@ -17,7 +17,7 @@ public sealed class ApiExceptionHandler(
     {
         if (exception is ValidationException validationException)
         {
-            var errors = GroupValidationErrors(validationException.Errors);
+            var errors = ValidationErrorGrouping.GroupByProperty(validationException.Errors);
 
             logger.LogWarning(
                 "Validation failed for {Method} {Path}. TraceId={TraceId} ValidationCode={ValidationCode} Errors={ValidationErrors}",
@@ -65,13 +65,6 @@ public sealed class ApiExceptionHandler(
 
         return true;
     }
-
-    private static Dictionary<string, string[]> GroupValidationErrors(IEnumerable<ValidationFailure> failures) =>
-        failures
-            .GroupBy(error => error.PropertyName)
-            .ToDictionary(
-                group => group.Key,
-                group => group.Select(error => error.ErrorMessage).ToArray());
 
     private static async Task WriteProblemDetailsAsync(
         HttpContext httpContext,
