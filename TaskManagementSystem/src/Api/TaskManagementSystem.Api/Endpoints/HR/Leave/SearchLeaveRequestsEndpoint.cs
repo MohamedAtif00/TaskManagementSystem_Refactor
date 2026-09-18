@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Contracts.HR;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -11,7 +13,7 @@ public static class SearchLeaveRequestsEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder leave)
     {
-        leave.MapGet("/leave-requests/search", HandleAsync).RequireAuthorization();
+        leave.MapGet("/leave-requests/search", HandleAsync).RequirePermissionCode(PermissionCodes.HrLeave.Read);
         return leave;
     }
 

@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.ForgotClock.ApproveForgotClockRequest;
@@ -11,7 +12,7 @@ public static class ApproveForgotClockRequestEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder forgotClock)
     {
         forgotClock.MapPost("/{id:int}/approve", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.Owner));
+            .RequirePermissionCode(PermissionCodes.HrForgotClock.Manage);
         return forgotClock;
     }
 

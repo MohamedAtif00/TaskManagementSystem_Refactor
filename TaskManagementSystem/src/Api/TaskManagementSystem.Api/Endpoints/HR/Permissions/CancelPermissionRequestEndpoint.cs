@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.Permissions.CancelPermissionRequest;
@@ -9,7 +11,7 @@ public static class CancelPermissionRequestEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder permissions)
     {
-        permissions.MapPut("/{id:int}/cancel", HandleAsync).RequireAuthorization();
+        permissions.MapPut("/{id:int}/cancel", HandleAsync).RequirePermissionCode(PermissionCodes.HrTimeoff.Update);
         return permissions;
     }
 

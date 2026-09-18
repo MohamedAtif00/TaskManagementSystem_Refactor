@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Contracts.HR;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -17,13 +18,13 @@ public static class HrHolidayEndpoints
     {
         var holidays = hr.MapGroup("/holidays").WithTags("HR Holidays");
 
-        holidays.MapGet("", ListHolidaysAsync).RequireAuthorization();
+        holidays.MapGet("", ListHolidaysAsync).RequirePermissionCode(PermissionCodes.HrHolidays.Read);
         holidays.MapPost("", CreateHolidayAsync)
-            .RequireAuthorization(nameof(UserRole.ProjectManger));
+            .RequirePermissionCode(PermissionCodes.HrHolidays.Manage);
         holidays.MapPut("/{id:int}", UpdateHolidayAsync)
-            .RequireAuthorization(nameof(UserRole.ProjectManger));
+            .RequirePermissionCode(PermissionCodes.HrHolidays.Manage);
         holidays.MapDelete("/{id:int}", DeleteHolidayAsync)
-            .RequireAuthorization(nameof(UserRole.ProjectManger));
+            .RequirePermissionCode(PermissionCodes.HrHolidays.Manage);
 
         return hr;
     }

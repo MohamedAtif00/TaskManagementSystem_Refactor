@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.Permissions.GetPermissionRequestById;
@@ -9,7 +11,7 @@ public static class GetPermissionRequestByIdEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder permissions)
     {
-        permissions.MapGet("/{id:int}", HandleAsync).RequireAuthorization();
+        permissions.MapGet("/{id:int}", HandleAsync).RequirePermissionCode(PermissionCodes.HrTimeoff.Read);
         return permissions;
     }
 

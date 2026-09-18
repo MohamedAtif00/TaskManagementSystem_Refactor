@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.ForgotClock.GetForgotClockRequests;
@@ -9,7 +11,7 @@ public static class GetForgotClockRequestsEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder forgotClock)
     {
-        forgotClock.MapGet("", HandleAsync).RequireAuthorization();
+        forgotClock.MapGet("", HandleAsync).RequirePermissionCode(PermissionCodes.HrForgotClock.Read);
         return forgotClock;
     }
 

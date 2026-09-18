@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.Permissions.ApprovePermissionRequest;
@@ -11,7 +12,7 @@ public static class ApprovePermissionRequestEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder permissions)
     {
         permissions.MapPost("/{id:int}/approve", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.Owner));
+            .RequirePermissionCode(PermissionCodes.HrTimeoff.Manage);
         return permissions;
     }
 

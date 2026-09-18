@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Contracts.HR;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -10,7 +12,7 @@ public static class GiveForgotClockOpinionEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder forgotClock)
     {
-        forgotClock.MapPost("/{id:int}/opinions", HandleAsync).RequireAuthorization();
+        forgotClock.MapPost("/{id:int}/opinions", HandleAsync).RequirePermissionCode(PermissionCodes.HrForgotClock.Update);
         return forgotClock;
     }
 

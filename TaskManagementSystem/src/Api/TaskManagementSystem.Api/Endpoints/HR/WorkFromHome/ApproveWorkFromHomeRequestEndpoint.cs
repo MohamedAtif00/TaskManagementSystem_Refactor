@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.WorkFromHome.ApproveWorkFromHomeRequest;
@@ -11,7 +12,7 @@ public static class ApproveWorkFromHomeRequestEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder workFromHome)
     {
         workFromHome.MapPost("/{id:int}/approve", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.Owner));
+            .RequirePermissionCode(PermissionCodes.HrWorkFromHome.Manage);
         return workFromHome;
     }
 

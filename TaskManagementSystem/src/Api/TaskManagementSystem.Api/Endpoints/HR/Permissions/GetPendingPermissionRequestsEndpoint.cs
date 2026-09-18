@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Modules.HR.Features.Permissions.GetPendingPermissionRequests;
 using TaskManagementSystem.Modules.Identity.Domain;
@@ -10,7 +11,7 @@ public static class GetPendingPermissionRequestsEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder permissions)
     {
         permissions.MapGet("/pending", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.Owner));
+            .RequirePermissionCode(PermissionCodes.HrTimeoff.Read);
         return permissions;
     }
 

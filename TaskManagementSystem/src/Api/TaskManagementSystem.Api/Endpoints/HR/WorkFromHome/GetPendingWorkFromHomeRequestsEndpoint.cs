@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Modules.HR.Features.WorkFromHome.GetPendingWorkFromHomeRequests;
 using TaskManagementSystem.Modules.Identity.Domain;
@@ -10,7 +11,7 @@ public static class GetPendingWorkFromHomeRequestsEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder workFromHome)
     {
         workFromHome.MapGet("/pending", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.Owner));
+            .RequirePermissionCode(PermissionCodes.HrWorkFromHome.Read);
         return workFromHome;
     }
 

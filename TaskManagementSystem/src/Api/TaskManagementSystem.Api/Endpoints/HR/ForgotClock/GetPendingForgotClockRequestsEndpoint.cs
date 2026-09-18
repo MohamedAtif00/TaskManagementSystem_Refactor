@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Modules.HR.Features.ForgotClock.GetPendingForgotClockRequests;
 using TaskManagementSystem.Modules.Identity.Domain;
@@ -10,7 +11,7 @@ public static class GetPendingForgotClockRequestsEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder forgotClock)
     {
         forgotClock.MapGet("/pending", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.Owner));
+            .RequirePermissionCode(PermissionCodes.HrForgotClock.Read);
         return forgotClock;
     }
 

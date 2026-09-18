@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.Holidays.ListHolidays;
@@ -9,7 +11,7 @@ public static class ListHolidaysEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder holidays)
     {
-        holidays.MapGet("", HandleAsync).RequireAuthorization();
+        holidays.MapGet("", HandleAsync).RequirePermissionCode(PermissionCodes.HrHolidays.Read);
         return holidays;
     }
 

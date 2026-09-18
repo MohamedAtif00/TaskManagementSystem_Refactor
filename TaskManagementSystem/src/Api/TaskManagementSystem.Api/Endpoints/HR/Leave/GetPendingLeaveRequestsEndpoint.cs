@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.Leave.GetPendingLeaveRequests;
@@ -11,7 +12,7 @@ public static class GetPendingLeaveRequestsEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder leave)
     {
         leave.MapGet("/leave-requests/pending", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.Owner));
+            .RequirePermissionCode(PermissionCodes.HrLeave.Read);
         return leave;
     }
 

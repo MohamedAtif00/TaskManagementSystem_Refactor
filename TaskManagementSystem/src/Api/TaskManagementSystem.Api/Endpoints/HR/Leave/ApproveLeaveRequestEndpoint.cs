@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.Leave.ApproveLeaveRequest;
@@ -11,7 +12,7 @@ public static class ApproveLeaveRequestEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder leave)
     {
         leave.MapPost("/leave-requests/{id:int}/approve", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.Owner));
+            .RequirePermissionCode(PermissionCodes.HrLeave.Manage);
         return leave;
     }
 

@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.Leave.GetMedicalCertificate;
@@ -9,7 +11,7 @@ public static class GetMedicalCertificateEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder leave)
     {
-        leave.MapGet("/leave-requests/{id:int}/medical-certificate", HandleAsync).RequireAuthorization();
+        leave.MapGet("/leave-requests/{id:int}/medical-certificate", HandleAsync).RequirePermissionCode(PermissionCodes.HrLeave.Read);
         return leave;
     }
 

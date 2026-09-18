@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Contracts.HR;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -10,7 +12,7 @@ public static class RequestPermissionEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder permissions)
     {
-        permissions.MapPost("", HandleAsync).RequireAuthorization();
+        permissions.MapPost("", HandleAsync).RequirePermissionCode(PermissionCodes.HrTimeoff.Create);
         return permissions;
     }
 

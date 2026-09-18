@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Contracts.HR;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -12,7 +13,7 @@ public static class CreateHolidayEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder holidays)
     {
         holidays.MapPost("", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.ProjectManger));
+            .RequirePermissionCode(PermissionCodes.HrHolidays.Manage);
         return holidays;
     }
 

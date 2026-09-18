@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Contracts.HR;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -12,7 +13,7 @@ public static class GiveBulkLeaveOpinionEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder leave)
     {
         leave.MapPost("/leave-requests/opinions/bulk", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.Owner));
+            .RequirePermissionCode(PermissionCodes.HrLeave.Manage);
         return leave;
     }
 

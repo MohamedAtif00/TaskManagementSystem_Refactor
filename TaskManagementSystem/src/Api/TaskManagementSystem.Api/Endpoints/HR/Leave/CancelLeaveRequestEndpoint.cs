@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.Leave.CancelLeaveRequest;
@@ -9,7 +11,7 @@ public static class CancelLeaveRequestEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder leave)
     {
-        leave.MapPut("/leave-requests/{id:int}/cancel", HandleAsync).RequireAuthorization();
+        leave.MapPut("/leave-requests/{id:int}/cancel", HandleAsync).RequirePermissionCode(PermissionCodes.HrLeave.Update);
         return leave;
     }
 

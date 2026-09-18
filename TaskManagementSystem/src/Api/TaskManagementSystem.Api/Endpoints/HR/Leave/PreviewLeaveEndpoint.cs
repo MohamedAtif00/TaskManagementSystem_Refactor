@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Contracts.HR;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -10,7 +12,7 @@ public static class PreviewLeaveEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder leave)
     {
-        leave.MapPost("/leave-requests/preview", HandleAsync).RequireAuthorization();
+        leave.MapPost("/leave-requests/preview", HandleAsync).RequirePermissionCode(PermissionCodes.HrLeave.Create);
         return leave;
     }
 

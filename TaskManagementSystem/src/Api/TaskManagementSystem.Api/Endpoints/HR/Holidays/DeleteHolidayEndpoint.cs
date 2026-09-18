@@ -1,4 +1,5 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.Holidays.DeleteHoliday;
@@ -11,7 +12,7 @@ public static class DeleteHolidayEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder holidays)
     {
         holidays.MapDelete("/{id:int}", HandleAsync)
-            .RequireAuthorization(nameof(UserRole.ProjectManger));
+            .RequirePermissionCode(PermissionCodes.HrHolidays.Manage);
         return holidays;
     }
 

@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.ForgotClock.CancelForgotClockRequest;
@@ -9,7 +11,7 @@ public static class CancelForgotClockRequestEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder forgotClock)
     {
-        forgotClock.MapPut("/{id:int}/cancel", HandleAsync).RequireAuthorization();
+        forgotClock.MapPut("/{id:int}/cancel", HandleAsync).RequirePermissionCode(PermissionCodes.HrForgotClock.Update);
         return forgotClock;
     }
 

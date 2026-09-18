@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Contracts.HR;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -10,7 +12,7 @@ public static class GiveWorkFromHomeOpinionEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder workFromHome)
     {
-        workFromHome.MapPost("/{id:int}/opinions", HandleAsync).RequireAuthorization();
+        workFromHome.MapPost("/{id:int}/opinions", HandleAsync).RequirePermissionCode(PermissionCodes.HrWorkFromHome.Update);
         return workFromHome;
     }
 

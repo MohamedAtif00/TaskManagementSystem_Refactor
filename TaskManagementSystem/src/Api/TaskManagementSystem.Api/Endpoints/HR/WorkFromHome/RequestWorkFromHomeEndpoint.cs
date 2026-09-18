@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Contracts.HR;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -10,7 +12,7 @@ public static class RequestWorkFromHomeEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder workFromHome)
     {
-        workFromHome.MapPost("", HandleAsync).RequireAuthorization();
+        workFromHome.MapPost("", HandleAsync).RequirePermissionCode(PermissionCodes.HrWorkFromHome.Create);
         return workFromHome;
     }
 

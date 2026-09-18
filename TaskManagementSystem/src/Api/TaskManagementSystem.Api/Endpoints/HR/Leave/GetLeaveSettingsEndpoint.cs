@@ -1,4 +1,6 @@
 using MediatR;
+using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Contracts.HR;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
@@ -10,7 +12,7 @@ public static class GetLeaveSettingsEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder leave)
     {
-        leave.MapGet("/leave-settings", HandleAsync).RequireAuthorization();
+        leave.MapGet("/leave-settings", HandleAsync).RequirePermissionCode(PermissionCodes.HrLeave.Read);
         return leave;
     }
 
