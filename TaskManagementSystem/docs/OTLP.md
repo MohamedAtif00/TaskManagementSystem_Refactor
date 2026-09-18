@@ -2,7 +2,7 @@
 
 How this solution emits and exports telemetry. Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-**Last updated:** 2026-09-12
+**Last updated:** 2026-09-14
 
 ## Signals
 
@@ -110,6 +110,45 @@ Every `ICommand` / `IQuery` dispatched through MediatR is traced by `TracingBeha
 | Histogram | `tms.mediatr.duration_ms` |
 
 `LoggingBehavior` adds scope fields: `TraceId`, `RequestKind`, `ModuleName`, `RequestName`.
+
+In **Development**, query handlers also log elapsed milliseconds to the console:
+
+```text
+Handled ListAcademicYearsQuery in 12ms
+```
+
+## Query timing (GET / IQuery)
+
+Measure read/query duration at **HTTP** (Apidog) and **handler** (OTLP) layers.
+
+### HTTP — Apidog test scenario
+
+1. Apply migrations and start the API (`dotnet run --project src/Api/TaskManagementSystem.Api`).
+1. Optional: run `./scripts/seed-heavy-load.ps1` so detail GET routes resolve real `{id}` values (see [DATABASE.md](DATABASE.md#optional-dev-heavy-load-seed)).
+2. Import [`tms-openapi.json`](../src/Api/TaskManagementSystem.Api/openapi/tms-openapi.json) and [`environment.local-dev.json`](../src/Api/TaskManagementSystem.Api/openapi/apidog/environment.local-dev.json) into Apidog.
+3. Import or run [`get-queries-timing.json`](../src/Api/TaskManagementSystem.Api/openapi/apidog/test-scenario/get-queries-timing.json) (regenerate with `./scripts/generate-apidog-get-timing-scenario.ps1` after OpenAPI changes).
+4. Open the Apidog **Test Report** — each step shows **response time**; the final step prints a sorted `console.table` summary from `queryTimings`.
+
+Scripts: [`log-response-time.js`](../src/Api/TaskManagementSystem.Api/openapi/apidog/scripts/log-response-time.js), [`print-timing-summary.js`](../src/Api/TaskManagementSystem.Api/openapi/apidog/scripts/print-timing-summary.js).
+
+### Handler — OTLP metrics and traces
+
+1. Start the collector: `docker compose -f docker-compose.observability.yml up -d`
+2. Run the API in Development (OTLP export to `http://localhost:4317`).
+3. Run the Apidog GET timing scenario (or hit GET endpoints manually).
+4. Open **http://localhost:18888**:
+   - **Metrics** — histogram `tms.mediatr.duration_ms`, filter tag `mediatr.kind=query` (and optionally `mediatr.module`)
+   - **Traces** — select an HTTP GET span; child span name is the MediatR query type (e.g. `ListAcademicYearsQuery`) with handler duration
+
+### CSV backup (no Apidog)
+
+When SQL Server LocalDB is available:
+
+```powershell
+dotnet test --filter "Category=TimingReport"
+```
+
+Writes `query-timing-report.csv` under the test results folder (`QueryTimingReportTests`).
 
 ## Command audit log (not OTLP)
 

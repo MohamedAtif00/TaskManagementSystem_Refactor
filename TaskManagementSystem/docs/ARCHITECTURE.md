@@ -6,7 +6,7 @@ Living snapshot of the new solution. Update this file as the refactor grows.
 
 
 
-**Last updated:** 2026-09-14
+**Last updated:** 2026-09-18
 
 
 
@@ -26,7 +26,7 @@ Related: [OTLP / OpenTelemetry](OTLP.md), [Database / DbUp](DATABASE.md)
 
 
 
-The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), **Workflows** (schemas, nodes, task bank, steps), **Curriculum** (years through learning objectives, subject user assignment), **Ticket** (tasks, comments, work time), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays). Sprints and Notifications are not ported yet.
+The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), **Workflows** (schemas, nodes, task bank, steps), **Curriculum** (years through learning objectives, subject user assignment), **Ticket** (tasks, comments, work time), **Sprints** (planning + LO links), **Notifications** (inbox + realtime alerts), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays).
 
 
 
@@ -34,7 +34,7 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 
 |---|---|
 
-| Solution + 8 module projects | Done — Identity, HR, Organization, Workflows, Curriculum, Ticket implemented |
+| Solution + 8 module projects | Done — Identity, HR, Organization, Workflows, Curriculum, Ticket, Sprints, Notifications implemented |
 
 | BuildingBlocks (DDD + CQRS) | Done — domain primitives, MediatR pipeline |
 
@@ -45,25 +45,25 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 | Organization module | Done — teams and sections CRUD with `SectionTeams` links |
 | Workflows module | Done — schema types, schemas, nodes, task bank, steps CRUD |
 | Curriculum module | Done — years, projects, terms, subject groups, subjects, units, lessons, learning objectives, subject user assignment |
-| Ticket module | Done — create/get/list tickets, assign, proceed, complete, comments, work time |
+| Ticket module | Done — create/get/list tickets, assign, proceed, complete, comments, work time, sprint-scoped ticket list |
+| Sprints module | Done — CRUD, archive, LO assignment, list LOs |
+| Notifications module | Done — inbox list/detail, mark read, `INotificationWriter` port for cross-module writes |
 
 | HR module (leave complete) | Done — all leave types, opinions, from-next/preview, medical upload, search |
 | HR module (permission + WFH) | Done — request, search, opinions, cancel, balance deduct/refund |
 | HR module (forgot clock) | Done — request, search, opinions, cancel (no balance) |
 
-| Other module business logic | Not started (Sprints, Notifications) |
+| Persistence (DbUp + SQL scripts) | Done — per-module schemas, DatabaseMigrator, 19 migrations (000–010, 012–019; test/dev seed moved to `Scripts/Seeds/`) |
 
-| Persistence (DbUp + SQL scripts) | Done — per-module schemas, DatabaseMigrator, initial DDL |
-
-| EF Core / repositories | Done — Identity, HR, Organization, Workflows, Curriculum, and Ticket DbContexts + repositories |
+| EF Core / repositories | Done — Identity, HR, Organization, Workflows, Curriculum, Ticket, Sprints, and Notifications DbContexts + repositories |
 
 | Frontend | Not started |
 
-| Automated tests | Done — unit, integration, and architecture tests (Organization, Workflows, Curriculum, Ticket unit tests added) |
+| Automated tests | Done — unit, integration, and architecture tests (Sprints + Notifications unit tests added) |
 
 
 
-Suggested next slice: **Sprints** module or **Identity user audit** (`UserChanges`).
+Suggested next slice: **Frontend** migration to direct JSON / ProblemDetails API.
 
 
 
@@ -96,17 +96,17 @@ Modern HTTP API — direct JSON success bodies and RFC 7807 ProblemDetails error
 
 - **HTTP style** — auth routes are **Minimal API** in [`Endpoints/AuthEndpoints.cs`](../src/Api/TaskManagementSystem.Api/Endpoints/AuthEndpoints.cs). HR routes are grouped under [`Endpoints/HR/`](../src/Api/TaskManagementSystem.Api/Endpoints/HR/) (`Leave/`, `Holidays/`) with `MapHrEndpoints()` as the composition root.
 
-- **Role policies** — registered in `AuthenticationExtensions` for `.RequireAuthorization("TeamLeader")` on future endpoints
+- **Permission policies** — every route uses `.RequirePermissionCode(...)` with codes from the migration-seeded catalog (`PermissionCodes`). Policies are registered dynamically at startup; holding `{module}.manage` satisfies read/create/update/delete for that module prefix.
 
 - **Endpoints map `Result<T>`** — handlers dispatch MediatR, then [`ResultHttpMapper`](../src/Api/TaskManagementSystem.Api/Infrastructure/ResultHttpMapper.cs) maps success to direct JSON (`Results.Ok`, `Results.NoContent`) and failures to ProblemDetails with `code` extension (`invalid_login_code` → 404, others → 400). No per-route try/catch.
 
-- **Validation errors** — FluentValidation throws `ValidationException`; [`ApiExceptionHandler`](../src/Api/TaskManagementSystem.Api/Infrastructure/ApiExceptionHandler.cs) returns 400 ProblemDetails with `code: validation_failed` and `errors` field map.
+- **Validation errors** — `ValidationBehavior` returns `Result.Fail` with `validation_failed` and a per-field `errors` map for `Result<T>` commands; [`ResultHttpMapper`](../src/Api/TaskManagementSystem.Api/Infrastructure/ResultHttpMapper.cs) emits them in ProblemDetails. Non-`Result` commands still throw `ValidationException`; [`ApiExceptionHandler`](../src/Api/TaskManagementSystem.Api/Infrastructure/ApiExceptionHandler.cs) groups failures the same way via a shared helper.
 
 - **Unexpected errors** — `ApiExceptionHandler` returns 500 ProblemDetails (`code: unexpected_error`). Expected Identity failures return `Result<T>` instead of throwing.
 
-- **RBAC admin** — `/identity/*` endpoints for permissions, roles, role-permission mapping, and user role assignment (permission-gated).
+- **RBAC admin** — `/identity/*` endpoints list the migration-seeded permission catalog, manage roles, assign permissions to roles, and administer users. Permission definitions are not created or modified via API (`019_identity_PermissionCatalog.sql`).
 
-- **User admin (MVP)** — list/get/create/update/archive users with `TeamId` assignment; seeds `hr.EmployeeBalances` on create. Permissions: `identity.users.view`, `identity.users.manage`.
+- **User admin (MVP)** — list/get/create/update/archive users with `TeamId` assignment; seeds `hr.EmployeeBalances` on create. Permissions: `identity.users.read`, `identity.users.create`, `identity.users.update`, `identity.users.delete`, `identity.users.manage`.
 
 
 
@@ -116,13 +116,13 @@ Modern HTTP API — direct JSON success bodies and RFC 7807 ProblemDetails error
 
 | Endpoint | Purpose | Permission |
 |---|---|---|
-| `GET /identity/users` | List active users | `identity.users.view` |
-| `GET /identity/users/{id}` | User detail | `identity.users.view` |
-| `GET /identity/users/team-leaders` | TeamLeader + SectionHead lookup | `identity.users.view` |
-| `POST /identity/users` | Create user (auto 6-char code) | `identity.users.manage` |
-| `PUT /identity/users/{id}` | Update profile, team, role | `identity.users.manage` |
-| `DELETE /identity/users/{id}` | Soft-archive user | `identity.users.manage` |
-| `PUT /identity/users/{id}/role` | Assign role only | `identity.users.assign-role` |
+| `GET /identity/users` | List active users | `identity.users.read` |
+| `GET /identity/users/{id}` | User detail | `identity.users.read` |
+| `GET /identity/users/team-leaders` | TeamLeader + SectionHead lookup | `identity.users.read` |
+| `POST /identity/users` | Create user (auto 6-char code) | `identity.users.create` |
+| `PUT /identity/users/{id}` | Update profile, team, role | `identity.users.update` |
+| `DELETE /identity/users/{id}` | Soft-archive user | `identity.users.delete` |
+| `PUT /identity/users/{id}/role` | Assign role only | `identity.users.update` |
 
 - **Cross-schema validation** — `TeamId` validated via Dapper against `organization.Teams`; section-head check blocks archive.
 - **HR sync** — create inserts `hr.EmployeeBalances`; update syncs team/role metadata only (balances owned by HR).
@@ -259,7 +259,7 @@ Curriculum definition MVP: **AcademicYears**, **CurriculumProjects**, **Curricul
 
 
 
-Ticket MVP: **Tasks** spawned from learning objectives + task bank workflow steps, **Comments**, and **TaskWorkTimes**. Rollback, TaskActivities audit, and sprint-scoped views deferred.
+Ticket MVP: **Tasks** spawned from learning objectives + task bank workflow steps, **Comments**, and **TaskWorkTimes**. Rollback and TaskActivities audit remain deferred.
 
 
 
@@ -269,6 +269,7 @@ Ticket MVP: **Tasks** spawned from learning objectives + task bank workflow step
 | `GET /tickets/{id}` | Ticket detail | Required |
 | `GET /subjects/{subjectId}/tickets` | List tickets for subject (Dapper curriculum join) | Required |
 | `GET /learning-objectives/{loId}/tickets` | List tickets for learning objective | Required |
+| `GET /sprints/{sprintId}/tickets` | List tickets linked via sprint LOs (Dapper sprints join) | Required |
 | `PATCH /tickets/{id}/assign` | Assign user to ticket | Required |
 | `PATCH /tickets/{id}/proceed` | Advance to next workflow step (or complete if last) | Required |
 | `PATCH /tickets/{id}/complete` | Mark ticket completed | Required |
@@ -280,8 +281,55 @@ Ticket MVP: **Tasks** spawned from learning objectives + task bank workflow step
 - **Module layout** — [`TaskManagementSystem.Modules.Ticket`](../src/Modules/Ticket/TaskManagementSystem.Modules.Ticket/) with `Domain/`, `Application/`, `Features/`, `Infrastructure/`, `Contracts/TicketRealtime`.
 - **Cross-schema validation** — LO, task bank, workflow steps, users, and teams validated via Dapper lookup ports (no module references).
 - **Realtime** — mutating handlers publish `TicketRealtime.SilentUpdate` via `IRealtimePublisher` (BuildingBlocks port; no SignalR in module).
+- **Notifications integration** — `TicketAssignedIntegrationEvent` / `TicketCompletedIntegrationEvent` written to `ticket.OutboxMessages`; `OutboxProcessor` dispatches to Notifications inbox handlers.
 - **HTTP style** — Minimal API in [`Endpoints/Ticket/`](../src/Api/TaskManagementSystem.Api/Endpoints/Ticket/TicketEndpoints.cs).
-- **Deferred** — Rollback, RollbackIssues, TaskActivities, sprint routes, notifications integration.
+- **Deferred** — Rollback, RollbackIssues, TaskActivities.
+
+
+
+## Sprints (Planning)
+
+
+
+Sprint planning: **Sprints** with date range and **SprintLearningObjectives** links to curriculum LOs.
+
+
+
+| Endpoint | Purpose | Auth |
+|---|---|---|
+| `GET /sprints?archived=` | List sprints (default active only) | Required |
+| `POST /sprints` | Create sprint | Required |
+| `GET /sprints/{id}` | Sprint detail with linked LO ids | Required |
+| `PUT /sprints/{id}` | Update sprint | Required |
+| `DELETE /sprints/{id}` | Archive sprint | Required |
+| `GET /sprints/{id}/learning-objectives` | List linked LO ids | Required |
+| `POST /sprints/{id}/learning-objectives` | Add LO links (skip duplicates) | Required |
+| `DELETE /sprints/{id}/learning-objectives/{loId}` | Remove LO link | Required |
+
+- **Module layout** — [`TaskManagementSystem.Modules.Sprints`](../src/Modules/Sprints/TaskManagementSystem.Modules.Sprints/) with `Domain/`, `Application/`, `Features/`, `Infrastructure/`.
+- **Cross-schema validation** — LO ids validated via Dapper against `curriculum.LearningObjectives`.
+- **HTTP style** — Minimal API in [`Endpoints/Sprints/`](../src/Api/TaskManagementSystem.Api/Endpoints/Sprints/SprintsEndpoints.cs).
+
+
+
+## Notifications (Inbox + Realtime)
+
+
+
+User notifications: persisted inbox with visible realtime alerts (`notification.created`).
+
+
+
+| Endpoint | Purpose | Auth |
+|---|---|---|
+| `GET /notifications?isRead=&page=&pageSize=` | List current user's notifications | Required |
+| `GET /notifications/{id}` | Notification detail (current user only) | Required |
+| `PATCH /notifications/{id}/read` | Mark one notification read | Required |
+| `PATCH /notifications/read-all` | Mark all notifications read | Required |
+
+- **Module layout** — [`TaskManagementSystem.Modules.Notifications`](../src/Modules/Notifications/TaskManagementSystem.Modules.Notifications/) with `Domain/`, `Application/`, `Features/`, `Infrastructure/`, `Contracts/NotificationRealtime`.
+- **Cross-module writes** — integration events via outbox/inbox; consumer handlers in Notifications persist inbox rows and publish `NotificationRealtime.Visible`.
+- **HTTP style** — Minimal API in [`Endpoints/Notifications/`](../src/Api/TaskManagementSystem.Api/Endpoints/Notifications/NotificationsEndpoints.cs).
 
 
 
@@ -406,7 +454,7 @@ flowchart LR
 - **DbContext mapping** — one `IEntityTypeConfiguration<>` per owned table under `Infrastructure/Persistence/Configurations/`; DbContext applies configurations from its assembly only. Map only columns owned by the module aggregate (e.g. Identity `User` maps auth/profile fields, not HR leave balances or Organization team navigations). Legacy columns may remain in SQL but are read via Dapper when another module needs them.
 - **HTTP** — [`Endpoints/HR/`](../src/Api/TaskManagementSystem.Api/Endpoints/HR/) (`HrEndpoints.cs` composition root; one file per route under `Leave/` and `Holidays/`), contracts in [`Contracts/HR/`](../src/Api/TaskManagementSystem.Api/Contracts/HR/); error codes via [`ResultHttpMapper`](../src/Api/TaskManagementSystem.Api/Infrastructure/ResultHttpMapper.cs) (`leave_request_not_found`, `leave_medical_not_found`, `user_not_found` → 404; `leave_opinion_not_authorized` → 403)
 - **OpenAPI (Apidog)** — HR + Auth spec at [`openapi/hr-openapi.json`](../src/Api/TaskManagementSystem.Api/openapi/hr-openapi.json); served at `GET /openapi/v1.json`. Import into Apidog via **Import → OpenAPI**. **Authenticate first:** run `POST /auth/login` with `{ "code": "TST001" }` (dev seed Owner), then set **Bearer {accessToken}** in Apidog before calling HR routes.
-- **Integration tests** — seed data from [`011_identity_SeedUsers.sql`](../src/Database/TaskManagementSystem.Database/Scripts/Migrations/011_identity_SeedUsers.sql) via [`IntegrationTestDataSeeder`](../tests/TaskManagementSystem.TestCommon/Integration/IntegrationTestDataSeeder.cs)
+- **Integration tests** — seed data from [`002_IntegrationTestData.sql`](../src/Database/TaskManagementSystem.Database/Scripts/Seeds/002_IntegrationTestData.sql) via [`IntegrationTestDataSeeder`](../tests/TaskManagementSystem.TestCommon/Integration/IntegrationTestDataSeeder.cs) (runs after all migrations; includes guarded `hr.EmployeeBalances` for `TST001`)
 
 
 
@@ -598,11 +646,11 @@ Shared kernel used by every module. Third-party packages allowed here: **MediatR
 | `BusinessRuleValidationException` | Thrown when `Entity.CheckRule` finds a broken rule |
 
 | `IDomainEvent` / `DomainEventBase` | `Id`, `OccurredOn` on every domain event |
-| `IResult` / `Result<T>` / `ResultError` / `NoValue` | Discriminated union for expected failures; safe `Value`/`Error` access; `Map` / `Bind` / `Match`; static `Result.Ok()` / `Result.Fail<T>()` factories |
+| `IResult` / `Result<T>` / `ResultError` / `NoValue` | Discriminated union for expected failures; `ResultError` may carry optional `ValidationErrors` (`property → messages[]`); static `Result.Ok()` / `Result.Fail<T>()` factories |
 
 
 
-Broken **hard invariants** still **throw** via `Entity.CheckRule` (Grzybek-style). **Expected application failures** (invalid login code, expired refresh token, archived user) return `Result<T>` from handlers — they do not throw. **HTTP status codes are mapped at the API boundary** from error codes (e.g. `invalid_login_code` → 404); `ResultError` carries only `Code` and `Message`.
+**Expected application failures** (invalid login code, expired refresh token, archived user, FluentValidation on `Result<T>` commands) return `Result<T>` from handlers — they do not throw. **HTTP status codes are mapped at the API boundary** from error codes (e.g. `invalid_login_code` → 404, `validation_failed` → 400); `ResultError` carries only `Code` and `Message`.
 
 
 
@@ -618,14 +666,17 @@ Broken **hard invariants** still **throw** via `Entity.CheckRule` (Grzybek-style
 
 | `IQuery<TResult>` | MediatR `IRequest<TResult>` marker for reads |
 
-| `IIntegrationEvent` | Contract for future module-to-module events (type only) |
+| `IIntegrationEvent` | Cross-module event contract (`TaskManagementSystem.IntegrationEvents`); extends MediatR `INotification` |
+| `IOutboxWriter` / `IInboxGuard` | Outbox/inbox ports for reliable cross-module delivery |
+| `IDomainEventDispatcher` | Dispatches aggregate domain events before/after `SaveChanges` via `UnitOfWork.CommitAsync` |
 
 | `IUnitOfWork` | `CommitAsync` port; EF modules implement via `EfUnitOfWork<TContext>` in BuildingBlocks.Persistence |
 
 | `LoggingBehavior` | Logs request name + success/failure via `ILogger` (includes trace/kind/module scope) |
 | `TracingBehavior` | OpenTelemetry spans + metrics for every command/query via `Telemetry.Mediator` |
 | `AuditBehavior` | Persists command audit rows (`app.AuditLog`) — commands only; uses `IResult.IsSuccess` when handler returns `Result<T>` |
-| `ValidationBehavior` | Runs FluentValidation validators; throws `ValidationException` |
+| `ValidationBehavior` | Runs FluentValidation validators; returns `Result.Fail(validation_failed)` with grouped property errors for `Result<T>` commands, throws for others |
+| `TicketTransactionBehavior` / `HrTransactionBehavior` | Per-module DB transactions for commands marked `ITicketCommand` / `IHrCommand` |
 
 | `AddBuildingBlocks(assemblies…)` | Registers MediatR, both pipeline behaviors, and validators |
 
@@ -732,15 +783,15 @@ Every module uses the same shape:
 
 | Organization | **Teams**, **Sections** (no Groups) | Done — teams/sections CRUD + `SectionTeams` |
 
-| Workflows | Schemas, Nodes, Steps, TaskBank | Project shell only |
+| Workflows | Schemas, Nodes, Steps, TaskBank | Done |
 
-| Curriculum | Projects, Subjects, Units, Lessons, LearningObjectives | Project shell only |
+| Curriculum | Projects, Subjects, Units, Lessons, LearningObjectives | Done |
 
-| Ticket | Tickets, Comments, Rollback, WorkTime | `Contracts/TicketRealtime` (silent sync) |
+| Ticket | Tickets, Comments, Rollback, WorkTime | Done — `Contracts/TicketRealtime` (silent sync) |
 
-| Sprints | Sprints, SprintLearningObjectives, Analytics | Project shell only |
+| Sprints | Sprints, SprintLearningObjectives | Done |
 
-| Notifications | Notifications (visible alerts only) | `Contracts/NotificationRealtime` (visible alerts) |
+| Notifications | Notifications (visible alerts only) | Done — `Contracts/NotificationRealtime` + `INotificationWriter` |
 
 | HR | Leave, Permissions, WorkFromHome, ForgotClock, Holidays | Done — email/SignalR/annual reset job deferred |
 
@@ -802,6 +853,41 @@ Domain code injects `IRealtimePublisher`, never `IHubContext`. Silent content sy
 
 
 
+## Integration events (outbox/inbox)
+
+
+
+Cross-module side effects use the kgrzybek-style transactional outbox:
+
+
+
+1. Aggregate raises a **domain event** (`TicketAssignedDomainEvent`, `UserCreatedDomainEvent`, …).
+2. `UnitOfWork.CommitAsync` dispatches domain events via `IDomainEventDispatcher`, then `SaveChanges`.
+3. Domain-event handlers map to **`IIntegrationEvent`** records (in [`TaskManagementSystem.IntegrationEvents`](../src/BuildingBlocks/TaskManagementSystem.IntegrationEvents/)) and append rows to the publisher module's `{schema}.OutboxMessages` in the same transaction.
+4. **`OutboxProcessor`** (hosted service per publishing schema: `ticket`, `identity`) polls `{schema}.OutboxMessages` and delegates batch processing to **`IOutboxPump`**, which deserializes events and publishes via `IIntegrationEventBus` (in-process MediatR).
+5. Consumer modules use **`IInboxGuard`** to deduplicate by `(IntegrationEventId, ConsumerName)`, then persist business data + inbox row in one commit.
+
+**Integration tests:** `WebApplicationFactory` does not reliably run background services, so tests call **`TmsWebApplicationFactory.DrainOutboxesAsync()`** (via [`IntegrationOutboxSupport`](../tests/TaskManagementSystem.TestCommon/Integration/IntegrationOutboxSupport.cs)) when asserting cross-module side effects such as notifications.
+
+
+
+**Live slices:**
+
+| Publisher | Event | Consumer |
+|---|---|---|
+| Ticket | `TicketAssignedIntegrationEvent`, `TicketCompletedIntegrationEvent` | Notifications |
+| Identity | `UserCreatedIntegrationEvent`, `UserMetadataChangedIntegrationEvent` | HR (`EmployeeBalances`) |
+
+
+
+**Removed:** direct `INotificationWriter` port and Dapper `EmployeeBalanceCommands` cross-schema writes.
+
+
+
+**Transaction markers:** Ticket commands implement `ITicketCommand`; HR bulk opinion commands implement `IHrCommand`. Module-specific `TransactionBehavior` wraps them in a single DB transaction.
+
+
+
 ## Observability
 
 
@@ -814,7 +900,7 @@ Traces, metrics, and logs are configured on the host via `AddObservability()`. M
 
 
 
-122 automated tests (all passing). Shared packages and versions live in [`tests/Directory.Build.props`](../tests/Directory.Build.props).
+Automated tests cover unit, integration, and architecture boundaries. Unit and architecture tests pass without SQL Server; integration tests require a reachable SQL Server instance (`localhost` by default in [`TmsWebApplicationFactory`](../tests/TaskManagementSystem.TestCommon/Integration/TmsWebApplicationFactory.cs)). Shared packages and versions live in [`tests/Directory.Build.props`](../tests/Directory.Build.props).
 
 
 
@@ -822,21 +908,31 @@ Traces, metrics, and logs are configured on the host via `AddObservability()`. M
 
 |---|---|---|---|
 
-| `BuildingBlocks.UnitTests` | Unit | 45 | Entity rules/events, ValueObject equality, pipeline behaviors, `AddBuildingBlocks` DI, `SqlScriptSeeder` |
+| `BuildingBlocks.UnitTests` | Unit | 45+ | Entity rules/events, ValueObject equality, pipeline behaviors, `OutboxPump`, `AddBuildingBlocks` DI, `SqlScriptSeeder` |
 
 | `Modules.UnitTests` | Unit | 2 | `TicketRealtime`, `NotificationRealtime` contract factories |
 
-| `Modules.Identity.UnitTests` | Unit | 8 | Auth handlers, JWT, validators |
+| `Modules.Identity.UnitTests` | Unit | 15 | Auth handlers, JWT, validators |
 
-| `Modules.HR.UnitTests` | Unit | 32 | Working days, holidays, leave types, settings, opinions, handlers, validators |
+| `Modules.HR.UnitTests` | Unit | 47 | Working days, holidays, leave types, settings, opinions, handlers, validators |
 
 | `Modules.Organization.UnitTests` | Unit | 7 | Team/section domain rules and create-team handler |
 
-| `Api.IntegrationTests` | Integration | 28 | Auth, RBAC, HR, Organization, audit, SignalR hub |
+| `Modules.Workflows.UnitTests` | Unit | 8 | Schema, node, task bank, step domain and handlers |
 
-| `ArchitectureTests` | Architecture | 9 | SignalR/OpenTelemetry boundaries, Notifications↛Ticket, hub location |
+| `Modules.Curriculum.UnitTests` | Unit | 9 | Curriculum domain rules and handlers |
 
-| `TestCommon` | Shared | — | Bogus builders, sample MediatR commands, `TmsWebApplicationFactory` |
+| `Modules.Ticket.UnitTests` | Unit | 6 | Ticket domain rules and handlers |
+
+| `Modules.Sprints.UnitTests` | Unit | 4 | Sprint domain rules and handlers |
+
+| `Modules.Notifications.UnitTests` | Unit | 2 | Notification domain rules and handlers |
+
+| `Api.IntegrationTests` | Integration | 49 | Auth, RBAC, HR, Organization, Workflows, Curriculum, Ticket, Sprints, Notifications, audit, SignalR hub |
+
+| `ArchitectureTests` | Architecture | 11 | SignalR/OpenTelemetry boundaries, Notifications↛Ticket, hub location |
+
+| `TestCommon` | Shared | — | Bogus builders, sample MediatR commands, `TmsWebApplicationFactory` (isolated `TmsTests_*` DB per fixture, dropped on dispose), `IntegrationHttpAssertions`, `IntegrationOutboxSupport` |
 
 
 
@@ -862,8 +958,16 @@ Traces, metrics, and logs are configured on the host via `AddObservability()`. M
 
 ```powershell
 
-dotnet test TaskManagementSystem.slnx
+dotnet test TaskManagementSystem.slnx -p:UseAppHost=false
 
+```
+
+Integration tests on Windows may require `-p:UseAppHost=false` (NETSDK1029). Targeted smoke for the seed/outbox fixes:
+
+```powershell
+dotnet test tests/TaskManagementSystem.Api.IntegrationTests `
+  --filter "FullyQualifiedName~AssignTicket_WritesNotificationViaOutbox|FullyQualifiedName~SprintsAndNotificationsFlow" `
+  -p:UseAppHost=false
 ```
 
 
@@ -912,7 +1016,7 @@ When a module gains domain logic and handlers:
 
 - Full testing foundation (unit + integration + shared TestCommon)
 
-- DbUp database layer: per-module SQL schemas, `DatabaseMigrator`, initial DDL (Groups removed; TeamId on TaskBank/Tasks)
+- DbUp database layer: per-module SQL schemas, `DatabaseMigrator` (+ `--seed` mode), 18 migrations, separate integration seed script (`002_IntegrationTestData.sql`)
 
 - Identity auth: code-only login, JWT + refresh cookies, `/auth/*` + `/identity/*` RBAC admin
 
@@ -929,8 +1033,6 @@ When a module gains domain logic and handlers:
 - Identity `UserChanges` audit
 
 - Module facades (`ITicketModule.ExecuteCommandAsync`, etc.)
-
-- Integration event bus, outbox/inbox
 
 - Port of ATS product behavior (~25 controllers, workflow engine)
 

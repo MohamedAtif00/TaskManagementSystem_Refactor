@@ -4,5 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Work around NETSDK1029 when the installed apphost pack is mismatched/corrupt. -->
+    <UseAppHost>false</UseAppHost>
   </PropertyGroup>
 </Project>
