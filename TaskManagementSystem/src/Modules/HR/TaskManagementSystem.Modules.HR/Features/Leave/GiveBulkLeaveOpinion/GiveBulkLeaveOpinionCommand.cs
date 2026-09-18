@@ -11,7 +11,7 @@ public sealed record GiveBulkLeaveOpinionCommand(
     string ActorRole,
     IReadOnlyList<int> LeaveRequestIds,
     bool IsApproved,
-    string? Comment) : ICommand<Result<BulkLeaveOpinionResult>>;
+    string? Comment) : IHrCommand<Result<BulkLeaveOpinionResult>>;
 
 public sealed record BulkLeaveOpinionResult(
     int Succeeded,

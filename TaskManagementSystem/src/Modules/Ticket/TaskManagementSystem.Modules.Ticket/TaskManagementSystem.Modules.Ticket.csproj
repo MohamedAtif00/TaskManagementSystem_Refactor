@@ -24,6 +24,7 @@
     <InternalsVisibleTo Include="TaskManagementSystem.TestCommon" />
     <ProjectReference Include="..\..\..\BuildingBlocks\TaskManagementSystem.BuildingBlocks\TaskManagementSystem.BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\TaskManagementSystem.BuildingBlocks.Persistence\TaskManagementSystem.BuildingBlocks.Persistence.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\TaskManagementSystem.IntegrationEvents\TaskManagementSystem.IntegrationEvents.csproj" />
   </ItemGroup>
 
 </Project>

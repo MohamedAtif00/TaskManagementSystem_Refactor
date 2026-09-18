@@ -1,10 +1,13 @@
 using TaskManagementSystem.BuildingBlocks.Persistence;
+using TaskManagementSystem.BuildingBlocks.Persistence.Events;
 using TaskManagementSystem.Modules.Workflows.Application;
 
 namespace TaskManagementSystem.Modules.Workflows.Infrastructure.Persistence;
 
-internal sealed class WorkflowsUnitOfWork(WorkflowsDbContext context)
-    : UnitOfWork<WorkflowsDbContext>(context), IWorkflowsUnitOfWork
+internal sealed class WorkflowsUnitOfWork(
+    WorkflowsDbContext context,
+    IDomainEventDispatcher domainEventDispatcher)
+    : UnitOfWork<WorkflowsDbContext>(context, domainEventDispatcher), IWorkflowsUnitOfWork
 {
     private readonly Lazy<SchemaRepository> _schemas =
         LazyRepositoryFactory.Create(() => new SchemaRepository(context));

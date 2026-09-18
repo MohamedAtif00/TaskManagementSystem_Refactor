@@ -1,11 +1,11 @@
+using System.Data;
 using Dapper;
-using TaskManagementSystem.BuildingBlocks.Application.Data;
+using Microsoft.EntityFrameworkCore;
 using TaskManagementSystem.Modules.Curriculum.Application;
 
 namespace TaskManagementSystem.Modules.Curriculum.Infrastructure.Persistence.Queries;
 
-public sealed class WorkflowSchemaLookupQueries(ISqlConnectionFactory connectionFactory)
-    : IWorkflowSchemaLookup
+public sealed class WorkflowSchemaLookupQueries(CurriculumDbContext context) : IWorkflowSchemaLookup
 {
     public async Task<bool> ActiveSchemaExistsAsync(int schemaId, CancellationToken cancellationToken = default)
     {
@@ -17,8 +17,14 @@ public sealed class WorkflowSchemaLookupQueries(ISqlConnectionFactory connection
             ) THEN 1 ELSE 0 END
             """;
 
-        using var connection = connectionFactory.GetOpenConnection();
-        return await connection.ExecuteScalarAsync<bool>(
+        var connection = context.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        var exists = await connection.ExecuteScalarAsync<int>(
             new CommandDefinition(sql, new { SchemaId = schemaId }, cancellationToken: cancellationToken));
+        return exists == 1;
     }
 }

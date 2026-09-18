@@ -1,7 +1,11 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using TaskManagementSystem.BuildingBlocks.Application.Inbox;
+using TaskManagementSystem.BuildingBlocks.Persistence.Events;
+using TaskManagementSystem.BuildingBlocks.Persistence.Inbox;
 using TaskManagementSystem.BuildingBlocks.Persistence.Data;
 using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
@@ -22,6 +26,8 @@ public static class HrModuleExtensions
     {
         services.Configure<LeaveSettingsOptions>(configuration.GetSection(LeaveSettingsOptions.SectionName));
         services.AddSqlConnectionFactory(configuration);
+        services.AddScoped<IInboxGuard, EfInboxGuard<HrDbContext>>();
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(HrTransactionBehavior<,>));
         services.AddScoped<LeaveRequestSearchQueries>();
         services.AddScoped<PermissionRequestSearchQueries>();
         services.AddScoped<WorkFromHomeRequestSearchQueries>();

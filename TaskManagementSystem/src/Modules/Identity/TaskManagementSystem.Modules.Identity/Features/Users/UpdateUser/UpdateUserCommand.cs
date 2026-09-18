@@ -37,8 +37,7 @@ public sealed class UpdateUserCommandValidator : AbstractValidator<UpdateUserCom
 public sealed class UpdateUserCommandHandler(
     IIdentityUnitOfWork unitOfWork,
     IUserAdminQueries userAdminQueries,
-    OrganizationLookupQueries organizationLookupQueries,
-    EmployeeBalanceCommands employeeBalanceCommands)
+    OrganizationLookupQueries organizationLookupQueries)
     : IRequestHandler<UpdateUserCommand, Result<UserDetailResult>>
 {
     public async Task<Result<UserDetailResult>> Handle(
@@ -81,7 +80,6 @@ public sealed class UpdateUserCommandHandler(
         }
 
         await unitOfWork.CommitAsync(cancellationToken);
-        await employeeBalanceCommands.SyncMetadataAsync(user, cancellationToken);
 
         var detail = await userAdminQueries.GetByIdAsync(user.Id, cancellationToken);
         return detail is null

@@ -42,6 +42,19 @@ public sealed record TicketListItemResult(
             row.StepId,
             row.UserId,
             row.TeamId);
+
+    internal static TicketListItemResult FromRow(SprintTicketsQueries.TicketRow row) =>
+        new(
+            row.Id,
+            row.Name,
+            row.Status,
+            row.Priority,
+            row.Duration,
+            row.CreatedAt,
+            row.LearningObjectiveId,
+            row.StepId,
+            row.UserId,
+            row.TeamId);
 }
 
 public sealed record TicketDetailResult(

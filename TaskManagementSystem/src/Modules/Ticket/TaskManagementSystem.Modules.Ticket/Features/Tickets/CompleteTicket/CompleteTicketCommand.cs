@@ -7,7 +7,7 @@ using TaskManagementSystem.Modules.Ticket.Application;
 
 namespace TaskManagementSystem.Modules.Ticket.Features.Tickets.CompleteTicket;
 
-public sealed record CompleteTicketCommand(int TicketId) : ICommand<Result<TicketDetailResult>>;
+public sealed record CompleteTicketCommand(int TicketId) : ITicketCommand<Result<TicketDetailResult>>;
 
 public sealed class CompleteTicketCommandValidator : AbstractValidator<CompleteTicketCommand>
 {

@@ -1,7 +1,13 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using TaskManagementSystem.BuildingBlocks.Application.Inbox;
+using TaskManagementSystem.BuildingBlocks.Application.Outbox;
+using TaskManagementSystem.BuildingBlocks.Persistence.Events;
+using TaskManagementSystem.BuildingBlocks.Persistence.Inbox;
+using TaskManagementSystem.BuildingBlocks.Persistence.Outbox;
 using TaskManagementSystem.BuildingBlocks.Persistence.Data;
 using TaskManagementSystem.Modules.Ticket.Application;
 using TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence;
@@ -23,6 +29,11 @@ public static class TicketModuleExtensions
         services.AddScoped<IIdentityUserLookup, IdentityUserLookupQueries>();
         services.AddScoped<IOrganizationTeamLookup, OrganizationTeamLookupQueries>();
         services.AddScoped<SubjectTicketsQueries>();
+        services.AddScoped<SprintTicketsQueries>();
+        services.AddScoped<IOutboxWriter, EfOutboxWriter<TicketDbContext>>();
+        services.AddScoped<IInboxGuard, EfInboxGuard<TicketDbContext>>();
+        services.AddOutboxProcessor("ticket", environment);
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(TicketTransactionBehavior<,>));
 
         services.AddDbContext<TicketDbContext>(options =>
         {

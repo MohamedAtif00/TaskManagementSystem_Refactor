@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using TaskManagementSystem.BuildingBlocks.Application.Inbox;
+using TaskManagementSystem.BuildingBlocks.Application.Outbox;
+using TaskManagementSystem.BuildingBlocks.Persistence.Outbox;
 using TaskManagementSystem.Modules.HR.Domain;
 
 namespace TaskManagementSystem.Modules.HR.Infrastructure.Persistence;
@@ -12,7 +15,12 @@ public sealed class HrDbContext(DbContextOptions<HrDbContext> options) : DbConte
     public DbSet<Opinion> Opinions => Set<Opinion>();
     public DbSet<PublicHoliday> PublicHolidays => Set<PublicHoliday>();
     internal DbSet<EmployeeBalanceRecord> EmployeeBalances => Set<EmployeeBalanceRecord>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(HrDbContext).Assembly);
+        modelBuilder.ConfigureOutboxInbox("hr");
+    }
 }

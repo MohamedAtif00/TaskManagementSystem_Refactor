@@ -9,7 +9,7 @@ using TaskManagementSystem.Modules.Ticket.Domain;
 namespace TaskManagementSystem.Modules.Ticket.Features.Comments.AddComment;
 
 public sealed record AddCommentCommand(int TicketId, int UserId, string Content)
-    : ICommand<Result<CommentListItemResult>>;
+    : ITicketCommand<Result<CommentListItemResult>>;
 
 public sealed class AddCommentCommandValidator : AbstractValidator<AddCommentCommand>
 {

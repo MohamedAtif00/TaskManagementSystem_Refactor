@@ -6,6 +6,14 @@ namespace TaskManagementSystem.Modules.HR.Infrastructure.Persistence;
 
 internal sealed class EmployeeBalanceRepository(HrDbContext context) : IEmployeeBalanceRepository
 {
+    public async Task AddAsync(EmployeeBalanceRecord balance, CancellationToken cancellationToken = default) =>
+        await context.EmployeeBalances.AddAsync(balance, cancellationToken);
+
+    public Task<EmployeeBalanceRecord?> GetTrackedByUserIdAsync(
+        int userId,
+        CancellationToken cancellationToken = default) =>
+        context.EmployeeBalances.FirstOrDefaultAsync(balance => balance.UserId == userId, cancellationToken);
+
     public async Task<EmployeeBalance?> GetByUserIdAsync(
         int userId,
         CancellationToken cancellationToken = default)

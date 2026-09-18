@@ -1,4 +1,5 @@
 using TaskManagementSystem.BuildingBlocks.Domain;
+using TaskManagementSystem.Modules.Identity.Domain.Events;
 
 namespace TaskManagementSystem.Modules.Identity.Domain;
 
@@ -161,7 +162,28 @@ public sealed class User : Entity, IAggregateRoot
         AccountType = accountType;
         TeamId = teamId;
         TeamleaderId = teamLeaderId;
+        AddDomainEvent(new UserMetadataChangedDomainEvent(Id, teamId, teamLeaderId, roleId));
         return Result.Ok();
+    }
+
+    public void NotifyCreated()
+    {
+        AddDomainEvent(new UserCreatedDomainEvent(
+            Id,
+            TeamId,
+            TeamleaderId,
+            RoleId,
+            AnnualLeave,
+            AnnualLeaveMax,
+            EmergencyLeave,
+            EmergencyLeaveMax,
+            SickLeave,
+            PermissionBalance,
+            PermissionMax,
+            WorkFromHome,
+            WorkFromHomeMax,
+            FromNextBalanceDaysUsed,
+            OldAnnualBalance));
     }
 
     public void AssignRole(int roleId) => RoleId = roleId;

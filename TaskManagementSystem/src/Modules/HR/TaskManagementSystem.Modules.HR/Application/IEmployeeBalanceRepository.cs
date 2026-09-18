@@ -4,6 +4,10 @@ namespace TaskManagementSystem.Modules.HR.Application;
 
 public interface IEmployeeBalanceRepository
 {
+    Task AddAsync(EmployeeBalanceRecord balance, CancellationToken cancellationToken = default);
+
+    Task<EmployeeBalanceRecord?> GetTrackedByUserIdAsync(int userId, CancellationToken cancellationToken = default);
+
     Task<EmployeeBalance?> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default);
 
     Task DeductLeaveAsync(LeaveRequest leaveRequest, CancellationToken cancellationToken = default);

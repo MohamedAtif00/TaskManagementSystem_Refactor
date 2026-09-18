@@ -26,15 +26,15 @@ public sealed class WorkflowStepLookupQueries(ISqlConnectionFactory connectionFa
               AND s.[Archived] = 0
               AND s.[TaskBankId] = @TaskBankId
               AND (
-                  n.[IsStart] = 1
+                  n.[isStart] = 1
                   OR NOT EXISTS (
                       SELECT 1
                       FROM [workflows].[Nodes] startNode
                       WHERE startNode.[SchemaId] = @SchemaId
-                        AND startNode.[IsStart] = 1
+                        AND startNode.[isStart] = 1
                         AND startNode.[Archived] = 0))
             ORDER BY
-                CASE WHEN n.[IsStart] = 1 THEN 0 ELSE 1 END,
+                CASE WHEN n.[isStart] = 1 THEN 0 ELSE 1 END,
                 n.[Order],
                 s.[Order]
             """;

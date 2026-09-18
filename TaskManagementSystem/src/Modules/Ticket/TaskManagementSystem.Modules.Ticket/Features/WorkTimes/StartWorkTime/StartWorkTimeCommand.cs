@@ -7,7 +7,7 @@ using TaskManagementSystem.Modules.Ticket.Application;
 
 namespace TaskManagementSystem.Modules.Ticket.Features.WorkTimes.StartWorkTime;
 
-public sealed record StartWorkTimeCommand(int TicketId, int UserId) : ICommand<Result<TaskWorkTimeResult>>;
+public sealed record StartWorkTimeCommand(int TicketId, int UserId) : ITicketCommand<Result<TaskWorkTimeResult>>;
 
 public sealed class StartWorkTimeCommandValidator : AbstractValidator<StartWorkTimeCommand>
 {

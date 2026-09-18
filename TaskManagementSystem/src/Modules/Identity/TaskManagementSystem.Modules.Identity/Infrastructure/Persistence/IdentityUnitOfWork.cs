@@ -1,4 +1,5 @@
 using TaskManagementSystem.BuildingBlocks.Persistence;
+using TaskManagementSystem.BuildingBlocks.Persistence.Events;
 using TaskManagementSystem.Modules.Identity.Application;
 using TaskManagementSystem.Modules.Identity.Infrastructure.Persistence.Queries;
 
@@ -6,8 +7,9 @@ namespace TaskManagementSystem.Modules.Identity.Infrastructure.Persistence;
 
 internal sealed class IdentityUnitOfWork(
     IdentityDbContext context,
-    AboutMeQueries aboutMeQueries)
-    : UnitOfWork<IdentityDbContext>(context), IIdentityUnitOfWork
+    AboutMeQueries aboutMeQueries,
+    IDomainEventDispatcher domainEventDispatcher)
+    : UnitOfWork<IdentityDbContext>(context, domainEventDispatcher), IIdentityUnitOfWork
 {
     private readonly Lazy<UserRepository> _users =
         LazyRepositoryFactory.Create(() => new UserRepository(context));

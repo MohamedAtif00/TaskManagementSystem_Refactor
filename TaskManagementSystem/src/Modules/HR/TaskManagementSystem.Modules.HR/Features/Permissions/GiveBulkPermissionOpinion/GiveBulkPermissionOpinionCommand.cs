@@ -11,7 +11,7 @@ public sealed record GiveBulkPermissionOpinionCommand(
     string ActorRole,
     IReadOnlyList<int> PermissionIds,
     bool IsApproved,
-    string? Comment) : ICommand<Result<BulkPermissionOpinionResult>>;
+    string? Comment) : IHrCommand<Result<BulkPermissionOpinionResult>>;
 
 public sealed class GiveBulkPermissionOpinionCommandHandler(
     PermissionOpinionProcessor opinionProcessor,

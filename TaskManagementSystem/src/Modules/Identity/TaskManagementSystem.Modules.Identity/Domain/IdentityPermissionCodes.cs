@@ -1,19 +1,12 @@
 namespace TaskManagementSystem.Modules.Identity.Domain;
 
+[Obsolete("Use PermissionCodes instead.")]
 public static class IdentityPermissionCodes
 {
-    public const string PermissionsManage = "identity.permissions.manage";
-    public const string RolesManage = "identity.roles.manage";
-    public const string UsersAssignRole = "identity.users.assign-role";
-    public const string UsersView = "identity.users.view";
-    public const string UsersManage = "identity.users.manage";
+    public const string RolesManage = PermissionCodes.IdentityRoles.Manage;
+    public const string UsersAssignRole = PermissionCodes.IdentityUsers.Update;
+    public const string UsersView = PermissionCodes.IdentityUsers.Read;
+    public const string UsersManage = PermissionCodes.IdentityUsers.Manage;
 
-    public static readonly IReadOnlyCollection<string> SystemCodes =
-    [
-        PermissionsManage,
-        RolesManage,
-        UsersAssignRole,
-        UsersView,
-        UsersManage
-    ];
+    public static readonly IReadOnlyCollection<string> SystemCodes = PermissionCodes.All;
 }

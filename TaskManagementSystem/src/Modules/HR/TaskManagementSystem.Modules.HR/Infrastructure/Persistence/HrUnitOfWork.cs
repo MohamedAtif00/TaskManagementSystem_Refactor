@@ -1,4 +1,5 @@
 using TaskManagementSystem.BuildingBlocks.Persistence;
+using TaskManagementSystem.BuildingBlocks.Persistence.Events;
 using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Infrastructure.Persistence.Queries;
 
@@ -9,8 +10,9 @@ internal sealed class HrUnitOfWork(
     LeaveRequestSearchQueries leaveRequestSearchQueries,
     PermissionRequestSearchQueries permissionRequestSearchQueries,
     WorkFromHomeRequestSearchQueries workFromHomeRequestSearchQueries,
-    ForgotClockRequestSearchQueries forgotClockRequestSearchQueries)
-    : UnitOfWork<HrDbContext>(context), IHrUnitOfWork
+    ForgotClockRequestSearchQueries forgotClockRequestSearchQueries,
+    IDomainEventDispatcher domainEventDispatcher)
+    : UnitOfWork<HrDbContext>(context, domainEventDispatcher), IHrUnitOfWork
 {
     private readonly Lazy<LeaveRequestRepository> _leaveRequests =
         LazyRepositoryFactory.Create(() => new LeaveRequestRepository(context, leaveRequestSearchQueries));

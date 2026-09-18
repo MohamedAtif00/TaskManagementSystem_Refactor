@@ -1,4 +1,5 @@
 using TaskManagementSystem.BuildingBlocks.Domain;
+using TaskManagementSystem.Modules.Ticket.Domain.Events;
 
 namespace TaskManagementSystem.Modules.Ticket.Domain;
 
@@ -111,6 +112,7 @@ public sealed class TicketTask : Entity, IAggregateRoot
             Status = TaskStatus.ToDo;
         }
 
+        AddDomainEvent(new TicketAssignedDomainEvent(Id, userId));
         return Result.Ok();
     }
 
@@ -150,6 +152,12 @@ public sealed class TicketTask : Entity, IAggregateRoot
         }
 
         Status = TaskStatus.Done;
+
+        if (UserId is int assignedUserId)
+        {
+            AddDomainEvent(new TicketCompletedDomainEvent(Id, assignedUserId));
+        }
+
         return Result.Ok();
     }
 

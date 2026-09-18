@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using TaskManagementSystem.BuildingBlocks.Application.Inbox;
+using TaskManagementSystem.BuildingBlocks.Application.Outbox;
+using TaskManagementSystem.BuildingBlocks.Persistence.Outbox;
 using TaskManagementSystem.Modules.Curriculum.Domain;
 
 namespace TaskManagementSystem.Modules.Curriculum.Infrastructure.Persistence;
@@ -14,7 +17,12 @@ public sealed class CurriculumDbContext(DbContextOptions<CurriculumDbContext> op
     public DbSet<Lesson> Lessons => Set<Lesson>();
     public DbSet<LearningObjective> LearningObjectives => Set<LearningObjective>();
     internal DbSet<SubjectUserAssignment> SubjectUserAssignments => Set<SubjectUserAssignment>();
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CurriculumDbContext).Assembly);
+        modelBuilder.ConfigureOutboxInbox("curriculum");
+    }
 }

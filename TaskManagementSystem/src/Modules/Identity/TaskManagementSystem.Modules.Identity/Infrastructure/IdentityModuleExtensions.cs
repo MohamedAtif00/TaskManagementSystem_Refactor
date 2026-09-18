@@ -2,6 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using TaskManagementSystem.BuildingBlocks.Application.Inbox;
+using TaskManagementSystem.BuildingBlocks.Application.Outbox;
+using TaskManagementSystem.BuildingBlocks.Persistence.Events;
+using TaskManagementSystem.BuildingBlocks.Persistence.Inbox;
+using TaskManagementSystem.BuildingBlocks.Persistence.Outbox;
 using TaskManagementSystem.BuildingBlocks.Persistence.Data;
 using TaskManagementSystem.Modules.Identity.Application;
 using TaskManagementSystem.Modules.Identity.Infrastructure.Persistence;
@@ -22,7 +27,9 @@ public static class IdentityModuleExtensions
         services.AddScoped<AboutMeQueries>();
         services.AddScoped<IUserAdminQueries, UserAdminQueries>();
         services.AddScoped<OrganizationLookupQueries>();
-        services.AddScoped<EmployeeBalanceCommands>();
+        services.AddScoped<IOutboxWriter, EfOutboxWriter<IdentityDbContext>>();
+        services.AddScoped<IInboxGuard, EfInboxGuard<IdentityDbContext>>();
+        services.AddOutboxProcessor("identity", environment);
 
         services.AddDbContext<IdentityDbContext>(options =>
         {

@@ -6,5 +6,7 @@ public interface IUserAdminQueries
 
     Task<UserDetailReadModel?> GetByIdAsync(int userId, CancellationToken cancellationToken = default);
 
+    Task<UserDetailReadModel?> GetByCodeAsync(string code, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<TeamLeaderReadModel>> ListTeamLeadersAsync(CancellationToken cancellationToken = default);
 }

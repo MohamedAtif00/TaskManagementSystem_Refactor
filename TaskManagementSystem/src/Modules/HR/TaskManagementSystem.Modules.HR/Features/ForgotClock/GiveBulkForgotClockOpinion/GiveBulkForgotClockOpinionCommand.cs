@@ -11,7 +11,7 @@ public sealed record GiveBulkForgotClockOpinionCommand(
     string ActorRole,
     IReadOnlyList<int> ForgotClockRequestIds,
     bool IsApproved,
-    string? Comment) : ICommand<Result<BulkForgotClockOpinionResult>>;
+    string? Comment) : IHrCommand<Result<BulkForgotClockOpinionResult>>;
 
 public sealed class GiveBulkForgotClockOpinionCommandHandler(
     ForgotClockOpinionProcessor opinionProcessor,

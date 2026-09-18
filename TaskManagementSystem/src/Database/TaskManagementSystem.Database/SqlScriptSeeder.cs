@@ -10,7 +10,7 @@ namespace TaskManagementSystem.Database;
 public static class SqlScriptSeeder
 {
     public const string IdentityIntegrationTestSeedScript =
-        "src/Database/TaskManagementSystem.Database/Scripts/Migrations/011_identity_SeedUsers.sql";
+        "src/Database/TaskManagementSystem.Database/Scripts/Seeds/002_IntegrationTestData.sql";
 
     public static string ResolveScriptPath(string relativePathFromSolutionRoot)
     {
@@ -49,7 +49,10 @@ public static class SqlScriptSeeder
             }
 
             await using var command = connection.CreateCommand();
-            command.CommandText = batch;
+            command.CommandText = """
+                SET QUOTED_IDENTIFIER ON;
+                SET ANSI_NULLS ON;
+                """ + batch;
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
     }

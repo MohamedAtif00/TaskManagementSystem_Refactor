@@ -11,7 +11,7 @@ public sealed record GiveBulkWorkFromHomeOpinionCommand(
     string ActorRole,
     IReadOnlyList<int> WorkFromHomeRequestIds,
     bool IsApproved,
-    string? Comment) : ICommand<Result<BulkWorkFromHomeOpinionResult>>;
+    string? Comment) : IHrCommand<Result<BulkWorkFromHomeOpinionResult>>;
 
 public sealed class GiveBulkWorkFromHomeOpinionCommandHandler(
     WorkFromHomeOpinionProcessor opinionProcessor,

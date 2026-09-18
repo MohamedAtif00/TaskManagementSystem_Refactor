@@ -1,10 +1,13 @@
 using TaskManagementSystem.BuildingBlocks.Persistence;
+using TaskManagementSystem.BuildingBlocks.Persistence.Events;
 using TaskManagementSystem.Modules.Curriculum.Application;
 
 namespace TaskManagementSystem.Modules.Curriculum.Infrastructure.Persistence;
 
-internal sealed class CurriculumUnitOfWork(CurriculumDbContext context)
-    : UnitOfWork<CurriculumDbContext>(context), ICurriculumUnitOfWork
+internal sealed class CurriculumUnitOfWork(
+    CurriculumDbContext context,
+    IDomainEventDispatcher domainEventDispatcher)
+    : UnitOfWork<CurriculumDbContext>(context, domainEventDispatcher), ICurriculumUnitOfWork
 {
     private readonly Lazy<AcademicYearRepository> _academicYears =
         LazyRepositoryFactory.Create(() => new AcademicYearRepository(context));
