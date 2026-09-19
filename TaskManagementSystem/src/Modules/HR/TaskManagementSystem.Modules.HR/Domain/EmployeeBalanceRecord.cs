@@ -75,6 +75,13 @@ public sealed class EmployeeBalanceRecord : Entity, IAggregateRoot
             OldAnnualBalance = oldAnnualBalance
         };
 
+    public static EmployeeBalanceRecord CreateWithDefaultEntitlements(
+        int userId,
+        int? teamId,
+        int? teamleaderId,
+        int roleId) =>
+        CreateForUser(userId, teamId, teamleaderId, roleId, 0, 30, 0, 5, 0, 0, 10, 0, 5, 0, 0);
+
     public void SyncMetadata(int? teamId, int? teamleaderId, int roleId)
     {
         TeamId = teamId;

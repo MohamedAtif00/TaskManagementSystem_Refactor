@@ -8,10 +8,8 @@ public sealed class OutboxProcessor(
     string schema,
     IOutboxPump outboxPump,
     ILogger<OutboxProcessor> logger,
-    TimeSpan? pollInterval = null) : BackgroundService
+    OutboxOptions options) : BackgroundService
 {
-    private readonly TimeSpan _pollInterval = pollInterval ?? TimeSpan.FromSeconds(2);
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
@@ -21,7 +19,7 @@ public sealed class OutboxProcessor(
                 var processedAny = await outboxPump.ProcessBatchAsync(schema, stoppingToken);
                 if (!processedAny)
                 {
-                    await Task.Delay(_pollInterval, stoppingToken);
+                    await Task.Delay(options.PollInterval, stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -31,7 +29,7 @@ public sealed class OutboxProcessor(
             catch (Exception exception)
             {
                 logger.LogError(exception, "Outbox processor for schema '{Schema}' failed.", schema);
-                await Task.Delay(_pollInterval, stoppingToken);
+                await Task.Delay(options.PollInterval, stoppingToken);
             }
         }
     }

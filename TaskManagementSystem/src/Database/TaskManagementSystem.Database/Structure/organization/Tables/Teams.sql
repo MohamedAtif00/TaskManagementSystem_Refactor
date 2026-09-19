@@ -1,13 +1,14 @@
 -- Source of truth for organization.Teams
--- Deployed via Scripts/Migrations/002_organization_Tables.sql
+-- Deployed via Scripts/Migrations/002_organization_Tables.sql and 022_organization_TeamsTeamleaderId.sql
 
 IF OBJECT_ID(N'organization.Teams', N'U') IS NULL
 BEGIN
     CREATE TABLE [organization].[Teams]
     (
-        [Id]       INT            NOT NULL IDENTITY(1, 1),
-        [Name]     NVARCHAR(MAX)  NOT NULL,
-        [Archived] BIT            NOT NULL,
+        [Id]           INT            NOT NULL IDENTITY(1, 1),
+        [Name]         NVARCHAR(MAX)  NOT NULL,
+        [Archived]     BIT            NOT NULL,
+        [TeamleaderId] INT            NULL,
         CONSTRAINT [PK_organization_Teams] PRIMARY KEY CLUSTERED ([Id] ASC)
     );
 END

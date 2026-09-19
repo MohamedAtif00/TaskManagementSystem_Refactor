@@ -13,17 +13,20 @@ public static class OutboxProcessorRegistration
         string schema,
         IHostEnvironment environment)
     {
-        services.TryAddSingleton<IOutboxPump, OutboxPump>();
+        services.TryAddSingleton(_ => new OutboxOptions
+        {
+            PollInterval = environment.IsEnvironment("Testing")
+                ? TimeSpan.FromMilliseconds(100)
+                : TimeSpan.FromSeconds(2)
+        });
 
-        var pollInterval = environment.IsEnvironment("Testing")
-            ? TimeSpan.FromMilliseconds(100)
-            : (TimeSpan?)null;
+        services.TryAddSingleton<IOutboxPump, OutboxPump>();
 
         services.AddHostedService(provider => new OutboxProcessor(
             schema,
             provider.GetRequiredService<IOutboxPump>(),
             provider.GetRequiredService<ILogger<OutboxProcessor>>(),
-            pollInterval));
+            provider.GetRequiredService<OutboxOptions>()));
 
         return services;
     }

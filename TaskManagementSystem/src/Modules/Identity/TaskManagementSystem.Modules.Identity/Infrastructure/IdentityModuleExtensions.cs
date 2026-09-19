@@ -27,8 +27,8 @@ public static class IdentityModuleExtensions
         services.AddScoped<AboutMeQueries>();
         services.AddScoped<IUserAdminQueries, UserAdminQueries>();
         services.AddScoped<OrganizationLookupQueries>();
-        services.AddScoped<IOutboxWriter, EfOutboxWriter<IdentityDbContext>>();
-        services.AddScoped<IInboxGuard, EfInboxGuard<IdentityDbContext>>();
+        services.AddKeyedScoped<IOutboxWriter, EfOutboxWriter<IdentityDbContext>>(IntegrationModuleKeys.Identity);
+        services.AddKeyedScoped<IInboxGuard, EfInboxGuard<IdentityDbContext>>(IntegrationModuleKeys.Identity);
         services.AddOutboxProcessor("identity", environment);
 
         services.AddDbContext<IdentityDbContext>(options =>

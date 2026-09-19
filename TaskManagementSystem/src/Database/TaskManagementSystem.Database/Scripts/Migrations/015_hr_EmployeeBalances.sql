@@ -47,19 +47,19 @@ BEGIN
     SELECT
         u.[Id],
         u.[TeamId],
-        u.[TeamleaderId],
+        NULL,
         u.[Role],
-        u.[Annual_leave],
-        u.[Annual_leave_MAX],
-        u.[Emergency_leave],
-        u.[Emergency_leave_MAX],
-        u.[Sick_leave],
-        u.[Permission],
-        u.[Permission_MAX],
-        u.[WorkFromHome],
-        u.[WorkFromHome_MAX],
-        u.[FromNextBalanceDaysUsed],
-        u.[OldAnnualBalance]
+        0,
+        30,
+        0,
+        5,
+        0,
+        0,
+        10,
+        0,
+        5,
+        0,
+        0
     FROM [identity].[Users] AS u;
 END
 GO

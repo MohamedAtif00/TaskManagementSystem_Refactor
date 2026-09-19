@@ -1,5 +1,3 @@
-using FluentValidation;
-using MediatR;
 using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.Modules.Sprints.Application;
@@ -9,42 +7,3 @@ namespace TaskManagementSystem.Modules.Sprints.Features.SprintLearningObjectives
 public sealed record AddSprintLearningObjectivesCommand(int SprintId, IReadOnlyList<int> LearningObjectiveIds)
     : ICommand<Result<NoValue>>;
 
-public sealed class AddSprintLearningObjectivesCommandValidator : AbstractValidator<AddSprintLearningObjectivesCommand>
-{
-    public AddSprintLearningObjectivesCommandValidator()
-    {
-        RuleFor(x => x.SprintId).GreaterThan(0);
-        RuleForEach(x => x.LearningObjectiveIds).GreaterThan(0);
-    }
-}
-
-public sealed class AddSprintLearningObjectivesCommandHandler(
-    ISprintsUnitOfWork unitOfWork,
-    ILearningObjectiveLookup learningObjectiveLookup)
-    : IRequestHandler<AddSprintLearningObjectivesCommand, Result<NoValue>>
-{
-    public async Task<Result<NoValue>> Handle(
-        AddSprintLearningObjectivesCommand request,
-        CancellationToken cancellationToken)
-    {
-        if (await unitOfWork.Sprints.GetByIdAsync(request.SprintId, cancellationToken) is null)
-        {
-            return Result.Fail<NoValue>(SprintsErrors.SprintNotFound);
-        }
-
-        var distinctIds = request.LearningObjectiveIds.Distinct().ToList();
-        if (distinctIds.Count > 0 &&
-            !await learningObjectiveLookup.ActiveLearningObjectivesExistAsync(distinctIds, cancellationToken))
-        {
-            return Result.Fail<NoValue>(SprintsErrors.LearningObjectiveNotFound);
-        }
-
-        await unitOfWork.SprintLearningObjectives.AddLearningObjectivesAsync(
-            request.SprintId,
-            distinctIds,
-            cancellationToken);
-
-        await unitOfWork.CommitAsync(cancellationToken);
-        return Result.Ok();
-    }
-}

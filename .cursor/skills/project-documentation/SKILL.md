@@ -48,6 +48,7 @@ Follow the section order in [templates.md](templates.md). Match the voice of the
 
 Facts that must stay true unless code proves otherwise:
 
+- In the refactored modular monolith, **leave balances are owned by HR** (`hr.EmployeeBalances`), not Identity `User`. Identity maps profile/team/auth only; `UserCreatedIntegrationEvent` is metadata-only; HR applies default entitlements via `CreateWithDefaultEntitlements`.
 - ATS is an **internal production-management platform**, not a generic tracker and not an LMS.
 - Work is generated from a **workflow schema** attached to a **learning objective**.
 - Curriculum (post-2026 hierarchy): Academic Year → Curriculum Project → Term → Subject Group → Subject → Unit → Lesson → Learning Objective → Tasks.

@@ -46,18 +46,14 @@ BEGIN
 
     INSERT INTO [identity].[Users]
     (
-        [Name], [Code], [HR_code], [Role], [AccountType], [OnBoard], [Archived], [TeamId],
-        [Annual_leave], [Annual_leave_MAX], [Emergency_leave], [Emergency_leave_MAX], [Sick_leave],
-        [Permission], [Permission_MAX], [WorkFromHome], [WorkFromHome_MAX],
-        [FromNextBalanceDaysUsed], [OldAnnualBalance]
+        [Name], [Code], [HR_code], [Role], [AccountType], [OnBoard], [Archived], [TeamId]
     )
     VALUES
     (
         CONCAT(N'SEED_User_', RIGHT(CONCAT(N'0000', @u), 5)),
         @UserCode,
         CONCAT(N'HR', RIGHT(CONCAT(N'0000', @u), 4)),
-        3, 0, 1, 0, @UserTeamId,
-        5, 30, 0, 5, 0, 0, 10, 0, 5, 0, 0
+        3, 0, 1, 0, @UserTeamId
     );
     SET @NewUserId = SCOPE_IDENTITY();
     INSERT INTO @UserIds ([Idx], [Id], [TeamId]) VALUES (@u, @NewUserId, @UserTeamId);
@@ -97,11 +93,23 @@ INSERT INTO [hr].[EmployeeBalances]
     [FromNextBalanceDaysUsed], [OldAnnualBalance]
 )
 SELECT
-    u.[Id], u.[TeamId], u.[TeamleaderId], u.[Role],
-    u.[Annual_leave], u.[Annual_leave_MAX], u.[Emergency_leave], u.[Emergency_leave_MAX], u.[Sick_leave],
-    u.[Permission], u.[Permission_MAX], u.[WorkFromHome], u.[WorkFromHome_MAX],
-    u.[FromNextBalanceDaysUsed], u.[OldAnnualBalance]
+    u.[Id],
+    u.[TeamId],
+    t.[TeamleaderId],
+    u.[Role],
+    5,
+    30,
+    0,
+    5,
+    0,
+    0,
+    10,
+    0,
+    5,
+    0,
+    0
 FROM [identity].[Users] AS u
+LEFT JOIN [organization].[Teams] AS t ON t.[Id] = u.[TeamId]
 WHERE u.[Code] LIKE N'SD%'
   AND NOT EXISTS (SELECT 1 FROM [hr].[EmployeeBalances] AS eb WHERE eb.[UserId] = u.[Id]);
 

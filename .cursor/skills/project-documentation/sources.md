@@ -39,6 +39,21 @@ Read only what the current document needs. Paths are from repo root.
 | Auth UI | `src/components/auth/` |
 | Role dashboards | pages/components named `home`, `dashboard`, sprint overview |
 
+## Refactored backend (`TaskManagementSystem/`)
+
+| Topic | Path |
+|---|---|
+| Architecture / module boundaries | `TaskManagementSystem/docs/ARCHITECTURE.md` |
+| DbUp migrations / seeds | `TaskManagementSystem/docs/DATABASE.md` |
+| Identity User aggregate (profile/team only — no leave balances, no TeamleaderId) | `src/Modules/Identity/.../Domain/User.cs` |
+| HR employee balances (runtime source of truth) | `src/Modules/HR/.../Domain/EmployeeBalanceRecord.cs` |
+| User create → HR balance seed | `UserCreatedIntegrationEvent` → `OnUserCreatedIntegrationEvent` |
+| Default entitlements factory | `EmployeeBalanceRecord.CreateWithDefaultEntitlements` |
+| Leave columns dropped from identity.Users | `Scripts/Migrations/021_identity_DropUserLeaveColumns.sql`, `Structure/identity/Tables/Users.sql` |
+| Team leader on organization.Teams only | `Scripts/Migrations/022_organization_TeamsTeamleaderId.sql`, `023_identity_DropUserTeamleaderId.sql` |
+
+Leave balances on the **legacy** `AutomatedTaskSystem` `User` model are not authoritative for the refactored modular monolith — verify HR `EmployeeBalanceRecord` and `hr.EmployeeBalances` instead.
+
 ## Rules for evidence
 
 - Count endpoints from `Controllers/`, screens from `src/pages/`, entities from `DbSet<>` in `DataContext.cs` — not from old markdown.

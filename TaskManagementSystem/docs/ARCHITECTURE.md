@@ -6,7 +6,7 @@ Living snapshot of the new solution. Update this file as the refactor grows.
 
 
 
-**Last updated:** 2026-09-18
+**Last updated:** 2026-09-19
 
 
 
@@ -53,7 +53,7 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 | HR module (permission + WFH) | Done — request, search, opinions, cancel, balance deduct/refund |
 | HR module (forgot clock) | Done — request, search, opinions, cancel (no balance) |
 
-| Persistence (DbUp + SQL scripts) | Done — per-module schemas, DatabaseMigrator, 19 migrations (000–010, 012–019; test/dev seed moved to `Scripts/Seeds/`) |
+| Persistence (DbUp + SQL scripts) | Done — per-module schemas, DatabaseMigrator, 22 migrations (000–010, 012–023; test/dev seed moved to `Scripts/Seeds/`) |
 
 | EF Core / repositories | Done — Identity, HR, Organization, Workflows, Curriculum, Ticket, Sprints, and Notifications DbContexts + repositories |
 
@@ -106,7 +106,7 @@ Modern HTTP API — direct JSON success bodies and RFC 7807 ProblemDetails error
 
 - **RBAC admin** — `/identity/*` endpoints list the migration-seeded permission catalog, manage roles, assign permissions to roles, and administer users. Permission definitions are not created or modified via API (`019_identity_PermissionCatalog.sql`).
 
-- **User admin (MVP)** — list/get/create/update/archive users with `TeamId` assignment; seeds `hr.EmployeeBalances` on create. Permissions: `identity.users.read`, `identity.users.create`, `identity.users.update`, `identity.users.delete`, `identity.users.manage`.
+- **User admin (MVP)** — list/get/create/update/archive users with `TeamId` assignment; HR seeds `hr.EmployeeBalances` on create via `UserCreatedIntegrationEvent` (metadata-only payload; HR applies default entitlements). Permissions: `identity.users.read`, `identity.users.create`, `identity.users.update`, `identity.users.delete`, `identity.users.manage`.
 
 
 
@@ -124,8 +124,13 @@ Modern HTTP API — direct JSON success bodies and RFC 7807 ProblemDetails error
 | `DELETE /identity/users/{id}` | Soft-archive user | `identity.users.delete` |
 | `PUT /identity/users/{id}/role` | Assign role only | `identity.users.update` |
 
+- **User aggregate** — Identity `User` maps auth/profile/team fields only (`Code`, `Name`, `HrCode`, `Email`, `Phone`, `Title`, `RoleId`, `AccountType`, `OnBoard`, `Archived`, `TeamId`). Team leader is **not** on the user; it lives on `organization.Teams.TeamleaderId` and is resolved in read queries / HR sync. Leave balances are **not** on the aggregate; Identity APIs never return balance fields.
 - **Cross-schema validation** — `TeamId` validated via Dapper against `organization.Teams`; section-head check blocks archive.
-- **HR sync** — create inserts `hr.EmployeeBalances`; update syncs team/role metadata only (balances owned by HR).
+- **HR sync (create)** — `User.NotifyCreated()` raises `UserCreatedDomainEvent` with metadata only (`UserId`, `TeamId`, `RoleId`). Outbox publishes `UserCreatedIntegrationEvent` with the same payload. HR `OnUserCreatedIntegrationEvent` resolves `TeamleaderId` from `organization.Teams`, then calls `EmployeeBalanceRecord.CreateWithDefaultEntitlements` and inserts `hr.EmployeeBalances`.
+- **HR sync (update)** — `UserMetadataChangedIntegrationEvent` carries metadata only. HR `OnUserMetadataChangedIntegrationEvent` calls `SyncMetadata` on the existing row; if the row is missing (e.g. a missed create event), it self-heals by inserting via `CreateWithDefaultEntitlements`.
+- **Default entitlements (HR-owned)** — used `0`, maxes **30 / 5 / 10 / 5** (annual / emergency / permission / WFH); sick and from-next counters `0`. Applied at create and on metadata self-heal — not copied from Identity.
+- **Leave balances** — not on `identity.Users` (columns removed in migration `021`). Runtime balances live in `hr.EmployeeBalances` only.
+- **Team leader** — not on `identity.Users` (column removed in migration `023`). Lives on `organization.Teams.TeamleaderId` only; HR search and user detail resolve it via join to Teams.
 - **Deferred** — `UserChanges` audit trail.
 
 
@@ -450,8 +455,8 @@ flowchart LR
 - **Public holidays** — Owner/ProjectManager manage holidays through `/hr/holidays`; excluded from leave preview, validation, split, and balance calculations
 - **Leave settings** — `LeaveSettings` section in [`appsettings.json`](../src/Api/TaskManagementSystem.Api/appsettings.json); exposed via `GET /hr/leave/leave-settings`
 - **Cross-schema reads** — Dapper query classes under `Infrastructure/Persistence/Queries/` using [`ISqlConnectionFactory`](../src/BuildingBlocks/TaskManagementSystem.BuildingBlocks/Application/Data/ISqlConnectionFactory.cs). Examples: About Me (identity + organization + notifications), leave search (hr + identity + organization), org section lookup for leave planning. Handlers call module UoW ports; Infrastructure runs the SQL. No foreign-schema EF `DbSet`s and no repositories for another module's tables.
-- **Leave balances** — owned in `hr.EmployeeBalances`; HR reads/writes balances via EF in the same transaction as `hr.LeaveRequests`. HR does **not** reference the Identity or Organization projects.
-- **DbContext mapping** — one `IEntityTypeConfiguration<>` per owned table under `Infrastructure/Persistence/Configurations/`; DbContext applies configurations from its assembly only. Map only columns owned by the module aggregate (e.g. Identity `User` maps auth/profile fields, not HR leave balances or Organization team navigations). Legacy columns may remain in SQL but are read via Dapper when another module needs them.
+- **Leave balances** — runtime source of truth is `hr.EmployeeBalances` (`EmployeeBalanceRecord`). HR reads/writes balances via EF in the same transaction as `hr.LeaveRequests`. New users get a row from `CreateWithDefaultEntitlements` on `UserCreatedIntegrationEvent`; leave approve/deduct/refund never touches Identity. HR does **not** reference the Identity or Organization projects.
+- **DbContext mapping** — one `IEntityTypeConfiguration<>` per owned table under `Infrastructure/Persistence/Configurations/`; DbContext applies configurations from its assembly only. Map only columns owned by the module aggregate (e.g. Identity `User` maps auth/profile/team fields only). Leave balances exist only on `hr.EmployeeBalances` (legacy columns removed from `identity.Users` in migration `021`).
 - **HTTP** — [`Endpoints/HR/`](../src/Api/TaskManagementSystem.Api/Endpoints/HR/) (`HrEndpoints.cs` composition root; one file per route under `Leave/` and `Holidays/`), contracts in [`Contracts/HR/`](../src/Api/TaskManagementSystem.Api/Contracts/HR/); error codes via [`ResultHttpMapper`](../src/Api/TaskManagementSystem.Api/Infrastructure/ResultHttpMapper.cs) (`leave_request_not_found`, `leave_medical_not_found`, `user_not_found` → 404; `leave_opinion_not_authorized` → 403)
 - **OpenAPI (Apidog)** — HR + Auth spec at [`openapi/hr-openapi.json`](../src/Api/TaskManagementSystem.Api/openapi/hr-openapi.json); served at `GET /openapi/v1.json`. Import into Apidog via **Import → OpenAPI**. **Authenticate first:** run `POST /auth/login` with `{ "code": "TST001" }` (dev seed Owner), then set **Bearer {accessToken}** in Apidog before calling HR routes.
 - **Integration tests** — seed data from [`002_IntegrationTestData.sql`](../src/Database/TaskManagementSystem.Database/Scripts/Seeds/002_IntegrationTestData.sql) via [`IntegrationTestDataSeeder`](../tests/TaskManagementSystem.TestCommon/Integration/IntegrationTestDataSeeder.cs) (runs after all migrations; includes guarded `hr.EmployeeBalances` for `TST001`)
@@ -873,14 +878,30 @@ Cross-module side effects use the kgrzybek-style transactional outbox:
 
 **Live slices:**
 
-| Publisher | Event | Consumer |
-|---|---|---|
-| Ticket | `TicketAssignedIntegrationEvent`, `TicketCompletedIntegrationEvent` | Notifications |
-| Identity | `UserCreatedIntegrationEvent`, `UserMetadataChangedIntegrationEvent` | HR (`EmployeeBalances`) |
+| Publisher | Event | Payload | Consumer | Effect |
+|---|---|---|---|---|
+| Ticket | `TicketAssignedIntegrationEvent` | Ticket id, assignee, … | Notifications | Inbox row + visible realtime |
+| Ticket | `TicketCompletedIntegrationEvent` | Ticket id, … | Notifications | Inbox row + visible realtime |
+| Identity | `UserCreatedIntegrationEvent` | `UserId`, `TeamId`, `RoleId` | HR | `OnUserCreated` → resolve team leader from `organization.Teams` → `CreateWithDefaultEntitlements` → insert `hr.EmployeeBalances` |
+| Identity | `UserMetadataChangedIntegrationEvent` | `UserId`, `TeamId`, `RoleId` | HR | `OnUserMetadataChanged` → resolve team leader from `organization.Teams` → `SyncMetadata`; if row missing, `CreateWithDefaultEntitlements` (self-heal) |
 
+**Identity → HR balance flow (create):**
 
+```mermaid
+sequenceDiagram
+    participant Identity
+    participant Outbox
+    participant HR
+    Identity->>Identity: User.Create profile only
+    Identity->>Outbox: UserCreated metadata
+    Outbox->>HR: OnUserCreatedIntegrationEvent
+    HR->>HR: CreateWithDefaultEntitlements
+    HR->>HR: insert hr.EmployeeBalances
+```
 
-**Removed:** direct `INotificationWriter` port and Dapper `EmployeeBalanceCommands` cross-schema writes.
+**Default entitlements** (HR domain factory, not on the integration event): used counters `0`; maxes annual **30**, emergency **5**, permission **10**, WFH **5**; sick / from-next / old-annual **0**.
+
+**Removed:** direct `INotificationWriter` port, Dapper `EmployeeBalanceCommands` cross-schema writes, and leave fields on Identity `User` / `UserCreatedIntegrationEvent`.
 
 
 
@@ -1016,7 +1037,7 @@ When a module gains domain logic and handlers:
 
 - Full testing foundation (unit + integration + shared TestCommon)
 
-- DbUp database layer: per-module SQL schemas, `DatabaseMigrator` (+ `--seed` mode), 18 migrations, separate integration seed script (`002_IntegrationTestData.sql`)
+- DbUp database layer: per-module SQL schemas, `DatabaseMigrator` (+ `--seed` mode), 20 migrations, separate integration seed script (`002_IntegrationTestData.sql`)
 
 - Identity auth: code-only login, JWT + refresh cookies, `/auth/*` + `/identity/*` RBAC admin
 

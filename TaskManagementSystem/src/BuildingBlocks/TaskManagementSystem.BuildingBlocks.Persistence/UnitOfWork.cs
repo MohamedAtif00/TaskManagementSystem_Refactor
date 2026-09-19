@@ -35,4 +35,10 @@ public abstract class UnitOfWork<TContext> : IUnitOfWork
             }
         }
     }
+
+    public async Task<IUnitOfWorkTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+    {
+        var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        return new EfUnitOfWorkTransaction(transaction);
+    }
 }

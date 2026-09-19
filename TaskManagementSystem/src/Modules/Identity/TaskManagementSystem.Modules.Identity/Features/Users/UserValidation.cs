@@ -13,7 +13,6 @@ internal static class UserValidation
         string? email,
         int roleId,
         int? teamId,
-        int? teamLeaderId,
         int? excludeUserId = null,
         CancellationToken cancellationToken = default)
     {
@@ -34,19 +33,6 @@ internal static class UserValidation
             if (teamId is null || !await organizationLookupQueries.ActiveTeamExistsAsync(teamId.Value, cancellationToken))
             {
                 return Result.Fail<NoValue>(IdentityErrors.TeamInvalid);
-            }
-        }
-
-        if (teamLeaderId is not null)
-        {
-            if (teamLeaderId == excludeUserId)
-            {
-                return Result.Fail<NoValue>(IdentityErrors.TeamLeaderInvalid);
-            }
-
-            if (!await unitOfWork.Users.IsActiveTeamLeaderOrSectionHeadAsync(teamLeaderId.Value, cancellationToken))
-            {
-                return Result.Fail<NoValue>(IdentityErrors.TeamLeaderInvalid);
             }
         }
 

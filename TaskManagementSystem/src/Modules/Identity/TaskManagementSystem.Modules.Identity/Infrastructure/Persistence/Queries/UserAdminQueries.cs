@@ -50,12 +50,12 @@ internal sealed class UserAdminQueries(ISqlConnectionFactory connectionFactory) 
                 u.[OnBoard],
                 u.[TeamId],
                 t.[Name] AS TeamName,
-                u.[TeamleaderId],
+                t.[TeamleaderId],
                 tl.[Name] AS TeamleaderName
             FROM [identity].[Users] AS u
             INNER JOIN [identity].[Roles] AS r ON r.[Id] = u.[Role]
             LEFT JOIN [organization].[Teams] AS t ON t.[Id] = u.[TeamId] AND t.[Archived] = 0
-            LEFT JOIN [identity].[Users] AS tl ON tl.[Id] = u.[TeamleaderId] AND tl.[Archived] = 0
+            LEFT JOIN [identity].[Users] AS tl ON tl.[Id] = t.[TeamleaderId] AND tl.[Archived] = 0
             WHERE u.[Id] = @UserId AND u.[Archived] = 0
             """;
 
@@ -81,12 +81,12 @@ internal sealed class UserAdminQueries(ISqlConnectionFactory connectionFactory) 
                 u.[OnBoard],
                 u.[TeamId],
                 t.[Name] AS TeamName,
-                u.[TeamleaderId],
+                t.[TeamleaderId],
                 tl.[Name] AS TeamleaderName
             FROM [identity].[Users] AS u
             INNER JOIN [identity].[Roles] AS r ON r.[Id] = u.[Role]
             LEFT JOIN [organization].[Teams] AS t ON t.[Id] = u.[TeamId] AND t.[Archived] = 0
-            LEFT JOIN [identity].[Users] AS tl ON tl.[Id] = u.[TeamleaderId] AND tl.[Archived] = 0
+            LEFT JOIN [identity].[Users] AS tl ON tl.[Id] = t.[TeamleaderId] AND tl.[Archived] = 0
             WHERE u.[Code] = @Code AND u.[Archived] = 0
             """;
 

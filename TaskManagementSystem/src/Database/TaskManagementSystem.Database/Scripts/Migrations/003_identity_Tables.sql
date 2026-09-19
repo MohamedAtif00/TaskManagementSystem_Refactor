@@ -14,23 +14,9 @@ BEGIN
         [OnBoard]                  BIT            NOT NULL,
         [Archived]                 BIT            NOT NULL,
         [TeamId]                   INT            NULL,
-        [TeamleaderId]             INT            NULL,
-        [Annual_leave]             INT            NOT NULL,
-        [Annual_leave_MAX]         INT            NOT NULL,
-        [Emergency_leave]          INT            NOT NULL,
-        [Emergency_leave_MAX]      INT            NOT NULL,
-        [Sick_leave]               INT            NOT NULL,
-        [Permission]               INT            NOT NULL,
-        [Permission_MAX]           INT            NOT NULL,
-        [WorkFromHome]             INT            NOT NULL,
-        [WorkFromHome_MAX]         INT            NOT NULL,
-        [FromNextBalanceDaysUsed]  INT            NOT NULL,
-        [OldAnnualBalance]         INT            NOT NULL,
         CONSTRAINT [PK_identity_Users] PRIMARY KEY CLUSTERED ([Id] ASC),
         CONSTRAINT [FK_identity_Users_Teams_TeamId]
-            FOREIGN KEY ([TeamId]) REFERENCES [organization].[Teams] ([Id]),
-        CONSTRAINT [FK_identity_Users_Users_TeamleaderId]
-            FOREIGN KEY ([TeamleaderId]) REFERENCES [identity].[Users] ([Id])
+            FOREIGN KEY ([TeamId]) REFERENCES [organization].[Teams] ([Id])
     );
 
     CREATE UNIQUE NONCLUSTERED INDEX [IX_identity_Users_Code]
@@ -38,9 +24,6 @@ BEGIN
 
     CREATE NONCLUSTERED INDEX [IX_identity_Users_TeamId]
         ON [identity].[Users] ([TeamId] ASC);
-
-    CREATE NONCLUSTERED INDEX [IX_identity_Users_TeamleaderId]
-        ON [identity].[Users] ([TeamleaderId] ASC);
 END
 GO
 

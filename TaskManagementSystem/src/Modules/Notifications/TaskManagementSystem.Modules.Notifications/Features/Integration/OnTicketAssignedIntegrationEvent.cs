@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using TaskManagementSystem.BuildingBlocks.Application.Inbox;
 using TaskManagementSystem.BuildingBlocks.Infrastructure.Realtime;
 using TaskManagementSystem.IntegrationEvents.Ticket;
@@ -11,7 +12,8 @@ namespace TaskManagementSystem.Modules.Notifications.Features.Integration;
 internal sealed class OnTicketAssignedIntegrationEvent(
     IInboxGuard inboxGuard,
     INotificationsUnitOfWork unitOfWork,
-    IRealtimePublisher realtimePublisher)
+    IRealtimePublisher realtimePublisher,
+    ILogger<OnTicketAssignedIntegrationEvent> logger)
     : INotificationHandler<TicketAssignedIntegrationEvent>
 {
     private const string ConsumerName = "Notifications.OnTicketAssigned";
@@ -53,9 +55,20 @@ internal sealed class OnTicketAssignedIntegrationEvent(
             createdNotification.RelatedEntityId
         };
 
-        await realtimePublisher.PublishToUserAsync(
-            notification.AssignedUserId.ToString(),
-            NotificationRealtime.Visible(payload),
-            cancellationToken);
+        try
+        {
+            await realtimePublisher.PublishToUserAsync(
+                notification.AssignedUserId.ToString(),
+                NotificationRealtime.Visible(payload),
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                exception,
+                "Notification {NotificationId} was persisted but the realtime push to user {UserId} failed.",
+                createdNotification.Id,
+                createdNotification.UserId);
+        }
     }
 }

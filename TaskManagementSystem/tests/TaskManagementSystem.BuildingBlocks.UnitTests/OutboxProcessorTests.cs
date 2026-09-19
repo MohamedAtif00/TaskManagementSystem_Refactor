@@ -8,6 +8,7 @@ using NSubstitute;
 using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Application.Data;
 using TaskManagementSystem.BuildingBlocks.Application.Events;
+using TaskManagementSystem.BuildingBlocks.Application.Outbox;
 using TaskManagementSystem.BuildingBlocks.Persistence.Events;
 using TaskManagementSystem.BuildingBlocks.Persistence.Outbox;
 using TaskManagementSystem.IntegrationEvents.Ticket;
@@ -141,7 +142,81 @@ public sealed class OutboxProcessorTests : IAsyncLifetime
         row.Attempts.Should().Be(1);
     }
 
-    private OutboxPump CreatePump(IIntegrationEventBus bus)
+    [Fact]
+    public async Task ProcessBatchAsync_WhenAttemptsReachedMax_SkipsMessage()
+    {
+        if (!LocalDbFact.IsLocalDbAvailable)
+        {
+            return;
+        }
+
+        var integrationEvent = new TicketAssignedIntegrationEvent(Guid.NewGuid(), DateTime.UtcNow, 5, 6);
+        var serializer = new IntegrationEventSerializer();
+        var messageId = Guid.NewGuid();
+        const int maxAttempts = 5;
+
+        await InsertOutboxMessageAsync(messageId, integrationEvent, serializer, attempts: maxAttempts);
+
+        var bus = Substitute.For<IIntegrationEventBus>();
+        var pump = CreatePump(bus, new OutboxOptions { MaxAttempts = maxAttempts });
+
+        var processed = await pump.ProcessBatchAsync(Schema);
+
+        processed.Should().BeFalse();
+        await bus.DidNotReceive().PublishAsync(Arg.Any<IIntegrationEvent>(), Arg.Any<CancellationToken>());
+
+        await using var connection = new SqlConnection(_connectionString);
+        var row = await connection.QuerySingleAsync<(DateTime? ProcessedOnUtc, int Attempts)>(
+            "SELECT [ProcessedOnUtc], [Attempts] FROM [ticket].[OutboxMessages] WHERE [Id] = @Id",
+            new { Id = messageId });
+
+        row.ProcessedOnUtc.Should().BeNull();
+        row.Attempts.Should().Be(maxAttempts);
+    }
+
+    [Fact]
+    public async Task ProcessBatchAsync_WhenPublishRepeatedlyFails_StopsAtMaxAttempts()
+    {
+        if (!LocalDbFact.IsLocalDbAvailable)
+        {
+            return;
+        }
+
+        var integrationEvent = new TicketAssignedIntegrationEvent(Guid.NewGuid(), DateTime.UtcNow, 7, 8);
+        var serializer = new IntegrationEventSerializer();
+        var messageId = Guid.NewGuid();
+        const int maxAttempts = 3;
+
+        await InsertOutboxMessageAsync(messageId, integrationEvent, serializer);
+
+        var bus = Substitute.For<IIntegrationEventBus>();
+        bus.PublishAsync(Arg.Any<IIntegrationEvent>(), Arg.Any<CancellationToken>())
+            .Returns<Task>(_ => throw new InvalidOperationException("publish failed"));
+
+        var pump = CreatePump(bus, new OutboxOptions { MaxAttempts = maxAttempts });
+
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            var processed = await pump.ProcessBatchAsync(Schema);
+            processed.Should().BeTrue();
+        }
+
+        var skipped = await pump.ProcessBatchAsync(Schema);
+        skipped.Should().BeFalse();
+
+        await bus.Received(maxAttempts).PublishAsync(integrationEvent, Arg.Any<CancellationToken>());
+
+        await using var connection = new SqlConnection(_connectionString);
+        var row = await connection.QuerySingleAsync<(DateTime? ProcessedOnUtc, string? Error, int Attempts)>(
+            "SELECT [ProcessedOnUtc], [Error], [Attempts] FROM [ticket].[OutboxMessages] WHERE [Id] = @Id",
+            new { Id = messageId });
+
+        row.ProcessedOnUtc.Should().BeNull();
+        row.Error.Should().Be("publish failed");
+        row.Attempts.Should().Be(maxAttempts);
+    }
+
+    private OutboxPump CreatePump(IIntegrationEventBus bus, OutboxOptions? options = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton(bus);
@@ -151,13 +226,15 @@ public sealed class OutboxProcessorTests : IAsyncLifetime
             new TestSqlConnectionFactory(_connectionString),
             scopeFactory,
             new IntegrationEventSerializer(),
+            options ?? new OutboxOptions(),
             NullLogger<OutboxPump>.Instance);
     }
 
     private async Task InsertOutboxMessageAsync(
         Guid messageId,
         TicketAssignedIntegrationEvent integrationEvent,
-        IntegrationEventSerializer serializer)
+        IntegrationEventSerializer serializer,
+        int attempts = 0)
     {
         await using var connection = new SqlConnection(_connectionString);
         await connection.ExecuteAsync(
@@ -165,13 +242,14 @@ public sealed class OutboxProcessorTests : IAsyncLifetime
             INSERT INTO [ticket].[OutboxMessages]
                 ([Id], [OccurredOnUtc], [Type], [Payload], [ProcessedOnUtc], [Error], [Attempts])
             VALUES
-                (@Id, SYSUTCDATETIME(), @Type, @Payload, NULL, NULL, 0)
+                (@Id, SYSUTCDATETIME(), @Type, @Payload, NULL, NULL, @Attempts)
             """,
             new
             {
                 Id = messageId,
                 Type = integrationEvent.GetType().AssemblyQualifiedName,
-                Payload = serializer.Serialize(integrationEvent)
+                Payload = serializer.Serialize(integrationEvent),
+                Attempts = attempts
             });
     }
 

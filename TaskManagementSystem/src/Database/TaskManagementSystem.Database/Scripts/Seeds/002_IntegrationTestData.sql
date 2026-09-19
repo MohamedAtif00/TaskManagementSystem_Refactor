@@ -21,18 +21,7 @@ BEGIN
         [AccountType],
         [OnBoard],
         [Archived],
-        [TeamId],
-        [Annual_leave],
-        [Annual_leave_MAX],
-        [Emergency_leave],
-        [Emergency_leave_MAX],
-        [Sick_leave],
-        [Permission],
-        [Permission_MAX],
-        [WorkFromHome],
-        [WorkFromHome_MAX],
-        [FromNextBalanceDaysUsed],
-        [OldAnnualBalance]
+        [TeamId]
     )
     VALUES
     (
@@ -43,8 +32,7 @@ BEGIN
         0,
         0,
         0,
-        @TeamId,
-        0, 30, 0, 5, 0, 0, 10, 0, 5, 0, 0
+        @TeamId
     );
 END
 GO
@@ -74,20 +62,21 @@ BEGIN
     SELECT
         u.[Id],
         u.[TeamId],
-        u.[TeamleaderId],
+        t.[TeamleaderId],
         u.[Role],
-        u.[Annual_leave],
-        u.[Annual_leave_MAX],
-        u.[Emergency_leave],
-        u.[Emergency_leave_MAX],
-        u.[Sick_leave],
-        u.[Permission],
-        u.[Permission_MAX],
-        u.[WorkFromHome],
-        u.[WorkFromHome_MAX],
-        u.[FromNextBalanceDaysUsed],
-        u.[OldAnnualBalance]
+        0,
+        30,
+        0,
+        5,
+        0,
+        0,
+        10,
+        0,
+        5,
+        0,
+        0
     FROM [identity].[Users] AS u
+    LEFT JOIN [organization].[Teams] AS t ON t.[Id] = u.[TeamId]
     WHERE u.[Id] = @UserId;
 END
 GO

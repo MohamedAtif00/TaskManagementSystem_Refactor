@@ -7,5 +7,4 @@ public sealed record UserMetadataChangedIntegrationEvent(
     DateTime OccurredOn,
     int UserId,
     int? TeamId,
-    int? TeamleaderId,
     int RoleId) : IIntegrationEvent;

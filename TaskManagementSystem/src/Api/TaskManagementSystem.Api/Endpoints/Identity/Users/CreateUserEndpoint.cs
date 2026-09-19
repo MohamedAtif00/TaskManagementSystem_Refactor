@@ -34,8 +34,7 @@ public static class CreateUserEndpoint
                 request.Title,
                 request.RoleId,
                 (AccountType)request.AccountType,
-                request.TeamId,
-                request.TeamleaderId),
+                request.TeamId),
             cancellationToken);
 
         return result.ToHttpResult(user => Results.Created($"/identity/users/{user.Id}", IdentityMapping.ToUserDetailResponse(user)));

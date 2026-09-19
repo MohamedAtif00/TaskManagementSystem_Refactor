@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using Dapper;
 using FluentAssertions;
+using Microsoft.Data.SqlClient;
 using TaskManagementSystem.Api.Contracts.Identity;
 using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.TestCommon.Integration;
@@ -48,6 +50,47 @@ public sealed class IdentityUserAdminIntegrationTests(TmsWebApplicationFactory f
         created!.Name.Should().Be("Integration Member");
         created.Code.Should().HaveLength(6);
         created.TeamId.Should().Be(teamId);
+
+        await factory.DrainOutboxesAsync();
+
+        await using var connection = new SqlConnection(factory.ConnectionString);
+        var balance = await connection.QuerySingleOrDefaultAsync<EmployeeBalanceRow>(
+            """
+            SELECT
+                [UserId],
+                [TeamId],
+                [Role],
+                [AnnualLeave],
+                [AnnualLeaveMax],
+                [EmergencyLeave],
+                [EmergencyLeaveMax],
+                [SickLeave],
+                [Permission],
+                [PermissionMax],
+                [WorkFromHome],
+                [WorkFromHomeMax],
+                [FromNextBalanceDaysUsed],
+                [OldAnnualBalance]
+            FROM [hr].[EmployeeBalances]
+            WHERE [UserId] = @UserId
+            """,
+            new { UserId = created.Id });
+
+        balance.Should().NotBeNull();
+        balance!.UserId.Should().Be(created.Id);
+        balance.TeamId.Should().Be(teamId);
+        balance.Role.Should().Be((int)UserRole.Member);
+        balance.AnnualLeave.Should().Be(0);
+        balance.AnnualLeaveMax.Should().Be(30);
+        balance.EmergencyLeave.Should().Be(0);
+        balance.EmergencyLeaveMax.Should().Be(5);
+        balance.SickLeave.Should().Be(0);
+        balance.Permission.Should().Be(0);
+        balance.PermissionMax.Should().Be(10);
+        balance.WorkFromHome.Should().Be(0);
+        balance.WorkFromHomeMax.Should().Be(5);
+        balance.FromNextBalanceDaysUsed.Should().Be(0);
+        balance.OldAnnualBalance.Should().Be(0);
 
         var getResponse = await client.GetAsync($"/identity/users/{created.Id}");
         getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -101,5 +144,36 @@ public sealed class IdentityUserAdminIntegrationTests(TmsWebApplicationFactory f
         public int Id { get; init; }
 
         public string Name { get; init; } = string.Empty;
+    }
+
+    private sealed class EmployeeBalanceRow
+    {
+        public int UserId { get; init; }
+
+        public int? TeamId { get; init; }
+
+        public int Role { get; init; }
+
+        public int AnnualLeave { get; init; }
+
+        public int AnnualLeaveMax { get; init; }
+
+        public int EmergencyLeave { get; init; }
+
+        public int EmergencyLeaveMax { get; init; }
+
+        public int SickLeave { get; init; }
+
+        public int Permission { get; init; }
+
+        public int PermissionMax { get; init; }
+
+        public int WorkFromHome { get; init; }
+
+        public int WorkFromHomeMax { get; init; }
+
+        public int FromNextBalanceDaysUsed { get; init; }
+
+        public int OldAnnualBalance { get; init; }
     }
 }

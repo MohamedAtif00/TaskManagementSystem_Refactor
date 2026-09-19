@@ -2,7 +2,7 @@
 
 Script-based database management following [kgrzybek/modular-monolith-with-ddd](https://github.com/kgrzybek/modular-monolith-with-ddd). Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-**Last updated:** 2026-09-18 (seed separation, 19 migrations, RBAC permission catalog, outbox/inbox tables)
+**Last updated:** 2026-09-19 (TeamleaderId removed from identity.Users; organization.Teams is the only owner)
 
 ## Approach
 
@@ -74,7 +74,7 @@ If LocalDB fails to start (`sqllocaldb start MSSQLLocalDB`), repair SQL Server L
 ```sql
 SELECT name FROM sys.schemas ORDER BY name;
 SELECT COUNT(*) FROM app.MigrationsJournal;
--- Expect 19 migration entries (000-010, 012-019; 011 intentionally absent)
+-- Expect 22 migration entries (000-010, 012-023; 011 intentionally absent)
 ```
 
 ### 4. Seed integration / local dev test user (optional)
@@ -121,7 +121,7 @@ The API does **not** run DbUp on startup yet — run `DatabaseMigrator` explicit
 ## Adding a schema change
 
 1. Edit the table under `Structure/{schema}/Tables/`.
-2. Add a new script `Scripts/Migrations/019_description.sql` (use the next free number; do not renumber existing scripts — DbUp journals by filename).
+2. Add a new script `Scripts/Migrations/024_description.sql` (use the next free number after `023`; do not renumber existing scripts — DbUp journals by filename).
 3. Run `DatabaseMigrator` again (DbUp skips scripts already in the journal).
 
 ## Migration order
@@ -148,6 +148,16 @@ The API does **not** run DbUp on startup yet — run `DatabaseMigrator` explicit
 | `017_identity_UserAdminPermissions.sql` | User admin permissions |
 | `018_outbox_inbox_Tables.sql` | `OutboxMessages` + `InboxMessages` in all 8 module schemas |
 | `019_identity_PermissionCatalog.sql` | Full RBAC permission catalog (`{module}.{read\|create\|update\|delete\|manage}`), legacy code migration, default role grants (Owner gets all `*.manage`) |
+| `020_hr_BackfillMissingEmployeeBalances.sql` | Backfill missing `hr.EmployeeBalances` rows with default entitlements |
+| `021_identity_DropUserLeaveColumns.sql` | Drops legacy leave columns from `identity.Users` (no-op on fresh DBs created from updated `003`) |
+| `022_organization_TeamsTeamleaderId.sql` | Adds `organization.Teams.TeamleaderId` (source of truth); backfills from TeamLeader users |
+| `023_identity_DropUserTeamleaderId.sql` | Drops legacy `TeamleaderId` column from `identity.Users` (no-op on fresh DBs created from updated `003`) |
+
+**Leave balances:** `identity.Users` has **no** leave/balance columns. `hr.EmployeeBalances` is the **only** balance store. New users get a row from HR `EmployeeBalanceRecord.CreateWithDefaultEntitlements` when `UserCreatedIntegrationEvent` is consumed (defaults: used `0`, maxes **30 / 5 / 10 / 5**). Migrations `015` and `020` backfill with the same literal defaults when users exist at migration time.
+
+**User create after unmap:** `POST /identity/users` persists profile/team only on `identity.Users`; HR seeds `hr.EmployeeBalances` via outbox/inbox. `UserMetadataChangedIntegrationEvent` syncs team/role on the HR row and self-heals a missing balance row.
+
+**Team leader:** `identity.Users` has **no** `TeamleaderId` column. Runtime team leader lives on `organization.Teams.TeamleaderId` only. HR `EmployeeBalanceRecord.TeamleaderId` is a denormalized copy resolved from `organization.Teams` on create/update integration events. User detail API and HR search queries resolve team leader via join to `organization.Teams`.
 
 **Module implementation status:** Curriculum, Ticket, Sprints, and Notifications application modules are implemented against the SQL schemas above. Sprints uses `007_sprints_Tables.sql`; Notifications uses `008_notifications_Tables.sql`.
 

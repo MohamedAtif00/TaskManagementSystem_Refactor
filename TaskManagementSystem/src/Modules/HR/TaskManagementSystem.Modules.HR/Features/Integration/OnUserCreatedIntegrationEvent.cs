@@ -3,12 +3,14 @@ using TaskManagementSystem.BuildingBlocks.Application.Inbox;
 using TaskManagementSystem.IntegrationEvents.Identity;
 using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
+using TaskManagementSystem.Modules.HR.Infrastructure.Persistence.Queries;
 
 namespace TaskManagementSystem.Modules.HR.Features.Integration;
 
 internal sealed class OnUserCreatedIntegrationEvent(
     IInboxGuard inboxGuard,
-    IHrUnitOfWork unitOfWork)
+    IHrUnitOfWork unitOfWork,
+    OrgLookupQueries orgLookupQueries)
     : INotificationHandler<UserCreatedIntegrationEvent>
 {
     private const string ConsumerName = "HR.OnUserCreated";
@@ -20,22 +22,12 @@ internal sealed class OnUserCreatedIntegrationEvent(
             return;
         }
 
-        var balance = EmployeeBalanceRecord.CreateForUser(
+        var teamleaderId = await orgLookupQueries.GetTeamleaderIdForTeamAsync(notification.TeamId, cancellationToken);
+        var balance = EmployeeBalanceRecord.CreateWithDefaultEntitlements(
             notification.UserId,
             notification.TeamId,
-            notification.TeamleaderId,
-            notification.RoleId,
-            notification.AnnualLeave,
-            notification.AnnualLeaveMax,
-            notification.EmergencyLeave,
-            notification.EmergencyLeaveMax,
-            notification.SickLeave,
-            notification.PermissionBalance,
-            notification.PermissionMax,
-            notification.WorkFromHome,
-            notification.WorkFromHomeMax,
-            notification.FromNextBalanceDaysUsed,
-            notification.OldAnnualBalance);
+            teamleaderId,
+            notification.RoleId);
 
         await unitOfWork.EmployeeBalances.AddAsync(balance, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);

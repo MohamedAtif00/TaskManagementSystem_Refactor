@@ -85,8 +85,6 @@ public sealed class CreateUserRequest
     public int AccountType { get; set; }
 
     public int? TeamId { get; set; }
-
-    public int? TeamleaderId { get; set; }
 }
 
 public sealed class UpdateUserRequest
@@ -106,8 +104,6 @@ public sealed class UpdateUserRequest
     public int AccountType { get; set; }
 
     public int? TeamId { get; set; }
-
-    public int? TeamleaderId { get; set; }
 }
 
 public sealed class UserListItemResponse

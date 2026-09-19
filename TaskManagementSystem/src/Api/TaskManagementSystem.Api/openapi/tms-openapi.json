@@ -680,8 +680,7 @@
                 "title": "Developer",
                 "roleId": 1,
                 "accountType": 0,
-                "teamId": 1,
-                "teamleaderId": 1
+                "teamId": 1
               }
             }
           }
@@ -811,8 +810,7 @@
                 "title": "Developer",
                 "roleId": 1,
                 "accountType": 0,
-                "teamId": 1,
-                "teamleaderId": 1
+                "teamId": 1
               }
             }
           }
@@ -8815,11 +8813,6 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
-          },
-          "teamleaderId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
           }
         }
       },
@@ -8859,11 +8852,6 @@
             "format": "int32"
           },
           "teamId": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true
-          },
-          "teamleaderId": {
             "type": "integer",
             "format": "int32",
             "nullable": true

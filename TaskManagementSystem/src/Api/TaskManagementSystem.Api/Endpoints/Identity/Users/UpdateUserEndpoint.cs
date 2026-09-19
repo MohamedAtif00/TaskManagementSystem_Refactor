@@ -36,8 +36,7 @@ public static class UpdateUserEndpoint
                 request.Title,
                 request.RoleId,
                 (AccountType)request.AccountType,
-                request.TeamId,
-                request.TeamleaderId),
+                request.TeamId),
             cancellationToken);
 
         return result.ToHttpResult(user => Results.Ok(IdentityMapping.ToUserDetailResponse(user)));

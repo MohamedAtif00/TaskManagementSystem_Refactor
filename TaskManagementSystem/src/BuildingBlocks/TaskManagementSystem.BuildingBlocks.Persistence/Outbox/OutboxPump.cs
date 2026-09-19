@@ -11,6 +11,7 @@ public sealed class OutboxPump(
     ISqlConnectionFactory connectionFactory,
     IServiceScopeFactory scopeFactory,
     IIntegrationEventSerializer serializer,
+    OutboxOptions options,
     ILogger<OutboxPump> logger) : IOutboxPump
 {
     private const int BatchSize = 20;
@@ -32,9 +33,10 @@ public sealed class OutboxPump(
                      [Attempts]
                  FROM [{schema}].[OutboxMessages]
                  WHERE [ProcessedOnUtc] IS NULL
+                   AND [Attempts] < @MaxAttempts
                  ORDER BY [OccurredOnUtc]
                  """,
-                new { BatchSize },
+                new { BatchSize, MaxAttempts = options.MaxAttempts },
                 cancellationToken: cancellationToken))).ToList();
 
         if (messages.Count == 0)
@@ -65,11 +67,26 @@ public sealed class OutboxPump(
             }
             catch (Exception exception)
             {
-                logger.LogWarning(
-                    exception,
-                    "Failed to process outbox message {OutboxMessageId} in schema '{Schema}'.",
-                    message.Id,
-                    schema);
+                var nextAttempts = message.Attempts + 1;
+
+                if (nextAttempts >= options.MaxAttempts)
+                {
+                    logger.LogError(
+                        exception,
+                        "Outbox message {OutboxMessageId} of type '{MessageType}' in schema '{Schema}' exceeded max attempts ({MaxAttempts}). Message dead-lettered.",
+                        message.Id,
+                        message.Type,
+                        schema,
+                        options.MaxAttempts);
+                }
+                else
+                {
+                    logger.LogWarning(
+                        exception,
+                        "Failed to process outbox message {OutboxMessageId} in schema '{Schema}'.",
+                        message.Id,
+                        schema);
+                }
 
                 await connection.ExecuteAsync(
                     new CommandDefinition(
