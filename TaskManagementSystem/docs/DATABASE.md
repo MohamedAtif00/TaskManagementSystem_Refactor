@@ -74,7 +74,7 @@ If LocalDB fails to start (`sqllocaldb start MSSQLLocalDB`), repair SQL Server L
 ```sql
 SELECT name FROM sys.schemas ORDER BY name;
 SELECT COUNT(*) FROM app.MigrationsJournal;
--- Expect 22 migration entries (000-010, 012-023; 011 intentionally absent)
+-- Expect 23 migration entries (000-010, 012-024; 011 intentionally absent)
 ```
 
 ### 4. Seed integration / local dev test user (optional)
@@ -121,7 +121,7 @@ The API does **not** run DbUp on startup yet — run `DatabaseMigrator` explicit
 ## Adding a schema change
 
 1. Edit the table under `Structure/{schema}/Tables/`.
-2. Add a new script `Scripts/Migrations/024_description.sql` (use the next free number after `023`; do not renumber existing scripts — DbUp journals by filename).
+2. Add a new script `Scripts/Migrations/025_description.sql` (use the next free number after `024`; do not renumber existing scripts — DbUp journals by filename).
 3. Run `DatabaseMigrator` again (DbUp skips scripts already in the journal).
 
 ## Migration order
@@ -152,6 +152,7 @@ The API does **not** run DbUp on startup yet — run `DatabaseMigrator` explicit
 | `021_identity_DropUserLeaveColumns.sql` | Drops legacy leave columns from `identity.Users` (no-op on fresh DBs created from updated `003`) |
 | `022_organization_TeamsTeamleaderId.sql` | Adds `organization.Teams.TeamleaderId` (source of truth); backfills from TeamLeader users |
 | `023_identity_DropUserTeamleaderId.sql` | Drops legacy `TeamleaderId` column from `identity.Users` (no-op on fresh DBs created from updated `003`) |
+| `024_hr_EmployeeBalances_RowVersion.sql` | Adds `RowVersion` optimistic concurrency token to `hr.EmployeeBalances` |
 
 **Leave balances:** `identity.Users` has **no** leave/balance columns. `hr.EmployeeBalances` is the **only** balance store. New users get a row from HR `EmployeeBalanceRecord.CreateWithDefaultEntitlements` when `UserCreatedIntegrationEvent` is consumed (defaults: used `0`, maxes **30 / 5 / 10 / 5**). Migrations `015` and `020` backfill with the same literal defaults when users exist at migration time.
 

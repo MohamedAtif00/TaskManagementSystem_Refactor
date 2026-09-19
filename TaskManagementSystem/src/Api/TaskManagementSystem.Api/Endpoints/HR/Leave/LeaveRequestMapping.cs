@@ -1,4 +1,5 @@
 using TaskManagementSystem.Api.Contracts.HR;
+using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
 using TaskManagementSystem.Modules.HR.Features.Leave;
 
@@ -6,12 +7,7 @@ namespace TaskManagementSystem.Api.Endpoints.HR.Leave;
 
 internal static class LeaveRequestMapping
 {
-    internal static LeaveType? ParseLeaveType(string? value) =>
-        string.IsNullOrWhiteSpace(value)
-            ? null
-            : Enum.TryParse<LeaveType>(value, true, out var leaveType)
-                ? leaveType
-                : null;
+    internal static LeaveType? ParseLeaveType(string? value) => LeaveTypeMapping.Parse(value);
 
     internal static LeaveRequestResponse MapLeaveRequest(LeaveRequestResult leaveRequest) =>
         new()

@@ -20,6 +20,7 @@ BEGIN
         [WorkFromHomeMax]         INT NOT NULL,
         [FromNextBalanceDaysUsed] INT NOT NULL,
         [OldAnnualBalance]        INT NOT NULL,
+        [RowVersion]              ROWVERSION NOT NULL,
         CONSTRAINT [PK_hr_EmployeeBalances] PRIMARY KEY CLUSTERED ([UserId] ASC),
         CONSTRAINT [FK_hr_EmployeeBalances_Users_UserId]
             FOREIGN KEY ([UserId]) REFERENCES [identity].[Users] ([Id]) ON DELETE CASCADE

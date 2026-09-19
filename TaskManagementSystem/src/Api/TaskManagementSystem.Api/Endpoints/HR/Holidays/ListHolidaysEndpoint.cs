@@ -17,11 +17,15 @@ public static class ListHolidaysEndpoint
 
     private static async Task<IResult> HandleAsync(
         IMediator mediator,
-        DateTime? fromDate,
-        DateTime? toDate,
+        string? fromDate,
+        string? toDate,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new ListHolidaysQuery(fromDate, toDate), cancellationToken);
+        var result = await mediator.Send(
+            new ListHolidaysQuery(
+                OptionalQueryBinding.ParseOptionalDate(fromDate),
+                OptionalQueryBinding.ParseOptionalDate(toDate)),
+            cancellationToken);
 
         return result.ToHttpResult(holidaysList =>
             Results.Ok(holidaysList.Select(HolidayMapping.MapHoliday).ToList()));

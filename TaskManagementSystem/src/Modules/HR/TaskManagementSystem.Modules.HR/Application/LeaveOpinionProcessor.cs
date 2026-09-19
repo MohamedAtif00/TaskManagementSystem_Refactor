@@ -68,13 +68,20 @@ public sealed class LeaveOpinionProcessor(
                     return Result.Fail<LeaveRequest>(HrErrors.InsufficientBalance);
                 }
 
+                var deductResult = await unitOfWork.EmployeeBalances.DeductLeaveAsync(
+                    leaveRequest,
+                    leaveSettings.Value.FromNextBalanceMaxDays,
+                    cancellationToken);
+                if (!deductResult.IsSuccess)
+                {
+                    return Result.Fail<LeaveRequest>(deductResult.Error);
+                }
+
                 var approveResult = leaveRequest.Approve();
                 if (!approveResult.IsSuccess)
                 {
                     return Result.Fail<LeaveRequest>(HrResultMapper.ToApplicationError(approveResult.Error));
                 }
-
-                await unitOfWork.EmployeeBalances.DeductLeaveAsync(leaveRequest, cancellationToken);
 
                 if (leaveRequest.Type == LeaveType.Sick)
                 {

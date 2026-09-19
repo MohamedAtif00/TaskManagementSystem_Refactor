@@ -10,5 +10,5 @@ public sealed record GivePermissionOpinionCommand(
     string ActorRole,
     int PermissionId,
     bool IsApproved,
-    string? Comment) : ICommand<Result<PermissionRequestResult>>;
+    string? Comment) : ICommand<Result<PermissionRequestResult>>, IHrCommand<Result<PermissionRequestResult>>;
 

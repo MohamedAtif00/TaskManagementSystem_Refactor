@@ -7,5 +7,5 @@ using TaskManagementSystem.Modules.HR.Domain;
 namespace TaskManagementSystem.Modules.HR.Features.WorkFromHome.CancelWorkFromHomeRequest;
 
 public sealed record CancelWorkFromHomeRequestCommand(int UserId, int WorkFromHomeRequestId)
-    : ICommand<Result<WorkFromHomeRequestResult>>;
+    : ICommand<Result<WorkFromHomeRequestResult>>, IHrCommand<Result<WorkFromHomeRequestResult>>;
 

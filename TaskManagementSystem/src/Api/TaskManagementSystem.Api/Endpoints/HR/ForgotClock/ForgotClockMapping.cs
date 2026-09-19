@@ -1,4 +1,5 @@
 using TaskManagementSystem.Api.Contracts.HR;
+using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
 using TaskManagementSystem.Modules.HR.Features.ForgotClock;
 
@@ -7,11 +8,7 @@ namespace TaskManagementSystem.Api.Endpoints.HR.ForgotClock;
 internal static class ForgotClockMapping
 {
     internal static ForgotClockPunchType? ParsePunchType(string? value) =>
-        string.IsNullOrWhiteSpace(value)
-            ? null
-            : Enum.TryParse<ForgotClockPunchType>(value, true, out var punchType)
-                ? punchType
-                : null;
+        ForgotClockPunchTypeMapping.Parse(value);
 
     internal static ForgotClockStatus? ParseForgotClockStatus(string? value) =>
         string.IsNullOrWhiteSpace(value)

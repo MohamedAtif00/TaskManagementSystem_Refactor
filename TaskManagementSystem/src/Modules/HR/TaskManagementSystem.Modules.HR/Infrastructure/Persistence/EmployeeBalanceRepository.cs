@@ -1,4 +1,8 @@
+using System.Data;
+using Dapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
 
@@ -25,90 +29,140 @@ internal sealed class EmployeeBalanceRepository(HrDbContext context) : IEmployee
         return entity is null ? null : MapToModel(entity);
     }
 
-    public async Task DeductLeaveAsync(LeaveRequest leaveRequest, CancellationToken cancellationToken = default)
+    public async Task<Result<NoValue>> DeductLeaveAsync(
+        LeaveRequest leaveRequest,
+        int fromNextBalanceMaxDays,
+        CancellationToken cancellationToken = default)
     {
-        var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.UserId == leaveRequest.UserId, cancellationToken);
-
-        switch (leaveRequest.Type)
+        if (leaveRequest.Type == LeaveType.UnpaidLeave)
         {
-            case LeaveType.Annual:
-                entity.AnnualLeave += leaveRequest.WorkingDays;
-                break;
-            case LeaveType.Emergency:
-                entity.EmergencyLeave += leaveRequest.WorkingDays;
-                break;
-            case LeaveType.Sick:
-                entity.SickLeave += leaveRequest.WorkingDays;
-                break;
-            case LeaveType.FromNextBalance:
-                entity.FromNextBalanceDaysUsed += leaveRequest.WorkingDays;
-                break;
+            return Result.Ok();
         }
+
+        string? sql = leaveRequest.Type switch
+        {
+            LeaveType.Annual => EmployeeBalanceSqlMutations.DeductAnnualLeave,
+            LeaveType.Emergency => EmployeeBalanceSqlMutations.DeductEmergencyLeave,
+            LeaveType.Sick => EmployeeBalanceSqlMutations.DeductSickLeave,
+            LeaveType.FromNextBalance => EmployeeBalanceSqlMutations.DeductFromNextBalance,
+            _ => null
+        };
+
+        if (sql is null)
+        {
+            return Result.Fail(HrErrors.LeaveTypeNotSupported);
+        }
+
+        object parameters = leaveRequest.Type switch
+        {
+            LeaveType.FromNextBalance => new
+            {
+                UserId = leaveRequest.UserId,
+                Days = leaveRequest.WorkingDays,
+                MaxDays = fromNextBalanceMaxDays
+            },
+            _ => new { UserId = leaveRequest.UserId, Days = leaveRequest.WorkingDays }
+        };
+
+        var rowsAffected = await ExecuteMutationAsync(sql, parameters, cancellationToken);
+        return rowsAffected > 0 ? Result.Ok() : Result.Fail(HrErrors.InsufficientBalance);
     }
 
     public async Task RefundLeaveAsync(LeaveRequest leaveRequest, CancellationToken cancellationToken = default)
     {
-        var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.UserId == leaveRequest.UserId, cancellationToken);
-
-        switch (leaveRequest.Type)
+        if (leaveRequest.Type == LeaveType.UnpaidLeave)
         {
-            case LeaveType.Annual:
-                entity.AnnualLeave = Math.Max(0, entity.AnnualLeave - leaveRequest.WorkingDays);
-                break;
-            case LeaveType.Emergency:
-                entity.EmergencyLeave = Math.Max(0, entity.EmergencyLeave - leaveRequest.WorkingDays);
-                break;
-            case LeaveType.Sick:
-                entity.SickLeave = Math.Max(0, entity.SickLeave - leaveRequest.WorkingDays);
-                break;
-            case LeaveType.FromNextBalance:
-                entity.FromNextBalanceDaysUsed = Math.Max(0, entity.FromNextBalanceDaysUsed - leaveRequest.WorkingDays);
-                break;
+            return;
         }
+
+        string? sql = leaveRequest.Type switch
+        {
+            LeaveType.Annual => EmployeeBalanceSqlMutations.RefundAnnualLeave,
+            LeaveType.Emergency => EmployeeBalanceSqlMutations.RefundEmergencyLeave,
+            LeaveType.Sick => EmployeeBalanceSqlMutations.RefundSickLeave,
+            LeaveType.FromNextBalance => EmployeeBalanceSqlMutations.RefundFromNextBalance,
+            _ => null
+        };
+
+        if (sql is null)
+        {
+            return;
+        }
+
+        await ExecuteMutationAsync(
+            sql,
+            new { UserId = leaveRequest.UserId, Days = leaveRequest.WorkingDays },
+            cancellationToken);
     }
 
-    public async Task DeductAnnualLeaveAsync(int userId, int workingDays, CancellationToken cancellationToken = default)
+    public async Task<Result<NoValue>> DeductAnnualLeaveAsync(
+        int userId,
+        int workingDays,
+        CancellationToken cancellationToken = default)
     {
-        var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
-        entity.AnnualLeave += workingDays;
+        var rowsAffected = await ExecuteMutationAsync(
+            EmployeeBalanceSqlMutations.DeductAnnualLeave,
+            new { UserId = userId, Days = workingDays },
+            cancellationToken);
+
+        return rowsAffected > 0 ? Result.Ok() : Result.Fail(HrErrors.InsufficientBalance);
     }
 
-    public async Task RefundAnnualLeaveAsync(int userId, int workingDays, CancellationToken cancellationToken = default)
+    public async Task RefundAnnualLeaveAsync(
+        int userId,
+        int workingDays,
+        CancellationToken cancellationToken = default) =>
+        await ExecuteMutationAsync(
+            EmployeeBalanceSqlMutations.RefundAnnualLeave,
+            new { UserId = userId, Days = workingDays },
+            cancellationToken);
+
+    public async Task<Result<NoValue>> DeductPermissionAsync(int userId, CancellationToken cancellationToken = default)
     {
-        var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
-        entity.AnnualLeave = Math.Max(0, entity.AnnualLeave - workingDays);
+        var rowsAffected = await ExecuteMutationAsync(
+            EmployeeBalanceSqlMutations.DeductPermission,
+            new { UserId = userId },
+            cancellationToken);
+
+        return rowsAffected > 0 ? Result.Ok() : Result.Fail(HrErrors.PermissionInsufficientBalance);
     }
 
-    public async Task DeductPermissionAsync(int userId, CancellationToken cancellationToken = default)
+    public async Task RefundPermissionAsync(int userId, CancellationToken cancellationToken = default) =>
+        await ExecuteMutationAsync(
+            EmployeeBalanceSqlMutations.RefundPermission,
+            new { UserId = userId },
+            cancellationToken);
+
+    public async Task<Result<NoValue>> DeductWorkFromHomeAsync(int userId, CancellationToken cancellationToken = default)
     {
-        var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
-        entity.Permission += 1;
+        var rowsAffected = await ExecuteMutationAsync(
+            EmployeeBalanceSqlMutations.DeductWorkFromHome,
+            new { UserId = userId },
+            cancellationToken);
+
+        return rowsAffected > 0 ? Result.Ok() : Result.Fail(HrErrors.WorkFromHomeInsufficientBalance);
     }
 
-    public async Task RefundPermissionAsync(int userId, CancellationToken cancellationToken = default)
-    {
-        var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
-        entity.Permission = Math.Max(0, entity.Permission - 1);
-    }
+    public async Task RefundWorkFromHomeAsync(int userId, CancellationToken cancellationToken = default) =>
+        await ExecuteMutationAsync(
+            EmployeeBalanceSqlMutations.RefundWorkFromHome,
+            new { UserId = userId },
+            cancellationToken);
 
-    public async Task DeductWorkFromHomeAsync(int userId, CancellationToken cancellationToken = default)
+    private async Task<int> ExecuteMutationAsync(
+        string sql,
+        object parameters,
+        CancellationToken cancellationToken)
     {
-        var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
-        entity.WorkFromHome += 1;
-    }
+        var connection = context.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
 
-    public async Task RefundWorkFromHomeAsync(int userId, CancellationToken cancellationToken = default)
-    {
-        var entity = await context.EmployeeBalances
-            .FirstAsync(balance => balance.UserId == userId, cancellationToken);
-        entity.WorkFromHome = Math.Max(0, entity.WorkFromHome - 1);
+        IDbTransaction? transaction = context.Database.CurrentTransaction?.GetDbTransaction();
+        return await connection.ExecuteAsync(
+            new CommandDefinition(sql, parameters, transaction, cancellationToken: cancellationToken));
     }
 
     private static EmployeeBalance MapToModel(EmployeeBalanceRecord entity) =>

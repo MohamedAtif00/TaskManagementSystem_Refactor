@@ -22,8 +22,8 @@ public static class SearchWorkFromHomeRequestsEndpoint
         int page = 1,
         int pageSize = 20,
         string? search = null,
-        DateTime? fromDate = null,
-        DateTime? toDate = null,
+        string? fromDate = null,
+        string? toDate = null,
         string? status = null,
         string? myStatus = null,
         CancellationToken cancellationToken = default)
@@ -40,8 +40,8 @@ public static class SearchWorkFromHomeRequestsEndpoint
                 page,
                 pageSize,
                 search,
-                fromDate,
-                toDate,
+                OptionalQueryBinding.ParseOptionalDate(fromDate),
+                OptionalQueryBinding.ParseOptionalDate(toDate),
                 WorkFromHomeMapping.ParseWorkFromHomeStatus(status),
                 myStatus),
             cancellationToken);

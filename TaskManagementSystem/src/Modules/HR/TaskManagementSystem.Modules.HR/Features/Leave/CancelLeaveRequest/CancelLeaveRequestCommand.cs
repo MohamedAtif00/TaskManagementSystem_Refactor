@@ -7,5 +7,5 @@ using TaskManagementSystem.Modules.HR.Domain;
 namespace TaskManagementSystem.Modules.HR.Features.Leave.CancelLeaveRequest;
 
 public sealed record CancelLeaveRequestCommand(int UserId, int LeaveRequestId)
-    : ICommand<Result<LeaveRequestResult>>;
+    : ICommand<Result<LeaveRequestResult>>, IHrCommand<Result<LeaveRequestResult>>;
 

@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
 
 namespace TaskManagementSystem.Modules.HR.Infrastructure.Persistence.Configurations;
@@ -10,7 +12,7 @@ internal sealed class LeaveRequestConfiguration : IEntityTypeConfiguration<Leave
     {
         entity.ToTable("LeaveRequests", "hr");
         entity.HasKey(x => x.Id);
-        entity.Property(x => x.Type).HasConversion<string>();
+        entity.Property(x => x.Type).HasConversion(new LeaveTypeValueConverter());
         entity.Property(x => x.Status).HasConversion<string>();
         entity.Property(x => x.Reason);
         entity.Property(x => x.NoteForManager);

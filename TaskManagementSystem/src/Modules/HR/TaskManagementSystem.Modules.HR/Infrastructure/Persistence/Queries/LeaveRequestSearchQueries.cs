@@ -51,8 +51,8 @@ internal sealed class LeaveRequestSearchQueries(ISqlConnectionFactory connection
 
         if (criteria.Type.HasValue)
         {
-            where.Append("AND lr.[Type] = @Type ");
-            parameters.Add("Type", criteria.Type.Value.ToString());
+            where.Append("AND lr.[Type] IN @Types ");
+            parameters.Add("Types", LeaveTypeMapping.GetStorageValues(criteria.Type.Value));
         }
 
         if (!string.IsNullOrWhiteSpace(criteria.MyStatus))
@@ -152,7 +152,7 @@ internal sealed class LeaveRequestSearchQueries(ISqlConnectionFactory connection
         var leave = LeaveRequest.CreateForPersistence();
         leave.Id = row.Id;
         leave.UserId = row.UserId;
-        leave.Type = Enum.Parse<LeaveType>(row.Type, ignoreCase: true);
+        leave.Type = LeaveTypeMapping.ParseFromStorage(row.Type);
         leave.Status = Enum.Parse<LeaveStatus>(row.Status, ignoreCase: true);
         leave.StartDate = row.StartDate;
         leave.EndDate = row.EndDate;

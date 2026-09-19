@@ -57,8 +57,8 @@ internal sealed class ForgotClockRequestSearchQueries(ISqlConnectionFactory conn
 
         if (criteria.PunchType.HasValue)
         {
-            where.Append("AND f.[PunchType] = @PunchType ");
-            parameters.Add("PunchType", criteria.PunchType.Value.ToString());
+            where.Append("AND f.[PunchType] IN @PunchTypes ");
+            parameters.Add("PunchTypes", ForgotClockPunchTypeMapping.GetStorageValues(criteria.PunchType.Value));
         }
 
         if (!string.IsNullOrWhiteSpace(criteria.MyStatus))
@@ -154,7 +154,7 @@ internal sealed class ForgotClockRequestSearchQueries(ISqlConnectionFactory conn
         var request = ForgotClockRequest.CreateForPersistence();
         request.Id = row.Id;
         request.UserId = row.UserId;
-        request.PunchType = Enum.Parse<ForgotClockPunchType>(row.PunchType, ignoreCase: true);
+        request.PunchType = ForgotClockPunchTypeMapping.ParseFromStorage(row.PunchType);
         request.Status = Enum.Parse<ForgotClockStatus>(row.Status, ignoreCase: true);
         request.AttendanceDate = row.AttendanceDate;
         request.IntendedTime = TimeOnly.FromTimeSpan(row.IntendedTime);

@@ -38,6 +38,8 @@ public sealed class EmployeeBalanceRecord : Entity, IAggregateRoot
 
     public int OldAnnualBalance { get; internal set; }
 
+    public byte[] RowVersion { get; internal set; } = [];
+
     internal static EmployeeBalanceRecord CreateForPersistence() => new();
 
     public static EmployeeBalanceRecord CreateForUser(

@@ -10,5 +10,5 @@ public sealed record GiveWorkFromHomeOpinionCommand(
     string ActorRole,
     int WorkFromHomeRequestId,
     bool IsApproved,
-    string? Comment) : ICommand<Result<WorkFromHomeRequestResult>>;
+    string? Comment) : ICommand<Result<WorkFromHomeRequestResult>>, IHrCommand<Result<WorkFromHomeRequestResult>>;
 

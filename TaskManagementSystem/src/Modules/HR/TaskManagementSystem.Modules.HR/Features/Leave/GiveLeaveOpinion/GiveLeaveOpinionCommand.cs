@@ -11,5 +11,5 @@ public sealed record GiveLeaveOpinionCommand(
     string ActorRole,
     int LeaveRequestId,
     bool IsApproved,
-    string? Comment) : ICommand<Result<LeaveRequestResult>>;
+    string? Comment) : ICommand<Result<LeaveRequestResult>>, IHrCommand<Result<LeaveRequestResult>>;
 

@@ -10,7 +10,7 @@ internal sealed class ForgotClockRequestConfiguration : IEntityTypeConfiguration
     {
         entity.ToTable("ForgotClockRequests", "hr");
         entity.HasKey(x => x.Id);
-        entity.Property(x => x.PunchType).HasConversion<string>();
+        entity.Property(x => x.PunchType).HasConversion(new ForgotClockPunchTypeValueConverter());
         entity.Property(x => x.Status).HasConversion<string>();
         entity.Property(x => x.Reason);
         entity.Property(x => x.IntendedTime);

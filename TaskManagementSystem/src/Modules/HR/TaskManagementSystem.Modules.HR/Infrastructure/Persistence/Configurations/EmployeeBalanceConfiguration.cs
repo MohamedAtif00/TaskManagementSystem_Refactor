@@ -25,5 +25,6 @@ internal sealed class EmployeeBalanceConfiguration : IEntityTypeConfiguration<Em
         entity.Property(x => x.WorkFromHomeMax).HasColumnName("WorkFromHomeMax");
         entity.Property(x => x.FromNextBalanceDaysUsed).HasColumnName("FromNextBalanceDaysUsed");
         entity.Property(x => x.OldAnnualBalance).HasColumnName("OldAnnualBalance");
+        entity.Property(x => x.RowVersion).IsRowVersion();
     }
 }

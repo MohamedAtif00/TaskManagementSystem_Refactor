@@ -69,13 +69,19 @@ public sealed class WorkFromHomeOpinionProcessor(IHrUnitOfWork unitOfWork)
                     return Result.Fail<WorkFromHomeRequest>(HrErrors.WorkFromHomeInsufficientBalance);
                 }
 
+                var deductResult = await unitOfWork.EmployeeBalances.DeductWorkFromHomeAsync(
+                    request.UserId,
+                    cancellationToken);
+                if (!deductResult.IsSuccess)
+                {
+                    return Result.Fail<WorkFromHomeRequest>(deductResult.Error);
+                }
+
                 var approveResult = request.Approve();
                 if (!approveResult.IsSuccess)
                 {
                     return Result.Fail<WorkFromHomeRequest>(HrResultMapper.ToApplicationError(approveResult.Error));
                 }
-
-                await unitOfWork.EmployeeBalances.DeductWorkFromHomeAsync(request.UserId, cancellationToken);
             }
             else
             {

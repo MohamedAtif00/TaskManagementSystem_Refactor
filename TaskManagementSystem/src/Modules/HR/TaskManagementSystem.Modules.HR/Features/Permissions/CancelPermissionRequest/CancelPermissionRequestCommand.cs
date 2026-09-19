@@ -7,5 +7,5 @@ using TaskManagementSystem.Modules.HR.Domain;
 namespace TaskManagementSystem.Modules.HR.Features.Permissions.CancelPermissionRequest;
 
 public sealed record CancelPermissionRequestCommand(int UserId, int PermissionId)
-    : ICommand<Result<PermissionRequestResult>>;
+    : ICommand<Result<PermissionRequestResult>>, IHrCommand<Result<PermissionRequestResult>>;
 

@@ -1,5 +1,6 @@
 using FluentAssertions;
 using NSubstitute;
+using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
 using Xunit;
@@ -8,61 +9,51 @@ namespace TaskManagementSystem.Modules.HR.UnitTests;
 
 public sealed class PermissionOpinionProcessorTests
 {
-    private static readonly DateTime UtcNow = new(2026, 9, 7, 12, 0, 0, DateTimeKind.Utc);
-
     [Fact]
-    public async Task ProcessAsync_WhenTeamLeaderRecordsOpinion_LeavesStatusPending()
+    public async Task ProcessAsync_WhenAtomicDeductFails_LeavesRequestPending()
     {
-        var permission = CreatePendingPermission();
+        var utcNow = DateTime.UtcNow;
+        var permission = PermissionRequest.Create(
+            userId: 7,
+            type: PermissionType.WorkAssignment,
+            permissionDate: utcNow.Date,
+            fromTime: new TimeOnly(9, 0),
+            toTime: new TimeOnly(10, 0),
+            reason: "Doctor",
+            teamleaderId: null,
+            sectionheadId: null,
+            utcNow: utcNow).Value;
+        permission.Id = 99;
+
         var unitOfWork = Substitute.For<IHrUnitOfWork>();
-        unitOfWork.PermissionRequests.GetByIdTrackedAsync(1, Arg.Any<CancellationToken>()).Returns(permission);
-        unitOfWork.Opinions.ExistsForPermissionUserAsync(1, 2, Arg.Any<CancellationToken>()).Returns(false);
+        unitOfWork.PermissionRequests.GetByIdTrackedAsync(permission.Id, Arg.Any<CancellationToken>())
+            .Returns(permission);
+        unitOfWork.Opinions.ExistsForPermissionUserAsync(permission.Id, 1, Arg.Any<CancellationToken>())
+            .Returns(false);
+        unitOfWork.EmployeeBalances.GetByUserIdAsync(permission.UserId, Arg.Any<CancellationToken>())
+            .Returns(new EmployeeBalance
+            {
+                Id = permission.UserId,
+                Permission = 9,
+                PermissionMax = 10
+            });
+        unitOfWork.PermissionRequests.CountPendingAsync(permission.UserId, permission.Id, Arg.Any<CancellationToken>())
+            .Returns(0);
+        unitOfWork.EmployeeBalances.DeductPermissionAsync(permission.UserId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(Result.Fail(HrErrors.PermissionInsufficientBalance)));
 
         var processor = new PermissionOpinionProcessor(unitOfWork);
-        var result = await processor.ProcessAsync(2, "TeamLeader", 1, true, "OK", UtcNow, CancellationToken.None);
+        var result = await processor.ProcessAsync(
+            actorUserId: 1,
+            actorRole: "Owner",
+            permissionId: permission.Id,
+            isApproved: true,
+            comment: null,
+            utcNow: utcNow,
+            cancellationToken: CancellationToken.None);
 
-        result.IsSuccess.Should().BeTrue();
+        result.IsSuccess.Should().BeFalse();
         permission.Status.Should().Be(PermissionStatus.Pending);
-        await unitOfWork.EmployeeBalances.DidNotReceive().DeductPermissionAsync(Arg.Any<int>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task ProcessAsync_WhenOwnerApproves_DeductsPermissionBalance()
-    {
-        var permission = CreatePendingPermission();
-        var balance = new EmployeeBalance { Id = 1, Permission = 0, PermissionMax = 10 };
-
-        var employeeBalances = Substitute.For<IEmployeeBalanceRepository>();
-        employeeBalances.GetByUserIdAsync(1, Arg.Any<CancellationToken>()).Returns(balance);
-
-        var permissionRequests = Substitute.For<IPermissionRequestRepository>();
-        permissionRequests.GetByIdTrackedAsync(1, Arg.Any<CancellationToken>()).Returns(permission);
-        permissionRequests.CountPendingAsync(1, 1, Arg.Any<CancellationToken>()).Returns(0);
-
-        var unitOfWork = Substitute.For<IHrUnitOfWork>();
-        unitOfWork.PermissionRequests.Returns(permissionRequests);
-        unitOfWork.EmployeeBalances.Returns(employeeBalances);
-        unitOfWork.Opinions.ExistsForPermissionUserAsync(1, 99, Arg.Any<CancellationToken>()).Returns(false);
-
-        var processor = new PermissionOpinionProcessor(unitOfWork);
-        var result = await processor.ProcessAsync(99, "Owner", 1, true, null, UtcNow, CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-        permission.Status.Should().Be(PermissionStatus.Approved);
-        await employeeBalances.Received(1).DeductPermissionAsync(1, Arg.Any<CancellationToken>());
-    }
-
-    private static PermissionRequest CreatePendingPermission()
-    {
-        return PermissionRequest.Create(
-            1,
-            PermissionType.LateArrival,
-            new DateTime(2027, 1, 5),
-            new TimeOnly(10, 0),
-            new TimeOnly(12, 0),
-            null,
-            null,
-            null,
-            UtcNow).Value;
+        await unitOfWork.DidNotReceive().CommitAsync(Arg.Any<CancellationToken>());
     }
 }

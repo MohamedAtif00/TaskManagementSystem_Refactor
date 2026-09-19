@@ -69,13 +69,19 @@ public sealed class PermissionOpinionProcessor(IHrUnitOfWork unitOfWork)
                     return Result.Fail<PermissionRequest>(HrErrors.PermissionInsufficientBalance);
                 }
 
+                var deductResult = await unitOfWork.EmployeeBalances.DeductPermissionAsync(
+                    permission.UserId,
+                    cancellationToken);
+                if (!deductResult.IsSuccess)
+                {
+                    return Result.Fail<PermissionRequest>(deductResult.Error);
+                }
+
                 var approveResult = permission.Approve(utcNow);
                 if (!approveResult.IsSuccess)
                 {
                     return Result.Fail<PermissionRequest>(HrResultMapper.ToApplicationError(approveResult.Error));
                 }
-
-                await unitOfWork.EmployeeBalances.DeductPermissionAsync(permission.UserId, cancellationToken);
             }
             else
             {
