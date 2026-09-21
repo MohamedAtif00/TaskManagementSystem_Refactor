@@ -16,6 +16,22 @@ public sealed class SprintsNotificationsIntegrationTests(TmsWebApplicationFactor
     : IClassFixture<TmsWebApplicationFactory>
 {
     [Fact]
+    public async Task ListSprints_WhenArchivedQueryIsMissingOrEmpty_ReturnsOk()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync();
+
+        var omitted = await client.GetAsync("/sprints");
+        var empty = await client.GetAsync("/sprints?archived=");
+        var explicitFalse = await client.GetAsync("/sprints?archived=false");
+
+        omitted.StatusCode.Should().Be(HttpStatusCode.OK);
+        empty.StatusCode.Should().Be(HttpStatusCode.OK);
+        explicitFalse.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await omitted.Content.ReadFromJsonAsync<List<SprintListItemResponse>>()).Should().NotBeNull();
+        (await empty.Content.ReadFromJsonAsync<List<SprintListItemResponse>>()).Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task SprintsAndNotificationsFlow_WhenTicketAssigned_CreatesNotification()
     {
         var client = await factory.CreateAuthenticatedClientAsync();

@@ -1,3 +1,4 @@
+using System.Text;
 using Dapper;
 using TaskManagementSystem.BuildingBlocks.Application.Data;
 using TaskManagementSystem.Modules.Ticket.Features;
@@ -8,34 +9,66 @@ namespace TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence.Queries
 
 public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory)
 {
-    public async Task<IReadOnlyList<TicketListItemResult>> ListBySprintAsync(
+    public async Task<TicketListPageResult> ListBySprintAsync(
         int sprintId,
+        IReadOnlyList<DomainTaskStatus>? statuses = null,
+        int? learningObjectiveId = null,
+        string? name = null,
+        int? page = null,
+        int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
-        const string sql = """
-            SELECT
-                t.[Id],
-                t.[Name],
-                t.[Status],
-                t.[Priority],
-                t.[Duration],
-                t.[CreatedAt],
-                t.[LearningObjectiveId],
-                t.[StepId],
-                t.[UserId],
-                t.[TeamId]
-            FROM [ticket].[Tasks] t
-            INNER JOIN [sprints].[SprintLearningObjectives] slo ON t.[LearningObjectiveId] = slo.[LearningObjectiveId]
+        var parameters = new DynamicParameters();
+        parameters.Add("SprintId", sprintId);
+        TicketListQueryBuilder.AddPaging(parameters, page, pageSize, out var paged, out var resolvedPage, out var resolvedPageSize);
+
+        var where = new StringBuilder("""
             WHERE slo.[SprintId] = @SprintId
               AND t.[Archived] = 0
-            ORDER BY t.[CreatedAt] DESC
+            """);
+        TicketListQueryBuilder.AppendFilters(where, parameters, statuses, learningObjectiveId, name);
+
+        var sql = $"""
+            SELECT
+                {TicketListQueryBuilder.SelectList}
+            FROM [ticket].[Tasks] t
+            INNER JOIN [sprints].[SprintLearningObjectives] slo ON t.[LearningObjectiveId] = slo.[LearningObjectiveId]
+            {where}
+            {TicketListQueryBuilder.OrderAndPaging(paged)}
             """;
 
         using var connection = connectionFactory.GetOpenConnection();
-        var rows = await connection.QueryAsync<TicketRow>(
-            new CommandDefinition(sql, new { SprintId = sprintId }, cancellationToken: cancellationToken));
+        var rows = (await connection.QueryAsync<TicketRow>(
+            new CommandDefinition(sql, parameters, cancellationToken: cancellationToken))).AsList();
 
-        return rows.Select(TicketListItemResult.FromRow).ToList();
+        if (rows.Count == 0)
+        {
+            var emptyCount = 0;
+            if (paged)
+            {
+                var countSql = $"""
+                    SELECT COUNT(*)
+                    FROM [ticket].[Tasks] t
+                    INNER JOIN [sprints].[SprintLearningObjectives] slo ON t.[LearningObjectiveId] = slo.[LearningObjectiveId]
+                    {where}
+                    """;
+                emptyCount = await connection.ExecuteScalarAsync<int>(
+                    new CommandDefinition(countSql, parameters, cancellationToken: cancellationToken));
+            }
+
+            return new TicketListPageResult(
+                [],
+                paged ? resolvedPage : 1,
+                paged ? resolvedPageSize : 0,
+                emptyCount);
+        }
+
+        var items = rows.Select(TicketListItemResult.FromRow).ToList();
+        return new TicketListPageResult(
+            items,
+            paged ? resolvedPage : 1,
+            paged ? resolvedPageSize : items.Count,
+            rows[0].TotalCount);
     }
 
     internal sealed record TicketRow(
@@ -48,5 +81,11 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
         int LearningObjectiveId,
         int? StepId,
         int? UserId,
-        int? TeamId);
+        int? TeamId,
+        bool Pause,
+        bool Attention,
+        bool Flagged,
+        bool IsRollback,
+        int RollbackCount,
+        int TotalCount);
 }

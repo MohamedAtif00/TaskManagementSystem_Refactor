@@ -81,6 +81,46 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
     }
 
     [Fact]
+    public async Task ListTicketsBySubject_WhenPaged_ReturnsColumnTotal()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync();
+        var setup = await CreateTicketSetupAsync(client);
+
+        var createTicketResponse = await client.PostAsJsonAsync(
+            "/tickets",
+            new CreateTicketRequest
+            {
+                LearningObjectiveId = setup.LearningObjectiveId,
+                TaskBankItemId = setup.TaskBankItemId
+            });
+        createTicketResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var ticket = await createTicketResponse.Content.ReadFromJsonAsync<TicketDetailResponse>();
+
+        var unpagedResponse = await client.GetAsync($"/subjects/{setup.SubjectId}/tickets");
+        unpagedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var unpaged = await unpagedResponse.Content.ReadFromJsonAsync<List<TicketListItemResponse>>();
+        unpaged!.Should().Contain(item => item.Id == ticket!.Id);
+
+        var pagedBacklogResponse = await client.GetAsync(
+            $"/subjects/{setup.SubjectId}/tickets?status=0&page=1&pageSize=10");
+        pagedBacklogResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var backlogPage = await pagedBacklogResponse.Content.ReadFromJsonAsync<TicketListPageResponse>();
+        backlogPage!.Page.Should().Be(1);
+        backlogPage.PageSize.Should().Be(10);
+        backlogPage.TotalCount.Should().BeGreaterThanOrEqualTo(1);
+        backlogPage.Items.Should().HaveCountLessThanOrEqualTo(10);
+        backlogPage.Items.Should().Contain(item => item.Id == ticket!.Id);
+        backlogPage.Items.Should().OnlyContain(item => item.Status == DomainTaskStatus.Backlog);
+
+        var pagedDoingResponse = await client.GetAsync(
+            $"/subjects/{setup.SubjectId}/tickets?status=2&page=1&pageSize=10");
+        pagedDoingResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var doingPage = await pagedDoingResponse.Content.ReadFromJsonAsync<TicketListPageResponse>();
+        doingPage!.Items.Should().NotContain(item => item.Id == ticket!.Id);
+        doingPage.Items.Should().HaveCountLessThanOrEqualTo(doingPage.TotalCount);
+    }
+
+    [Fact]
     public async Task AssignTicket_WritesNotificationViaOutbox()
     {
         var client = await factory.CreateAuthenticatedClientAsync();

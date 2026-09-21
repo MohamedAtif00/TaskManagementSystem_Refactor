@@ -17,7 +17,21 @@ internal static class TicketMapping
             LearningObjectiveId = ticket.LearningObjectiveId,
             StepId = ticket.StepId,
             UserId = ticket.UserId,
-            TeamId = ticket.TeamId
+            TeamId = ticket.TeamId,
+            Pause = ticket.Pause,
+            Attention = ticket.Attention,
+            Flagged = ticket.Flagged,
+            IsRollback = ticket.IsRollback,
+            RollbackCount = ticket.RollbackCount
+        };
+
+    internal static TicketListPageResponse MapTicketListPage(TicketListPageResult page) =>
+        new()
+        {
+            Items = page.Items.Select(MapTicketListItem).ToList(),
+            Page = page.Page,
+            PageSize = page.PageSize,
+            TotalCount = page.TotalCount
         };
 
     internal static TicketDetailResponse MapTicketDetail(TicketDetailResult ticket) =>

@@ -33,6 +33,40 @@ public sealed class TicketListItemResponse
     public int? StepId { get; set; }
     public int? UserId { get; set; }
     public int? TeamId { get; set; }
+    public bool Pause { get; set; }
+    public bool Attention { get; set; }
+    public bool Flagged { get; set; }
+    public bool IsRollback { get; set; }
+    public int RollbackCount { get; set; }
+}
+
+public sealed class TicketListPageResponse
+{
+    public IReadOnlyList<TicketListItemResponse> Items { get; set; } = [];
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+}
+
+public sealed class TicketStatsTicketResponse
+{
+    public int Id { get; set; }
+    public int Status { get; set; }
+    public int? UserId { get; set; }
+    public int LearningObjectiveId { get; set; }
+    public int SubjectId { get; set; }
+}
+
+public sealed class TicketStatsLearningObjectiveResponse
+{
+    public int Id { get; set; }
+    public int SubjectId { get; set; }
+}
+
+public sealed class TicketStatsResponse
+{
+    public IReadOnlyList<TicketStatsTicketResponse> Tickets { get; set; } = [];
+    public IReadOnlyList<TicketStatsLearningObjectiveResponse> LearningObjectives { get; set; } = [];
 }
 
 public sealed class TicketDetailResponse

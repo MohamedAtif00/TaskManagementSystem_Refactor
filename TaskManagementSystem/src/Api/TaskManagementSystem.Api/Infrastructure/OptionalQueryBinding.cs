@@ -15,4 +15,14 @@ internal static class OptionalQueryBinding
             ? parsed
             : null;
     }
+
+    public static bool? ParseOptionalBool(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return bool.TryParse(value, out var parsed) ? parsed : null;
+    }
 }

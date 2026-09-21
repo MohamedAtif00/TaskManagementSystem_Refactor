@@ -15,7 +15,12 @@ public sealed record TicketListItemResult(
     int LearningObjectiveId,
     int? StepId,
     int? UserId,
-    int? TeamId)
+    int? TeamId,
+    bool Pause = false,
+    bool Attention = false,
+    bool Flagged = false,
+    bool IsRollback = false,
+    int RollbackCount = 0)
 {
     public static TicketListItemResult From(TicketTask task) =>
         new(
@@ -28,7 +33,12 @@ public sealed record TicketListItemResult(
             task.LearningObjectiveId,
             task.StepId,
             task.UserId,
-            task.TeamId);
+            task.TeamId,
+            task.Pause,
+            task.Attention,
+            task.Flagged,
+            task.IsRollback,
+            task.RollbackCount);
 
     internal static TicketListItemResult FromRow(SubjectTicketsQueries.TicketRow row) =>
         new(
@@ -41,7 +51,12 @@ public sealed record TicketListItemResult(
             row.LearningObjectiveId,
             row.StepId,
             row.UserId,
-            row.TeamId);
+            row.TeamId,
+            row.Pause,
+            row.Attention,
+            row.Flagged,
+            row.IsRollback,
+            row.RollbackCount);
 
     internal static TicketListItemResult FromRow(SprintTicketsQueries.TicketRow row) =>
         new(
@@ -54,8 +69,19 @@ public sealed record TicketListItemResult(
             row.LearningObjectiveId,
             row.StepId,
             row.UserId,
-            row.TeamId);
+            row.TeamId,
+            row.Pause,
+            row.Attention,
+            row.Flagged,
+            row.IsRollback,
+            row.RollbackCount);
 }
+
+public sealed record TicketListPageResult(
+    IReadOnlyList<TicketListItemResult> Items,
+    int Page,
+    int PageSize,
+    int TotalCount);
 
 public sealed record TicketDetailResult(
     int Id,

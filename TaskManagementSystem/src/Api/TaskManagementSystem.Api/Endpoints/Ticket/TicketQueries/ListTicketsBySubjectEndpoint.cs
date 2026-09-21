@@ -3,6 +3,7 @@ using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Modules.Ticket.Features.Tickets.ListTicketsBySubject;
+using DomainTaskStatus = TaskManagementSystem.Modules.Ticket.Domain.TaskStatus;
 
 namespace TaskManagementSystem.Api.Endpoints.Ticket.TicketQueries;
 
@@ -20,11 +21,29 @@ public static class ListTicketsBySubjectEndpoint
 
     private static async Task<IResult> HandleAsync(
         int subjectId,
+        int[]? status,
+        int? learningObjectiveId,
+        string? name,
+        int? page,
+        int? pageSize,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new ListTicketsBySubjectQuery(subjectId), cancellationToken);
+        var statuses = status is { Length: > 0 }
+            ? status.Select(value => (DomainTaskStatus)value).ToArray()
+            : null;
+        var result = await mediator.Send(
+            new ListTicketsBySubjectQuery(
+                subjectId,
+                statuses,
+                learningObjectiveId,
+                name,
+                page,
+                page is null ? null : pageSize ?? 20),
+            cancellationToken);
         return result.ToHttpResult(tickets =>
-            Results.Ok(tickets.Select(TicketMapping.MapTicketListItem).ToList()));
+            page is null
+                ? Results.Ok(tickets.Items.Select(TicketMapping.MapTicketListItem).ToList())
+                : Results.Ok(TicketMapping.MapTicketListPage(tickets)));
     }
 }

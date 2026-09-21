@@ -16,11 +16,13 @@ public static class ListSprintsEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
-        bool? archived,
         IMediator mediator,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? archived = null)
     {
-        var result = await mediator.Send(new ListSprintsQuery(archived), cancellationToken);
+        var result = await mediator.Send(
+            new ListSprintsQuery(OptionalQueryBinding.ParseOptionalBool(archived)),
+            cancellationToken);
         return result.ToHttpResult(sprints =>
             Results.Ok(sprints.Select(SprintMapping.MapSprintListItem).ToList()));
     }
