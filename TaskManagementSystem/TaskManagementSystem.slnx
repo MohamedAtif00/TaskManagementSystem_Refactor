@@ -1,10 +1,11 @@
 <Solution>
+  <Folder Name="/src/" />
   <Folder Name="/src/Api/">
     <Project Path="src/Api/TaskManagementSystem.Api/TaskManagementSystem.Api.csproj" />
   </Folder>
   <Folder Name="/src/BuildingBlocks/">
-    <Project Path="src/BuildingBlocks/TaskManagementSystem.BuildingBlocks/TaskManagementSystem.BuildingBlocks.csproj" />
     <Project Path="src/BuildingBlocks/TaskManagementSystem.BuildingBlocks.Persistence/TaskManagementSystem.BuildingBlocks.Persistence.csproj" />
+    <Project Path="src/BuildingBlocks/TaskManagementSystem.BuildingBlocks/TaskManagementSystem.BuildingBlocks.csproj" />
     <Project Path="src/BuildingBlocks/TaskManagementSystem.IntegrationEvents/TaskManagementSystem.IntegrationEvents.csproj" />
   </Folder>
   <Folder Name="/src/Database/">
@@ -25,15 +26,15 @@
     <Project Path="tests/TaskManagementSystem.Api.IntegrationTests/TaskManagementSystem.Api.IntegrationTests.csproj" />
     <Project Path="tests/TaskManagementSystem.ArchitectureTests/TaskManagementSystem.ArchitectureTests.csproj" />
     <Project Path="tests/TaskManagementSystem.BuildingBlocks.UnitTests/TaskManagementSystem.BuildingBlocks.UnitTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.Modules.Curriculum.UnitTests/TaskManagementSystem.Modules.Curriculum.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.Modules.HR.UnitTests/TaskManagementSystem.Modules.HR.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.Modules.Identity.UnitTests/TaskManagementSystem.Modules.Identity.UnitTests.csproj" />
-    <Project Path="tests/TaskManagementSystem.Modules.Organization.UnitTests/TaskManagementSystem.Modules.Organization.UnitTests.csproj" />
-    <Project Path="tests/TaskManagementSystem.Modules.Workflows.UnitTests/TaskManagementSystem.Modules.Workflows.UnitTests.csproj" />
-    <Project Path="tests/TaskManagementSystem.Modules.Curriculum.UnitTests/TaskManagementSystem.Modules.Curriculum.UnitTests.csproj" />
-    <Project Path="tests/TaskManagementSystem.Modules.Ticket.UnitTests/TaskManagementSystem.Modules.Ticket.UnitTests.csproj" />
-    <Project Path="tests/TaskManagementSystem.Modules.Sprints.UnitTests/TaskManagementSystem.Modules.Sprints.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.Modules.Notifications.UnitTests/TaskManagementSystem.Modules.Notifications.UnitTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.Modules.Organization.UnitTests/TaskManagementSystem.Modules.Organization.UnitTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.Modules.Sprints.UnitTests/TaskManagementSystem.Modules.Sprints.UnitTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.Modules.Ticket.UnitTests/TaskManagementSystem.Modules.Ticket.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.Modules.UnitTests/TaskManagementSystem.Modules.UnitTests.csproj" />
+    <Project Path="tests/TaskManagementSystem.Modules.Workflows.UnitTests/TaskManagementSystem.Modules.Workflows.UnitTests.csproj" />
     <Project Path="tests/TaskManagementSystem.TestCommon/TaskManagementSystem.TestCommon.csproj" />
   </Folder>
 </Solution>
