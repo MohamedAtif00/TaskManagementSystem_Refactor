@@ -7,22 +7,23 @@ using TaskManagementSystem.Modules.HR.Features.Leave.GetBalances;
 
 namespace TaskManagementSystem.Api.Endpoints.HR.Leave;
 
-public static class GetBalancesEndpoint
+public static class GetBalancesByUserIdEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder leave)
     {
-        leave.MapGet("/balances", HandleAsync).RequirePermissionCode(PermissionCodes.HrLeave.Read);
+        leave.MapGet("/balances/{userId:int}", HandleAsync).RequirePermissionCode(PermissionCodes.HrLeave.Read);
         return leave;
     }
 
     private static async Task<IResult> HandleAsync(
+        int userId,
         IMediator mediator,
         ICurrentUserAccessor currentUser,
         CancellationToken cancellationToken)
     {
-        var userId = currentUser.GetRequiredUserId();
+        var viewerUserId = currentUser.GetRequiredUserId();
         var role = currentUser.GetRequiredRole();
-        var result = await mediator.Send(new GetBalancesQuery(userId, userId, role), cancellationToken);
+        var result = await mediator.Send(new GetBalancesQuery(userId, viewerUserId, role), cancellationToken);
 
         return result.ToHttpResult(balances => Results.Ok(LeaveBalancesMapping.Map(balances)));
     }

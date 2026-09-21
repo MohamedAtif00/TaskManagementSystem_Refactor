@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using TaskManagementSystem.Api.Contracts.HR;
+using TaskManagementSystem.Api.Contracts.Identity;
+using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.TestCommon.Integration;
 using Xunit;
 
@@ -75,6 +77,59 @@ public sealed class HrLeaveIntegrationTests(TmsWebApplicationFactory factory) : 
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         problem.Code.Should().Be("leave_request_not_found");
+    }
+
+    [Fact]
+    public async Task GetBalancesByUserId_WhenOwner_ReturnsTargetUserBalances()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync();
+        var users = await client.GetFromJsonAsync<List<UserListItemResponse>>("/identity/users");
+        var owner = users!.Single(user => user.Code == IntegrationTestDataSeeder.TestUserCode);
+
+        var ownBalances = await client.GetFromJsonAsync<LeaveBalancesResponse>("/hr/leave/balances");
+        var ownByIdResponse = await client.GetAsync($"/hr/leave/balances/{owner.Id}");
+        var ownById = await ownByIdResponse.Content.ReadFromJsonAsync<LeaveBalancesResponse>();
+
+        ownByIdResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        ownById!.AnnualLeaveMax.Should().Be(ownBalances!.AnnualLeaveMax);
+        ownById.AvailableAnnualLeave.Should().Be(ownBalances.AvailableAnnualLeave);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var createResponse = await client.PostAsJsonAsync(
+            "/identity/users",
+            new CreateUserRequest
+            {
+                Name = "Balance Lookup Member",
+                HrCode = $"BAL{suffix}",
+                Email = $"balance.{suffix}@example.com",
+                RoleId = (int)UserRole.Member,
+                AccountType = (int)AccountType.Internal,
+                TeamId = owner.TeamId
+            });
+
+        var created = await IntegrationHttpAssertions.EnsureAsync<UserDetailResponse>(
+            createResponse,
+            HttpStatusCode.Created);
+        await factory.DrainOutboxesAsync();
+
+        var otherResponse = await client.GetAsync($"/hr/leave/balances/{created.Id}");
+        var otherBalances = await otherResponse.Content.ReadFromJsonAsync<LeaveBalancesResponse>();
+
+        otherResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        otherBalances!.AnnualLeaveMax.Should().Be(30);
+        otherBalances.AvailableAnnualLeave.Should().Be(30);
+    }
+
+    [Fact]
+    public async Task GetBalancesByUserId_WhenUserMissing_ReturnsNotFound()
+    {
+        var client = await factory.CreateAuthenticatedClientAsync();
+
+        var response = await client.GetAsync("/hr/leave/balances/999999");
+        var problem = await ReadProblemDetailsAsync(response);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        problem.Code.Should().Be("user_not_found");
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 # Sync the API endpoints in Apidog
 
-Import `../tms-openapi.json` as OpenAPI/Swagger into the existing TMS API module. This is the complete source: 160 business HTTP operations, 61 JSON request-body definitions and 62 media examples (including the leave-request multipart form).
+Import `../tms-openapi.json` as OpenAPI/Swagger into the existing TMS API module. This is the complete source: 161 business HTTP operations, 61 JSON request-body definitions and 62 media examples (including the leave-request multipart form).
 
 In the import options:
 
@@ -8,7 +8,7 @@ In the import options:
 2. Select **Delete (Sync)** for resources absent from the imported file to remove obsolete endpoints from the target TMS module.
 3. Review the import preview and apply it.
 
-Use the combined `tms-openapi.json` for this full synchronization. `hr-openapi.json` (48 operations) and `forgot-clock-openapi.json` (13 operations) are subsets including Auth; using either as a whole-module replacement would remove the other modules' endpoints.
+Use the combined `tms-openapi.json` for this full synchronization. `hr-openapi.json` (49 operations) and `forgot-clock-openapi.json` (13 operations) are subsets including Auth; using either as a whole-module replacement would remove the other modules' endpoints.
 
 See [Apidog import options](https://docs.apidog.com/import-options-633930m0) for the matching and deletion rules.
 

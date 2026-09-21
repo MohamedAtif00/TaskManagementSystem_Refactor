@@ -9,6 +9,8 @@ public interface IEmployeeBalanceRepository
 
     Task<EmployeeBalanceRecord?> GetTrackedByUserIdAsync(int userId, CancellationToken cancellationToken = default);
 
+    void DetachTracked(int userId);
+
     Task<EmployeeBalance?> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default);
 
     Task<Result<NoValue>> DeductLeaveAsync(

@@ -956,6 +956,50 @@
         }
       }
     },
+    "/hr/leave/balances/{userId}": {
+      "get": {
+        "tags": [
+          "HR Leave"
+        ],
+        "summary": "Get leave balances for a user",
+        "description": "Owners can read any user's balances. Other callers may only read their own `userId`. Hidden or missing users return 404.",
+        "operationId": "getLeaveBalancesByUserId",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Leave balances for the requested user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveBalancesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
     "/hr/leave/leave-settings": {
       "get": {
         "tags": [

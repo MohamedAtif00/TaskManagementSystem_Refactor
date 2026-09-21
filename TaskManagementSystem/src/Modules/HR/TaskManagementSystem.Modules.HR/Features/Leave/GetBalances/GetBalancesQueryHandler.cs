@@ -13,6 +13,11 @@ public sealed class GetBalancesQueryHandler(
 {
     public async Task<Result<BalancesResult>> Handle(GetBalancesQuery request, CancellationToken cancellationToken)
     {
+        if (request.UserId != request.ViewerUserId && request.ViewerRole != "Owner")
+        {
+            return Result.Fail<BalancesResult>(HrErrors.UserNotFound);
+        }
+
         var balance = await unitOfWork.EmployeeBalances.GetByUserIdAsync(request.UserId, cancellationToken);
         if (balance is null)
         {

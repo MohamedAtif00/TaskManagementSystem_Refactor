@@ -5,7 +5,8 @@ using TaskManagementSystem.Modules.HR.Infrastructure;
 
 namespace TaskManagementSystem.Modules.HR.Features.Leave.GetBalances;
 
-public sealed record GetBalancesQuery(int UserId) : IQuery<Result<BalancesResult>>;
+public sealed record GetBalancesQuery(int UserId, int ViewerUserId, string ViewerRole)
+    : IQuery<Result<BalancesResult>>;
 
 public sealed record BalancesResult(
     int AnnualLeave,

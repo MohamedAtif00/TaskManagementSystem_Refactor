@@ -7,6 +7,7 @@ public static class HrLeaveEndpoints
         var leave = hr.MapGroup("/leave").WithTags("HR Leave");
 
         GetBalancesEndpoint.Map(leave);
+        GetBalancesByUserIdEndpoint.Map(leave);
         GetLeaveSettingsEndpoint.Map(leave);
         PreviewLeaveEndpoint.Map(leave);
         RequestLeaveEndpoint.Map(leave);

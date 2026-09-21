@@ -32,6 +32,7 @@ $PathParamVariables = @{
     '/tickets/{id}' = 'ticketId'
     '/notifications/{id}' = 'notificationId'
     '/hr/leave/leave-requests/{id}' = 'leaveRequestId'
+    '/hr/leave/balances/{userId}' = 'userId'
     '/hr/permissions/{id}' = 'hrPermissionId'
     '/hr/work-from-home/{id}' = 'wfhRequestId'
     '/hr/forgot-clock/{id}' = 'forgotClockId'

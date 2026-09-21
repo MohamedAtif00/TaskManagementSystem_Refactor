@@ -18,6 +18,16 @@ internal sealed class EmployeeBalanceRepository(HrDbContext context) : IEmployee
         CancellationToken cancellationToken = default) =>
         context.EmployeeBalances.FirstOrDefaultAsync(balance => balance.UserId == userId, cancellationToken);
 
+    public void DetachTracked(int userId)
+    {
+        foreach (var entry in context.ChangeTracker.Entries<EmployeeBalanceRecord>()
+                     .Where(tracked => tracked.Entity.UserId == userId)
+                     .ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
+    }
+
     public async Task<EmployeeBalance?> GetByUserIdAsync(
         int userId,
         CancellationToken cancellationToken = default)

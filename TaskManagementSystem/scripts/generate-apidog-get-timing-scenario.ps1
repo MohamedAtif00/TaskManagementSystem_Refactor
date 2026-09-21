@@ -57,7 +57,7 @@ function Get-ResolvedPath {
     # Named path parameters
     $namedParams = @(
         'yearId', 'projectId', 'termId', 'subjectGroupId', 'subjectId', 'subjectId',
-        'unitId', 'lessonId', 'loId', 'schemaId', 'nodeId', 'sprintId', 'ticketId'
+        'unitId', 'lessonId', 'loId', 'schemaId', 'nodeId', 'sprintId', 'ticketId', 'userId'
     )
     foreach ($name in $namedParams) {
         $resolved = $resolved -replace "\{$name\}", "{{$name}}"

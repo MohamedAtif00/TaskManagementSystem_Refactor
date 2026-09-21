@@ -1,6 +1,6 @@
 # Endpoint and request-body inventory
 
-160 business HTTP operations registered by Program.cs. OpenAPI download routes and the SignalR transport are infrastructure and are not included. All request bodies have examples in tms-openapi.json; operations marked None do not consume a body.
+161 business HTTP operations registered by Program.cs. OpenAPI download routes and the SignalR transport are infrastructure and are not included. All request bodies have examples in tms-openapi.json; operations marked None do not consume a body.
 
 | Method | Path | Request body |
 | --- | --- | --- |
@@ -24,6 +24,7 @@
 | DELETE | `/identity/users/{userId}` | None |
 | PUT | `/identity/users/{userId}/role` | AssignUserRoleRequest |
 | GET | `/hr/leave/balances` | None |
+| GET | `/hr/leave/balances/{userId}` | None |
 | GET | `/hr/leave/leave-settings` | None |
 | POST | `/hr/leave/leave-requests/preview` | PreviewLeaveRequest |
 | GET | `/hr/leave/leave-requests` | None |

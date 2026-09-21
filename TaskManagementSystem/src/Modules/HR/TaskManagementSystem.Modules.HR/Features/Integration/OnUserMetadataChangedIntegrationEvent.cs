@@ -5,7 +5,6 @@ using TaskManagementSystem.BuildingBlocks.Application.Inbox;
 using TaskManagementSystem.IntegrationEvents.Identity;
 using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Domain;
-using TaskManagementSystem.Modules.HR.Infrastructure.Persistence;
 using TaskManagementSystem.Modules.HR.Infrastructure.Persistence.Queries;
 
 namespace TaskManagementSystem.Modules.HR.Features.Integration;
@@ -13,7 +12,6 @@ namespace TaskManagementSystem.Modules.HR.Features.Integration;
 internal sealed class OnUserMetadataChangedIntegrationEvent(
     IInboxGuard inboxGuard,
     IHrUnitOfWork unitOfWork,
-    HrDbContext context,
     OrgLookupQueries orgLookupQueries,
     ILogger<OnUserMetadataChangedIntegrationEvent> logger)
     : INotificationHandler<UserMetadataChangedIntegrationEvent>
@@ -41,7 +39,7 @@ internal sealed class OnUserMetadataChangedIntegrationEvent(
                 "Concurrency conflict syncing employee balance metadata for user {UserId}. Retrying once.",
                 notification.UserId);
 
-            DetachEmployeeBalance(notification.UserId);
+            unitOfWork.EmployeeBalances.DetachTracked(notification.UserId);
             await ApplyMetadataAsync(notification, teamleaderId, cancellationToken);
             await unitOfWork.CommitAsync(cancellationToken);
         }
@@ -65,16 +63,6 @@ internal sealed class OnUserMetadataChangedIntegrationEvent(
         else
         {
             balance.SyncMetadata(notification.TeamId, teamleaderId, notification.RoleId);
-        }
-    }
-
-    private void DetachEmployeeBalance(int userId)
-    {
-        foreach (var entry in context.ChangeTracker.Entries<EmployeeBalanceRecord>()
-                     .Where(tracked => tracked.Entity.UserId == userId)
-                     .ToList())
-        {
-            entry.State = EntityState.Detached;
         }
     }
 }
