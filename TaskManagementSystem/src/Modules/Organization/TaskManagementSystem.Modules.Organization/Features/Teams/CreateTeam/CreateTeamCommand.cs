@@ -5,5 +5,5 @@ using TaskManagementSystem.Modules.Organization.Domain;
 
 namespace TaskManagementSystem.Modules.Organization.Features.Teams.CreateTeam;
 
-public sealed record CreateTeamCommand(string Name) : ICommand<Result<TeamListItemResult>>;
+public sealed record CreateTeamCommand(string Name, int? TeamleaderId) : ICommand<Result<TeamListItemResult>>;
 

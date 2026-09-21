@@ -22,7 +22,13 @@ public sealed class GetTeamByIdQueryHandler(
         }
 
         var members = await identityLookupQueries.GetActiveTeamMembersAsync(team.Id, cancellationToken);
-        return Result.Ok(TeamDetailResult.From(team, members));
+        string? leaderName = null;
+        if (team.TeamleaderId is int leaderId)
+        {
+            var leaders = await identityLookupQueries.GetActiveUsersByIdsAsync([leaderId], cancellationToken);
+            leaderName = leaders.GetValueOrDefault(leaderId)?.Name;
+        }
+
+        return Result.Ok(TeamDetailResult.From(team, members, leaderName));
     }
 }
-

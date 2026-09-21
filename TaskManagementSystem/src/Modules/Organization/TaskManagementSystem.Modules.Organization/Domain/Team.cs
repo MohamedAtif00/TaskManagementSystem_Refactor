@@ -12,11 +12,13 @@ public sealed class Team : Entity, IAggregateRoot
 
     public string Name { get; internal set; } = string.Empty;
 
+    public int? TeamleaderId { get; internal set; }
+
     public bool Archived { get; internal set; }
 
     internal static Team CreateForPersistence() => new();
 
-    public static Result<Team> Create(string name)
+    public static Result<Team> Create(string name, int? teamleaderId = null)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -26,11 +28,12 @@ public sealed class Team : Entity, IAggregateRoot
         return Result.Ok(new Team
         {
             Name = name.Trim(),
+            TeamleaderId = teamleaderId is > 0 ? teamleaderId : null,
             Archived = false
         });
     }
 
-    public Result<NoValue> Update(string name)
+    public Result<NoValue> Update(string name, int? teamleaderId)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -38,6 +41,7 @@ public sealed class Team : Entity, IAggregateRoot
         }
 
         Name = name.Trim();
+        TeamleaderId = teamleaderId is > 0 ? teamleaderId : null;
         return Result.Ok();
     }
 

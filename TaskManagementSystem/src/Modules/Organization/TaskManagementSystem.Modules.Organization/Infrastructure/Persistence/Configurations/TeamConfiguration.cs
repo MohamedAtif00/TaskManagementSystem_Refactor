@@ -11,5 +11,6 @@ internal sealed class TeamConfiguration : IEntityTypeConfiguration<Team>
         entity.ToTable("Teams", "organization");
         entity.HasKey(team => team.Id);
         entity.Property(team => team.Name).IsRequired();
+        entity.Property(team => team.TeamleaderId);
     }
 }

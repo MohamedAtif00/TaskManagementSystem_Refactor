@@ -5,5 +5,5 @@ using TaskManagementSystem.Modules.Organization.Infrastructure.Persistence.Queri
 
 namespace TaskManagementSystem.Modules.Organization.Features.Teams.UpdateTeam;
 
-public sealed record UpdateTeamCommand(int TeamId, string Name) : ICommand<Result<TeamListItemResult>>;
+public sealed record UpdateTeamCommand(int TeamId, string Name, int? TeamleaderId) : ICommand<Result<TeamListItemResult>>;
 

@@ -19,15 +19,22 @@ public sealed class ListTeamsQueryHandler(
         var memberCounts = await identityLookupQueries.GetMemberCountsByTeamIdsAsync(
             teams.Select(team => team.Id).ToArray(),
             cancellationToken);
+        var leaderIds = teams
+            .Select(team => team.TeamleaderId)
+            .Where(id => id.HasValue)
+            .Select(id => id!.Value)
+            .ToArray();
+        var leaders = await identityLookupQueries.GetActiveUsersByIdsAsync(leaderIds, cancellationToken);
 
         var results = teams
             .Select(team => new TeamListItemResult(
                 team.Id,
                 team.Name,
-                memberCounts.GetValueOrDefault(team.Id)))
+                memberCounts.GetValueOrDefault(team.Id),
+                team.TeamleaderId,
+                team.TeamleaderId is int leaderId ? leaders.GetValueOrDefault(leaderId)?.Name : null))
             .ToList();
 
         return Result.Ok<IReadOnlyList<TeamListItemResult>>(results);
     }
 }
-

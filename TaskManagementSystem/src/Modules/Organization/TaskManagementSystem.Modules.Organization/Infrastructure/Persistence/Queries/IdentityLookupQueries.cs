@@ -59,4 +59,51 @@ public sealed class IdentityLookupQueries(ISqlConnectionFactory connectionFactor
 
         return counts.ToDictionary(pair => pair.Key, pair => pair.Value);
     }
+
+    public async Task<UserSummary?> GetActiveLeaderByIdAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT [Id], [Name]
+            FROM [identity].[Users]
+            WHERE [Id] = @UserId
+              AND [Archived] = 0
+              AND [Role] IN @LeaderRoles
+            """;
+
+        using var connection = connectionFactory.GetOpenConnection();
+        return await connection.QuerySingleOrDefaultAsync<UserSummary>(
+            new CommandDefinition(
+                sql,
+                new
+                {
+                    UserId = userId,
+                    LeaderRoles = new[] { 1, 2 }
+                },
+                cancellationToken: cancellationToken));
+    }
+
+    public async Task<IReadOnlyDictionary<int, UserSummary>> GetActiveUsersByIdsAsync(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<int, UserSummary>();
+        }
+
+        const string sql = """
+            SELECT [Id], [Name]
+            FROM [identity].[Users]
+            WHERE [Archived] = 0 AND [Id] IN @UserIds
+            """;
+
+        using var connection = connectionFactory.GetOpenConnection();
+        var users = await connection.QueryAsync<UserSummary>(
+            new CommandDefinition(
+                sql,
+                new { UserIds = userIds.Distinct().ToArray() },
+                cancellationToken: cancellationToken));
+
+        return users.ToDictionary(user => user.Id);
+    }
 }

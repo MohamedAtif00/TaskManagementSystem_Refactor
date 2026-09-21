@@ -10,7 +10,9 @@ internal static class TeamMapping
         {
             Id = team.Id,
             Name = team.Name,
-            Members = team.Members
+            Members = team.Members,
+            TeamleaderId = team.TeamleaderId,
+            TeamleaderName = team.TeamleaderName
         };
 
     internal static TeamDetailResponse MapTeamDetail(TeamDetailResult team) =>
@@ -20,6 +22,8 @@ internal static class TeamMapping
             Name = team.Name,
             Members = team.Members
                 .Select(member => new TeamMemberResponse { Id = member.Id, Name = member.Name })
-                .ToList()
+                .ToList(),
+            TeamleaderId = team.TeamleaderId,
+            TeamleaderName = team.TeamleaderName
         };
 }

@@ -24,7 +24,7 @@ public static class UpdateTeamEndpoint
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new UpdateTeamCommand(id, request.Name), cancellationToken);
+        var result = await mediator.Send(new UpdateTeamCommand(id, request.Name, request.TeamleaderId), cancellationToken);
         return result.ToHttpResult(team => Results.Ok(TeamMapping.MapTeamListItem(team)));
     }
 }

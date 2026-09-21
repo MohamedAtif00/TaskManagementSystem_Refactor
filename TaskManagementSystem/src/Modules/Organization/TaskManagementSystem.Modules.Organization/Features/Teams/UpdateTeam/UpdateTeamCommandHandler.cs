@@ -21,7 +21,19 @@ public sealed class UpdateTeamCommandHandler(
             return Result.Fail<TeamListItemResult>(OrganizationErrors.TeamNotFound);
         }
 
-        var updateResult = team.Update(request.Name);
+        string? leaderName = null;
+        if (request.TeamleaderId is int leaderId)
+        {
+            var leader = await identityLookupQueries.GetActiveLeaderByIdAsync(leaderId, cancellationToken);
+            if (leader is null)
+            {
+                return Result.Fail<TeamListItemResult>(OrganizationErrors.UserNotFound);
+            }
+
+            leaderName = leader.Name;
+        }
+
+        var updateResult = team.Update(request.Name, request.TeamleaderId);
         if (!updateResult.IsSuccess)
         {
             return Result.Fail<TeamListItemResult>(updateResult.Error);
@@ -36,7 +48,8 @@ public sealed class UpdateTeamCommandHandler(
         return Result.Ok(new TeamListItemResult(
             team.Id,
             team.Name,
-            memberCounts.GetValueOrDefault(team.Id)));
+            memberCounts.GetValueOrDefault(team.Id),
+            team.TeamleaderId,
+            leaderName));
     }
 }
-

@@ -23,7 +23,7 @@ public static class CreateTeamEndpoint
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new CreateTeamCommand(request.Name), cancellationToken);
+        var result = await mediator.Send(new CreateTeamCommand(request.Name, request.TeamleaderId), cancellationToken);
         return result.ToHttpResult(team =>
             Results.Created($"/organization/teams/{team.Id}", TeamMapping.MapTeamListItem(team)));
     }

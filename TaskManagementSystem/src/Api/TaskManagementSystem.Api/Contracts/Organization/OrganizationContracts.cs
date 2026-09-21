@@ -3,11 +3,15 @@ namespace TaskManagementSystem.Api.Contracts.Organization;
 public sealed class CreateTeamRequest
 {
     public string Name { get; init; } = string.Empty;
+
+    public int? TeamleaderId { get; init; }
 }
 
 public sealed class UpdateTeamRequest
 {
     public string Name { get; init; } = string.Empty;
+
+    public int? TeamleaderId { get; init; }
 }
 
 public sealed class TeamListItemResponse
@@ -17,6 +21,10 @@ public sealed class TeamListItemResponse
     public string Name { get; init; } = string.Empty;
 
     public int Members { get; init; }
+
+    public int? TeamleaderId { get; init; }
+
+    public string? TeamleaderName { get; init; }
 }
 
 public sealed class TeamMemberResponse
@@ -33,6 +41,10 @@ public sealed class TeamDetailResponse
     public string Name { get; init; } = string.Empty;
 
     public IReadOnlyList<TeamMemberResponse> Members { get; init; } = [];
+
+    public int? TeamleaderId { get; init; }
+
+    public string? TeamleaderName { get; init; }
 }
 
 public sealed class CreateSectionRequest
