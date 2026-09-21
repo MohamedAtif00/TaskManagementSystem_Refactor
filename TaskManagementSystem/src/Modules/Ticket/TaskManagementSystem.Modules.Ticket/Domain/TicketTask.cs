@@ -139,6 +139,36 @@ public sealed class TicketTask : Entity, IAggregateRoot
         return Result.Ok();
     }
 
+    public Result<NoValue> ToggleFlag()
+    {
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
+        }
+
+        Flagged = !Flagged;
+        Attention = Flagged;
+        return Result.Ok();
+    }
+
+    public Result<NoValue> Rollback()
+    {
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
+        }
+
+        if (Status == TaskStatus.Backlog)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_cannot_rollback", "Backlog tickets cannot be rolled back."));
+        }
+
+        IsRollback = true;
+        RollbackCount += 1;
+        Status = TaskStatus.Rollback;
+        return Result.Ok();
+    }
+
     public Result<NoValue> Complete()
     {
         if (Archived)

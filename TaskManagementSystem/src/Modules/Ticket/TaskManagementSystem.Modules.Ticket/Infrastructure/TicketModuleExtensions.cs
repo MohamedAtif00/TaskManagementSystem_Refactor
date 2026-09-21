@@ -30,6 +30,7 @@ public static class TicketModuleExtensions
         services.AddScoped<IOrganizationTeamLookup, OrganizationTeamLookupQueries>();
         services.AddScoped<SubjectTicketsQueries>();
         services.AddScoped<SprintTicketsQueries>();
+        services.AddScoped<TicketStatsQueries>();
         services.AddScoped<IOutboxWriter, EfOutboxWriter<TicketDbContext>>();
         services.AddScoped<IInboxGuard, EfInboxGuard<TicketDbContext>>();
         services.AddOutboxProcessor("ticket", environment);

@@ -57,7 +57,7 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 
 | EF Core / repositories | Done — Identity, HR, Organization, Workflows, Curriculum, Ticket, Sprints, and Notifications DbContexts + repositories |
 
-| Frontend | Not started |
+| Frontend | In progress — Angular 22 at `D:\Full-Stack\frontend_refactor`; API mode default, permission-based menu, SignalR `/realtime`, `GET /tickets/stats` |
 
 | Automated tests | Done — unit, integration, and architecture tests (Sprints + Notifications unit tests added) |
 

@@ -30,4 +30,7 @@ public static class TicketErrors
 
     public static ResultError WorkTimeAlreadyOpen =>
         new("work_time_already_open", "An open work time already exists for this user on this ticket.");
+
+    public static ResultError TicketCannotRollback =>
+        new("ticket_cannot_rollback", "Backlog tickets cannot be rolled back.");
 }

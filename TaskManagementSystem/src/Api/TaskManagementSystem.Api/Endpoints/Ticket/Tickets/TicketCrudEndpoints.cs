@@ -9,6 +9,9 @@ public static class TicketCrudEndpoints
         AssignTicketEndpoint.Map(group);
         ProceedTicketEndpoint.Map(group);
         CompleteTicketEndpoint.Map(group);
+        FlagTicketEndpoint.Map(group);
+        RollbackTicketEndpoint.Map(group);
+        GetTicketStatsEndpoint.Map(group);
         return group;
     }
 }
