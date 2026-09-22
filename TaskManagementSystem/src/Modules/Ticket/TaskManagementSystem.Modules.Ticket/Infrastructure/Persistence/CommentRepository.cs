@@ -16,6 +16,9 @@ internal sealed class CommentRepository(TicketDbContext context)
             .OrderBy(comment => comment.Timestamp)
             .ToListAsync(cancellationToken);
 
+    public Task<Comment?> GetByIdTrackedAsync(int commentId, CancellationToken cancellationToken = default) =>
+        FindTrackedAsync(comment => comment.Id == commentId, cancellationToken);
+
     public Task AddAsync(Comment comment, CancellationToken cancellationToken = default) =>
         AddEntityAsync(comment, cancellationToken);
 }

@@ -20,6 +20,44 @@ public sealed class Comment : Entity, IAggregateRoot
     public int UserId { get; internal set; }
     public int? ChildId { get; internal set; }
 
+    public Result<NoValue> UpdateContent(string content, int userId)
+    {
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("comment_archived", "Comment is archived."));
+        }
+
+        if (UserId != userId)
+        {
+            return Result.Fail<NoValue>(new ResultError("comment_forbidden", "You can only edit your own comments."));
+        }
+
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return Result.Fail<NoValue>(new ResultError("comment_invalid_content", "Comment content is required."));
+        }
+
+        Content = content.Trim();
+        Timestamp = DateTime.UtcNow;
+        return Result.Ok();
+    }
+
+    public Result<NoValue> Archive(int userId)
+    {
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("comment_archived", "Comment is archived."));
+        }
+
+        if (UserId != userId)
+        {
+            return Result.Fail<NoValue>(new ResultError("comment_forbidden", "You can only delete your own comments."));
+        }
+
+        Archived = true;
+        return Result.Ok();
+    }
+
     public static Result<Comment> Create(
         string content,
         int learningObjectiveId,
