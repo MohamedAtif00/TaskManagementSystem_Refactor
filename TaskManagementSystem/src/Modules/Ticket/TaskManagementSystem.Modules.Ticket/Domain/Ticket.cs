@@ -151,6 +151,22 @@ public sealed class Ticket : Entity, IAggregateRoot
         return Result.Ok();
     }
 
+    public Result<NoValue> TogglePause()
+    {
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
+        }
+
+        if (Status == TicketStatus.Done)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_already_completed", "Ticket is already completed."));
+        }
+
+        Pause = !Pause;
+        return Result.Ok();
+    }
+
     public Result<NoValue> Rollback()
     {
         if (Archived)

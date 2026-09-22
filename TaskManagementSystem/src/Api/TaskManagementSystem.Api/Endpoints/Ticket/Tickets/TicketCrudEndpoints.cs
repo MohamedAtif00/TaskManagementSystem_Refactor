@@ -10,6 +10,7 @@ public static class TicketCrudEndpoints
         ProceedTicketEndpoint.Map(group);
         CompleteTicketEndpoint.Map(group);
         FlagTicketEndpoint.Map(group);
+        PauseTicketEndpoint.Map(group);
         RollbackTicketEndpoint.Map(group);
         SkipTicketEndpoint.Map(group);
         UpdateTicketPriorityEndpoint.Map(group);
