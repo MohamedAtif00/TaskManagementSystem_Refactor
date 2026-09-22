@@ -424,7 +424,12 @@ INSERT INTO [hr].[Permissions]
     [Type], [Status], [PermissionDate], [FromTime], [ToTime], [Reason], [CreatedAt], [UserId]
 )
 SELECT
-    N'Personal',
+    CASE n.n % 4
+      WHEN 0 THEN N'WorkAssignment'
+      WHEN 1 THEN N'EarlyDeparture'
+      WHEN 2 THEN N'LateArrival'
+      ELSE N'Departure'
+    END,
     CASE n.n % 3 WHEN 0 THEN N'Approved' WHEN 1 THEN N'Pending' ELSE N'Rejected' END,
     DATEADD(DAY, n.n, @Now),
     CAST(N'09:00:00' AS TIME),

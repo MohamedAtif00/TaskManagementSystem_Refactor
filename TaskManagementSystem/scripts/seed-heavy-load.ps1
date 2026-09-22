@@ -55,7 +55,7 @@ function Get-SeedCounts([string]$ConnectionString) {
         Teams = "SELECT COUNT(*) FROM [organization].[Teams] WHERE [Name] LIKE N'SEED_%'"
         Users = "SELECT COUNT(*) FROM [identity].[Users] WHERE [Code] LIKE N'SD%'"
         LearningObjectives = "SELECT COUNT(*) FROM [curriculum].[LearningObjectives] WHERE [Name] LIKE N'SEED_%'"
-        Tickets = "SELECT COUNT(*) FROM [ticket].[Tasks] WHERE [Name] LIKE N'SEED_%'"
+        Tickets = "SELECT COUNT(*) FROM [ticket].[Tickets] WHERE [Name] LIKE N'SEED_%'"
         Notifications = "SELECT COUNT(*) FROM [notifications].[Notifications] WHERE [Title] LIKE N'SEED_%'"
         Sprints = "SELECT COUNT(*) FROM [sprints].[Sprints] WHERE [Name] LIKE N'SEED_%'"
         LeaveRequests = "SELECT COUNT(*) FROM [hr].[LeaveRequests] WHERE [Reason] = N'SEED_HEAVY_LOAD'"

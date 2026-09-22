@@ -1,4 +1,6 @@
-# Seeds integration / local dev test user (TST001) into TaskManagementSystem SQL Server.
+# Seeds integration / local dev data into TaskManagementSystem SQL Server:
+#   002_IntegrationTestData.sql  TST001 + Integration Test Team
+#   003_LoCodeCurriculum.sql     sample LOs (Mth_5R_1A_01_04_02, ...)
 # Usage:
 #   ./scripts/seed-database.ps1 [-ConnectionString "..."] [-WhatIf] [-AllowAnyDatabase]
 
@@ -10,7 +12,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$seedScript = Join-Path $repoRoot "src/Database/TaskManagementSystem.Database/Scripts/Seeds/002_IntegrationTestData.sql"
+$seedFolder = Join-Path $repoRoot "src/Database/TaskManagementSystem.Database/Scripts/Seeds"
 $migratorProject = Join-Path $repoRoot "src/Database/DatabaseMigrator/DatabaseMigrator.csproj"
 
 function Get-DatabaseName([string]$ConnectionString) {
@@ -28,18 +30,18 @@ Write-Host "Connection: $($ConnectionString -replace 'Password=[^;]+', 'Password
 
 if ($WhatIf) {
     Write-Host "[WhatIf] Would run seed via DatabaseMigrator --seed:"
-    Write-Host "  $seedScript"
+    Write-Host "  $seedFolder"
     exit 0
 }
 
-if (-not (Test-Path $seedScript)) {
-    throw "Seed script not found: $seedScript"
+if (-not (Test-Path $seedFolder)) {
+    throw "Seed folder not found: $seedFolder"
 }
 
-Write-Host "Running integration test seed..."
+Write-Host "Running top-level seed scripts (TST001 + LO codes)..."
 dotnet run --project $migratorProject -- `
     --seed `
     $ConnectionString `
-    $seedScript
+    $seedFolder
 
 Write-Host "Done."
