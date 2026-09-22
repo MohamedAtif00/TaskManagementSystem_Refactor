@@ -1,5 +1,7 @@
 -- Sample curriculum tree whose LearningObjectives.Name values use the LO-code grammar
 -- (Subject_Grade_Term_Unit_Lesson_LO, optional year / QR_ / _p2).
+-- SubjectGroup is the full catalog name (mth→Math, ara→Arabic, sci→Science, eng→English,
+-- soc→Social Studies, mul→Multimedia, rel→Religion, ict→ICT, tsk→Tokkatsu).
 -- Re-runnable. Does not touch heavy-load SEED_* rows.
 -- Run via seed-database.ps1 (Seeds/*.sql) or:
 --   DatabaseMigrator --seed <connectionString> <this file>
@@ -54,9 +56,11 @@ DECLARE @ProjectId INT = (
     FROM [curriculum].[CurriculumProjects]
     WHERE [Name] = N'Primary Curriculum' AND [YearId] = @YearId AND [Archived] = 0);
 
+-- SubjectGroup is the full catalog name for the 3-letter code (mth→Math, ara→Arabic, ...).
 DECLARE @Codes TABLE
 (
     [Code]         NVARCHAR(100) NOT NULL PRIMARY KEY,
+    [SubjectCode]  NVARCHAR(3)   NOT NULL,
     [SubjectGroup] NVARCHAR(100) NOT NULL,
     [Subject]      NVARCHAR(100) NOT NULL,
     [TermName]     NVARCHAR(100) NOT NULL,
@@ -64,19 +68,25 @@ DECLARE @Codes TABLE
     [LessonName]   NVARCHAR(100) NOT NULL
 );
 
-INSERT INTO @Codes ([Code], [SubjectGroup], [Subject], [TermName], [UnitName], [LessonName])
+INSERT INTO @Codes ([Code], [SubjectCode], [SubjectGroup], [Subject], [TermName], [UnitName], [LessonName])
 VALUES
-    (N'Mth_5R_1A_01_04_02', N'Math', N'Math Grade 5', N'Term 1 (Arabic)', N'Unit 1', N'Lesson 4'),
-    (N'Ara_5R_1A_01_01_04', N'Arabic', N'Arabic Grade 5', N'Term 1 (Arabic)', N'Unit 1', N'Lesson 1'),
-    (N'Sci_5R_1A_04_03_05', N'Science', N'Science Grade 5', N'Term 1 (Arabic)', N'Unit 4', N'Lesson 3'),
-    (N'Soc_5R_1A_02_03_02', N'Social Studies', N'Social Studies Grade 5', N'Term 1 (Arabic)', N'Unit 2', N'Lesson 3'),
-    (N'Rel_3R_1A_05_02_01', N'Religion', N'Religion Grade 3', N'Term 1 (Arabic)', N'Unit 5', N'Lesson 2'),
-    (N'2026_ara_2r_1a_02_05_03', N'Arabic', N'Arabic Grade 2', N'Term 1 (Arabic)', N'Unit 2', N'Lesson 5'),
-    (N'Eng_5R_1E_07_04_04', N'English', N'English Grade 5', N'Term 1 (English)', N'Unit 7', N'Lesson 4'),
-    (N'Mul_2R_1E_01_03_01', N'Multimedia', N'Multimedia Grade 2', N'Term 1 (English)', N'Unit 1', N'Lesson 3'),
-    (N'2026_eng_4r_1e_02_02_03', N'English', N'English Grade 4', N'Term 1 (English)', N'Unit 2', N'Lesson 2');
+    (N'Mth_5R_1A_01_04_02', N'mth', N'Math', N'Math Grade 5', N'Term 1 (Arabic)', N'Unit 1', N'Lesson 4'),
+    (N'Ara_5R_1A_01_01_04', N'ara', N'Arabic', N'Arabic Grade 5', N'Term 1 (Arabic)', N'Unit 1', N'Lesson 1'),
+    (N'Sci_5R_1A_04_03_05', N'sci', N'Science', N'Science Grade 5', N'Term 1 (Arabic)', N'Unit 4', N'Lesson 3'),
+    (N'Soc_5R_1A_02_03_02', N'soc', N'Social Studies', N'Social Studies Grade 5', N'Term 1 (Arabic)', N'Unit 2', N'Lesson 3'),
+    (N'Rel_3R_1A_05_02_01', N'rel', N'Religion', N'Religion Grade 3', N'Term 1 (Arabic)', N'Unit 5', N'Lesson 2'),
+    (N'Eng_5R_1E_07_04_04', N'eng', N'English', N'English Grade 5', N'Term 1 (English)', N'Unit 7', N'Lesson 4'),
+    (N'Mul_2R_1E_01_03_01', N'mul', N'Multimedia', N'Multimedia Grade 2', N'Term 1 (English)', N'Unit 1', N'Lesson 3'),
+    (N'Ict_5R_1A_01_02_01', N'ict', N'ICT', N'ICT Grade 5', N'Term 1 (Arabic)', N'Unit 1', N'Lesson 2'),
+    (N'Tsk_1R_1A_01_01_01', N'tsk', N'Tokkatsu', N'Tokkatsu Grade 1', N'Term 1 (Arabic)', N'Unit 1', N'Lesson 1'),
+    (N'2026_ara_2r_1a_02_05_03', N'ara', N'Arabic', N'Arabic Grade 2', N'Term 1 (Arabic)', N'Unit 2', N'Lesson 5'),
+    (N'2026_eng_4r_1e_02_02_03', N'eng', N'English', N'English Grade 4', N'Term 1 (English)', N'Unit 2', N'Lesson 2'),
+    (N'QR_mth_1r_1a_02_02_06', N'mth', N'Math', N'Math Grade 1', N'Term 1 (Arabic)', N'Unit 2', N'Lesson 2'),
+    (N'QR_2025_ara_3r_1a_01_01_01', N'ara', N'Arabic', N'Arabic Grade 3', N'Term 1 (Arabic)', N'Unit 1', N'Lesson 1'),
+    (N'Soc_4R_1A_01_04_03_p2', N'soc', N'Social Studies', N'Social Studies Grade 4', N'Term 1 (Arabic)', N'Unit 1', N'Lesson 4');
 
 DECLARE @Code NVARCHAR(100);
+DECLARE @SubjectCode NVARCHAR(3);
 DECLARE @SubjectGroup NVARCHAR(100);
 DECLARE @Subject NVARCHAR(100);
 DECLARE @TermName NVARCHAR(100);
@@ -89,11 +99,11 @@ DECLARE @UnitId INT;
 DECLARE @LessonId INT;
 
 DECLARE code_cursor CURSOR LOCAL FAST_FORWARD FOR
-    SELECT [Code], [SubjectGroup], [Subject], [TermName], [UnitName], [LessonName]
+    SELECT [Code], [SubjectCode], [SubjectGroup], [Subject], [TermName], [UnitName], [LessonName]
     FROM @Codes;
 
 OPEN code_cursor;
-FETCH NEXT FROM code_cursor INTO @Code, @SubjectGroup, @Subject, @TermName, @UnitName, @LessonName;
+FETCH NEXT FROM code_cursor INTO @Code, @SubjectCode, @SubjectGroup, @Subject, @TermName, @UnitName, @LessonName;
 
 WHILE @@FETCH_STATUS = 0
 BEGIN
@@ -182,7 +192,7 @@ BEGIN
         VALUES
         (
             @Code,
-            UPPER(LEFT(@SubjectGroup, 3)),
+            UPPER(@SubjectCode),
             N'default',
             N'Web',
             SYSUTCDATETIME(),
@@ -194,7 +204,7 @@ BEGIN
         );
     END
 
-    FETCH NEXT FROM code_cursor INTO @Code, @SubjectGroup, @Subject, @TermName, @UnitName, @LessonName;
+    FETCH NEXT FROM code_cursor INTO @Code, @SubjectCode, @SubjectGroup, @Subject, @TermName, @UnitName, @LessonName;
 END
 
 CLOSE code_cursor;

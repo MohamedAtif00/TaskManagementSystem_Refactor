@@ -1,6 +1,6 @@
 # Seeds integration / local dev data into TaskManagementSystem SQL Server:
 #   002_IntegrationTestData.sql  TST001 + Integration Test Team
-#   003_LoCodeCurriculum.sql     sample LOs (Mth_5R_1A_01_04_02, ...)
+#   003_LoCodeCurriculum.sql     sample LOs for every subject code (mth→Math, ara→Arabic, ...)
 # Usage:
 #   ./scripts/seed-database.ps1 [-ConnectionString "..."] [-WhatIf] [-AllowAnyDatabase]
 
