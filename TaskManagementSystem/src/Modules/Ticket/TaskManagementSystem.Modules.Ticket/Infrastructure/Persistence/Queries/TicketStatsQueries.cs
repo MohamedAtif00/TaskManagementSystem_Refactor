@@ -15,7 +15,7 @@ public sealed class TicketStatsQueries(ISqlConnectionFactory connectionFactory)
                 t.[UserId],
                 t.[LearningObjectiveId],
                 u.[SubjectId]
-            FROM [ticket].[Tasks] t
+            FROM [ticket].[Tickets] t
             INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
             INNER JOIN [curriculum].[Lessons] l ON lo.[LessonId] = l.[Id]
             INNER JOIN [curriculum].[Units] u ON l.[UnitId] = u.[Id]

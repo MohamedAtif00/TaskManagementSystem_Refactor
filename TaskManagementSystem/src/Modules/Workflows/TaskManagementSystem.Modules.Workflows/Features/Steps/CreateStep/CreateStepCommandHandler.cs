@@ -18,9 +18,9 @@ public sealed class CreateStepCommandHandler(IWorkflowsUnitOfWork unitOfWork)
             return Result.Fail<StepListItemResult>(WorkflowsErrors.NodeNotFound);
         }
 
-        if (!await unitOfWork.Steps.TaskBankExistsActiveAsync(request.TaskBankId, cancellationToken))
+        if (!await unitOfWork.Steps.TicketBankExistsActiveAsync(request.TicketBankId, cancellationToken))
         {
-            return Result.Fail<StepListItemResult>(WorkflowsErrors.TaskBankNotFound);
+            return Result.Fail<StepListItemResult>(WorkflowsErrors.TicketBankNotFound);
         }
 
         var order = await unitOfWork.Steps.GetNextOrderAsync(request.NodeId, cancellationToken);
@@ -29,7 +29,7 @@ public sealed class CreateStepCommandHandler(IWorkflowsUnitOfWork unitOfWork)
             request.Duration,
             request.Priority,
             request.NodeId,
-            request.TaskBankId);
+            request.TicketBankId);
         if (!createResult.IsSuccess)
         {
             return Result.Fail<StepListItemResult>(createResult.Error);

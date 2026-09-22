@@ -14,7 +14,7 @@ public interface IStepRepository
 
     Task<bool> NodeExistsActiveAsync(int nodeId, CancellationToken cancellationToken = default);
 
-    Task<bool> TaskBankExistsActiveAsync(int taskBankId, CancellationToken cancellationToken = default);
+    Task<bool> TicketBankExistsActiveAsync(int taskBankId, CancellationToken cancellationToken = default);
 
     Task AddAsync(WorkflowStep step, CancellationToken cancellationToken = default);
 }

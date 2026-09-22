@@ -34,8 +34,8 @@ internal sealed class StepRepository(WorkflowsDbContext context)
     public Task<bool> NodeExistsActiveAsync(int nodeId, CancellationToken cancellationToken = default) =>
         Context.Nodes.AsNoTracking().AnyAsync(node => node.Id == nodeId && !node.Archived, cancellationToken);
 
-    public Task<bool> TaskBankExistsActiveAsync(int taskBankId, CancellationToken cancellationToken = default) =>
-        Context.TaskBank.AsNoTracking().AnyAsync(item => item.Id == taskBankId && item.Active, cancellationToken);
+    public Task<bool> TicketBankExistsActiveAsync(int taskBankId, CancellationToken cancellationToken = default) =>
+        Context.TicketBank.AsNoTracking().AnyAsync(item => item.Id == taskBankId && item.Active, cancellationToken);
 
     public Task AddAsync(WorkflowStep step, CancellationToken cancellationToken = default) =>
         AddEntityAsync(step, cancellationToken);

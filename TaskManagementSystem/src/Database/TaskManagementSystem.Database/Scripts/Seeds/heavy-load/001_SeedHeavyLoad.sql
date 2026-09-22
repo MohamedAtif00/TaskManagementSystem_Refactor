@@ -126,16 +126,16 @@ BEGIN
     SET @SchemaIdx += 1;
 END
 
-DECLARE @TaskBankIds TABLE ([Idx] INT NOT NULL PRIMARY KEY, [Id] INT NOT NULL, [TeamId] INT NOT NULL);
+DECLARE @TicketBankIds TABLE ([Idx] INT NOT NULL PRIMARY KEY, [Id] INT NOT NULL, [TeamId] INT NOT NULL);
 DECLARE @tb INT = 1;
 WHILE @tb <= 15
 BEGIN
     DECLARE @TbTeamId INT = (SELECT [Id] FROM @TeamIds WHERE [Idx] = ((@tb - 1) % 5) + 1);
-    DECLARE @TaskBankId INT;
-    INSERT INTO [workflows].[TaskBank] ([Name], [Duration], [Type], [Active], [TL], [TeamId])
-    VALUES (CONCAT(N'SEED_TaskBank_', RIGHT(CONCAT(N'00', @tb), 3)), 60 + (@tb % 30), @tb % 3, 1, CASE WHEN @tb % 4 = 0 THEN 1 ELSE 0 END, @TbTeamId);
-    SET @TaskBankId = SCOPE_IDENTITY();
-    INSERT INTO @TaskBankIds ([Idx], [Id], [TeamId]) VALUES (@tb, @TaskBankId, @TbTeamId);
+    DECLARE @TicketBankId INT;
+    INSERT INTO [workflows].[TicketBank] ([Name], [Duration], [Type], [Active], [TL], [TeamId])
+    VALUES (CONCAT(N'SEED_TicketBank_', RIGHT(CONCAT(N'00', @tb), 3)), 60 + (@tb % 30), @tb % 3, 1, CASE WHEN @tb % 4 = 0 THEN 1 ELSE 0 END, @TbTeamId);
+    SET @TicketBankId = SCOPE_IDENTITY();
+    INSERT INTO @TicketBankIds ([Idx], [Id], [TeamId]) VALUES (@tb, @TicketBankId, @TbTeamId);
     SET @tb += 1;
 END
 
@@ -166,10 +166,10 @@ DECLARE @StepIdx INT = 1;
 WHILE @StepIdx <= 30
 BEGIN
     DECLARE @StepNodeId INT = (SELECT [Id] FROM @NodeIds WHERE [Idx] = ((@StepIdx - 1) % 10) + 1);
-    DECLARE @StepTaskBankId INT = (SELECT [Id] FROM @TaskBankIds WHERE [Idx] = ((@StepIdx - 1) % 15) + 1);
+    DECLARE @StepTicketBankId INT = (SELECT [Id] FROM @TicketBankIds WHERE [Idx] = ((@StepIdx - 1) % 15) + 1);
     DECLARE @StepId INT;
-    INSERT INTO [workflows].[Steps] ([Order], [Duration], [Priority], [Archived], [NodeId], [TaskBankId])
-    VALUES (((@StepIdx - 1) % 3) + 1, 30 + (@StepIdx % 20), @StepIdx % 3, 0, @StepNodeId, @StepTaskBankId);
+    INSERT INTO [workflows].[Steps] ([Order], [Duration], [Priority], [Archived], [NodeId], [TicketBankId])
+    VALUES (((@StepIdx - 1) % 3) + 1, 30 + (@StepIdx % 20), @StepIdx % 3, 0, @StepNodeId, @StepTicketBankId);
     SET @StepId = SCOPE_IDENTITY();
     INSERT INTO @StepIds ([Idx], [Id]) VALUES (@StepIdx, @StepId);
     SET @StepIdx += 1;
@@ -333,7 +333,7 @@ users AS (
     SELECT [Id], [TeamId], ROW_NUMBER() OVER (ORDER BY [Idx]) AS rn
     FROM @UserIds
 )
-INSERT INTO [ticket].[Tasks]
+INSERT INTO [ticket].[Tickets]
 (
     [Name], [Status], [Priority], [Duration], [CreatedAt], [Attention], [Flagged], [TL],
     [IsReview], [IsRollback], [RollbackCount], [Archived], [LearningObjectiveId], [StepId], [UserId], [TeamId]

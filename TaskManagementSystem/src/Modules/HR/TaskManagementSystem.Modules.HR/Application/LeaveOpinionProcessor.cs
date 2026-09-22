@@ -9,14 +9,6 @@ public sealed class LeaveOpinionProcessor(
     IMedicalCertificateStorage medicalCertificateStorage,
     IOptions<LeaveSettingsOptions> leaveSettings)
 {
-    private static readonly HashSet<string> OpinionRoles =
-    [
-        "Owner",
-        "TeamLeader",
-        "ProjectManger",
-        "SectionHead"
-    ];
-
     public async Task<Result<LeaveRequest>> ProcessAsync(
         int actorUserId,
         string actorRole,
@@ -26,15 +18,20 @@ public sealed class LeaveOpinionProcessor(
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        if (!OpinionRoles.Contains(actorRole))
-        {
-            return Result.Fail<LeaveRequest>(HrErrors.LeaveOpinionNotAuthorized);
-        }
-
         var leaveRequest = await unitOfWork.LeaveRequests.GetByIdTrackedAsync(leaveRequestId, cancellationToken);
         if (leaveRequest is null)
         {
             return Result.Fail<LeaveRequest>(HrErrors.LeaveRequestNotFound);
+        }
+
+        if (!HrOpinionAuthorization.CanGiveOpinion(
+                actorUserId,
+                actorRole,
+                leaveRequest.UserId,
+                leaveRequest.TeamleaderId,
+                leaveRequest.SectionheadId))
+        {
+            return Result.Fail<LeaveRequest>(HrErrors.LeaveOpinionNotAuthorized);
         }
 
         if (leaveRequest.Status == LeaveStatus.Cancelled)

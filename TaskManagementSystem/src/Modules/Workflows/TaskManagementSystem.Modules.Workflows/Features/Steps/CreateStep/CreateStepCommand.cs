@@ -7,7 +7,7 @@ namespace TaskManagementSystem.Modules.Workflows.Features.Steps.CreateStep;
 
 public sealed record CreateStepCommand(
     int NodeId,
-    int TaskBankId,
+    int TicketBankId,
     int Duration,
     int Priority) : ICommand<Result<StepListItemResult>>;
 

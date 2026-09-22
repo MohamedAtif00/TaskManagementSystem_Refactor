@@ -27,7 +27,7 @@ public static class CreateStepEndpoint
         CancellationToken cancellationToken)
     {
         var result = await mediator.Send(
-            new CreateStepCommand(nodeId, request.TaskBankId, request.Duration, request.Priority),
+            new CreateStepCommand(nodeId, request.TicketBankId, request.Duration, request.Priority),
             cancellationToken);
 
         return result.ToHttpResult(step =>

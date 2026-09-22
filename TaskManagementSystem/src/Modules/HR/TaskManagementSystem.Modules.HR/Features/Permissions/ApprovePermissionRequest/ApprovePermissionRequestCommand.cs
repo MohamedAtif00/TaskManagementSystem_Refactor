@@ -5,6 +5,6 @@ using TaskManagementSystem.Modules.HR.Features.Permissions.GivePermissionOpinion
 
 namespace TaskManagementSystem.Modules.HR.Features.Permissions.ApprovePermissionRequest;
 
-public sealed record ApprovePermissionRequestCommand(int ActorUserId, int PermissionId)
+public sealed record ApprovePermissionRequestCommand(int ActorUserId, string ActorRole, int PermissionId)
     : ICommand<Result<PermissionRequestResult>>;
 

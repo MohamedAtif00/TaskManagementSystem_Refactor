@@ -23,7 +23,8 @@ public static class ApproveWorkFromHomeRequestEndpoint
         CancellationToken cancellationToken)
     {
         var userId = currentUser.GetRequiredUserId();
-        var result = await mediator.Send(new ApproveWorkFromHomeRequestCommand(userId, id), cancellationToken);
+        var role = currentUser.GetRequiredRole();
+        var result = await mediator.Send(new ApproveWorkFromHomeRequestCommand(userId, role, id), cancellationToken);
 
         return result.ToHttpResult(wfh => Results.Ok(WorkFromHomeMapping.MapWorkFromHome(wfh)));
     }

@@ -1,13 +1,13 @@
 using TaskManagementSystem.Modules.Ticket.Domain;
-using DomainTaskStatus = TaskManagementSystem.Modules.Ticket.Domain.TaskStatus;
-using DomainTaskPriority = TaskManagementSystem.Modules.Ticket.Domain.TaskPriority;
+using DomainTicketStatus = TaskManagementSystem.Modules.Ticket.Domain.TicketStatus;
+using DomainTicketPriority = TaskManagementSystem.Modules.Ticket.Domain.TicketPriority;
 
 namespace TaskManagementSystem.Api.Contracts.Ticket;
 
 public sealed class CreateTicketRequest
 {
     public int LearningObjectiveId { get; set; }
-    public int TaskBankItemId { get; set; }
+    public int TicketBankItemId { get; set; }
     public int? UserId { get; set; }
 }
 
@@ -25,8 +25,8 @@ public sealed class TicketListItemResponse
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public DomainTaskStatus Status { get; set; }
-    public DomainTaskPriority Priority { get; set; }
+    public DomainTicketStatus Status { get; set; }
+    public DomainTicketPriority Priority { get; set; }
     public int Duration { get; set; }
     public DateTime CreatedAt { get; set; }
     public int LearningObjectiveId { get; set; }
@@ -73,8 +73,8 @@ public sealed class TicketDetailResponse
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
-    public DomainTaskStatus Status { get; set; }
-    public DomainTaskPriority Priority { get; set; }
+    public DomainTicketStatus Status { get; set; }
+    public DomainTicketPriority Priority { get; set; }
     public int Duration { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool Pause { get; set; }
@@ -99,15 +99,41 @@ public sealed class CommentListItemResponse
     public DateTime Timestamp { get; set; }
     public int UserId { get; set; }
     public int LearningObjectiveId { get; set; }
-    public int? TaskId { get; set; }
+    public int? TicketId { get; set; }
 }
 
-public sealed class TaskWorkTimeResponse
+public sealed class UpdateTicketPriorityRequest
+{
+    public int Priority { get; set; }
+}
+
+public sealed class JumpTicketRequest
+{
+    public int StepId { get; set; }
+}
+
+public sealed class JumpPointResponse
+{
+    public int StepId { get; set; }
+    public int NodeId { get; set; }
+    public string Label { get; set; } = string.Empty;
+}
+
+public sealed class TicketActivityResponse
+{
+    public int Id { get; set; }
+    public int Type { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public int? UserId { get; set; }
+}
+
+public sealed class TicketWorkTimeResponse
 {
     public int Id { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public double Duration { get; set; }
-    public int TaskId { get; set; }
+    public int TicketId { get; set; }
     public int UserId { get; set; }
 }

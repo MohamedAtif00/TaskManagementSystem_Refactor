@@ -23,7 +23,8 @@ public static class ApproveLeaveRequestEndpoint
         CancellationToken cancellationToken)
     {
         var userId = currentUser.GetRequiredUserId();
-        var result = await mediator.Send(new ApproveLeaveRequestCommand(userId, id), cancellationToken);
+        var role = currentUser.GetRequiredRole();
+        var result = await mediator.Send(new ApproveLeaveRequestCommand(userId, role, id), cancellationToken);
 
         return result.ToHttpResult(leaveRequest => Results.Ok(LeaveRequestMapping.MapLeaveRequest(leaveRequest)));
     }

@@ -1,15 +1,16 @@
+using TaskManagementSystem.Modules.Ticket.Application;
 using TaskManagementSystem.Modules.Ticket.Domain;
 using TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence.Queries;
-using DomainTaskStatus = TaskManagementSystem.Modules.Ticket.Domain.TaskStatus;
-using DomainTaskPriority = TaskManagementSystem.Modules.Ticket.Domain.TaskPriority;
+using DomainTicketStatus = TaskManagementSystem.Modules.Ticket.Domain.TicketStatus;
+using DomainTicketPriority = TaskManagementSystem.Modules.Ticket.Domain.TicketPriority;
 
 namespace TaskManagementSystem.Modules.Ticket.Features;
 
 public sealed record TicketListItemResult(
     int Id,
     string Name,
-    DomainTaskStatus Status,
-    DomainTaskPriority Priority,
+    DomainTicketStatus Status,
+    DomainTicketPriority Priority,
     int Duration,
     DateTime CreatedAt,
     int LearningObjectiveId,
@@ -22,7 +23,7 @@ public sealed record TicketListItemResult(
     bool IsRollback = false,
     int RollbackCount = 0)
 {
-    public static TicketListItemResult From(TicketTask task) =>
+    public static TicketListItemResult From(Domain.Ticket task) =>
         new(
             task.Id,
             task.Name,
@@ -86,8 +87,8 @@ public sealed record TicketListPageResult(
 public sealed record TicketDetailResult(
     int Id,
     string Name,
-    DomainTaskStatus Status,
-    DomainTaskPriority Priority,
+    DomainTicketStatus Status,
+    DomainTicketPriority Priority,
     int Duration,
     DateTime CreatedAt,
     bool Pause,
@@ -103,7 +104,7 @@ public sealed record TicketDetailResult(
     int? TeamId,
     int? FromId)
 {
-    public static TicketDetailResult From(TicketTask task) =>
+    public static TicketDetailResult From(Domain.Ticket task) =>
         new(
             task.Id,
             task.Name,
@@ -132,7 +133,7 @@ public sealed record CommentListItemResult(
     DateTime Timestamp,
     int UserId,
     int LearningObjectiveId,
-    int? TaskId)
+    int? TicketId)
 {
     public static CommentListItemResult From(Comment comment) =>
         new(
@@ -142,23 +143,45 @@ public sealed record CommentListItemResult(
             comment.Timestamp,
             comment.UserId,
             comment.LearningObjectiveId,
-            comment.TaskId);
+            comment.TicketId);
 }
 
-public sealed record TaskWorkTimeResult(
+public sealed record TicketActivityListItemResult(
+    int Id,
+    int Type,
+    string Message,
+    DateTime CreatedAt,
+    int? UserId)
+{
+    public static TicketActivityListItemResult From(TicketActivity activity) =>
+        new(
+            activity.Id,
+            (int)activity.Type,
+            activity.AdditionalInfo ?? string.Empty,
+            activity.TimeStamp,
+            activity.ActorOneId);
+}
+
+public sealed record JumpPointResult(int StepId, int NodeId, string Label)
+{
+    public static JumpPointResult From(WorkflowJumpPoint point) =>
+        new(point.StepId, point.NodeId, point.Label);
+}
+
+public sealed record TicketWorkTimeResult(
     int Id,
     DateTime StartDate,
     DateTime? EndDate,
     double Duration,
-    int TaskId,
+    int TicketId,
     int UserId)
 {
-    public static TaskWorkTimeResult From(TaskWorkTime workTime) =>
+    public static TicketWorkTimeResult From(TicketWorkTime workTime) =>
         new(
             workTime.Id,
             workTime.StartDate,
             workTime.EndDate,
             workTime.Duration,
-            workTime.TaskId,
+            workTime.TicketId,
             workTime.UserId);
 }

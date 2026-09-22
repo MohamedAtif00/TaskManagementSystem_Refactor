@@ -19,15 +19,15 @@ public sealed record SchemaDetailResult(int Id, string Name, string Description,
         new(schema.Id, schema.Name, schema.Description, schema.TypeId);
 }
 
-public sealed record TaskBankListItemResult(
+public sealed record TicketBankListItemResult(
     int Id,
     string Name,
     int Duration,
-    TaskBankType Type,
+    TicketBankType Type,
     bool TeamLeaderOnly,
     int TeamId)
 {
-    public static TaskBankListItemResult From(TaskBankItem item) =>
+    public static TicketBankListItemResult From(TicketBankItem item) =>
         new(item.Id, item.Name, item.Duration, item.Type, item.TeamLeaderOnly, item.TeamId);
 }
 
@@ -43,8 +43,8 @@ public sealed record StepListItemResult(
     int Duration,
     int Priority,
     int NodeId,
-    int TaskBankId)
+    int TicketBankId)
 {
     public static StepListItemResult From(WorkflowStep step) =>
-        new(step.Id, step.Order, step.Duration, step.Priority, step.NodeId, step.TaskBankId);
+        new(step.Id, step.Order, step.Duration, step.Priority, step.NodeId, step.TicketBankId);
 }

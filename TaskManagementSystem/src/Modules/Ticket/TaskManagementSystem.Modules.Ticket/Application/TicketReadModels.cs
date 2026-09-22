@@ -2,7 +2,7 @@ namespace TaskManagementSystem.Modules.Ticket.Application;
 
 public sealed record LearningObjectiveSummary(int Id, int SchemaId);
 
-public sealed record TaskBankSummary(
+public sealed record TicketBankSummary(
     int Id,
     string Name,
     int Duration,
@@ -14,6 +14,6 @@ public sealed record WorkflowStepSummary(
     int Duration,
     int Priority,
     int NodeId,
-    int TaskBankId);
+    int TicketBankId);
 
 public sealed record UserSummary(int Id, string Name);

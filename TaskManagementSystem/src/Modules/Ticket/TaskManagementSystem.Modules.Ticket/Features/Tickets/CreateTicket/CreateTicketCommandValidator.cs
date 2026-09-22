@@ -7,7 +7,7 @@ public sealed class CreateTicketCommandValidator : AbstractValidator<CreateTicke
     public CreateTicketCommandValidator()
     {
         RuleFor(x => x.LearningObjectiveId).GreaterThan(0);
-        RuleFor(x => x.TaskBankItemId).GreaterThan(0);
+        RuleFor(x => x.TicketBankItemId).GreaterThan(0);
     }
 }
 

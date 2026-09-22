@@ -38,12 +38,25 @@ public sealed class ApproveLeaveRequestCommandHandlerTests
 
         var handler = new ApproveLeaveRequestCommandHandler(mediator);
 
-        var result = await handler.Handle(new ApproveLeaveRequestCommand(99, 10), CancellationToken.None);
+        var result = await handler.Handle(new ApproveLeaveRequestCommand(99, "Owner", 10), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(LeaveStatus.Approved);
         await mediator.Received(1).Send(
             Arg.Any<GiveLeaveOpinionCommand>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenActorIsNotOwner_ReturnsNotAuthorized()
+    {
+        var mediator = Substitute.For<IMediator>();
+        var handler = new ApproveLeaveRequestCommandHandler(mediator);
+
+        var result = await handler.Handle(new ApproveLeaveRequestCommand(99, "TeamLeader", 10), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Code.Should().Be("hr_approve_not_authorized");
+        await mediator.DidNotReceive().Send(Arg.Any<GiveLeaveOpinionCommand>(), Arg.Any<CancellationToken>());
     }
 }

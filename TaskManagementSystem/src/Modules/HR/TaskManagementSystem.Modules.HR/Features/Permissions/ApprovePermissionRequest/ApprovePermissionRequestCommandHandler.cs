@@ -2,6 +2,7 @@ using MediatR;
 using TaskManagementSystem.Modules.HR.Features.Permissions;
 using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Domain;
+using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Features.Permissions.GivePermissionOpinion;
 
 namespace TaskManagementSystem.Modules.HR.Features.Permissions.ApprovePermissionRequest;
@@ -9,16 +10,23 @@ namespace TaskManagementSystem.Modules.HR.Features.Permissions.ApprovePermission
 public sealed class ApprovePermissionRequestCommandHandler(IMediator mediator)
     : IRequestHandler<ApprovePermissionRequestCommand, Result<PermissionRequestResult>>
 {
-    public Task<Result<PermissionRequestResult>> Handle(
+    public async Task<Result<PermissionRequestResult>> Handle(
         ApprovePermissionRequestCommand request,
-        CancellationToken cancellationToken) =>
-        mediator.Send(
+        CancellationToken cancellationToken)
+    {
+        if (request.ActorRole != "Owner")
+        {
+            return Result.Fail<PermissionRequestResult>(HrErrors.HrApproveNotAuthorized);
+        }
+
+        return await mediator.Send(
             new GivePermissionOpinionCommand(
                 request.ActorUserId,
-                "Owner",
+                request.ActorRole,
                 request.PermissionId,
                 true,
                 null),
             cancellationToken);
+    }
 }
 

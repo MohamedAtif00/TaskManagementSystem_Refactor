@@ -66,17 +66,35 @@ internal static class TicketMapping
             Timestamp = comment.Timestamp,
             UserId = comment.UserId,
             LearningObjectiveId = comment.LearningObjectiveId,
-            TaskId = comment.TaskId
+            TicketId = comment.TicketId
         };
 
-    internal static TaskWorkTimeResponse MapWorkTime(TaskWorkTimeResult workTime) =>
+    internal static JumpPointResponse MapJumpPoint(JumpPointResult point) =>
+        new()
+        {
+            StepId = point.StepId,
+            NodeId = point.NodeId,
+            Label = point.Label,
+        };
+
+    internal static TicketActivityResponse MapActivity(TicketActivityListItemResult activity) =>
+        new()
+        {
+            Id = activity.Id,
+            Type = activity.Type,
+            Message = activity.Message,
+            CreatedAt = activity.CreatedAt,
+            UserId = activity.UserId,
+        };
+
+    internal static TicketWorkTimeResponse MapWorkTime(TicketWorkTimeResult workTime) =>
         new()
         {
             Id = workTime.Id,
             StartDate = workTime.StartDate,
             EndDate = workTime.EndDate,
             Duration = workTime.Duration,
-            TaskId = workTime.TaskId,
+            TicketId = workTime.TicketId,
             UserId = workTime.UserId
         };
 }

@@ -88,10 +88,10 @@
 | POST | `/workflows/schemas/{schemaId}/nodes` | CreateNodeRequest |
 | PUT | `/workflows/nodes/{id}` | UpdateNodeRequest |
 | DELETE | `/workflows/nodes/{id}` | None |
-| GET | `/workflows/task-bank` | None |
-| POST | `/workflows/task-bank` | CreateTaskBankItemRequest |
-| PUT | `/workflows/task-bank/{id}` | UpdateTaskBankItemRequest |
-| DELETE | `/workflows/task-bank/{id}` | None |
+| GET | `/workflows/ticket-bank` | None |
+| POST | `/workflows/ticket-bank` | CreateTicketBankItemRequest |
+| PUT | `/workflows/ticket-bank/{id}` | UpdateTicketBankItemRequest |
+| DELETE | `/workflows/ticket-bank/{id}` | None |
 | GET | `/workflows/nodes/{nodeId}/steps` | None |
 | POST | `/workflows/nodes/{nodeId}/steps` | CreateStepRequest |
 | PUT | `/workflows/steps/{id}` | UpdateStepRequest |

@@ -1,6 +1,6 @@
-IF OBJECT_ID(N'ticket.Tasks', N'U') IS NULL
+IF OBJECT_ID(N'ticket.Tickets', N'U') IS NULL
 BEGIN
-    CREATE TABLE [ticket].[Tasks]
+    CREATE TABLE [ticket].[Tickets]
     (
         [Id]                   INT           NOT NULL IDENTITY(1, 1),
         [Name]                 NVARCHAR(MAX) NOT NULL,
@@ -8,7 +8,7 @@ BEGIN
         [Priority]             INT           NOT NULL,
         [Duration]             INT           NOT NULL,
         [CreatedAt]            DATETIME2     NOT NULL,
-        [Pause]                BIT           NOT NULL CONSTRAINT [DF_ticket_Tasks_Pause] DEFAULT (0),
+        [Pause]                BIT           NOT NULL CONSTRAINT [DF_ticket_Tickets_Pause] DEFAULT (0),
         [Attention]            BIT           NOT NULL,
         [Flagged]              BIT           NOT NULL,
         [TL]                   BIT           NOT NULL,
@@ -21,96 +21,96 @@ BEGIN
         [UserId]               INT           NULL,
         [TeamId]               INT           NULL,
         [FromId]               INT           NULL,
-        CONSTRAINT [PK_ticket_Tasks] PRIMARY KEY CLUSTERED ([Id] ASC),
-        CONSTRAINT [FK_ticket_Tasks_LearningObjectives_LearningObjectiveId]
+        CONSTRAINT [PK_ticket_Tickets] PRIMARY KEY CLUSTERED ([Id] ASC),
+        CONSTRAINT [FK_ticket_Tickets_LearningObjectives_LearningObjectiveId]
             FOREIGN KEY ([LearningObjectiveId]) REFERENCES [curriculum].[LearningObjectives] ([Id]) ON DELETE CASCADE,
-        CONSTRAINT [FK_ticket_Tasks_Steps_StepId]
+        CONSTRAINT [FK_ticket_Tickets_Steps_StepId]
             FOREIGN KEY ([StepId]) REFERENCES [workflows].[Steps] ([Id]),
-        CONSTRAINT [FK_ticket_Tasks_Users_UserId]
+        CONSTRAINT [FK_ticket_Tickets_Users_UserId]
             FOREIGN KEY ([UserId]) REFERENCES [identity].[Users] ([Id]),
-        CONSTRAINT [FK_ticket_Tasks_Teams_TeamId]
+        CONSTRAINT [FK_ticket_Tickets_Teams_TeamId]
             FOREIGN KEY ([TeamId]) REFERENCES [organization].[Teams] ([Id]) ON DELETE SET NULL,
-        CONSTRAINT [FK_ticket_Tasks_Tasks_FromId]
-            FOREIGN KEY ([FromId]) REFERENCES [ticket].[Tasks] ([Id])
+        CONSTRAINT [FK_ticket_Tickets_Tickets_FromId]
+            FOREIGN KEY ([FromId]) REFERENCES [ticket].[Tickets] ([Id])
     );
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_Tasks_LearningObjectiveId]
-        ON [ticket].[Tasks] ([LearningObjectiveId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_Tickets_LearningObjectiveId]
+        ON [ticket].[Tickets] ([LearningObjectiveId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_Tasks_StepId]
-        ON [ticket].[Tasks] ([StepId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_Tickets_StepId]
+        ON [ticket].[Tickets] ([StepId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_Tasks_UserId]
-        ON [ticket].[Tasks] ([UserId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_Tickets_UserId]
+        ON [ticket].[Tickets] ([UserId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_Tasks_TeamId]
-        ON [ticket].[Tasks] ([TeamId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_Tickets_TeamId]
+        ON [ticket].[Tickets] ([TeamId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_Tasks_FromId]
-        ON [ticket].[Tasks] ([FromId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_Tickets_FromId]
+        ON [ticket].[Tickets] ([FromId] ASC);
 END
 GO
 
-IF OBJECT_ID(N'ticket.TaskActivities', N'U') IS NULL
+IF OBJECT_ID(N'ticket.TicketActivities', N'U') IS NULL
 BEGIN
-    CREATE TABLE [ticket].[TaskActivities]
+    CREATE TABLE [ticket].[TicketActivities]
     (
         [Id]              INT           NOT NULL IDENTITY(1, 1),
         [Type]            INT           NOT NULL,
         [TimeStamp]       DATETIME2     NOT NULL,
         [AdditionalInfo]  NVARCHAR(MAX) NULL,
-        [TaskId]          INT           NOT NULL,
-        [TaskSecondaryId] INT           NULL,
+        [TicketId]          INT           NOT NULL,
+        [TicketSecondaryId] INT           NULL,
         [ActorOneId]      INT           NULL,
         [ActorTwoId]      INT           NULL,
-        CONSTRAINT [PK_ticket_TaskActivities] PRIMARY KEY CLUSTERED ([Id] ASC),
-        CONSTRAINT [FK_ticket_TaskActivities_Tasks_TaskId]
-            FOREIGN KEY ([TaskId]) REFERENCES [ticket].[Tasks] ([Id]) ON DELETE CASCADE,
-        CONSTRAINT [FK_ticket_TaskActivities_Tasks_TaskSecondaryId]
-            FOREIGN KEY ([TaskSecondaryId]) REFERENCES [ticket].[Tasks] ([Id]),
-        CONSTRAINT [FK_ticket_TaskActivities_Users_ActorOneId]
+        CONSTRAINT [PK_ticket_TicketActivities] PRIMARY KEY CLUSTERED ([Id] ASC),
+        CONSTRAINT [FK_ticket_TicketActivities_Tickets_TicketId]
+            FOREIGN KEY ([TicketId]) REFERENCES [ticket].[Tickets] ([Id]) ON DELETE CASCADE,
+        CONSTRAINT [FK_ticket_TicketActivities_Tickets_TicketSecondaryId]
+            FOREIGN KEY ([TicketSecondaryId]) REFERENCES [ticket].[Tickets] ([Id]),
+        CONSTRAINT [FK_ticket_TicketActivities_Users_ActorOneId]
             FOREIGN KEY ([ActorOneId]) REFERENCES [identity].[Users] ([Id]),
-        CONSTRAINT [FK_ticket_TaskActivities_Users_ActorTwoId]
+        CONSTRAINT [FK_ticket_TicketActivities_Users_ActorTwoId]
             FOREIGN KEY ([ActorTwoId]) REFERENCES [identity].[Users] ([Id])
     );
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_TaskActivities_TaskId]
-        ON [ticket].[TaskActivities] ([TaskId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_TicketActivities_TicketId]
+        ON [ticket].[TicketActivities] ([TicketId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_TaskActivities_TaskSecondaryId]
-        ON [ticket].[TaskActivities] ([TaskSecondaryId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_TicketActivities_TicketSecondaryId]
+        ON [ticket].[TicketActivities] ([TicketSecondaryId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_TaskActivities_ActorOneId]
-        ON [ticket].[TaskActivities] ([ActorOneId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_TicketActivities_ActorOneId]
+        ON [ticket].[TicketActivities] ([ActorOneId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_TaskActivities_ActorTwoId]
-        ON [ticket].[TaskActivities] ([ActorTwoId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_TicketActivities_ActorTwoId]
+        ON [ticket].[TicketActivities] ([ActorTwoId] ASC);
 END
 GO
 
-IF OBJECT_ID(N'ticket.TaskWorkTimes', N'U') IS NULL
+IF OBJECT_ID(N'ticket.TicketWorkTimes', N'U') IS NULL
 BEGIN
-    CREATE TABLE [ticket].[TaskWorkTimes]
+    CREATE TABLE [ticket].[TicketWorkTimes]
     (
         [Id]         INT        NOT NULL IDENTITY(1, 1),
         [StartDate]  DATETIME2  NOT NULL,
         [EndDate]    DATETIME2  NULL,
         [Duration]   FLOAT      NOT NULL,
         [EndReason]  INT        NULL,
-        [TaskId]     INT        NOT NULL,
+        [TicketId]     INT        NOT NULL,
         [UserId]     INT        NOT NULL,
-        CONSTRAINT [PK_ticket_TaskWorkTimes] PRIMARY KEY CLUSTERED ([Id] ASC),
-        CONSTRAINT [FK_ticket_TaskWorkTimes_Tasks_TaskId]
-            FOREIGN KEY ([TaskId]) REFERENCES [ticket].[Tasks] ([Id]) ON DELETE CASCADE,
-        CONSTRAINT [FK_ticket_TaskWorkTimes_Users_UserId]
+        CONSTRAINT [PK_ticket_TicketWorkTimes] PRIMARY KEY CLUSTERED ([Id] ASC),
+        CONSTRAINT [FK_ticket_TicketWorkTimes_Tickets_TicketId]
+            FOREIGN KEY ([TicketId]) REFERENCES [ticket].[Tickets] ([Id]) ON DELETE CASCADE,
+        CONSTRAINT [FK_ticket_TicketWorkTimes_Users_UserId]
             FOREIGN KEY ([UserId]) REFERENCES [identity].[Users] ([Id]) ON DELETE CASCADE
     );
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_TaskWorkTimes_TaskId]
-        ON [ticket].[TaskWorkTimes] ([TaskId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_TicketWorkTimes_TicketId]
+        ON [ticket].[TicketWorkTimes] ([TicketId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_TaskWorkTimes_UserId]
-        ON [ticket].[TaskWorkTimes] ([UserId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_TicketWorkTimes_UserId]
+        ON [ticket].[TicketWorkTimes] ([UserId] ASC);
 END
 GO
 
@@ -124,7 +124,7 @@ BEGIN
         [Timestamp]           DATETIME2     NOT NULL,
         [Archived]            BIT           NOT NULL,
         [LearningObjectiveId] INT           NOT NULL,
-        [TaskId]              INT           NULL,
+        [TicketId]              INT           NULL,
         [UserId]              INT           NOT NULL,
         [ChildId]             INT           NULL,
         CONSTRAINT [PK_ticket_Comments] PRIMARY KEY CLUSTERED ([Id] ASC),
@@ -132,8 +132,8 @@ BEGIN
             FOREIGN KEY ([ChildId]) REFERENCES [ticket].[Comments] ([Id]),
         CONSTRAINT [FK_ticket_Comments_LearningObjectives_LearningObjectiveId]
             FOREIGN KEY ([LearningObjectiveId]) REFERENCES [curriculum].[LearningObjectives] ([Id]) ON DELETE CASCADE,
-        CONSTRAINT [FK_ticket_Comments_Tasks_TaskId]
-            FOREIGN KEY ([TaskId]) REFERENCES [ticket].[Tasks] ([Id]),
+        CONSTRAINT [FK_ticket_Comments_Tickets_TicketId]
+            FOREIGN KEY ([TicketId]) REFERENCES [ticket].[Tickets] ([Id]),
         CONSTRAINT [FK_ticket_Comments_Users_UserId]
             FOREIGN KEY ([UserId]) REFERENCES [identity].[Users] ([Id]) ON DELETE CASCADE
     );
@@ -145,8 +145,8 @@ BEGIN
     CREATE NONCLUSTERED INDEX [IX_ticket_Comments_LearningObjectiveId]
         ON [ticket].[Comments] ([LearningObjectiveId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_Comments_TaskId]
-        ON [ticket].[Comments] ([TaskId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_Comments_TicketId]
+        ON [ticket].[Comments] ([TicketId] ASC);
 
     CREATE NONCLUSTERED INDEX [IX_ticket_Comments_UserId]
         ON [ticket].[Comments] ([UserId] ASC);
@@ -159,23 +159,23 @@ BEGIN
     (
         [Id]            INT           NOT NULL IDENTITY(1, 1),
         [Clarification] NVARCHAR(MAX) NULL,
-        [TaskId]        INT           NOT NULL,
-        [ToTaskId]      INT           NOT NULL,
+        [TicketId]        INT           NOT NULL,
+        [ToTicketId]      INT           NOT NULL,
         [UserId]        INT           NOT NULL,
         CONSTRAINT [PK_ticket_Rollbacks] PRIMARY KEY CLUSTERED ([Id] ASC),
-        CONSTRAINT [FK_ticket_Rollbacks_Tasks_TaskId]
-            FOREIGN KEY ([TaskId]) REFERENCES [ticket].[Tasks] ([Id]),
-        CONSTRAINT [FK_ticket_Rollbacks_Tasks_ToTaskId]
-            FOREIGN KEY ([ToTaskId]) REFERENCES [ticket].[Tasks] ([Id]),
+        CONSTRAINT [FK_ticket_Rollbacks_Tickets_TicketId]
+            FOREIGN KEY ([TicketId]) REFERENCES [ticket].[Tickets] ([Id]),
+        CONSTRAINT [FK_ticket_Rollbacks_Tickets_ToTicketId]
+            FOREIGN KEY ([ToTicketId]) REFERENCES [ticket].[Tickets] ([Id]),
         CONSTRAINT [FK_ticket_Rollbacks_Users_UserId]
             FOREIGN KEY ([UserId]) REFERENCES [identity].[Users] ([Id]) ON DELETE CASCADE
     );
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_Rollbacks_TaskId]
-        ON [ticket].[Rollbacks] ([TaskId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_Rollbacks_TicketId]
+        ON [ticket].[Rollbacks] ([TicketId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_ticket_Rollbacks_ToTaskId]
-        ON [ticket].[Rollbacks] ([ToTaskId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_ticket_Rollbacks_ToTicketId]
+        ON [ticket].[Rollbacks] ([ToTicketId] ASC);
 
     CREATE NONCLUSTERED INDEX [IX_ticket_Rollbacks_UserId]
         ON [ticket].[Rollbacks] ([UserId] ASC);

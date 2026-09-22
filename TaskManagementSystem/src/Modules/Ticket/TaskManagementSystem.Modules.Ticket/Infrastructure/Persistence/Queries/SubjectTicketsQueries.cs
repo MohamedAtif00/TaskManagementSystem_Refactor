@@ -2,8 +2,8 @@ using System.Text;
 using Dapper;
 using TaskManagementSystem.BuildingBlocks.Application.Data;
 using TaskManagementSystem.Modules.Ticket.Features;
-using DomainTaskStatus = TaskManagementSystem.Modules.Ticket.Domain.TaskStatus;
-using DomainTaskPriority = TaskManagementSystem.Modules.Ticket.Domain.TaskPriority;
+using DomainTicketStatus = TaskManagementSystem.Modules.Ticket.Domain.TicketStatus;
+using DomainTicketPriority = TaskManagementSystem.Modules.Ticket.Domain.TicketPriority;
 
 namespace TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence.Queries;
 
@@ -11,7 +11,7 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
 {
     public async Task<TicketListPageResult> ListBySubjectAsync(
         int subjectId,
-        IReadOnlyList<DomainTaskStatus>? statuses = null,
+        IReadOnlyList<DomainTicketStatus>? statuses = null,
         int? learningObjectiveId = null,
         string? name = null,
         int? page = null,
@@ -32,7 +32,7 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
         var sql = $"""
             SELECT
                 {TicketListQueryBuilder.SelectList}
-            FROM [ticket].[Tasks] t
+            FROM [ticket].[Tickets] t
             INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
             INNER JOIN [curriculum].[Lessons] l ON lo.[LessonId] = l.[Id]
             INNER JOIN [curriculum].[Units] u ON l.[UnitId] = u.[Id]
@@ -51,7 +51,7 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
             {
                 var countSql = $"""
                     SELECT COUNT(*)
-                    FROM [ticket].[Tasks] t
+                    FROM [ticket].[Tickets] t
                     INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
                     INNER JOIN [curriculum].[Lessons] l ON lo.[LessonId] = l.[Id]
                     INNER JOIN [curriculum].[Units] u ON l.[UnitId] = u.[Id]
@@ -79,8 +79,8 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
     internal sealed record TicketRow(
         int Id,
         string Name,
-        DomainTaskStatus Status,
-        DomainTaskPriority Priority,
+        DomainTicketStatus Status,
+        DomainTicketPriority Priority,
         int Duration,
         DateTime CreatedAt,
         int LearningObjectiveId,

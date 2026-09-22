@@ -8,7 +8,7 @@ using TaskManagementSystem.Api.Contracts.Notifications;
 using TaskManagementSystem.Api.Contracts.Ticket;
 using TaskManagementSystem.Api.Contracts.Workflows;
 using TaskManagementSystem.Modules.Ticket.Domain;
-using DomainTaskStatus = TaskManagementSystem.Modules.Ticket.Domain.TaskStatus;
+using DomainTicketStatus = TaskManagementSystem.Modules.Ticket.Domain.TicketStatus;
 using TaskManagementSystem.Modules.Workflows.Domain;
 using TaskManagementSystem.TestCommon.Integration;
 using Xunit;
@@ -29,11 +29,11 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
             new CreateTicketRequest
             {
                 LearningObjectiveId = setup.LearningObjectiveId,
-                TaskBankItemId = setup.TaskBankItemId
+                TicketBankItemId = setup.TicketBankItemId
             });
         createTicketResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var ticket = await createTicketResponse.Content.ReadFromJsonAsync<TicketDetailResponse>();
-        ticket!.Status.Should().Be(DomainTaskStatus.Backlog);
+        ticket!.Status.Should().Be(DomainTicketStatus.Backlog);
         ticket.StepId.Should().Be(setup.StepId);
 
         var getTicketResponse = await client.GetAsync($"/tickets/{ticket.Id}");
@@ -49,7 +49,7 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
         assignResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var assignedTicket = await assignResponse.Content.ReadFromJsonAsync<TicketDetailResponse>();
         assignedTicket!.UserId.Should().Be(testUser.Id);
-        assignedTicket.Status.Should().Be(DomainTaskStatus.ToDo);
+        assignedTicket.Status.Should().Be(DomainTicketStatus.ToDo);
 
         var commentResponse = await client.PostAsJsonAsync(
             $"/tickets/{ticket.Id}/comments",
@@ -69,7 +69,7 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
         var proceedResponse = await client.PatchAsync($"/tickets/{ticket.Id}/proceed", null);
         proceedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var proceededTicket = await proceedResponse.Content.ReadFromJsonAsync<TicketDetailResponse>();
-        proceededTicket!.Status.Should().Be(DomainTaskStatus.Done);
+        proceededTicket!.Status.Should().Be(DomainTicketStatus.Done);
 
         var listByLoResponse = await client.GetAsync($"/learning-objectives/{setup.LearningObjectiveId}/tickets");
         var loTickets = await listByLoResponse.Content.ReadFromJsonAsync<List<TicketListItemResponse>>();
@@ -91,7 +91,7 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
             new CreateTicketRequest
             {
                 LearningObjectiveId = setup.LearningObjectiveId,
-                TaskBankItemId = setup.TaskBankItemId
+                TicketBankItemId = setup.TicketBankItemId
             });
         createTicketResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var ticket = await createTicketResponse.Content.ReadFromJsonAsync<TicketDetailResponse>();
@@ -110,7 +110,7 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
         backlogPage.TotalCount.Should().BeGreaterThanOrEqualTo(1);
         backlogPage.Items.Should().HaveCountLessThanOrEqualTo(10);
         backlogPage.Items.Should().Contain(item => item.Id == ticket!.Id);
-        backlogPage.Items.Should().OnlyContain(item => item.Status == DomainTaskStatus.Backlog);
+        backlogPage.Items.Should().OnlyContain(item => item.Status == DomainTicketStatus.Backlog);
 
         var pagedDoingResponse = await client.GetAsync(
             $"/subjects/{setup.SubjectId}/tickets?status=2&page=1&pageSize=10");
@@ -131,7 +131,7 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
             new CreateTicketRequest
             {
                 LearningObjectiveId = setup.LearningObjectiveId,
-                TaskBankItemId = setup.TaskBankItemId
+                TicketBankItemId = setup.TicketBankItemId
             });
         createTicketResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var ticket = await createTicketResponse.Content.ReadFromJsonAsync<TicketDetailResponse>();
@@ -261,25 +261,25 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
             HttpStatusCode.OK);
         var team = teams.First();
 
-        var createTaskBankResponse = await client.PostAsJsonAsync(
-            "/workflows/task-bank",
-            new CreateTaskBankItemRequest
+        var createTicketBankResponse = await client.PostAsJsonAsync(
+            "/workflows/ticket-bank",
+            new CreateTicketBankItemRequest
             {
                 Name = "Create lesson content",
                 Duration = 60,
-                Type = TaskBankType.Creation,
+                Type = TicketBankType.Creation,
                 TeamLeaderOnly = false,
                 TeamId = team.Id
             });
-        var taskBank = await IntegrationHttpAssertions.EnsureAsync<TaskBankListItemResponse>(
-            createTaskBankResponse,
+        var taskBank = await IntegrationHttpAssertions.EnsureAsync<TicketBankListItemResponse>(
+            createTicketBankResponse,
             HttpStatusCode.Created);
 
         var createStepResponse = await client.PostAsJsonAsync(
             $"/workflows/nodes/{node.Id}/steps",
             new CreateStepRequest
             {
-                TaskBankId = taskBank.Id,
+                TicketBankId = taskBank.Id,
                 Duration = 60,
                 Priority = 2
             });
@@ -311,7 +311,7 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
     private sealed record TicketSetup(
         int SubjectId,
         int LearningObjectiveId,
-        int TaskBankItemId,
+        int TicketBankItemId,
         int StepId);
 
     private sealed class IdentityUserListItemResponse

@@ -5,6 +5,6 @@ using TaskManagementSystem.Modules.HR.Features.Leave.GiveLeaveOpinion;
 
 namespace TaskManagementSystem.Modules.HR.Features.Leave.ApproveLeaveRequest;
 
-public sealed record ApproveLeaveRequestCommand(int ActorUserId, int LeaveRequestId)
+public sealed record ApproveLeaveRequestCommand(int ActorUserId, string ActorRole, int LeaveRequestId)
     : ICommand<Result<LeaveRequestResult>>;
 

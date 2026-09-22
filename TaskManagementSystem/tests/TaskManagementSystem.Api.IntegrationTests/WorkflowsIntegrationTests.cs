@@ -53,7 +53,7 @@ public sealed class WorkflowsIntegrationTests(TmsWebApplicationFactory factory)
     }
 
     [Fact]
-    public async Task TaskBankAndStepFlow_WhenLinkedToTeamAndNode_Succeeds()
+    public async Task TicketBankAndStepFlow_WhenLinkedToTeamAndNode_Succeeds()
     {
         var client = await factory.CreateAuthenticatedClientAsync();
 
@@ -61,18 +61,18 @@ public sealed class WorkflowsIntegrationTests(TmsWebApplicationFactory factory)
         var teams = await teamsResponse.Content.ReadFromJsonAsync<List<TeamListItemResponse>>();
         var seededTeam = teams!.Single(team => team.Name == IntegrationTestDataSeeder.TestTeamName);
 
-        var createTaskBankResponse = await client.PostAsJsonAsync(
-            "/workflows/task-bank",
-            new CreateTaskBankItemRequest
+        var createTicketBankResponse = await client.PostAsJsonAsync(
+            "/workflows/ticket-bank",
+            new CreateTicketBankItemRequest
             {
                 Name = "Integration Task",
                 Duration = 45,
-                Type = TaskBankType.Creation,
+                Type = TicketBankType.Creation,
                 TeamLeaderOnly = false,
                 TeamId = seededTeam.Id
             });
-        createTaskBankResponse.StatusCode.Should().Be(HttpStatusCode.Created);
-        var taskBankItem = await createTaskBankResponse.Content.ReadFromJsonAsync<TaskBankListItemResponse>();
+        createTicketBankResponse.StatusCode.Should().Be(HttpStatusCode.Created);
+        var taskBankItem = await createTicketBankResponse.Content.ReadFromJsonAsync<TicketBankListItemResponse>();
 
         var createSchemaResponse = await client.PostAsJsonAsync(
             "/workflows/schemas",
@@ -88,14 +88,14 @@ public sealed class WorkflowsIntegrationTests(TmsWebApplicationFactory factory)
             $"/workflows/nodes/{node!.Id}/steps",
             new CreateStepRequest
             {
-                TaskBankId = taskBankItem!.Id,
+                TicketBankId = taskBankItem!.Id,
                 Duration = 30,
                 Priority = 1
             });
         createStepResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var step = await createStepResponse.Content.ReadFromJsonAsync<StepListItemResponse>();
         step!.Order.Should().Be(1);
-        step.TaskBankId.Should().Be(taskBankItem.Id);
+        step.TicketBankId.Should().Be(taskBankItem.Id);
 
         var listStepsResponse = await client.GetAsync($"/workflows/nodes/{node.Id}/steps");
         var steps = await listStepsResponse.Content.ReadFromJsonAsync<List<StepListItemResponse>>();
@@ -104,7 +104,7 @@ public sealed class WorkflowsIntegrationTests(TmsWebApplicationFactory factory)
         var deleteStepResponse = await client.DeleteAsync($"/workflows/steps/{step.Id}");
         deleteStepResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        var deleteTaskBankResponse = await client.DeleteAsync($"/workflows/task-bank/{taskBankItem.Id}");
-        deleteTaskBankResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var deleteTicketBankResponse = await client.DeleteAsync($"/workflows/ticket-bank/{taskBankItem.Id}");
+        deleteTicketBankResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
     }
 }

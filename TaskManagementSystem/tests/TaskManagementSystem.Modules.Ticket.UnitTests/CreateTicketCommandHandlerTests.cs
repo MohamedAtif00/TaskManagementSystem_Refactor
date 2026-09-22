@@ -4,7 +4,7 @@ using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Infrastructure.Realtime;
 using TaskManagementSystem.Modules.Ticket.Application;
 using TaskManagementSystem.Modules.Ticket.Domain;
-using DomainTaskStatus = TaskManagementSystem.Modules.Ticket.Domain.TaskStatus;
+using DomainTicketStatus = TaskManagementSystem.Modules.Ticket.Domain.TicketStatus;
 using TaskManagementSystem.Modules.Ticket.Features.Tickets.CreateTicket;
 using Xunit;
 
@@ -23,10 +23,11 @@ public sealed class CreateTicketCommandHandlerTests
         var handler = new CreateTicketCommandHandler(
             unitOfWork,
             learningObjectiveLookup,
-            Substitute.For<ITaskBankLookup>(),
+            Substitute.For<ITicketBankLookup>(),
             Substitute.For<IWorkflowStepLookup>(),
             Substitute.For<IIdentityUserLookup>(),
             Substitute.For<IOrganizationTeamLookup>(),
+            Substitute.For<ITicketActivityWriter>(),
             Substitute.For<IRealtimePublisher>());
 
         var result = await handler.Handle(
@@ -41,8 +42,8 @@ public sealed class CreateTicketCommandHandlerTests
     public async Task Handle_WhenValid_PersistsTicket()
     {
         var unitOfWork = Substitute.For<ITicketUnitOfWork>();
-        TicketTask? savedTicket = null;
-        unitOfWork.TicketTasks.AddAsync(Arg.Do<TicketTask>(ticket => savedTicket = ticket), Arg.Any<CancellationToken>())
+        Domain.Ticket? savedTicket = null;
+        unitOfWork.Tickets.AddAsync(Arg.Do<Domain.Ticket>(ticket => savedTicket = ticket), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         unitOfWork.CommitAsync(Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
 
@@ -50,9 +51,9 @@ public sealed class CreateTicketCommandHandlerTests
         learningObjectiveLookup.GetActiveByIdAsync(1, Arg.Any<CancellationToken>())
             .Returns(new LearningObjectiveSummary(1, 99));
 
-        var taskBankLookup = Substitute.For<ITaskBankLookup>();
+        var taskBankLookup = Substitute.For<ITicketBankLookup>();
         taskBankLookup.GetActiveByIdAsync(2, Arg.Any<CancellationToken>())
-            .Returns(new TaskBankSummary(2, "Review content", 45, 3, false));
+            .Returns(new TicketBankSummary(2, "Review content", 45, 3, false));
 
         var workflowStepLookup = Substitute.For<IWorkflowStepLookup>();
         workflowStepLookup.GetFirstStepAsync(99, 2, Arg.Any<CancellationToken>())
@@ -75,6 +76,7 @@ public sealed class CreateTicketCommandHandlerTests
             workflowStepLookup,
             Substitute.For<IIdentityUserLookup>(),
             organizationTeamLookup,
+            Substitute.For<ITicketActivityWriter>(),
             realtimePublisher);
 
         var result = await handler.Handle(
@@ -84,8 +86,8 @@ public sealed class CreateTicketCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         savedTicket.Should().NotBeNull();
         savedTicket!.Name.Should().Be("Review content");
-        savedTicket.Status.Should().Be(DomainTaskStatus.Backlog);
-        await unitOfWork.Received(1).CommitAsync(Arg.Any<CancellationToken>());
+        savedTicket.Status.Should().Be(DomainTicketStatus.Backlog);
+        await unitOfWork.Received(2).CommitAsync(Arg.Any<CancellationToken>());
         await realtimePublisher.Received(1).PublishToGroupAsync(
             Arg.Any<string>(),
             Arg.Any<RealtimeMessage>(),

@@ -10,6 +10,7 @@ namespace TaskManagementSystem.Modules.Ticket.Features.Comments.AddComment;
 public sealed class AddCommentCommandHandler(
     ITicketUnitOfWork unitOfWork,
     IIdentityUserLookup identityUserLookup,
+    ITicketActivityWriter activityWriter,
     IRealtimePublisher realtimePublisher)
     : IRequestHandler<AddCommentCommand, Result<CommentListItemResult>>
 {
@@ -17,7 +18,7 @@ public sealed class AddCommentCommandHandler(
         AddCommentCommand request,
         CancellationToken cancellationToken)
     {
-        var ticket = await unitOfWork.TicketTasks.GetByIdAsync(request.TicketId, cancellationToken);
+        var ticket = await unitOfWork.Tickets.GetByIdAsync(request.TicketId, cancellationToken);
         if (ticket is null)
         {
             return Result.Fail<CommentListItemResult>(TicketErrors.TicketNotFound);
@@ -42,9 +43,15 @@ public sealed class AddCommentCommandHandler(
         }
 
         await unitOfWork.Comments.AddAsync(createResult.Value, cancellationToken);
+        await activityWriter.WriteAsync(
+            request.TicketId,
+            TicketActivityType.Comment,
+            "A comment was added.",
+            request.UserId,
+            cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
 
-        var trackedTicket = await unitOfWork.TicketTasks.GetByIdAsync(request.TicketId, cancellationToken);
+        var trackedTicket = await unitOfWork.Tickets.GetByIdAsync(request.TicketId, cancellationToken);
         if (trackedTicket is not null)
         {
             await TicketRealtimeNotifier.PublishUpdateAsync(realtimePublisher, trackedTicket, cancellationToken);

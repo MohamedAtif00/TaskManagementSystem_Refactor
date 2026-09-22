@@ -24,7 +24,7 @@ public static class TicketModuleExtensions
     {
         services.AddSqlConnectionFactory(configuration);
         services.AddScoped<ILearningObjectiveLookup, LearningObjectiveLookupQueries>();
-        services.AddScoped<ITaskBankLookup, TaskBankLookupQueries>();
+        services.AddScoped<ITicketBankLookup, TicketBankLookupQueries>();
         services.AddScoped<IWorkflowStepLookup, WorkflowStepLookupQueries>();
         services.AddScoped<IIdentityUserLookup, IdentityUserLookupQueries>();
         services.AddScoped<IOrganizationTeamLookup, OrganizationTeamLookupQueries>();
@@ -48,6 +48,7 @@ public static class TicketModuleExtensions
         });
 
         services.AddScoped<ITicketUnitOfWork, TicketUnitOfWork>();
+        services.AddScoped<ITicketActivityWriter, TicketActivityWriter>();
 
         return services;
     }

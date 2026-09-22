@@ -9,37 +9,37 @@ namespace TaskManagementSystem.Modules.Ticket.Features.WorkTimes.StopWorkTime;
 public sealed class StopWorkTimeCommandHandler(
     ITicketUnitOfWork unitOfWork,
     IRealtimePublisher realtimePublisher)
-    : IRequestHandler<StopWorkTimeCommand, Result<TaskWorkTimeResult>>
+    : IRequestHandler<StopWorkTimeCommand, Result<TicketWorkTimeResult>>
 {
-    public async Task<Result<TaskWorkTimeResult>> Handle(
+    public async Task<Result<TicketWorkTimeResult>> Handle(
         StopWorkTimeCommand request,
         CancellationToken cancellationToken)
     {
-        var ticket = await unitOfWork.TicketTasks.GetByIdAsync(request.TicketId, cancellationToken);
+        var ticket = await unitOfWork.Tickets.GetByIdAsync(request.TicketId, cancellationToken);
         if (ticket is null)
         {
-            return Result.Fail<TaskWorkTimeResult>(TicketErrors.TicketNotFound);
+            return Result.Fail<TicketWorkTimeResult>(TicketErrors.TicketNotFound);
         }
 
-        var workTime = await unitOfWork.TaskWorkTimes.GetOpenByTicketAndUserTrackedAsync(
+        var workTime = await unitOfWork.TicketWorkTimes.GetOpenByTicketAndUserTrackedAsync(
             request.TicketId,
             request.UserId,
             cancellationToken);
         if (workTime is null)
         {
-            return Result.Fail<TaskWorkTimeResult>(TicketErrors.WorkTimeNotFound);
+            return Result.Fail<TicketWorkTimeResult>(TicketErrors.WorkTimeNotFound);
         }
 
         var stopResult = workTime.Stop(DateTime.UtcNow);
         if (!stopResult.IsSuccess)
         {
-            return Result.Fail<TaskWorkTimeResult>(stopResult.Error);
+            return Result.Fail<TicketWorkTimeResult>(stopResult.Error);
         }
 
         await unitOfWork.CommitAsync(cancellationToken);
         await TicketRealtimeNotifier.PublishUpdateAsync(realtimePublisher, ticket, cancellationToken);
 
-        return Result.Ok(TaskWorkTimeResult.From(workTime));
+        return Result.Ok(TicketWorkTimeResult.From(workTime));
     }
 }
 

@@ -431,7 +431,7 @@
                                                                            "type":  "customScript"
                                                                        }
                                                                    ],
-                                                "path":  "{{baseUrl}}/workflows/task-bank",
+                                                "path":  "{{baseUrl}}/workflows/ticket-bank",
                                                 "auth":  {
                                                              "bearer":  {
                                                                             "token":  "{{accessToken}}"
@@ -644,16 +644,16 @@
                       "type":  "customHttp"
                   },
                   {
-                      "name":  "Seed: createTaskBankItem",
+                      "name":  "Seed: createTicketBankItem",
                       "customHttpRequest":  {
                                                 "postProcessors":  [
                                                                        {
                                                                            "enable":  true,
-                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  if (body \u0026\u0026 body.id) { value = body.id; }\r\n  else {\r\n    var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n    if (match) { value = parseInt(match[1], 10); }\r\n  }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027createdTaskBankId\u0027, String(value));\r\n  console.log(\u0027Seed created createdTaskBankId = \u0027 + value);\r\n}\r\nvar entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027createTaskBankItem\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "data":  "var body = pm.response.json();\r\nvar value = null;\r\ntry {\r\n  if (body \u0026\u0026 body.id) { value = body.id; }\r\n  else {\r\n    var match = JSON.stringify(body).match(/\"id\"\\s*:\\s*(\\d+)/);\r\n    if (match) { value = parseInt(match[1], 10); }\r\n  }\r\n} catch (e) {}\r\nif (value !== null) {\r\n  pm.environment.set(\u0027createdTicketBankId\u0027, String(value));\r\n  console.log(\u0027Seed created createdTicketBankId = \u0027 + value);\r\n}\r\nvar entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027createTicketBankItem\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
                                                                            "type":  "customScript"
                                                                        }
                                                                    ],
-                                                "path":  "{{baseUrl}}/workflows/task-bank",
+                                                "path":  "{{baseUrl}}/workflows/ticket-bank",
                                                 "auth":  {
                                                              "bearer":  {
                                                                             "token":  "{{accessToken}}"
@@ -712,7 +712,7 @@
                                                          },
                                                 "requestBody":  {
                                                                     "type":  "application/json",
-                                                                    "data":  "{\"taskBankId\":{{createdTaskBankId}},\"duration\":60,\"priority\":1}"
+                                                                    "data":  "{\"taskBankId\":{{createdTicketBankId}},\"duration\":60,\"priority\":1}"
                                                                 },
                                                 "method":  "post"
                                             },
@@ -962,7 +962,7 @@
                                                          },
                                                 "requestBody":  {
                                                                     "type":  "application/json",
-                                                                    "data":  "{\"learningObjectiveId\":{{createdLoId}},\"taskBankItemId\":{{createdTaskBankId}},\"userId\":{{userId}}}"
+                                                                    "data":  "{\"learningObjectiveId\":{{createdLoId}},\"taskBankItemId\":{{createdTicketBankId}},\"userId\":{{userId}}}"
                                                                 },
                                                 "method":  "post"
                                             },
@@ -2446,16 +2446,16 @@
                       "type":  "customHttp"
                   },
                   {
-                      "name":  "63. GET /workflows/task-bank - List active task bank items",
+                      "name":  "63. GET /workflows/ticket-bank - List active task bank items",
                       "customHttpRequest":  {
                                                 "postProcessors":  [
                                                                        {
                                                                            "enable":  true,
-                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTaskBank\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTicketBank\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
                                                                            "type":  "customScript"
                                                                        }
                                                                    ],
-                                                "path":  "{{baseUrl}}/workflows/task-bank",
+                                                "path":  "{{baseUrl}}/workflows/ticket-bank",
                                                 "auth":  {
                                                              "bearer":  {
                                                                             "token":  "{{accessToken}}"
@@ -3541,23 +3541,23 @@
                                                          },
                                                 "requestBody":  {
                                                                     "type":  "application/json",
-                                                                    "data":  "{\"taskBankId\":{{createdTaskBankId}},\"duration\":90,\"priority\":2}"
+                                                                    "data":  "{\"taskBankId\":{{createdTicketBankId}},\"duration\":90,\"priority\":2}"
                                                                 },
                                                 "method":  "put"
                                             },
                       "type":  "customHttp"
                   },
                   {
-                      "name":  "109. PUT /workflows/task-bank/{id} - Update task bank item",
+                      "name":  "109. PUT /workflows/ticket-bank/{id} - Update task bank item",
                       "customHttpRequest":  {
                                                 "postProcessors":  [
                                                                        {
                                                                            "enable":  true,
-                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027updateTaskBankItem\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027updateTicketBankItem\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
                                                                            "type":  "customScript"
                                                                        }
                                                                    ],
-                                                "path":  "{{baseUrl}}/workflows/task-bank/{{createdTaskBankId}}",
+                                                "path":  "{{baseUrl}}/workflows/ticket-bank/{{createdTicketBankId}}",
                                                 "auth":  {
                                                              "bearer":  {
                                                                             "token":  "{{accessToken}}"
@@ -4081,16 +4081,16 @@
                       "type":  "customHttp"
                   },
                   {
-                      "name":  "134. DELETE /workflows/task-bank/{id} - Deactivate task bank item",
+                      "name":  "134. DELETE /workflows/ticket-bank/{id} - Deactivate task bank item",
                       "customHttpRequest":  {
                                                 "postProcessors":  [
                                                                        {
                                                                            "enable":  true,
-                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027deactivateTaskBankItem\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027deactivateTicketBankItem\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
                                                                            "type":  "customScript"
                                                                        }
                                                                    ],
-                                                "path":  "{{baseUrl}}/workflows/task-bank/{{createdTaskBankId}}",
+                                                "path":  "{{baseUrl}}/workflows/ticket-bank/{{createdTicketBankId}}",
                                                 "auth":  {
                                                              "bearer":  {
                                                                             "token":  "{{accessToken}}"

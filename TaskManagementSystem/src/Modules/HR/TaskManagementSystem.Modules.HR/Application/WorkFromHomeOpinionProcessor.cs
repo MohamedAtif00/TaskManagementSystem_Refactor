@@ -5,14 +5,6 @@ namespace TaskManagementSystem.Modules.HR.Application;
 
 public sealed class WorkFromHomeOpinionProcessor(IHrUnitOfWork unitOfWork)
 {
-    private static readonly HashSet<string> OpinionRoles =
-    [
-        "Owner",
-        "TeamLeader",
-        "ProjectManger",
-        "SectionHead"
-    ];
-
     public async Task<Result<WorkFromHomeRequest>> ProcessAsync(
         int actorUserId,
         string actorRole,
@@ -22,15 +14,20 @@ public sealed class WorkFromHomeOpinionProcessor(IHrUnitOfWork unitOfWork)
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        if (!OpinionRoles.Contains(actorRole))
-        {
-            return Result.Fail<WorkFromHomeRequest>(HrErrors.WorkFromHomeOpinionNotAuthorized);
-        }
-
         var request = await unitOfWork.WorkFromHomeRequests.GetByIdTrackedAsync(workFromHomeRequestId, cancellationToken);
         if (request is null)
         {
             return Result.Fail<WorkFromHomeRequest>(HrErrors.WorkFromHomeRequestNotFound);
+        }
+
+        if (!HrOpinionAuthorization.CanGiveOpinion(
+                actorUserId,
+                actorRole,
+                request.UserId,
+                request.TeamleaderId,
+                request.SectionheadId))
+        {
+            return Result.Fail<WorkFromHomeRequest>(HrErrors.WorkFromHomeOpinionNotAuthorized);
         }
 
         if (request.Status == WorkFromHomeStatus.Cancelled)

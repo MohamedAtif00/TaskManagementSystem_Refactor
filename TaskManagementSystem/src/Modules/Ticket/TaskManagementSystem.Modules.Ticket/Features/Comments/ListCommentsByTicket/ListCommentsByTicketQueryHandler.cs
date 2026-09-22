@@ -12,7 +12,7 @@ public sealed class ListCommentsByTicketQueryHandler(ITicketUnitOfWork unitOfWor
         ListCommentsByTicketQuery request,
         CancellationToken cancellationToken)
     {
-        var ticket = await unitOfWork.TicketTasks.GetByIdAsync(request.TicketId, cancellationToken);
+        var ticket = await unitOfWork.Tickets.GetByIdAsync(request.TicketId, cancellationToken);
         if (ticket is null)
         {
             return Result.Fail<IReadOnlyList<CommentListItemResult>>(TicketErrors.TicketNotFound);

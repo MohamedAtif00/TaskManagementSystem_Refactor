@@ -15,8 +15,8 @@ internal sealed class WorkflowsUnitOfWork(
     private readonly Lazy<SchemaTypeRepository> _schemaTypes =
         LazyRepositoryFactory.Create(() => new SchemaTypeRepository(context));
 
-    private readonly Lazy<TaskBankRepository> _taskBank =
-        LazyRepositoryFactory.Create(() => new TaskBankRepository(context));
+    private readonly Lazy<TicketBankRepository> _taskBank =
+        LazyRepositoryFactory.Create(() => new TicketBankRepository(context));
 
     private readonly Lazy<NodeRepository> _nodes =
         LazyRepositoryFactory.Create(() => new NodeRepository(context));
@@ -28,7 +28,7 @@ internal sealed class WorkflowsUnitOfWork(
 
     public ISchemaTypeRepository SchemaTypes => _schemaTypes.Value;
 
-    public ITaskBankRepository TaskBank => _taskBank.Value;
+    public ITicketBankRepository TicketBank => _taskBank.Value;
 
     public INodeRepository Nodes => _nodes.Value;
 

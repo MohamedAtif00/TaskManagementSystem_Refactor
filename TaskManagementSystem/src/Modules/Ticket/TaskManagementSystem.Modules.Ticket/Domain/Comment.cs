@@ -16,7 +16,7 @@ public sealed class Comment : Entity, IAggregateRoot
     public DateTime Timestamp { get; internal set; }
     public bool Archived { get; internal set; }
     public int LearningObjectiveId { get; internal set; }
-    public int? TaskId { get; internal set; }
+    public int? TicketId { get; internal set; }
     public int UserId { get; internal set; }
     public int? ChildId { get; internal set; }
 
@@ -39,7 +39,7 @@ public sealed class Comment : Entity, IAggregateRoot
 
         if (taskId <= 0)
         {
-            return Result.Fail<Comment>(new ResultError("ticket_not_found", "Ticket is required."));
+            return Result.Fail<Comment>(new ResultError("ticket_not_found", "Domain.Ticket is required."));
         }
 
         if (userId <= 0)
@@ -54,7 +54,7 @@ public sealed class Comment : Entity, IAggregateRoot
             Timestamp = timestamp,
             Archived = false,
             LearningObjectiveId = learningObjectiveId,
-            TaskId = taskId,
+            TicketId = taskId,
             UserId = userId
         });
     }

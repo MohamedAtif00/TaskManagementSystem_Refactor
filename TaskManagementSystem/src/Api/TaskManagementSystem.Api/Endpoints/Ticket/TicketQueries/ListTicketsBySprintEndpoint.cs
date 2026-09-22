@@ -3,7 +3,7 @@ using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Modules.Ticket.Features.Tickets.ListTicketsBySprint;
-using DomainTaskStatus = TaskManagementSystem.Modules.Ticket.Domain.TaskStatus;
+using DomainTicketStatus = TaskManagementSystem.Modules.Ticket.Domain.TicketStatus;
 
 namespace TaskManagementSystem.Api.Endpoints.Ticket.TicketQueries;
 
@@ -30,7 +30,7 @@ public static class ListTicketsBySprintEndpoint
         CancellationToken cancellationToken)
     {
         var statuses = status is { Length: > 0 }
-            ? status.Select(value => (DomainTaskStatus)value).ToArray()
+            ? status.Select(value => (DomainTicketStatus)value).ToArray()
             : null;
         var result = await mediator.Send(
             new ListTicketsBySprintQuery(

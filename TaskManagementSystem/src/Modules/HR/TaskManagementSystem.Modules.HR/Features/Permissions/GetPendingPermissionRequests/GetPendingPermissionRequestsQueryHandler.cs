@@ -3,6 +3,7 @@ using TaskManagementSystem.Modules.HR.Features.Permissions;
 using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.Modules.HR.Application;
+using TaskManagementSystem.Modules.HR.Domain;
 
 namespace TaskManagementSystem.Modules.HR.Features.Permissions.GetPendingPermissionRequests;
 
@@ -13,8 +14,23 @@ public sealed class GetPendingPermissionRequestsQueryHandler(IHrUnitOfWork unitO
         GetPendingPermissionRequestsQuery request,
         CancellationToken cancellationToken)
     {
-        var permissions = await unitOfWork.PermissionRequests.GetPendingAsync(cancellationToken);
-        var results = permissions.Select(p => PermissionRequestResult.From(p)).ToList();
+        var searchResult = await unitOfWork.PermissionRequests.SearchAsync(
+            new PermissionRequestSearchCriteria(
+                request.ViewerUserId,
+                request.ViewerRole,
+                request.ViewerTeamId,
+                Page: 1,
+                PageSize: 100,
+                Search: null,
+                Date: null,
+                FromDate: null,
+                ToDate: null,
+                Status: PermissionStatus.Pending,
+                Type: null,
+                MyStatus: null),
+            cancellationToken);
+
+        var results = searchResult.Items.Select(p => PermissionRequestResult.From(p)).ToList();
         return Result.Ok<IReadOnlyList<PermissionRequestResult>>(results);
     }
 }

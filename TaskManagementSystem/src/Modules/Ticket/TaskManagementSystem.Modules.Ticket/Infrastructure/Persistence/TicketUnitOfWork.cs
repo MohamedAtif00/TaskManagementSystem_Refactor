@@ -9,16 +9,20 @@ internal sealed class TicketUnitOfWork(
     IDomainEventDispatcher domainEventDispatcher)
     : UnitOfWork<TicketDbContext>(context, domainEventDispatcher), ITicketUnitOfWork
 {
-    private readonly Lazy<TicketTaskRepository> _ticketTasks =
-        LazyRepositoryFactory.Create(() => new TicketTaskRepository(context));
+    private readonly Lazy<TicketRepository> _ticketTasks =
+        LazyRepositoryFactory.Create(() => new TicketRepository(context));
 
     private readonly Lazy<CommentRepository> _comments =
         LazyRepositoryFactory.Create(() => new CommentRepository(context));
 
-    private readonly Lazy<TaskWorkTimeRepository> _taskWorkTimes =
-        LazyRepositoryFactory.Create(() => new TaskWorkTimeRepository(context));
+    private readonly Lazy<TicketWorkTimeRepository> _taskWorkTimes =
+        LazyRepositoryFactory.Create(() => new TicketWorkTimeRepository(context));
 
-    public ITicketTaskRepository TicketTasks => _ticketTasks.Value;
+    private readonly Lazy<TicketActivityRepository> _taskActivities =
+        LazyRepositoryFactory.Create(() => new TicketActivityRepository(context));
+
+    public ITicketRepository Tickets => _ticketTasks.Value;
     public ICommentRepository Comments => _comments.Value;
-    public ITaskWorkTimeRepository TaskWorkTimes => _taskWorkTimes.Value;
+    public ITicketWorkTimeRepository TicketWorkTimes => _taskWorkTimes.Value;
+    public ITicketActivityRepository TaskActivities => _taskActivities.Value;
 }

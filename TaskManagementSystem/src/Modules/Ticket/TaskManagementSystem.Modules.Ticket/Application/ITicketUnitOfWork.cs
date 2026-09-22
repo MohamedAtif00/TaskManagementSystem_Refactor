@@ -4,7 +4,8 @@ namespace TaskManagementSystem.Modules.Ticket.Application;
 
 public interface ITicketUnitOfWork : IUnitOfWork
 {
-    ITicketTaskRepository TicketTasks { get; }
+    ITicketRepository Tickets { get; }
     ICommentRepository Comments { get; }
-    ITaskWorkTimeRepository TaskWorkTimes { get; }
+    ITicketWorkTimeRepository TicketWorkTimes { get; }
+    ITicketActivityRepository TaskActivities { get; }
 }

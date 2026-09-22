@@ -5,5 +5,8 @@ using TaskManagementSystem.Modules.HR.Application;
 
 namespace TaskManagementSystem.Modules.HR.Features.WorkFromHome.GetPendingWorkFromHomeRequests;
 
-public sealed record GetPendingWorkFromHomeRequestsQuery : IQuery<Result<IReadOnlyList<WorkFromHomeRequestResult>>>;
+public sealed record GetPendingWorkFromHomeRequestsQuery(
+    int ViewerUserId,
+    string ViewerRole,
+    int? ViewerTeamId) : IQuery<Result<IReadOnlyList<WorkFromHomeRequestResult>>>;
 

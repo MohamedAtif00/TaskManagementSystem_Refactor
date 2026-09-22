@@ -10,44 +10,44 @@ public sealed class StartWorkTimeCommandHandler(
     ITicketUnitOfWork unitOfWork,
     IIdentityUserLookup identityUserLookup,
     IRealtimePublisher realtimePublisher)
-    : IRequestHandler<StartWorkTimeCommand, Result<TaskWorkTimeResult>>
+    : IRequestHandler<StartWorkTimeCommand, Result<TicketWorkTimeResult>>
 {
-    public async Task<Result<TaskWorkTimeResult>> Handle(
+    public async Task<Result<TicketWorkTimeResult>> Handle(
         StartWorkTimeCommand request,
         CancellationToken cancellationToken)
     {
-        var ticket = await unitOfWork.TicketTasks.GetByIdAsync(request.TicketId, cancellationToken);
+        var ticket = await unitOfWork.Tickets.GetByIdAsync(request.TicketId, cancellationToken);
         if (ticket is null)
         {
-            return Result.Fail<TaskWorkTimeResult>(TicketErrors.TicketNotFound);
+            return Result.Fail<TicketWorkTimeResult>(TicketErrors.TicketNotFound);
         }
 
         if (!await identityUserLookup.ActiveUserExistsAsync(request.UserId, cancellationToken))
         {
-            return Result.Fail<TaskWorkTimeResult>(TicketErrors.UserNotFound);
+            return Result.Fail<TicketWorkTimeResult>(TicketErrors.UserNotFound);
         }
 
-        var existingOpen = await unitOfWork.TaskWorkTimes.GetOpenByTicketAndUserTrackedAsync(
+        var existingOpen = await unitOfWork.TicketWorkTimes.GetOpenByTicketAndUserTrackedAsync(
             request.TicketId,
             request.UserId,
             cancellationToken);
         if (existingOpen is not null)
         {
-            return Result.Fail<TaskWorkTimeResult>(TicketErrors.WorkTimeAlreadyOpen);
+            return Result.Fail<TicketWorkTimeResult>(TicketErrors.WorkTimeAlreadyOpen);
         }
 
-        var createResult = Domain.TaskWorkTime.Start(request.TicketId, request.UserId, DateTime.UtcNow);
+        var createResult = Domain.TicketWorkTime.Start(request.TicketId, request.UserId, DateTime.UtcNow);
         if (!createResult.IsSuccess)
         {
-            return Result.Fail<TaskWorkTimeResult>(createResult.Error);
+            return Result.Fail<TicketWorkTimeResult>(createResult.Error);
         }
 
-        await unitOfWork.TaskWorkTimes.AddAsync(createResult.Value, cancellationToken);
+        await unitOfWork.TicketWorkTimes.AddAsync(createResult.Value, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
 
         await TicketRealtimeNotifier.PublishUpdateAsync(realtimePublisher, ticket, cancellationToken);
 
-        return Result.Ok(TaskWorkTimeResult.From(createResult.Value));
+        return Result.Ok(TicketWorkTimeResult.From(createResult.Value));
     }
 }
 

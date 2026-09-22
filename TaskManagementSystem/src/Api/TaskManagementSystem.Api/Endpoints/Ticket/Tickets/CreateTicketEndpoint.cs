@@ -22,7 +22,7 @@ public static class CreateTicketEndpoint
         CancellationToken cancellationToken)
     {
         var result = await mediator.Send(
-            new CreateTicketCommand(request.LearningObjectiveId, request.TaskBankItemId, request.UserId),
+            new CreateTicketCommand(request.LearningObjectiveId, request.TicketBankItemId, request.UserId),
             cancellationToken);
 
         return result.ToHttpResult(ticket =>

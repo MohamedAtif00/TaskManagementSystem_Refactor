@@ -18,12 +18,12 @@ public sealed class UpdateStepCommandHandler(IWorkflowsUnitOfWork unitOfWork)
             return Result.Fail<StepListItemResult>(WorkflowsErrors.StepNotFound);
         }
 
-        if (!await unitOfWork.Steps.TaskBankExistsActiveAsync(request.TaskBankId, cancellationToken))
+        if (!await unitOfWork.Steps.TicketBankExistsActiveAsync(request.TicketBankId, cancellationToken))
         {
-            return Result.Fail<StepListItemResult>(WorkflowsErrors.TaskBankNotFound);
+            return Result.Fail<StepListItemResult>(WorkflowsErrors.TicketBankNotFound);
         }
 
-        var updateResult = step.Update(step.Order, request.Duration, request.Priority, request.TaskBankId);
+        var updateResult = step.Update(step.Order, request.Duration, request.Priority, request.TicketBankId);
         if (!updateResult.IsSuccess)
         {
             return Result.Fail<StepListItemResult>(updateResult.Error);

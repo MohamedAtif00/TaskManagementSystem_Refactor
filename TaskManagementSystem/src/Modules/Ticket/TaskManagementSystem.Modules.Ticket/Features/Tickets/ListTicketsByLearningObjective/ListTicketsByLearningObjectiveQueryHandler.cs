@@ -12,7 +12,7 @@ public sealed class ListTicketsByLearningObjectiveQueryHandler(ITicketUnitOfWork
         ListTicketsByLearningObjectiveQuery request,
         CancellationToken cancellationToken)
     {
-        var tickets = await unitOfWork.TicketTasks.ListByLearningObjectiveAsync(
+        var tickets = await unitOfWork.Tickets.ListByLearningObjectiveAsync(
             request.LearningObjectiveId,
             cancellationToken);
 

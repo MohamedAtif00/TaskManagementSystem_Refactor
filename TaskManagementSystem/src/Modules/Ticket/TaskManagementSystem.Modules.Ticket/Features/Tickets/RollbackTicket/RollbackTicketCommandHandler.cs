@@ -15,7 +15,7 @@ public sealed class RollbackTicketCommandHandler(
         RollbackTicketCommand request,
         CancellationToken cancellationToken)
     {
-        var ticket = await unitOfWork.TicketTasks.GetByIdTrackedAsync(request.TicketId, cancellationToken);
+        var ticket = await unitOfWork.Tickets.GetByIdTrackedAsync(request.TicketId, cancellationToken);
         if (ticket is null)
         {
             return Result.Fail<TicketDetailResult>(TicketErrors.TicketNotFound);

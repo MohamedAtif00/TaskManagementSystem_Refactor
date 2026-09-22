@@ -23,7 +23,8 @@ public static class ApprovePermissionRequestEndpoint
         CancellationToken cancellationToken)
     {
         var userId = currentUser.GetRequiredUserId();
-        var result = await mediator.Send(new ApprovePermissionRequestCommand(userId, id), cancellationToken);
+        var role = currentUser.GetRequiredRole();
+        var result = await mediator.Send(new ApprovePermissionRequestCommand(userId, role, id), cancellationToken);
 
         return result.ToHttpResult(permission => Results.Ok(PermissionMapping.MapPermission(permission)));
     }

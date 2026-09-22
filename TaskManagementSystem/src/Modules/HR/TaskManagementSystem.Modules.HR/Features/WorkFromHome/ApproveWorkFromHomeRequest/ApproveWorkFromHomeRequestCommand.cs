@@ -5,6 +5,6 @@ using TaskManagementSystem.Modules.HR.Features.WorkFromHome.GiveWorkFromHomeOpin
 
 namespace TaskManagementSystem.Modules.HR.Features.WorkFromHome.ApproveWorkFromHomeRequest;
 
-public sealed record ApproveWorkFromHomeRequestCommand(int ActorUserId, int WorkFromHomeRequestId)
+public sealed record ApproveWorkFromHomeRequestCommand(int ActorUserId, string ActorRole, int WorkFromHomeRequestId)
     : ICommand<Result<WorkFromHomeRequestResult>>;
 

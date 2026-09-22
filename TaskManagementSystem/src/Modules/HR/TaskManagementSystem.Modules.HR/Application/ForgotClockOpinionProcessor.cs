@@ -5,14 +5,6 @@ namespace TaskManagementSystem.Modules.HR.Application;
 
 public sealed class ForgotClockOpinionProcessor(IHrUnitOfWork unitOfWork)
 {
-    private static readonly HashSet<string> OpinionRoles =
-    [
-        "Owner",
-        "TeamLeader",
-        "ProjectManger",
-        "SectionHead"
-    ];
-
     public async Task<Result<ForgotClockRequest>> ProcessAsync(
         int actorUserId,
         string actorRole,
@@ -22,15 +14,20 @@ public sealed class ForgotClockOpinionProcessor(IHrUnitOfWork unitOfWork)
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        if (!OpinionRoles.Contains(actorRole))
-        {
-            return Result.Fail<ForgotClockRequest>(HrErrors.ForgotClockOpinionNotAuthorized);
-        }
-
         var request = await unitOfWork.ForgotClockRequests.GetByIdTrackedAsync(forgotClockRequestId, cancellationToken);
         if (request is null)
         {
             return Result.Fail<ForgotClockRequest>(HrErrors.ForgotClockRequestNotFound);
+        }
+
+        if (!HrOpinionAuthorization.CanGiveOpinion(
+                actorUserId,
+                actorRole,
+                request.UserId,
+                request.TeamleaderId,
+                request.SectionheadId))
+        {
+            return Result.Fail<ForgotClockRequest>(HrErrors.ForgotClockOpinionNotAuthorized);
         }
 
         if (request.Status == ForgotClockStatus.Cancelled)

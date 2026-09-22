@@ -51,33 +51,33 @@ public sealed class SchemaDetailResponse
     public int? TypeId { get; init; }
 }
 
-public sealed class CreateTaskBankItemRequest
+public sealed class CreateTicketBankItemRequest
 {
     public string Name { get; init; } = string.Empty;
 
     public int Duration { get; init; }
 
-    public TaskBankType Type { get; init; }
+    public TicketBankType Type { get; init; }
 
     public bool TeamLeaderOnly { get; init; }
 
     public int TeamId { get; init; }
 }
 
-public sealed class UpdateTaskBankItemRequest
+public sealed class UpdateTicketBankItemRequest
 {
     public string Name { get; init; } = string.Empty;
 
     public int Duration { get; init; }
 
-    public TaskBankType Type { get; init; }
+    public TicketBankType Type { get; init; }
 
     public bool TeamLeaderOnly { get; init; }
 
     public int TeamId { get; init; }
 }
 
-public sealed class TaskBankListItemResponse
+public sealed class TicketBankListItemResponse
 {
     public int Id { get; init; }
 
@@ -85,7 +85,7 @@ public sealed class TaskBankListItemResponse
 
     public int Duration { get; init; }
 
-    public TaskBankType Type { get; init; }
+    public TicketBankType Type { get; init; }
 
     public bool TeamLeaderOnly { get; init; }
 
@@ -127,7 +127,7 @@ public sealed class NodeListItemResponse
 
 public sealed class CreateStepRequest
 {
-    public int TaskBankId { get; init; }
+    public int TicketBankId { get; init; }
 
     public int Duration { get; init; }
 
@@ -136,7 +136,7 @@ public sealed class CreateStepRequest
 
 public sealed class UpdateStepRequest
 {
-    public int TaskBankId { get; init; }
+    public int TicketBankId { get; init; }
 
     public int Duration { get; init; }
 
@@ -155,5 +155,5 @@ public sealed class StepListItemResponse
 
     public int NodeId { get; init; }
 
-    public int TaskBankId { get; init; }
+    public int TicketBankId { get; init; }
 }

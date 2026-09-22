@@ -5,14 +5,6 @@ namespace TaskManagementSystem.Modules.HR.Application;
 
 public sealed class PermissionOpinionProcessor(IHrUnitOfWork unitOfWork)
 {
-    private static readonly HashSet<string> OpinionRoles =
-    [
-        "Owner",
-        "TeamLeader",
-        "ProjectManger",
-        "SectionHead"
-    ];
-
     public async Task<Result<PermissionRequest>> ProcessAsync(
         int actorUserId,
         string actorRole,
@@ -22,15 +14,20 @@ public sealed class PermissionOpinionProcessor(IHrUnitOfWork unitOfWork)
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        if (!OpinionRoles.Contains(actorRole))
-        {
-            return Result.Fail<PermissionRequest>(HrErrors.PermissionOpinionNotAuthorized);
-        }
-
         var permission = await unitOfWork.PermissionRequests.GetByIdTrackedAsync(permissionId, cancellationToken);
         if (permission is null)
         {
             return Result.Fail<PermissionRequest>(HrErrors.PermissionRequestNotFound);
+        }
+
+        if (!HrOpinionAuthorization.CanGiveOpinion(
+                actorUserId,
+                actorRole,
+                permission.UserId,
+                permission.TeamleaderId,
+                permission.SectionheadId))
+        {
+            return Result.Fail<PermissionRequest>(HrErrors.PermissionOpinionNotAuthorized);
         }
 
         if (permission.Status == PermissionStatus.Cancelled)

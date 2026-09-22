@@ -5,5 +5,8 @@ using TaskManagementSystem.Modules.HR.Application;
 
 namespace TaskManagementSystem.Modules.HR.Features.ForgotClock.GetPendingForgotClockRequests;
 
-public sealed record GetPendingForgotClockRequestsQuery : IQuery<Result<IReadOnlyList<ForgotClockRequestResult>>>;
+public sealed record GetPendingForgotClockRequestsQuery(
+    int ViewerUserId,
+    string ViewerRole,
+    int? ViewerTeamId) : IQuery<Result<IReadOnlyList<ForgotClockRequestResult>>>;
 

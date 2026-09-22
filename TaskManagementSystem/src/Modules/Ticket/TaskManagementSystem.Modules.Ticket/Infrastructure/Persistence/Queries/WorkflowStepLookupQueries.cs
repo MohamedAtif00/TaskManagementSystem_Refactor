@@ -18,13 +18,13 @@ public sealed class WorkflowStepLookupQueries(ISqlConnectionFactory connectionFa
                 s.[Duration],
                 s.[Priority],
                 s.[NodeId],
-                s.[TaskBankId]
+                s.[TicketBankId]
             FROM [workflows].[Steps] s
             INNER JOIN [workflows].[Nodes] n ON s.[NodeId] = n.[Id]
             WHERE n.[SchemaId] = @SchemaId
               AND n.[Archived] = 0
               AND s.[Archived] = 0
-              AND s.[TaskBankId] = @TaskBankId
+              AND s.[TicketBankId] = @TicketBankId
               AND (
                   n.[isStart] = 1
                   OR NOT EXISTS (
@@ -43,7 +43,7 @@ public sealed class WorkflowStepLookupQueries(ISqlConnectionFactory connectionFa
         return await connection.QuerySingleOrDefaultAsync<WorkflowStepSummary>(
             new CommandDefinition(
                 sql,
-                new { SchemaId = schemaId, TaskBankId = taskBankId },
+                new { SchemaId = schemaId, TicketBankId = taskBankId },
                 cancellationToken: cancellationToken));
     }
 
@@ -87,7 +87,7 @@ public sealed class WorkflowStepLookupQueries(ISqlConnectionFactory connectionFa
                 s.[Duration],
                 s.[Priority],
                 s.[NodeId],
-                s.[TaskBankId]
+                s.[TicketBankId]
             FROM [workflows].[Steps] s
             WHERE s.[Id] = @StepId AND s.[Archived] = 0
             """;
@@ -95,5 +95,70 @@ public sealed class WorkflowStepLookupQueries(ISqlConnectionFactory connectionFa
         using var connection = connectionFactory.GetOpenConnection();
         return await connection.QuerySingleOrDefaultAsync<WorkflowStepSummary>(
             new CommandDefinition(sql, new { StepId = stepId }, cancellationToken: cancellationToken));
+    }
+
+    public async Task<IReadOnlyList<WorkflowJumpPoint>> ListStepsAheadAsync(
+        int schemaId,
+        int currentStepId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            WITH OrderedSteps AS (
+                SELECT
+                    s.[Id] AS StepId,
+                    s.[NodeId] AS NodeId,
+                    n.[Name] AS NodeName,
+                    ROW_NUMBER() OVER (ORDER BY n.[Order], s.[Order]) AS RowNum
+                FROM [workflows].[Steps] s
+                INNER JOIN [workflows].[Nodes] n ON s.[NodeId] = n.[Id]
+                WHERE n.[SchemaId] = @SchemaId
+                  AND n.[Archived] = 0
+                  AND s.[Archived] = 0
+            )
+            SELECT ahead.StepId, ahead.NodeId, ahead.NodeName AS Label
+            FROM OrderedSteps currentStep
+            INNER JOIN OrderedSteps ahead ON ahead.RowNum > currentStep.RowNum
+            WHERE currentStep.StepId = @CurrentStepId
+            ORDER BY ahead.RowNum
+            """;
+
+        using var connection = connectionFactory.GetOpenConnection();
+        var rows = await connection.QueryAsync<(int StepId, int NodeId, string Label)>(
+            new CommandDefinition(
+                sql,
+                new { SchemaId = schemaId, CurrentStepId = currentStepId },
+                cancellationToken: cancellationToken));
+        return rows.Select(row => new WorkflowJumpPoint(row.StepId, row.NodeId, row.Label)).ToList();
+    }
+
+    public async Task<bool> IsStepAheadAsync(
+        int schemaId,
+        int currentStepId,
+        int targetStepId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            WITH OrderedSteps AS (
+                SELECT
+                    s.[Id] AS StepId,
+                    ROW_NUMBER() OVER (ORDER BY n.[Order], s.[Order]) AS RowNum
+                FROM [workflows].[Steps] s
+                INNER JOIN [workflows].[Nodes] n ON s.[NodeId] = n.[Id]
+                WHERE n.[SchemaId] = @SchemaId
+                  AND n.[Archived] = 0
+                  AND s.[Archived] = 0
+            )
+            SELECT CASE WHEN targetStep.RowNum > currentStep.RowNum THEN 1 ELSE 0 END
+            FROM OrderedSteps currentStep
+            INNER JOIN OrderedSteps targetStep ON targetStep.StepId = @TargetStepId
+            WHERE currentStep.StepId = @CurrentStepId
+            """;
+
+        using var connection = connectionFactory.GetOpenConnection();
+        return await connection.ExecuteScalarAsync<bool>(
+            new CommandDefinition(
+                sql,
+                new { SchemaId = schemaId, CurrentStepId = currentStepId, TargetStepId = targetStepId },
+                cancellationToken: cancellationToken));
     }
 }

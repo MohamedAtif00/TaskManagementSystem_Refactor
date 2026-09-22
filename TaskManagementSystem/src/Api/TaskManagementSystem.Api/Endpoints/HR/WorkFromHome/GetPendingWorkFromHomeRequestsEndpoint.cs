@@ -1,6 +1,7 @@
 using MediatR;
 using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
+using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.WorkFromHome.GetPendingWorkFromHomeRequests;
 using TaskManagementSystem.Modules.Identity.Domain;
 
@@ -17,9 +18,15 @@ public static class GetPendingWorkFromHomeRequestsEndpoint
 
     private static async Task<IResult> HandleAsync(
         IMediator mediator,
+        ICurrentUserAccessor currentUser,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new GetPendingWorkFromHomeRequestsQuery(), cancellationToken);
+        var result = await mediator.Send(
+            new GetPendingWorkFromHomeRequestsQuery(
+                currentUser.GetRequiredUserId(),
+                currentUser.GetRequiredRole(),
+                currentUser.GetTeamId()),
+            cancellationToken);
 
         return result.ToHttpResult(list =>
             Results.Ok(list.Select(WorkFromHomeMapping.MapWorkFromHome).ToList()));

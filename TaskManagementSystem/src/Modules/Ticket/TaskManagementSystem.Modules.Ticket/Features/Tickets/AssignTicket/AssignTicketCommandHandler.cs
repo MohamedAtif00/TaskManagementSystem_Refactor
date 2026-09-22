@@ -16,7 +16,7 @@ public sealed class AssignTicketCommandHandler(
         AssignTicketCommand request,
         CancellationToken cancellationToken)
     {
-        var ticket = await unitOfWork.TicketTasks.GetByIdTrackedAsync(request.TicketId, cancellationToken);
+        var ticket = await unitOfWork.Tickets.GetByIdTrackedAsync(request.TicketId, cancellationToken);
         if (ticket is null)
         {
             return Result.Fail<TicketDetailResult>(TicketErrors.TicketNotFound);

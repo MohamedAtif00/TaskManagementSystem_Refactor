@@ -27,7 +27,7 @@ public static class UpdateStepEndpoint
         CancellationToken cancellationToken)
     {
         var result = await mediator.Send(
-            new UpdateStepCommand(id, request.TaskBankId, request.Duration, request.Priority),
+            new UpdateStepCommand(id, request.TicketBankId, request.Duration, request.Priority),
             cancellationToken);
 
         return result.ToHttpResult(step => Results.Ok(WorkflowMapping.MapStepListItem(step)));

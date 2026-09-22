@@ -5,5 +5,8 @@ using TaskManagementSystem.Modules.HR.Application;
 
 namespace TaskManagementSystem.Modules.HR.Features.Leave.GetPendingLeaveRequests;
 
-public sealed record GetPendingLeaveRequestsQuery : IQuery<Result<IReadOnlyList<LeaveRequestResult>>>;
+public sealed record GetPendingLeaveRequestsQuery(
+    int ViewerUserId,
+    string ViewerRole,
+    int? ViewerTeamId) : IQuery<Result<IReadOnlyList<LeaveRequestResult>>>;
 

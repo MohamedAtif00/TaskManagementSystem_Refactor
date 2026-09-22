@@ -16,7 +16,7 @@ public sealed class WorkflowStep : Entity, IAggregateRoot
     public int Priority { get; internal set; }
     public bool Archived { get; internal set; }
     public int NodeId { get; internal set; }
-    public int TaskBankId { get; internal set; }
+    public int TicketBankId { get; internal set; }
 
     public static Result<WorkflowStep> Create(
         int order,
@@ -32,7 +32,7 @@ public sealed class WorkflowStep : Entity, IAggregateRoot
 
         if (taskBankId <= 0)
         {
-            return Result.Fail<WorkflowStep>(new ResultError("task_bank_not_found", "Task bank item not found."));
+            return Result.Fail<WorkflowStep>(new ResultError("ticket_bank_not_found", "Ticket bank item not found."));
         }
 
         if (order <= 0)
@@ -51,7 +51,7 @@ public sealed class WorkflowStep : Entity, IAggregateRoot
             Duration = duration,
             Priority = priority,
             NodeId = nodeId,
-            TaskBankId = taskBankId,
+            TicketBankId = taskBankId,
             Archived = false
         });
     }
@@ -60,7 +60,7 @@ public sealed class WorkflowStep : Entity, IAggregateRoot
     {
         if (taskBankId <= 0)
         {
-            return Result.Fail<NoValue>(new ResultError("task_bank_not_found", "Task bank item not found."));
+            return Result.Fail<NoValue>(new ResultError("ticket_bank_not_found", "Ticket bank item not found."));
         }
 
         if (order <= 0)
@@ -76,7 +76,7 @@ public sealed class WorkflowStep : Entity, IAggregateRoot
         Order = order;
         Duration = duration;
         Priority = priority;
-        TaskBankId = taskBankId;
+        TicketBankId = taskBankId;
         return Result.Ok();
     }
 

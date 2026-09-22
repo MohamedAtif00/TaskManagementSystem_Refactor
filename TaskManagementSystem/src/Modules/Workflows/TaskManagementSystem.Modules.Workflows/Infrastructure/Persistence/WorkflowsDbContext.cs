@@ -10,7 +10,7 @@ public sealed class WorkflowsDbContext(DbContextOptions<WorkflowsDbContext> opti
 {
     public DbSet<WorkflowSchema> Schemas => Set<WorkflowSchema>();
     public DbSet<SchemaType> SchemaTypes => Set<SchemaType>();
-    public DbSet<TaskBankItem> TaskBank => Set<TaskBankItem>();
+    public DbSet<TicketBankItem> TicketBank => Set<TicketBankItem>();
     public DbSet<WorkflowNode> Nodes => Set<WorkflowNode>();
     public DbSet<WorkflowStep> Steps => Set<WorkflowStep>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();

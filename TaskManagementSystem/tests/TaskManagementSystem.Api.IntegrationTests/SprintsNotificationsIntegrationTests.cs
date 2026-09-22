@@ -63,7 +63,7 @@ public sealed class SprintsNotificationsIntegrationTests(TmsWebApplicationFactor
             new CreateTicketRequest
             {
                 LearningObjectiveId = setup.LearningObjectiveId,
-                TaskBankItemId = setup.TaskBankItemId
+                TicketBankItemId = setup.TicketBankItemId
             });
         createTicketResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var ticket = await createTicketResponse.Content.ReadFromJsonAsync<TicketDetailResponse>();
@@ -170,25 +170,25 @@ public sealed class SprintsNotificationsIntegrationTests(TmsWebApplicationFactor
             HttpStatusCode.OK);
         var team = teams.First();
 
-        var createTaskBankResponse = await client.PostAsJsonAsync(
-            "/workflows/task-bank",
-            new CreateTaskBankItemRequest
+        var createTicketBankResponse = await client.PostAsJsonAsync(
+            "/workflows/ticket-bank",
+            new CreateTicketBankItemRequest
             {
                 Name = "Sprint task",
                 Duration = 60,
-                Type = TaskBankType.Creation,
+                Type = TicketBankType.Creation,
                 TeamLeaderOnly = false,
                 TeamId = team.Id
             });
-        var taskBank = await IntegrationHttpAssertions.EnsureAsync<TaskBankListItemResponse>(
-            createTaskBankResponse,
+        var taskBank = await IntegrationHttpAssertions.EnsureAsync<TicketBankListItemResponse>(
+            createTicketBankResponse,
             HttpStatusCode.Created);
 
         var createStepResponse = await client.PostAsJsonAsync(
             $"/workflows/nodes/{node.Id}/steps",
             new CreateStepRequest
             {
-                TaskBankId = taskBank.Id,
+                TicketBankId = taskBank.Id,
                 Duration = 60,
                 Priority = 2
             });
@@ -213,7 +213,7 @@ public sealed class SprintsNotificationsIntegrationTests(TmsWebApplicationFactor
         return new TicketSetup(learningObjective.Id, taskBank.Id, step.Id);
     }
 
-    private sealed record TicketSetup(int LearningObjectiveId, int TaskBankItemId, int StepId);
+    private sealed record TicketSetup(int LearningObjectiveId, int TicketBankItemId, int StepId);
 
     private sealed class IdentityUserListItemResponse
     {

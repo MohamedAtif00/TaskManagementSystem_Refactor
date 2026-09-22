@@ -2,8 +2,8 @@ using System.Text;
 using Dapper;
 using TaskManagementSystem.BuildingBlocks.Application.Data;
 using TaskManagementSystem.Modules.Ticket.Features;
-using DomainTaskStatus = TaskManagementSystem.Modules.Ticket.Domain.TaskStatus;
-using DomainTaskPriority = TaskManagementSystem.Modules.Ticket.Domain.TaskPriority;
+using DomainTicketStatus = TaskManagementSystem.Modules.Ticket.Domain.TicketStatus;
+using DomainTicketPriority = TaskManagementSystem.Modules.Ticket.Domain.TicketPriority;
 
 namespace TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence.Queries;
 
@@ -11,7 +11,7 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
 {
     public async Task<TicketListPageResult> ListBySprintAsync(
         int sprintId,
-        IReadOnlyList<DomainTaskStatus>? statuses = null,
+        IReadOnlyList<DomainTicketStatus>? statuses = null,
         int? learningObjectiveId = null,
         string? name = null,
         int? page = null,
@@ -31,7 +31,7 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
         var sql = $"""
             SELECT
                 {TicketListQueryBuilder.SelectList}
-            FROM [ticket].[Tasks] t
+            FROM [ticket].[Tickets] t
             INNER JOIN [sprints].[SprintLearningObjectives] slo ON t.[LearningObjectiveId] = slo.[LearningObjectiveId]
             {where}
             {TicketListQueryBuilder.OrderAndPaging(paged)}
@@ -48,7 +48,7 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
             {
                 var countSql = $"""
                     SELECT COUNT(*)
-                    FROM [ticket].[Tasks] t
+                    FROM [ticket].[Tickets] t
                     INNER JOIN [sprints].[SprintLearningObjectives] slo ON t.[LearningObjectiveId] = slo.[LearningObjectiveId]
                     {where}
                     """;
@@ -74,8 +74,8 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
     internal sealed record TicketRow(
         int Id,
         string Name,
-        DomainTaskStatus Status,
-        DomainTaskPriority Priority,
+        DomainTicketStatus Status,
+        DomainTicketPriority Priority,
         int Duration,
         DateTime CreatedAt,
         int LearningObjectiveId,

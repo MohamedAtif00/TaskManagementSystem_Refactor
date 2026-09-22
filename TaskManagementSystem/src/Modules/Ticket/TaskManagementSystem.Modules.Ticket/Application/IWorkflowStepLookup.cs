@@ -13,4 +13,15 @@ public interface IWorkflowStepLookup
         CancellationToken cancellationToken = default);
 
     Task<WorkflowStepSummary?> GetActiveByIdAsync(int stepId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<WorkflowJumpPoint>> ListStepsAheadAsync(
+        int schemaId,
+        int currentStepId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> IsStepAheadAsync(
+        int schemaId,
+        int currentStepId,
+        int targetStepId,
+        CancellationToken cancellationToken = default);
 }

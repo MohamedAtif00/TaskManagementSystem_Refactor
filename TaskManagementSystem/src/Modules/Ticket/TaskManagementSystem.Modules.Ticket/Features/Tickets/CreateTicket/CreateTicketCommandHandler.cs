@@ -10,10 +10,11 @@ namespace TaskManagementSystem.Modules.Ticket.Features.Tickets.CreateTicket;
 public sealed class CreateTicketCommandHandler(
     ITicketUnitOfWork unitOfWork,
     ILearningObjectiveLookup learningObjectiveLookup,
-    ITaskBankLookup taskBankLookup,
+    ITicketBankLookup taskBankLookup,
     IWorkflowStepLookup workflowStepLookup,
     IIdentityUserLookup identityUserLookup,
     IOrganizationTeamLookup organizationTeamLookup,
+    ITicketActivityWriter activityWriter,
     IRealtimePublisher realtimePublisher)
     : IRequestHandler<CreateTicketCommand, Result<TicketDetailResult>>
 {
@@ -29,10 +30,10 @@ public sealed class CreateTicketCommandHandler(
             return Result.Fail<TicketDetailResult>(TicketErrors.LearningObjectiveNotFound);
         }
 
-        var taskBank = await taskBankLookup.GetActiveByIdAsync(request.TaskBankItemId, cancellationToken);
+        var taskBank = await taskBankLookup.GetActiveByIdAsync(request.TicketBankItemId, cancellationToken);
         if (taskBank is null)
         {
-            return Result.Fail<TicketDetailResult>(TicketErrors.TaskBankNotFound);
+            return Result.Fail<TicketDetailResult>(TicketErrors.TicketBankNotFound);
         }
 
         if (!await organizationTeamLookup.ActiveTeamExistsAsync(taskBank.TeamId, cancellationToken))
@@ -50,18 +51,18 @@ public sealed class CreateTicketCommandHandler(
 
         var firstStep = await workflowStepLookup.GetFirstStepAsync(
             learningObjective.SchemaId,
-            request.TaskBankItemId,
+            request.TicketBankItemId,
             cancellationToken);
         if (firstStep is null)
         {
             return Result.Fail<TicketDetailResult>(TicketErrors.StepNotFound);
         }
 
-        var priority = Enum.IsDefined(typeof(TaskPriority), firstStep.Priority)
-            ? (TaskPriority)firstStep.Priority
-            : TaskPriority.None;
+        var priority = Enum.IsDefined(typeof(TicketPriority), firstStep.Priority)
+            ? (TicketPriority)firstStep.Priority
+            : TicketPriority.None;
 
-        var createResult = TicketTask.Create(
+        var createResult = Domain.Ticket.Create(
             taskBank.Name,
             firstStep.Duration,
             priority,
@@ -77,7 +78,15 @@ public sealed class CreateTicketCommandHandler(
             return Result.Fail<TicketDetailResult>(createResult.Error);
         }
 
-        await unitOfWork.TicketTasks.AddAsync(createResult.Value, cancellationToken);
+        await unitOfWork.Tickets.AddAsync(createResult.Value, cancellationToken);
+        await unitOfWork.CommitAsync(cancellationToken);
+
+        await activityWriter.WriteAsync(
+            createResult.Value.Id,
+            TicketActivityType.Created,
+            $"{createResult.Value.Name} was created.",
+            request.UserId,
+            cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
 
         await TicketRealtimeNotifier.PublishUpdateAsync(realtimePublisher, createResult.Value, cancellationToken);

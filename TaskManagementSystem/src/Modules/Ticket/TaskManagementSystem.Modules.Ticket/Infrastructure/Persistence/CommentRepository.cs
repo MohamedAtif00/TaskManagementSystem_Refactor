@@ -12,7 +12,7 @@ internal sealed class CommentRepository(TicketDbContext context)
         int ticketId,
         CancellationToken cancellationToken = default) =>
         await Set.AsNoTracking()
-            .Where(comment => comment.TaskId == ticketId && !comment.Archived)
+            .Where(comment => comment.TicketId == ticketId && !comment.Archived)
             .OrderBy(comment => comment.Timestamp)
             .ToListAsync(cancellationToken);
 

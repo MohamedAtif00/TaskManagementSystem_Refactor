@@ -2,6 +2,7 @@ using MediatR;
 using TaskManagementSystem.Modules.HR.Features.WorkFromHome;
 using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Domain;
+using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Features.WorkFromHome.GiveWorkFromHomeOpinion;
 
 namespace TaskManagementSystem.Modules.HR.Features.WorkFromHome.ApproveWorkFromHomeRequest;
@@ -9,16 +10,23 @@ namespace TaskManagementSystem.Modules.HR.Features.WorkFromHome.ApproveWorkFromH
 public sealed class ApproveWorkFromHomeRequestCommandHandler(IMediator mediator)
     : IRequestHandler<ApproveWorkFromHomeRequestCommand, Result<WorkFromHomeRequestResult>>
 {
-    public Task<Result<WorkFromHomeRequestResult>> Handle(
+    public async Task<Result<WorkFromHomeRequestResult>> Handle(
         ApproveWorkFromHomeRequestCommand request,
-        CancellationToken cancellationToken) =>
-        mediator.Send(
+        CancellationToken cancellationToken)
+    {
+        if (request.ActorRole != "Owner")
+        {
+            return Result.Fail<WorkFromHomeRequestResult>(HrErrors.HrApproveNotAuthorized);
+        }
+
+        return await mediator.Send(
             new GiveWorkFromHomeOpinionCommand(
                 request.ActorUserId,
-                "Owner",
+                request.ActorRole,
                 request.WorkFromHomeRequestId,
                 true,
                 null),
             cancellationToken);
+    }
 }
 

@@ -4172,22 +4172,22 @@
         }
       }
     },
-    "/workflows/task-bank": {
+    "/workflows/ticket-bank": {
       "get": {
         "tags": [
           "Workflows"
         ],
         "summary": "List active task bank items",
-        "operationId": "listTaskBank",
+        "operationId": "listTicketBank",
         "responses": {
           "200": {
-            "description": "Task bank items",
+            "description": "Ticket bank items",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/TaskBankListItemResponse"
+                    "$ref": "#/components/schemas/TicketBankListItemResponse"
                   }
                 }
               }
@@ -4203,13 +4203,13 @@
           "Workflows"
         ],
         "summary": "Create task bank item",
-        "operationId": "createTaskBankItem",
+        "operationId": "createTicketBankItem",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateTaskBankItemRequest"
+                "$ref": "#/components/schemas/CreateTicketBankItemRequest"
               },
               "example": {
                 "name": "Example name",
@@ -4223,11 +4223,11 @@
         },
         "responses": {
           "201": {
-            "description": "Task bank item created",
+            "description": "Ticket bank item created",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskBankListItemResponse"
+                  "$ref": "#/components/schemas/TicketBankListItemResponse"
                 }
               }
             }
@@ -4244,13 +4244,13 @@
         }
       }
     },
-    "/workflows/task-bank/{id}": {
+    "/workflows/ticket-bank/{id}": {
       "put": {
         "tags": [
           "Workflows"
         ],
         "summary": "Update task bank item",
-        "operationId": "updateTaskBankItem",
+        "operationId": "updateTicketBankItem",
         "parameters": [
           {
             "name": "id",
@@ -4267,7 +4267,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateTaskBankItemRequest"
+                "$ref": "#/components/schemas/UpdateTicketBankItemRequest"
               },
               "example": {
                 "name": "Example name",
@@ -4285,7 +4285,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskBankListItemResponse"
+                  "$ref": "#/components/schemas/TicketBankListItemResponse"
                 }
               }
             }
@@ -4306,7 +4306,7 @@
           "Workflows"
         ],
         "summary": "Deactivate task bank item",
-        "operationId": "deactivateTaskBankItem",
+        "operationId": "deactivateTicketBankItem",
         "parameters": [
           {
             "name": "id",
@@ -4320,7 +4320,7 @@
         ],
         "responses": {
           "204": {
-            "description": "Task bank item deactivated"
+            "description": "Ticket bank item deactivated"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -4396,7 +4396,7 @@
                 "$ref": "#/components/schemas/CreateStepRequest"
               },
               "example": {
-                "taskBankId": 1,
+                "ticketBankId": 1,
                 "duration": 60,
                 "priority": 0
               }
@@ -4452,7 +4452,7 @@
                 "$ref": "#/components/schemas/UpdateStepRequest"
               },
               "example": {
-                "taskBankId": 1,
+                "ticketBankId": 1,
                 "duration": 60,
                 "priority": 0
               }
@@ -6948,7 +6948,7 @@
               },
               "example": {
                 "learningObjectiveId": 1,
-                "taskBankItemId": 1,
+                "ticketBankItemId": 1,
                 "userId": 1
               }
             }
@@ -7259,7 +7259,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskWorkTimeResponse"
+                  "$ref": "#/components/schemas/TicketWorkTimeResponse"
                 }
               }
             }
@@ -7300,7 +7300,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskWorkTimeResponse"
+                  "$ref": "#/components/schemas/TicketWorkTimeResponse"
                 }
               }
             }
@@ -9107,7 +9107,7 @@
           }
         }
       },
-      "CreateTaskBankItemRequest": {
+      "CreateTicketBankItemRequest": {
         "type": "object",
         "required": [
           "name",
@@ -9141,7 +9141,7 @@
           }
         }
       },
-      "UpdateTaskBankItemRequest": {
+      "UpdateTicketBankItemRequest": {
         "type": "object",
         "required": [
           "name",
@@ -9175,7 +9175,7 @@
           }
         }
       },
-      "TaskBankListItemResponse": {
+      "TicketBankListItemResponse": {
         "type": "object",
         "properties": {
           "id": {
@@ -9270,12 +9270,12 @@
       "CreateStepRequest": {
         "type": "object",
         "required": [
-          "taskBankId",
+          "ticketBankId",
           "duration",
           "priority"
         ],
         "properties": {
-          "taskBankId": {
+          "ticketBankId": {
             "type": "integer",
             "format": "int32"
           },
@@ -9292,12 +9292,12 @@
       "UpdateStepRequest": {
         "type": "object",
         "required": [
-          "taskBankId",
+          "ticketBankId",
           "duration",
           "priority"
         ],
         "properties": {
-          "taskBankId": {
+          "ticketBankId": {
             "type": "integer",
             "format": "int32"
           },
@@ -9334,7 +9334,7 @@
             "type": "integer",
             "format": "int32"
           },
-          "taskBankId": {
+          "ticketBankId": {
             "type": "integer",
             "format": "int32"
           }
@@ -10342,14 +10342,14 @@
         "type": "object",
         "required": [
           "learningObjectiveId",
-          "taskBankItemId"
+          "ticketBankItemId"
         ],
         "properties": {
           "learningObjectiveId": {
             "type": "integer",
             "format": "int32"
           },
-          "taskBankItemId": {
+          "ticketBankItemId": {
             "type": "integer",
             "format": "int32"
           },
@@ -10537,7 +10537,7 @@
           }
         }
       },
-      "TaskWorkTimeResponse": {
+      "TicketWorkTimeResponse": {
         "type": "object",
         "properties": {
           "id": {

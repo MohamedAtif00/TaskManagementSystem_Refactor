@@ -29,9 +29,9 @@ BEGIN
 END
 GO
 
-IF OBJECT_ID(N'workflows.TaskBank', N'U') IS NULL
+IF OBJECT_ID(N'workflows.TicketBank', N'U') IS NULL
 BEGIN
-    CREATE TABLE [workflows].[TaskBank]
+    CREATE TABLE [workflows].[TicketBank]
     (
         [Id]       INT           NOT NULL IDENTITY(1, 1),
         [Name]     NVARCHAR(MAX) NOT NULL,
@@ -40,13 +40,13 @@ BEGIN
         [Active]   BIT           NOT NULL,
         [TL]       BIT           NOT NULL,
         [TeamId]   INT           NOT NULL,
-        CONSTRAINT [PK_workflows_TaskBank] PRIMARY KEY CLUSTERED ([Id] ASC),
-        CONSTRAINT [FK_workflows_TaskBank_Teams_TeamId]
+        CONSTRAINT [PK_workflows_TicketBank] PRIMARY KEY CLUSTERED ([Id] ASC),
+        CONSTRAINT [FK_workflows_TicketBank_Teams_TeamId]
             FOREIGN KEY ([TeamId]) REFERENCES [organization].[Teams] ([Id]) ON DELETE CASCADE
     );
 
-    CREATE NONCLUSTERED INDEX [IX_workflows_TaskBank_TeamId]
-        ON [workflows].[TaskBank] ([TeamId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_workflows_TicketBank_TeamId]
+        ON [workflows].[TicketBank] ([TeamId] ASC);
 END
 GO
 
@@ -81,19 +81,19 @@ BEGIN
         [Priority]   INT NOT NULL,
         [Archived]   BIT NOT NULL,
         [NodeId]     INT NOT NULL,
-        [TaskBankId] INT NOT NULL,
+        [TicketBankId] INT NOT NULL,
         CONSTRAINT [PK_workflows_Steps] PRIMARY KEY CLUSTERED ([Id] ASC),
         CONSTRAINT [FK_workflows_Steps_Nodes_NodeId]
             FOREIGN KEY ([NodeId]) REFERENCES [workflows].[Nodes] ([Id]) ON DELETE CASCADE,
-        CONSTRAINT [FK_workflows_Steps_TaskBank_TaskBankId]
-            FOREIGN KEY ([TaskBankId]) REFERENCES [workflows].[TaskBank] ([Id]) ON DELETE CASCADE
+        CONSTRAINT [FK_workflows_Steps_TicketBank_TicketBankId]
+            FOREIGN KEY ([TicketBankId]) REFERENCES [workflows].[TicketBank] ([Id]) ON DELETE CASCADE
     );
 
     CREATE NONCLUSTERED INDEX [IX_workflows_Steps_NodeId]
         ON [workflows].[Steps] ([NodeId] ASC);
 
-    CREATE NONCLUSTERED INDEX [IX_workflows_Steps_TaskBankId]
-        ON [workflows].[Steps] ([TaskBankId] ASC);
+    CREATE NONCLUSTERED INDEX [IX_workflows_Steps_TicketBankId]
+        ON [workflows].[Steps] ([TicketBankId] ASC);
 END
 GO
 

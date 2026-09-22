@@ -10,8 +10,8 @@ public static class WorkflowsErrors
     public static ResultError SchemaTypeNotFound =>
         new("schema_type_not_found", "Schema type not found.");
 
-    public static ResultError TaskBankNotFound =>
-        new("task_bank_not_found", "Task bank item not found.");
+    public static ResultError TicketBankNotFound =>
+        new("ticket_bank_not_found", "Ticket bank item not found.");
 
     public static ResultError NodeNotFound =>
         new("node_not_found", "Node not found.");

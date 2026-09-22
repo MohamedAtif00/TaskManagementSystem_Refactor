@@ -23,7 +23,8 @@ public static class ApproveForgotClockRequestEndpoint
         CancellationToken cancellationToken)
     {
         var userId = currentUser.GetRequiredUserId();
-        var result = await mediator.Send(new ApproveForgotClockRequestCommand(userId, id), cancellationToken);
+        var role = currentUser.GetRequiredRole();
+        var result = await mediator.Send(new ApproveForgotClockRequestCommand(userId, role, id), cancellationToken);
 
         return result.ToHttpResult(item => Results.Ok(ForgotClockMapping.MapForgotClock(item)));
     }

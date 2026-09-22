@@ -5,7 +5,7 @@ namespace TaskManagementSystem.Modules.Ticket.Application;
 public static class TicketErrors
 {
     public static ResultError TicketNotFound =>
-        new("ticket_not_found", "Ticket not found.");
+        new("ticket_not_found", "Domain.Ticket not found.");
 
     public static ResultError CommentNotFound =>
         new("comment_not_found", "Comment not found.");
@@ -16,8 +16,8 @@ public static class TicketErrors
     public static ResultError LearningObjectiveNotFound =>
         new("learning_objective_not_found", "Learning objective not found.");
 
-    public static ResultError TaskBankNotFound =>
-        new("task_bank_not_found", "Task bank item not found.");
+    public static ResultError TicketBankNotFound =>
+        new("ticket_bank_not_found", "Domain.Ticket bank item not found.");
 
     public static ResultError StepNotFound =>
         new("step_not_found", "Workflow step not found.");

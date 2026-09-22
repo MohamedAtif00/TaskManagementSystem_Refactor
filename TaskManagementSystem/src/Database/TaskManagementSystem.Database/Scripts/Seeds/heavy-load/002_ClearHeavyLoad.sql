@@ -12,22 +12,22 @@ SELECT [Id] FROM [curriculum].[LearningObjectives] WHERE [Name] LIKE N'SEED_%';
 
 DECLARE @SeedTicketIds TABLE ([Id] INT NOT NULL PRIMARY KEY);
 INSERT INTO @SeedTicketIds ([Id])
-SELECT [Id] FROM [ticket].[Tasks] WHERE [Name] LIKE N'SEED_%';
+SELECT [Id] FROM [ticket].[Tickets] WHERE [Name] LIKE N'SEED_%';
 
 -- Ticket dependents
 DELETE ta
 FROM [ticket].[TaskActivities] AS ta
-INNER JOIN @SeedTicketIds AS t ON t.[Id] = ta.[TaskId];
+INNER JOIN @SeedTicketIds AS t ON t.[Id] = ta.[TicketId];
 
 DELETE tw
-FROM [ticket].[TaskWorkTimes] AS tw
-INNER JOIN @SeedTicketIds AS t ON t.[Id] = tw.[TaskId];
+FROM [ticket].[TicketWorkTimes] AS tw
+INNER JOIN @SeedTicketIds AS t ON t.[Id] = tw.[TicketId];
 
 DELETE c
 FROM [ticket].[Comments] AS c
 INNER JOIN @SeedLoIds AS lo ON lo.[Id] = c.[LearningObjectiveId];
 
-DELETE FROM [ticket].[Tasks] WHERE [Name] LIKE N'SEED_%';
+DELETE FROM [ticket].[Tickets] WHERE [Name] LIKE N'SEED_%';
 
 -- Sprints
 DELETE slo
@@ -76,7 +76,7 @@ INNER JOIN [workflows].[Nodes] AS n ON n.[Id] = st.[NodeId]
 WHERE n.[Name] LIKE N'SEED_%';
 
 DELETE FROM [workflows].[Nodes] WHERE [Name] LIKE N'SEED_%';
-DELETE FROM [workflows].[TaskBank] WHERE [Name] LIKE N'SEED_%';
+DELETE FROM [workflows].[TicketBank] WHERE [Name] LIKE N'SEED_%';
 DELETE FROM [workflows].[Schemas] WHERE [Name] LIKE N'SEED_%';
 
 -- Organization + identity

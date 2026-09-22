@@ -26,7 +26,7 @@ Related: [OTLP / OpenTelemetry](OTLP.md), [Database / DbUp](DATABASE.md)
 
 
 
-The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), **Workflows** (schemas, nodes, task bank, steps), **Curriculum** (years through learning objectives, subject user assignment), **Ticket** (tasks, comments, work time), **Sprints** (planning + LO links), **Notifications** (inbox + realtime alerts), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays).
+The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBAC admin), **Organization** (teams and sections CRUD), **Workflows** (schemas, nodes, ticket bank, steps), **Curriculum** (years through learning objectives, subject user assignment), **Ticket** (tickets, comments, work time), **Sprints** (planning + LO links), **Notifications** (inbox + realtime alerts), and the **complete HR slice** (leave, permissions, WFH, forgot clock, holidays).
 
 
 
@@ -43,7 +43,7 @@ The solution has **real cross-cutting infrastructure**, **Identity** (auth + RBA
 | Identity module (auth + RBAC) | Done — login, refresh, logout, about-me; `/identity/*` permissions, roles, user role assignment |
 
 | Organization module | Done — teams and sections CRUD with `SectionTeams` links |
-| Workflows module | Done — schema types, schemas, nodes, task bank, steps CRUD |
+| Workflows module | Done — schema types, schemas, nodes, ticket bank, steps CRUD |
 | Curriculum module | Done — years, projects, terms, subject groups, subjects, units, lessons, learning objectives, subject user assignment |
 | Ticket module | Done — create/get/list tickets, assign, proceed, complete, comments, work time, sprint-scoped ticket list |
 | Sprints module | Done — CRUD, archive, LO assignment, list LOs |
@@ -162,11 +162,11 @@ Team-only org model: **Teams**, **Sections**, and **`SectionTeams`** join links.
 
 
 
-## Workflows (Schemas, Nodes, TaskBank, Steps)
+## Workflows (Schemas, Nodes, TicketBank, Steps)
 
 
 
-Workflow definition MVP: **SchemaTypes**, **Schemas**, **Nodes** (ordered, start/end flags), **TaskBank** (team-scoped task templates), and **Steps** (node + task bank links). **NodeSequences** deferred.
+Workflow definition MVP: **SchemaTypes**, **Schemas**, **Nodes** (ordered, start/end flags), **TicketBank** (team-scoped task templates), and **Steps** (node + ticket bank links). **NodeSequences** deferred.
 
 
 
@@ -182,17 +182,17 @@ Workflow definition MVP: **SchemaTypes**, **Schemas**, **Nodes** (ordered, start
 | `POST /workflows/schemas/{schemaId}/nodes` | Create node (auto order) | Required |
 | `PUT /workflows/nodes/{id}` | Update node | Required |
 | `DELETE /workflows/nodes/{id}` | Archive node | Required |
-| `GET /workflows/task-bank` | List active task bank items | Required |
-| `POST /workflows/task-bank` | Create task bank item | Required |
-| `PUT /workflows/task-bank/{id}` | Update task bank item | Required |
-| `DELETE /workflows/task-bank/{id}` | Deactivate task bank item | Required |
+| `GET /workflows/ticket-bank` | List active ticket bank items | Required |
+| `POST /workflows/ticket-bank` | Create ticket bank item | Required |
+| `PUT /workflows/ticket-bank/{id}` | Update ticket bank item | Required |
+| `DELETE /workflows/ticket-bank/{id}` | Deactivate ticket bank item | Required |
 | `GET /workflows/nodes/{nodeId}/steps` | List steps for node | Required |
 | `POST /workflows/nodes/{nodeId}/steps` | Create step (auto order) | Required |
 | `PUT /workflows/steps/{id}` | Update step | Required |
 | `DELETE /workflows/steps/{id}` | Archive step | Required |
 
 - **Module layout** — [`TaskManagementSystem.Modules.Workflows`](../src/Modules/Workflows/TaskManagementSystem.Modules.Workflows/) with `Domain/`, `Application/`, `Features/`, `Infrastructure/`.
-- **Cross-schema validation** — `TeamId` on TaskBank validated via Dapper against `organization.Teams` (no project references between modules).
+- **Cross-schema validation** — `TeamId` on TicketBank validated via Dapper against `organization.Teams` (no project references between modules).
 - **HTTP style** — Minimal API in [`Endpoints/Workflows/`](../src/Api/TaskManagementSystem.Api/Endpoints/Workflows/WorkflowsEndpoints.cs).
 - **Deferred** — NodeSequences / rollback graph rules from legacy ATS.
 
@@ -264,13 +264,13 @@ Curriculum definition MVP: **AcademicYears**, **CurriculumProjects**, **Curricul
 
 
 
-Ticket MVP: **Tasks** spawned from learning objectives + task bank workflow steps, **Comments**, and **TaskWorkTimes**. Rollback and TaskActivities audit remain deferred.
+Ticket MVP: **Tickets** spawned from learning objectives + ticket bank workflow steps, **Comments**, and **TicketWorkTimes**. Rollback and TicketActivities audit remain deferred.
 
 
 
 | Endpoint | Purpose | Auth |
 |---|---|---|
-| `POST /tickets` | Create ticket from LO + task bank item | Required |
+| `POST /tickets` | Create ticket from LO + ticket bank item | Required |
 | `GET /tickets/{id}` | Ticket detail | Required |
 | `GET /subjects/{subjectId}/tickets` | List tickets for subject (Dapper curriculum join) | Required |
 | `GET /learning-objectives/{loId}/tickets` | List tickets for learning objective | Required |
@@ -284,11 +284,11 @@ Ticket MVP: **Tasks** spawned from learning objectives + task bank workflow step
 | `POST /tickets/{id}/work-times/stop` | Stop open work time for current user | Required |
 
 - **Module layout** — [`TaskManagementSystem.Modules.Ticket`](../src/Modules/Ticket/TaskManagementSystem.Modules.Ticket/) with `Domain/`, `Application/`, `Features/`, `Infrastructure/`, `Contracts/TicketRealtime`.
-- **Cross-schema validation** — LO, task bank, workflow steps, users, and teams validated via Dapper lookup ports (no module references).
+- **Cross-schema validation** — LO, ticket bank, workflow steps, users, and teams validated via Dapper lookup ports (no module references).
 - **Realtime** — mutating handlers publish `TicketRealtime.SilentUpdate` via `IRealtimePublisher` (BuildingBlocks port; no SignalR in module).
 - **Notifications integration** — `TicketAssignedIntegrationEvent` / `TicketCompletedIntegrationEvent` written to `ticket.OutboxMessages`; `OutboxProcessor` dispatches to Notifications inbox handlers.
 - **HTTP style** — Minimal API in [`Endpoints/Ticket/`](../src/Api/TaskManagementSystem.Api/Endpoints/Ticket/TicketEndpoints.cs).
-- **Deferred** — Rollback, RollbackIssues, TaskActivities.
+- **Deferred** — Rollback, RollbackIssues, TicketActivities.
 
 
 
@@ -788,7 +788,7 @@ Every module uses the same shape:
 
 | Organization | **Teams**, **Sections** (no Groups) | Done — teams/sections CRUD + `SectionTeams` |
 
-| Workflows | Schemas, Nodes, Steps, TaskBank | Done |
+| Workflows | Schemas, Nodes, Steps, TicketBank | Done |
 
 | Curriculum | Projects, Subjects, Units, Lessons, LearningObjectives | Done |
 
@@ -939,7 +939,7 @@ Automated tests cover unit, integration, and architecture boundaries. Unit and a
 
 | `Modules.Organization.UnitTests` | Unit | 7 | Team/section domain rules and create-team handler |
 
-| `Modules.Workflows.UnitTests` | Unit | 8 | Schema, node, task bank, step domain and handlers |
+| `Modules.Workflows.UnitTests` | Unit | 8 | Schema, node, ticket bank, step domain and handlers |
 
 | `Modules.Curriculum.UnitTests` | Unit | 9 | Curriculum domain rules and handlers |
 

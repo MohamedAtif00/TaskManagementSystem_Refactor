@@ -123,4 +123,7 @@ public static class HrErrors
 
     public static ResultError ForgotClockOpinionNotAuthorized =>
         new("forgot_clock_opinion_not_authorized", "You are not authorized to give opinions on this request.");
+
+    public static ResultError HrApproveNotAuthorized =>
+        new("hr_approve_not_authorized", "Only Owner can approve this request.");
 }

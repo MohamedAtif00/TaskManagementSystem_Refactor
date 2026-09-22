@@ -6,7 +6,7 @@ namespace TaskManagementSystem.Modules.Workflows.Features.Steps.UpdateStep;
 
 public sealed record UpdateStepCommand(
     int StepId,
-    int TaskBankId,
+    int TicketBankId,
     int Duration,
     int Priority) : ICommand<Result<StepListItemResult>>;
 

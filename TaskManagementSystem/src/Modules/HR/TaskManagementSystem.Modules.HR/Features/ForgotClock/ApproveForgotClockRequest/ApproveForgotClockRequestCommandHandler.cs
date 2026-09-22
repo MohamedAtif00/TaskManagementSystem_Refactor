@@ -2,6 +2,7 @@ using MediatR;
 using TaskManagementSystem.Modules.HR.Features.ForgotClock;
 using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Domain;
+using TaskManagementSystem.Modules.HR.Application;
 using TaskManagementSystem.Modules.HR.Features.ForgotClock.GiveForgotClockOpinion;
 
 namespace TaskManagementSystem.Modules.HR.Features.ForgotClock.ApproveForgotClockRequest;
@@ -9,16 +10,23 @@ namespace TaskManagementSystem.Modules.HR.Features.ForgotClock.ApproveForgotCloc
 public sealed class ApproveForgotClockRequestCommandHandler(IMediator mediator)
     : IRequestHandler<ApproveForgotClockRequestCommand, Result<ForgotClockRequestResult>>
 {
-    public Task<Result<ForgotClockRequestResult>> Handle(
+    public async Task<Result<ForgotClockRequestResult>> Handle(
         ApproveForgotClockRequestCommand request,
-        CancellationToken cancellationToken) =>
-        mediator.Send(
+        CancellationToken cancellationToken)
+    {
+        if (request.ActorRole != "Owner")
+        {
+            return Result.Fail<ForgotClockRequestResult>(HrErrors.HrApproveNotAuthorized);
+        }
+
+        return await mediator.Send(
             new GiveForgotClockOpinionCommand(
                 request.ActorUserId,
-                "Owner",
+                request.ActorRole,
                 request.ForgotClockRequestId,
                 true,
                 null),
             cancellationToken);
+    }
 }
 

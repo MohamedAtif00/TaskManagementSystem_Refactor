@@ -8,9 +8,10 @@ namespace TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence;
 
 public sealed class TicketDbContext(DbContextOptions<TicketDbContext> options) : DbContext(options)
 {
-    public DbSet<TicketTask> TicketTasks => Set<TicketTask>();
+    public DbSet<Domain.Ticket> Tickets => Set<Domain.Ticket>();
     public DbSet<Comment> Comments => Set<Comment>();
-    public DbSet<TaskWorkTime> TaskWorkTimes => Set<TaskWorkTime>();
+    public DbSet<TicketWorkTime> TicketWorkTimes => Set<TicketWorkTime>();
+    public DbSet<TicketActivity> TicketActivities => Set<TicketActivity>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 

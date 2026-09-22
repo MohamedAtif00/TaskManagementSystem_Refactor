@@ -15,6 +15,6 @@ internal sealed class WorkflowStepConfiguration : IEntityTypeConfiguration<Workf
         entity.Property(x => x.Priority).HasColumnName("Priority");
         entity.Property(x => x.Archived).HasColumnName("Archived");
         entity.Property(x => x.NodeId).HasColumnName("NodeId");
-        entity.Property(x => x.TaskBankId).HasColumnName("TaskBankId");
+        entity.Property(x => x.TicketBankId).HasColumnName("TicketBankId");
     }
 }

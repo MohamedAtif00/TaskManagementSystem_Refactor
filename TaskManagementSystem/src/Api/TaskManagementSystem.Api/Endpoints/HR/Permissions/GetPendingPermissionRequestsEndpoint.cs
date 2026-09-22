@@ -1,6 +1,7 @@
 using MediatR;
 using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
+using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.HR.Features.Permissions.GetPendingPermissionRequests;
 using TaskManagementSystem.Modules.Identity.Domain;
 
@@ -17,9 +18,15 @@ public static class GetPendingPermissionRequestsEndpoint
 
     private static async Task<IResult> HandleAsync(
         IMediator mediator,
+        ICurrentUserAccessor currentUser,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new GetPendingPermissionRequestsQuery(), cancellationToken);
+        var result = await mediator.Send(
+            new GetPendingPermissionRequestsQuery(
+                currentUser.GetRequiredUserId(),
+                currentUser.GetRequiredRole(),
+                currentUser.GetTeamId()),
+            cancellationToken);
 
         return result.ToHttpResult(list =>
             Results.Ok(list.Select(PermissionMapping.MapPermission).ToList()));

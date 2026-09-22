@@ -18,9 +18,15 @@ public static class GetPendingLeaveRequestsEndpoint
 
     private static async Task<IResult> HandleAsync(
         IMediator mediator,
+        ICurrentUserAccessor currentUser,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new GetPendingLeaveRequestsQuery(), cancellationToken);
+        var result = await mediator.Send(
+            new GetPendingLeaveRequestsQuery(
+                currentUser.GetRequiredUserId(),
+                currentUser.GetRequiredRole(),
+                currentUser.GetTeamId()),
+            cancellationToken);
 
         return result.ToHttpResult(leaveRequests =>
             Results.Ok(leaveRequests.Select(LeaveRequestMapping.MapLeaveRequest).ToList()));

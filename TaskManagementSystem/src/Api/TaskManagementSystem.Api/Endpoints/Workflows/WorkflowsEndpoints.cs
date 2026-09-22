@@ -2,7 +2,7 @@ using TaskManagementSystem.Api.Endpoints.Workflows.SchemaTypes;
 using TaskManagementSystem.Api.Endpoints.Workflows.Schemas;
 using TaskManagementSystem.Api.Endpoints.Workflows.Nodes;
 using TaskManagementSystem.Api.Endpoints.Workflows.Steps;
-using TaskManagementSystem.Api.Endpoints.Workflows.TaskBank;
+using TaskManagementSystem.Api.Endpoints.Workflows.TicketBank;
 
 namespace TaskManagementSystem.Api.Endpoints.Workflows;
 
@@ -16,7 +16,7 @@ public static class WorkflowsEndpoints
         group.MapWorkflowSchemaEndpoints();
         group.MapWorkflowNodeEndpoints();
         group.MapWorkflowStepEndpoints();
-        group.MapWorkflowTaskBankEndpoints();
+        group.MapWorkflowTicketBankEndpoints();
 
         return group;
     }

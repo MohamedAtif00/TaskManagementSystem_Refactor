@@ -1,6 +1,6 @@
 using System.Text;
 using Dapper;
-using DomainTaskStatus = TaskManagementSystem.Modules.Ticket.Domain.TaskStatus;
+using DomainTicketStatus = TaskManagementSystem.Modules.Ticket.Domain.TicketStatus;
 
 namespace TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence.Queries;
 
@@ -28,7 +28,7 @@ internal static class TicketListQueryBuilder
     public static void AppendFilters(
         StringBuilder where,
         DynamicParameters parameters,
-        IReadOnlyList<DomainTaskStatus>? statuses,
+        IReadOnlyList<DomainTicketStatus>? statuses,
         int? learningObjectiveId,
         string? name)
     {

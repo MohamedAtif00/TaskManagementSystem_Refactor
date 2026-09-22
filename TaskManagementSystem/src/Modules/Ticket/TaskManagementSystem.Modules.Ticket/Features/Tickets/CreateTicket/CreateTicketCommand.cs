@@ -7,6 +7,6 @@ namespace TaskManagementSystem.Modules.Ticket.Features.Tickets.CreateTicket;
 
 public sealed record CreateTicketCommand(
     int LearningObjectiveId,
-    int TaskBankItemId,
+    int TicketBankItemId,
     int? UserId) : ITicketCommand<Result<TicketDetailResult>>;
 

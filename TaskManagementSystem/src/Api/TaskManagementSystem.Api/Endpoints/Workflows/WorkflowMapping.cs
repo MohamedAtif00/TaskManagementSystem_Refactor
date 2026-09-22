@@ -31,7 +31,7 @@ internal static class WorkflowMapping
             TypeId = schema.TypeId
         };
 
-    internal static TaskBankListItemResponse MapTaskBankListItem(TaskBankListItemResult item) =>
+    internal static TicketBankListItemResponse MapTicketBankListItem(TicketBankListItemResult item) =>
         new()
         {
             Id = item.Id,
@@ -61,6 +61,6 @@ internal static class WorkflowMapping
             Duration = step.Duration,
             Priority = step.Priority,
             NodeId = step.NodeId,
-            TaskBankId = step.TaskBankId
+            TicketBankId = step.TicketBankId
         };
 }

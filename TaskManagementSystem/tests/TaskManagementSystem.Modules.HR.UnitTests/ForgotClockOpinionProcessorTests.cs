@@ -27,6 +27,20 @@ public sealed class ForgotClockOpinionProcessorTests
     }
 
     [Fact]
+    public async Task ProcessAsync_WhenTeamLeaderIsNotAssigned_ReturnsNotAuthorized()
+    {
+        var request = CreatePendingRequest();
+        var unitOfWork = Substitute.For<IHrUnitOfWork>();
+        unitOfWork.ForgotClockRequests.GetByIdTrackedAsync(1, Arg.Any<CancellationToken>()).Returns(request);
+
+        var processor = new ForgotClockOpinionProcessor(unitOfWork);
+        var result = await processor.ProcessAsync(99, "TeamLeader", 1, true, "OK", UtcNow, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.Error.Code.Should().Be("forgot_clock_opinion_not_authorized");
+    }
+
+    [Fact]
     public async Task ProcessAsync_WhenOwnerApproves_UpdatesStatusWithoutBalanceChange()
     {
         var request = CreatePendingRequest();
@@ -49,7 +63,7 @@ public sealed class ForgotClockOpinionProcessorTests
             new DateTime(2026, 9, 5),
             new TimeOnly(9, 0),
             null,
-            null,
-            null,
+            teamleaderId: 2,
+            sectionheadId: null,
             UtcNow).Value;
 }

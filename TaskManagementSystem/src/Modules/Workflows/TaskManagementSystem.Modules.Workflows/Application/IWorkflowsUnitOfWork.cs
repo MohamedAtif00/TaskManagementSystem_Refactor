@@ -8,7 +8,7 @@ public interface IWorkflowsUnitOfWork : IUnitOfWork
 
     ISchemaTypeRepository SchemaTypes { get; }
 
-    ITaskBankRepository TaskBank { get; }
+    ITicketBankRepository TicketBank { get; }
 
     INodeRepository Nodes { get; }
 

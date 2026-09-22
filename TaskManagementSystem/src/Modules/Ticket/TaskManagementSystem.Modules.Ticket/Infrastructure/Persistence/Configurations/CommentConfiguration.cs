@@ -15,7 +15,7 @@ internal sealed class CommentConfiguration : IEntityTypeConfiguration<Comment>
         entity.Property(x => x.Timestamp).HasColumnName("Timestamp");
         entity.Property(x => x.Archived).HasColumnName("Archived");
         entity.Property(x => x.LearningObjectiveId).HasColumnName("LearningObjectiveId");
-        entity.Property(x => x.TaskId).HasColumnName("TaskId");
+        entity.Property(x => x.TicketId).HasColumnName("TicketId");
         entity.Property(x => x.UserId).HasColumnName("UserId");
         entity.Property(x => x.ChildId).HasColumnName("ChildId");
     }

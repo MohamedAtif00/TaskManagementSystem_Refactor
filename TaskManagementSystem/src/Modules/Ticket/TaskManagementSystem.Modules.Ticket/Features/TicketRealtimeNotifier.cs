@@ -8,7 +8,7 @@ internal static class TicketRealtimeNotifier
 {
     public static Task PublishUpdateAsync(
         IRealtimePublisher publisher,
-        TicketTask ticket,
+        Domain.Ticket ticket,
         CancellationToken cancellationToken)
     {
         var payload = new

@@ -1771,16 +1771,16 @@
                       "type":  "customHttp"
                   },
                   {
-                      "name":  "63. GET /workflows/task-bank - List active task bank items",
+                      "name":  "63. GET /workflows/ticket-bank - List active task bank items",
                       "customHttpRequest":  {
                                                 "postProcessors":  [
                                                                        {
                                                                            "enable":  true,
-                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTaskBank\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
+                                                                           "data":  "var entry = {\r\n  method: pm.request.method,\r\n  path: pm.request.url.getPath(),\r\n  operationId: \u0027listTicketBank\u0027,\r\n  status: pm.response.code,\r\n  ms: pm.response.responseTime\r\n};\r\nvar timings = JSON.parse(pm.environment.get(\u0027queryTimings\u0027) || \u0027[]\u0027);\r\ntimings.push(entry);\r\npm.environment.set(\u0027queryTimings\u0027, JSON.stringify(timings));\r\nconsole.log(\u0027[timing] \u0027 + entry.method + \u0027 \u0027 + entry.path + \u0027 -\u003e \u0027 + entry.status + \u0027 (\u0027 + entry.ms + \u0027 ms)\u0027);",
                                                                            "type":  "customScript"
                                                                        }
                                                                    ],
-                                                "path":  "{{baseUrl}}/workflows/task-bank",
+                                                "path":  "{{baseUrl}}/workflows/ticket-bank",
                                                 "auth":  {
                                                              "bearer":  {
                                                                             "token":  "{{accessToken}}"

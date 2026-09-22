@@ -9,7 +9,7 @@ Script-based database management following [kgrzybek/modular-monolith-with-ddd](
 - **One database**, **one SQL schema per module** (plus `app` for infrastructure)
 - **DbUp** runs ordered migration scripts; journal table: `app.MigrationsJournal`
 - **No EF Core migrations** in this pass — SQL scripts are the source of deployment
-- **Groups removed** from org model; `TeamId` replaces `GroupId` on `TaskBank` and `Tasks`
+- **Groups removed** from org model; `TeamId` replaces `GroupId` on `TicketBank` and `Tasks`
 
 ## Layout
 
@@ -34,9 +34,9 @@ src/Database/
 | `app` | Infrastructure | `MigrationsJournal` (DbUp), `AuditLog` |
 | `identity` | Identity | `Users`, `RefreshTokens`, `UserChanges`, `Permissions`, `Roles`, `RolePermissions`, `OutboxMessages`, `InboxMessages` |
 | `organization` | Organization | `Teams`, `Sections`, `SectionTeams`, `OutboxMessages`, `InboxMessages` |
-| `workflows` | Workflows | `SchemaTypes`, `Schemas`, `Nodes`, `Steps`, `TaskBank`, `NodeSequences`, `RSteps`, `OutboxMessages`, `InboxMessages` |
+| `workflows` | Workflows | `SchemaTypes`, `Schemas`, `Nodes`, `Steps`, `TicketBank`, `NodeSequences`, `RSteps`, `OutboxMessages`, `InboxMessages` |
 | `curriculum` | Curriculum | `AcademicYears`, `CurriculumProjects`, `CurriculumTerms`, `SubjectGroups`, `Subjects`, `Units`, `Lessons`, `LearningObjectives`, `SubjectUser`, `OutboxMessages`, `InboxMessages` |
-| `ticket` | Ticket | `Tasks`, `TaskActivities`, `TaskWorkTimes`, `Comments`, `Rollbacks`, `RollbackIssues`, `OutboxMessages`, `InboxMessages` |
+| `ticket` | Ticket | `Tasks`, `TaskActivities`, `TicketWorkTimes`, `Comments`, `Rollbacks`, `RollbackIssues`, `OutboxMessages`, `InboxMessages` |
 | `sprints` | Sprints | `Sprints`, `SprintLearningObjectives`, `OutboxMessages`, `InboxMessages` |
 | `notifications` | Notifications | `Notifications`, `OutboxMessages`, `InboxMessages` |
 | `hr` | HR | `LeaveRequests`, `LeaveResetLogs`, `Permissions`, `WorkFromHomeRequests`, `ForgotClockRequests`, `Opinions`, `EmployeeBalances`, `PublicHolidays`, `OutboxMessages`, `InboxMessages` |
