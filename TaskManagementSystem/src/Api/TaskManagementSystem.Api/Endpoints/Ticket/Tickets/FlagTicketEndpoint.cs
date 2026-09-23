@@ -1,6 +1,7 @@
 using MediatR;
 using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
+using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Modules.Ticket.Features.Tickets.FlagTicket;
 
@@ -16,10 +17,13 @@ public static class FlagTicketEndpoint
 
     private static async Task<IResult> HandleAsync(
         int id,
+        ICurrentUserAccessor currentUserAccessor,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new FlagTicketCommand(id), cancellationToken);
+        var result = await mediator.Send(
+            new FlagTicketCommand(id, currentUserAccessor.GetRequiredUserId()),
+            cancellationToken);
         return result.ToHttpResult(ticket => Results.Ok(TicketMapping.MapTicketDetail(ticket)));
     }
 }

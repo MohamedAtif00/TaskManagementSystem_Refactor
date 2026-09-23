@@ -32,9 +32,9 @@ public sealed class UpdateTicketPriorityCommandHandler(
         await activityWriter.WriteAsync(
             ticket.Id,
             TicketActivityType.PriorityChange,
-            $"{ticket.Name} priority changed to {request.Priority}.",
             request.ActorUserId,
-            cancellationToken);
+            cancellationToken,
+            additionalInfo: request.Priority.ToString());
 
         await unitOfWork.CommitAsync(cancellationToken);
         await TicketRealtimeNotifier.PublishUpdateAsync(realtimePublisher, ticket, cancellationToken);

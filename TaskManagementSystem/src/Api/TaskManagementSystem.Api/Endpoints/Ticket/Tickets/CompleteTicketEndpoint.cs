@@ -1,6 +1,7 @@
 using MediatR;
 using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
+using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Modules.Ticket.Features.Tickets.CompleteTicket;
 
@@ -17,10 +18,13 @@ public static class CompleteTicketEndpoint
 
     private static async Task<IResult> HandleAsync(
         int id,
+        ICurrentUserAccessor currentUserAccessor,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new CompleteTicketCommand(id), cancellationToken);
+        var result = await mediator.Send(
+            new CompleteTicketCommand(id, currentUserAccessor.GetRequiredUserId(), currentUserAccessor.GetRequiredRole()),
+            cancellationToken);
         return result.ToHttpResult(ticket => Results.Ok(TicketMapping.MapTicketDetail(ticket)));
     }
 }

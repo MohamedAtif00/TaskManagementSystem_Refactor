@@ -84,9 +84,135 @@ public sealed class TicketTests
             null,
             DateTime.UtcNow).Value;
 
-        var completeResult = ticket.Complete();
+        var addResult = ticket.Add(5);
+        var startResult = ticket.Start(5);
+        var completeResult = ticket.Complete(5, allowOtherAssignee: false);
 
+        addResult.IsSuccess.Should().BeTrue();
+        startResult.IsSuccess.Should().BeTrue();
         completeResult.IsSuccess.Should().BeTrue();
+        ticket.Status.Should().Be(DomainTicketStatus.Done);
+    }
+
+    [Fact]
+    public void PauseWork_WhenDoing_MovesToToDo()
+    {
+        var ticket = Domain.Ticket.Create(
+            "Task",
+            30,
+            TicketPriority.None,
+            1,
+            10,
+            2,
+            false,
+            null,
+            DateTime.UtcNow).Value;
+
+        ticket.Add(5);
+        ticket.Start(5);
+
+        var pauseResult = ticket.PauseWork();
+
+        pauseResult.IsSuccess.Should().BeTrue();
+        ticket.Pause.Should().BeTrue();
+        ticket.Status.Should().Be(DomainTicketStatus.ToDo);
+    }
+
+    [Fact]
+    public void ToggleFlag_WhenFlagged_MovesToToDo()
+    {
+        var ticket = Domain.Ticket.Create(
+            "Task",
+            30,
+            TicketPriority.None,
+            1,
+            10,
+            2,
+            false,
+            null,
+            DateTime.UtcNow).Value;
+
+        ticket.Add(5);
+        ticket.Start(5);
+
+        var flagResult = ticket.ToggleFlag();
+
+        flagResult.IsSuccess.Should().BeTrue();
+        ticket.Flagged.Should().BeTrue();
+        ticket.Status.Should().Be(DomainTicketStatus.ToDo);
+
+        var startResult = ticket.Start(5);
+        startResult.IsSuccess.Should().BeFalse();
+        startResult.Error.Code.Should().Be("ticket_flagged");
+    }
+
+    [Fact]
+    public void Rollback_WhenNotReview_IsRejected()
+    {
+        var ticket = Domain.Ticket.Create(
+            "Task",
+            30,
+            TicketPriority.None,
+            1,
+            10,
+            2,
+            false,
+            null,
+            DateTime.UtcNow).Value;
+
+        ticket.Add(5);
+        ticket.Start(5);
+
+        var rollbackResult = ticket.Rollback(5, allowOtherAssignee: true);
+
+        rollbackResult.IsSuccess.Should().BeFalse();
+        rollbackResult.Error.Code.Should().Be("ticket_cannot_rollback");
+    }
+
+    [Fact]
+    public void Rollback_WhenReviewDoingByAssignee_SetsRollback()
+    {
+        var ticket = Domain.Ticket.Create(
+            "Review",
+            30,
+            TicketPriority.None,
+            1,
+            10,
+            2,
+            false,
+            null,
+            DateTime.UtcNow).Value;
+        ticket.PrepareSuccessor(teamLeaderOnly: false, isReview: true, fromId: null);
+        ticket.Add(5);
+        ticket.Start(5);
+
+        var rollbackResult = ticket.Rollback(5, allowOtherAssignee: false);
+
+        rollbackResult.IsSuccess.Should().BeTrue();
+        ticket.Status.Should().Be(DomainTicketStatus.Rollback);
+    }
+
+    [Fact]
+    public void Skip_WhenPaused_ClearsPauseAndSetsDone()
+    {
+        var ticket = Domain.Ticket.Create(
+            "Task",
+            30,
+            TicketPriority.None,
+            1,
+            10,
+            2,
+            false,
+            null,
+            DateTime.UtcNow).Value;
+        ticket.Add(5);
+        ticket.Start(5);
+        ticket.PauseWork();
+
+        var skipResult = ticket.Skip();
+
+        skipResult.IsSuccess.Should().BeTrue();
+        ticket.Pause.Should().BeFalse();
         ticket.Status.Should().Be(DomainTicketStatus.Done);
     }
 }

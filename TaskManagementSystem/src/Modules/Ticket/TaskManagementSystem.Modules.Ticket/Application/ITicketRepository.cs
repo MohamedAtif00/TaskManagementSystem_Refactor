@@ -12,5 +12,14 @@ public interface ITicketRepository
         int learningObjectiveId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Domain.Ticket>> ListActiveByStepTrackedAsync(
+        int stepId,
+        int learningObjectiveId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(Domain.Ticket ticketTask, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<int, string>> ListNamesAsync(
+        IReadOnlyCollection<int> ticketIds,
+        CancellationToken cancellationToken = default);
 }

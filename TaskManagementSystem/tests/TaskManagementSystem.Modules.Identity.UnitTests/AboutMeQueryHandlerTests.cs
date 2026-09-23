@@ -44,6 +44,10 @@ public sealed class AboutMeQueryHandlerTests
 
                 "Team A",
 
+                7,
+
+                [],
+
                 3));
 
 
@@ -75,6 +79,10 @@ public sealed class AboutMeQueryHandlerTests
         result.Value.Permissions.Should().Contain(PermissionCodes.IdentityRoles.Manage);
 
         result.Value.Group.Should().Be("Team A");
+
+        result.Value.TeamId.Should().Be(7);
+
+        result.Value.HeadedTeamIds.Should().BeEmpty();
 
         result.Value.Notifications.Should().Be(3);
 

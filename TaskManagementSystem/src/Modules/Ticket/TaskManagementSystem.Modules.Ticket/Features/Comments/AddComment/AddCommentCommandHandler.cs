@@ -46,7 +46,6 @@ public sealed class AddCommentCommandHandler(
         await activityWriter.WriteAsync(
             request.TicketId,
             TicketActivityType.Comment,
-            "A comment was added.",
             request.UserId,
             cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);

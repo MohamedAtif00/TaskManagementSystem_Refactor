@@ -7,7 +7,8 @@ public interface ITicketActivityWriter
     Task WriteAsync(
         int ticketId,
         TicketActivityType type,
-        string message,
-        int? actorUserId,
-        CancellationToken cancellationToken = default);
+        int? actorOneId,
+        CancellationToken cancellationToken = default,
+        int? actorTwoId = null,
+        string? additionalInfo = null);
 }

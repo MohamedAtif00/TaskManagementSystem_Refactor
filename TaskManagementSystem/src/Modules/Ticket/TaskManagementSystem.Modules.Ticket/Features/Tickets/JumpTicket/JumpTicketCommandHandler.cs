@@ -5,6 +5,7 @@ using TaskManagementSystem.BuildingBlocks.Infrastructure.Realtime;
 using TaskManagementSystem.Modules.Ticket.Application;
 using TaskManagementSystem.Modules.Ticket.Domain;
 
+
 namespace TaskManagementSystem.Modules.Ticket.Features.Tickets.JumpTicket;
 
 public sealed class JumpTicketCommandHandler(
@@ -19,6 +20,11 @@ public sealed class JumpTicketCommandHandler(
         JumpTicketCommand request,
         CancellationToken cancellationToken)
     {
+        if (!TicketRoles.IsOwnerOrProjectManager(request.ActorRole))
+        {
+            return Result.Fail<TicketDetailResult>(TicketErrors.TicketUnauthorized);
+        }
+
         var ticket = await unitOfWork.Tickets.GetByIdTrackedAsync(request.TicketId, cancellationToken);
         if (ticket is null)
         {
@@ -53,12 +59,7 @@ public sealed class JumpTicketCommandHandler(
             return Result.Fail<TicketDetailResult>(jumpResult.Error);
         }
 
-        await activityWriter.WriteAsync(
-            ticket.Id,
-            TicketActivityType.Jump,
-            $"{ticket.Name} jumped to step {request.StepId}.",
-            request.ActorUserId,
-            cancellationToken);
+        await activityWriter.WriteAsync(ticket.Id, TicketActivityType.Jump, request.ActorUserId, cancellationToken);
 
         await unitOfWork.CommitAsync(cancellationToken);
         await TicketRealtimeNotifier.PublishUpdateAsync(realtimePublisher, ticket, cancellationToken);

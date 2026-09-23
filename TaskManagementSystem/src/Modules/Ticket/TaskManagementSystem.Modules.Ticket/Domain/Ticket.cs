@@ -101,18 +101,103 @@ public sealed class Ticket : Entity, IAggregateRoot
             return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
         }
 
-        if (Status == TicketStatus.Done)
+        if (Status is TicketStatus.Done or TicketStatus.Rollback)
         {
             return Result.Fail<NoValue>(new ResultError("ticket_already_completed", "Ticket is already completed."));
         }
 
         UserId = userId;
-        if (Status == TicketStatus.Backlog)
-        {
-            Status = TicketStatus.ToDo;
-        }
+        Status = TicketStatus.ToDo;
 
         AddDomainEvent(new TicketAssignedDomainEvent(Id, userId));
+        return Result.Ok();
+    }
+
+    public Result<NoValue> Add(int userId)
+    {
+        if (userId <= 0)
+        {
+            return Result.Fail<NoValue>(new ResultError("user_not_found", "User is required."));
+        }
+
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
+        }
+
+        if (Status != TicketStatus.Backlog)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_cannot_proceed", "Task cannot be added from this column."));
+        }
+
+        if (Flagged)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_flagged", "A flagged task cannot be worked on."));
+        }
+
+        UserId = userId;
+        Status = TicketStatus.ToDo;
+        AddDomainEvent(new TicketAssignedDomainEvent(Id, userId));
+        return Result.Ok();
+    }
+
+    public Result<NoValue> Start(int userId)
+    {
+        if (userId <= 0)
+        {
+            return Result.Fail<NoValue>(new ResultError("user_not_found", "User is required."));
+        }
+
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
+        }
+
+        if (Status != TicketStatus.ToDo || Pause)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_cannot_proceed", "Task cannot be started from this column."));
+        }
+
+        if (Flagged)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_flagged", "A flagged task cannot be worked on."));
+        }
+
+        if (UserId is int assignedUserId && assignedUserId != userId)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_unauthorized", "Task is assigned to someone else."));
+        }
+
+        UserId ??= userId;
+        Attention = false;
+        Status = TicketStatus.Doing;
+        return Result.Ok();
+    }
+
+    public Result<NoValue> Resume(int userId)
+    {
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
+        }
+
+        if (!Pause || Status != TicketStatus.ToDo)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_cannot_resume", "Task cannot be resumed if status is not To Do."));
+        }
+
+        if (Flagged)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_flagged", "A flagged task cannot be worked on."));
+        }
+
+        Pause = false;
+        if (UserId == userId)
+        {
+            Attention = false;
+            Status = TicketStatus.Doing;
+        }
+
         return Result.Ok();
     }
 
@@ -146,37 +231,58 @@ public sealed class Ticket : Entity, IAggregateRoot
             return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
         }
 
-        Flagged = !Flagged;
-        Attention = Flagged;
-        return Result.Ok();
-    }
-
-    public Result<NoValue> TogglePause()
-    {
-        if (Archived)
-        {
-            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
-        }
-
-        if (Status == TicketStatus.Done)
+        if (Status is TicketStatus.Done or TicketStatus.Rollback)
         {
             return Result.Fail<NoValue>(new ResultError("ticket_already_completed", "Ticket is already completed."));
         }
 
-        Pause = !Pause;
+        if (Flagged)
+        {
+            Flagged = false;
+            Attention = true;
+            return Result.Ok();
+        }
+
+        Flagged = true;
+        Status = TicketStatus.ToDo;
         return Result.Ok();
     }
 
-    public Result<NoValue> Rollback()
+    public Result<NoValue> PauseWork()
     {
         if (Archived)
         {
             return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
         }
 
-        if (Status == TicketStatus.Backlog)
+        if (Status != TicketStatus.Doing || Pause)
         {
-            return Result.Fail<NoValue>(new ResultError("ticket_cannot_rollback", "Backlog tickets cannot be rolled back."));
+            return Result.Fail<NoValue>(new ResultError("ticket_cannot_pause", "Task with a status other than Doing cannot be paused."));
+        }
+
+        Status = TicketStatus.ToDo;
+        Pause = true;
+        return Result.Ok();
+    }
+
+    public Result<NoValue> Rollback(int actorUserId, bool allowOtherAssignee)
+    {
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
+        }
+
+        if (!IsReview || Status != TicketStatus.Doing)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_cannot_rollback", "Only a review task in Doing can be rolled back."));
+        }
+
+        if (UserId is not int assignedUserId || assignedUserId != actorUserId)
+        {
+            if (!allowOtherAssignee)
+            {
+                return Result.Fail<NoValue>(new ResultError("ticket_unauthorized", "Task is assigned to someone else."));
+            }
         }
 
         IsRollback = true;
@@ -185,7 +291,39 @@ public sealed class Ticket : Entity, IAggregateRoot
         return Result.Ok();
     }
 
-    public Result<NoValue> Complete()
+    public Result<NoValue> Complete(int actorUserId, bool allowOtherAssignee)
+    {
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
+        }
+
+        if (Status != TicketStatus.Doing)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_cannot_complete", "Task may not be completed yet."));
+        }
+
+        if (Flagged)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_flagged", "A flagged task cannot be worked on."));
+        }
+
+        if (UserId is int assignedUserId && assignedUserId != actorUserId && !allowOtherAssignee)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_unauthorized", "Task is assigned to someone else."));
+        }
+
+        Status = TicketStatus.Done;
+
+        if (UserId is int completedForUserId)
+        {
+            AddDomainEvent(new TicketCompletedDomainEvent(Id, completedForUserId));
+        }
+
+        return Result.Ok();
+    }
+
+    public Result<NoValue> Skip()
     {
         if (Archived)
         {
@@ -198,6 +336,7 @@ public sealed class Ticket : Entity, IAggregateRoot
         }
 
         Status = TicketStatus.Done;
+        Pause = false;
 
         if (UserId is int assignedUserId)
         {
@@ -207,10 +346,22 @@ public sealed class Ticket : Entity, IAggregateRoot
         return Result.Ok();
     }
 
-    public Result<NoValue> Skip()
+    public void PrepareSuccessor(bool teamLeaderOnly, bool isReview, int? fromId)
     {
-        return Complete();
+        if (teamLeaderOnly)
+        {
+            Status = TicketStatus.ToDo;
+        }
+
+        IsReview = isReview;
+        if (fromId is int sourceId)
+        {
+            FromId = sourceId;
+            IsRollback = true;
+        }
     }
+
+    public void Reactivate() => Status = TicketStatus.ToDo;
 
     public Result<NoValue> ChangePriority(TicketPriority priority)
     {

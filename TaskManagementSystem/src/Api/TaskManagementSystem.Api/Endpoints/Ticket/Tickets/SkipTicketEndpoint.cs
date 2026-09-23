@@ -22,7 +22,9 @@ public static class SkipTicketEndpoint
         CancellationToken cancellationToken)
     {
         var actorUserId = currentUserAccessor.GetRequiredUserId();
-        var result = await mediator.Send(new SkipTicketCommand(id, actorUserId), cancellationToken);
+        var result = await mediator.Send(
+            new SkipTicketCommand(id, actorUserId, currentUserAccessor.GetRequiredRole()),
+            cancellationToken);
         return result.ToHttpResult(ticket => Results.Ok(TicketMapping.MapTicketDetail(ticket)));
     }
 }

@@ -32,5 +32,14 @@ public static class TicketErrors
         new("work_time_already_open", "An open work time already exists for this user on this ticket.");
 
     public static ResultError TicketCannotRollback =>
-        new("ticket_cannot_rollback", "Backlog tickets cannot be rolled back.");
+        new("ticket_cannot_rollback", "Only a review task in Doing can be rolled back.");
+
+    public static ResultError TicketUnauthorized =>
+        new("ticket_unauthorized", "You cannot perform this action.");
+
+    public static ResultError TicketFlagged =>
+        new("ticket_flagged", "A flagged task cannot be worked on.");
+
+    public static ResultError AssigneeTeamMismatch =>
+        new("ticket_assignee_team", "Cannot assign a user from another team.");
 }

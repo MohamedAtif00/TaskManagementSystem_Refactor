@@ -24,7 +24,9 @@ public static class JumpTicketEndpoint
         CancellationToken cancellationToken)
     {
         var actorUserId = currentUserAccessor.GetRequiredUserId();
-        var result = await mediator.Send(new JumpTicketCommand(id, request.StepId, actorUserId), cancellationToken);
+        var result = await mediator.Send(
+            new JumpTicketCommand(id, request.StepId, actorUserId, currentUserAccessor.GetRequiredRole()),
+            cancellationToken);
         return result.ToHttpResult(ticket => Results.Ok(TicketMapping.MapTicketDetail(ticket)));
     }
 }

@@ -7,7 +7,10 @@ public sealed record TicketBankSummary(
     string Name,
     int Duration,
     int TeamId,
-    bool TeamLeaderOnly);
+    bool TeamLeaderOnly,
+    int Type = 0);
+
+public sealed record ActiveUserRecord(int Id, int? TeamId);
 
 public sealed record WorkflowStepSummary(
     int Id,

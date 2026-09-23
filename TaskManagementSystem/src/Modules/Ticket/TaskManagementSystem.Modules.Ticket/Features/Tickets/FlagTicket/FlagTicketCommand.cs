@@ -4,4 +4,4 @@ using TaskManagementSystem.Modules.Ticket.Application;
 
 namespace TaskManagementSystem.Modules.Ticket.Features.Tickets.FlagTicket;
 
-public sealed record FlagTicketCommand(int TicketId) : ITicketCommand<Result<TicketDetailResult>>;
+public sealed record FlagTicketCommand(int TicketId, int ActorUserId) : ITicketCommand<Result<TicketDetailResult>>;

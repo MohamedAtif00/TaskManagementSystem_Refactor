@@ -22,6 +22,31 @@ internal sealed class TicketRepository(TicketDbContext context)
             .OrderByDescending(task => task.CreatedAt)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Domain.Ticket>> ListActiveByStepTrackedAsync(
+        int stepId,
+        int learningObjectiveId,
+        CancellationToken cancellationToken = default) =>
+        await Set.Where(task =>
+                task.StepId == stepId
+                && task.LearningObjectiveId == learningObjectiveId
+                && !task.Archived)
+            .ToListAsync(cancellationToken);
+
     public Task AddAsync(Domain.Ticket ticketTask, CancellationToken cancellationToken = default) =>
         AddEntityAsync(ticketTask, cancellationToken);
+
+    public async Task<IReadOnlyDictionary<int, string>> ListNamesAsync(
+        IReadOnlyCollection<int> ticketIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (ticketIds.Count == 0)
+        {
+            return new Dictionary<int, string>();
+        }
+
+        return await Set.AsNoTracking()
+            .Where(ticket => ticketIds.Contains(ticket.Id))
+            .Select(ticket => new { ticket.Id, ticket.Name })
+            .ToDictionaryAsync(ticket => ticket.Id, ticket => ticket.Name, cancellationToken);
+    }
 }

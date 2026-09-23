@@ -3,13 +3,13 @@ using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.BuildingBlocks.Infrastructure.Realtime;
 using TaskManagementSystem.Modules.Ticket.Application;
+using TaskManagementSystem.Modules.Ticket.Domain;
 
 namespace TaskManagementSystem.Modules.Ticket.Features.Tickets.ProceedTicket;
 
 public sealed class ProceedTicketCommandHandler(
     ITicketUnitOfWork unitOfWork,
-    ILearningObjectiveLookup learningObjectiveLookup,
-    IWorkflowStepLookup workflowStepLookup,
+    ITicketActivityWriter activityWriter,
     IRealtimePublisher realtimePublisher)
     : IRequestHandler<ProceedTicketCommand, Result<TicketDetailResult>>
 {
@@ -23,34 +23,46 @@ public sealed class ProceedTicketCommandHandler(
             return Result.Fail<TicketDetailResult>(TicketErrors.TicketNotFound);
         }
 
-        if (ticket.StepId is not int currentStepId)
+        Result<NoValue> moveResult;
+        var openTimer = false;
+        TicketActivityType activityType;
+        if (ticket.Status == TicketStatus.Backlog)
         {
-            return Result.Fail<TicketDetailResult>(TicketErrors.StepNotFound);
+            activityType = TicketActivityType.StatusToDo;
+            moveResult = ticket.Add(request.ActorUserId);
+        }
+        else if (ticket.Status == TicketStatus.ToDo && ticket.Pause)
+        {
+            activityType = TicketActivityType.Resume;
+            moveResult = ticket.Resume(request.ActorUserId);
+            openTimer = moveResult.IsSuccess && ticket.Status == TicketStatus.Doing;
+        }
+        else if (ticket.Status == TicketStatus.ToDo)
+        {
+            activityType = TicketActivityType.StatusDoing;
+            moveResult = ticket.Start(request.ActorUserId);
+            openTimer = moveResult.IsSuccess;
+        }
+        else
+        {
+            return Result.Fail<TicketDetailResult>(
+                new ResultError("ticket_cannot_proceed", "Task cannot proceed from this column."));
         }
 
-        var learningObjective = await learningObjectiveLookup.GetActiveByIdAsync(
-            ticket.LearningObjectiveId,
-            cancellationToken);
-        if (learningObjective is null)
+        if (!moveResult.IsSuccess)
         {
-            return Result.Fail<TicketDetailResult>(TicketErrors.LearningObjectiveNotFound);
+            return Result.Fail<TicketDetailResult>(moveResult.Error);
         }
 
-        var nextStepId = await workflowStepLookup.GetNextStepIdAsync(
-            learningObjective.SchemaId,
-            currentStepId,
-            cancellationToken);
-
-        var proceedResult = ticket.ProceedToStep(nextStepId);
-        if (!proceedResult.IsSuccess)
+        if (openTimer)
         {
-            return Result.Fail<TicketDetailResult>(proceedResult.Error);
+            await TicketWorkClock.OpenAsync(unitOfWork, ticket.Id, request.ActorUserId, cancellationToken);
         }
 
+        await activityWriter.WriteAsync(ticket.Id, activityType, request.ActorUserId, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         await TicketRealtimeNotifier.PublishUpdateAsync(realtimePublisher, ticket, cancellationToken);
 
         return Result.Ok(TicketDetailResult.From(ticket));
     }
 }
-

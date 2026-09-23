@@ -3,11 +3,13 @@ using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.BuildingBlocks.Infrastructure.Realtime;
 using TaskManagementSystem.Modules.Ticket.Application;
+using TaskManagementSystem.Modules.Ticket.Domain;
 
 namespace TaskManagementSystem.Modules.Ticket.Features.Tickets.FlagTicket;
 
 public sealed class FlagTicketCommandHandler(
     ITicketUnitOfWork unitOfWork,
+    ITicketActivityWriter activityWriter,
     IRealtimePublisher realtimePublisher)
     : IRequestHandler<FlagTicketCommand, Result<TicketDetailResult>>
 {
@@ -21,12 +23,23 @@ public sealed class FlagTicketCommandHandler(
             return Result.Fail<TicketDetailResult>(TicketErrors.TicketNotFound);
         }
 
+        var wasFlagged = ticket.Flagged;
         var flagResult = ticket.ToggleFlag();
         if (!flagResult.IsSuccess)
         {
             return Result.Fail<TicketDetailResult>(flagResult.Error);
         }
 
+        if (!wasFlagged)
+        {
+            await TicketWorkClock.CloseOpenAsync(unitOfWork, ticket.Id, cancellationToken);
+        }
+
+        await activityWriter.WriteAsync(
+            ticket.Id,
+            wasFlagged ? TicketActivityType.Unflag : TicketActivityType.Flag,
+            request.ActorUserId,
+            cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         await TicketRealtimeNotifier.PublishUpdateAsync(realtimePublisher, ticket, cancellationToken);
 

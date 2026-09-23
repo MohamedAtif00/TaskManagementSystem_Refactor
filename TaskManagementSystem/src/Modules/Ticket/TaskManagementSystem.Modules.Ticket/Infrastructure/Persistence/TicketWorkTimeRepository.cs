@@ -16,6 +16,12 @@ internal sealed class TicketWorkTimeRepository(TicketDbContext context)
             workTime => workTime.TicketId == ticketId && workTime.UserId == userId && workTime.EndDate == null,
             cancellationToken);
 
+    public async Task<IReadOnlyList<TicketWorkTime>> ListOpenByTicketTrackedAsync(
+        int ticketId,
+        CancellationToken cancellationToken = default) =>
+        await Set.Where(workTime => workTime.TicketId == ticketId && workTime.EndDate == null)
+            .ToListAsync(cancellationToken);
+
     public Task AddAsync(TicketWorkTime workTime, CancellationToken cancellationToken = default) =>
         AddEntityAsync(workTime, cancellationToken);
 }

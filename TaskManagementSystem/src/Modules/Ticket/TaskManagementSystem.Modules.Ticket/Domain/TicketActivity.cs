@@ -22,16 +22,18 @@ public sealed class TicketActivity : Entity
     public static TicketActivity Create(
         int taskId,
         TicketActivityType type,
-        string message,
         int? actorOneId,
-        DateTime timestamp)
+        DateTime timestamp,
+        int? actorTwoId = null,
+        string? additionalInfo = null)
     {
         return new TicketActivity
         {
             TicketId = taskId,
             Type = type,
-            AdditionalInfo = message.Trim(),
+            AdditionalInfo = string.IsNullOrWhiteSpace(additionalInfo) ? null : additionalInfo.Trim(),
             ActorOneId = actorOneId,
+            ActorTwoId = actorTwoId,
             TimeStamp = timestamp,
         };
     }

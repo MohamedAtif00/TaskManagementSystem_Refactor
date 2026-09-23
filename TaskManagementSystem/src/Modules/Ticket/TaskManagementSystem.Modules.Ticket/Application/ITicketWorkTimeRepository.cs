@@ -9,5 +9,9 @@ public interface ITicketWorkTimeRepository
         int userId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<TicketWorkTime>> ListOpenByTicketTrackedAsync(
+        int ticketId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(TicketWorkTime workTime, CancellationToken cancellationToken = default);
 }

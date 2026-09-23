@@ -12,7 +12,7 @@ public sealed class TicketBankLookupQueries(ISqlConnectionFactory connectionFact
         CancellationToken cancellationToken = default)
     {
         const string sql = """
-            SELECT [Id], [Name], [Duration], [TeamId], [TL] AS TeamLeaderOnly
+            SELECT [Id], [Name], [Duration], [TeamId], [TL] AS TeamLeaderOnly, [Type]
             FROM [workflows].[TicketBank]
             WHERE [Id] = @TicketBankId AND [Active] = 1
             """;

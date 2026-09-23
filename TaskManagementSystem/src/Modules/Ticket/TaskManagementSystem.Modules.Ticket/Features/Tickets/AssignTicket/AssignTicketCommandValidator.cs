@@ -8,6 +8,8 @@ public sealed class AssignTicketCommandValidator : AbstractValidator<AssignTicke
     {
         RuleFor(x => x.TicketId).GreaterThan(0);
         RuleFor(x => x.UserId).GreaterThan(0);
+        RuleFor(x => x.ActorUserId).GreaterThan(0);
+        RuleFor(x => x.ActorRole).NotEmpty();
     }
 }
 

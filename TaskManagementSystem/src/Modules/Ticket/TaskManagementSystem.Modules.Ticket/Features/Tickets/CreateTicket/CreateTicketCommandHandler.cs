@@ -84,7 +84,6 @@ public sealed class CreateTicketCommandHandler(
         await activityWriter.WriteAsync(
             createResult.Value.Id,
             TicketActivityType.Created,
-            $"{createResult.Value.Name} was created.",
             request.UserId,
             cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);

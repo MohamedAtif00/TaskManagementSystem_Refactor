@@ -46,6 +46,10 @@ public sealed class AboutMeQueryHandler(IIdentityUnitOfWork unitOfWork)
 
             profile.TeamName,
 
+            profile.TeamId,
+
+            profile.HeadedTeamIds,
+
             profile.Notifications));
 
     }

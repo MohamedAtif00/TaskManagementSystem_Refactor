@@ -2,6 +2,7 @@ using MediatR;
 using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Contracts.Ticket;
 using TaskManagementSystem.Api.Infrastructure;
+using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Modules.Ticket.Features.Tickets.AssignTicket;
 
@@ -19,10 +20,17 @@ public static class AssignTicketEndpoint
     private static async Task<IResult> HandleAsync(
         int id,
         AssignTicketRequest request,
+        ICurrentUserAccessor currentUserAccessor,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new AssignTicketCommand(id, request.UserId), cancellationToken);
+        var result = await mediator.Send(
+            new AssignTicketCommand(
+                id,
+                request.UserId,
+                currentUserAccessor.GetRequiredUserId(),
+                currentUserAccessor.GetRequiredRole()),
+            cancellationToken);
         return result.ToHttpResult(ticket => Results.Ok(TicketMapping.MapTicketDetail(ticket)));
     }
 }

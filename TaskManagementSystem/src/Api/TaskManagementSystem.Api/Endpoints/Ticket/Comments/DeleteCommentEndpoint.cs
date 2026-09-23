@@ -24,6 +24,6 @@ public static class DeleteCommentEndpoint
     {
         var userId = currentUserAccessor.GetRequiredUserId();
         var result = await mediator.Send(new DeleteCommentCommand(id, commentId, userId), cancellationToken);
-        return result.ToHttpResult(() => Results.NoContent());
+        return result.ToHttpResult(_ => Results.NoContent());
     }
 }

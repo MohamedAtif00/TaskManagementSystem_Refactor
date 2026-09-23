@@ -34,6 +34,8 @@ public static class AboutMeEndpoint
             RoleName = profile.RoleName,
             Permissions = profile.Permissions.ToArray(),
             Group = profile.Group,
+            TeamId = profile.TeamId,
+            HeadedTeamIds = profile.HeadedTeamIds.ToArray(),
             Notifications = profile.Notifications
         }));
     }

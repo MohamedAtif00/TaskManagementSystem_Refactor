@@ -2,10 +2,13 @@ using MediatR;
 using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.Modules.Ticket.Application;
+using TaskManagementSystem.Modules.Ticket.Domain;
 
 namespace TaskManagementSystem.Modules.Ticket.Features.Comments.DeleteComment;
 
-public sealed class DeleteCommentCommandHandler(ITicketUnitOfWork unitOfWork)
+public sealed class DeleteCommentCommandHandler(
+    ITicketUnitOfWork unitOfWork,
+    ITicketActivityWriter activityWriter)
     : IRequestHandler<DeleteCommentCommand, Result<NoValue>>
 {
     public async Task<Result<NoValue>> Handle(
@@ -30,6 +33,11 @@ public sealed class DeleteCommentCommandHandler(ITicketUnitOfWork unitOfWork)
             return Result.Fail<NoValue>(deleteResult.Error);
         }
 
+        await activityWriter.WriteAsync(
+            request.TicketId,
+            TicketActivityType.DeleteComment,
+            request.UserId,
+            cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return Result.Ok();
     }

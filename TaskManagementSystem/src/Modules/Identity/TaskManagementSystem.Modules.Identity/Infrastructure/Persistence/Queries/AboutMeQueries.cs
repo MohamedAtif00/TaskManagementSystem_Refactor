@@ -15,6 +15,13 @@ internal sealed class AboutMeQueries(ISqlConnectionFactory connectionFactory) : 
                 u.[Role] AS RoleId,
                 r.[Name] AS RoleName,
                 t.[Name] AS TeamName,
+                u.[TeamId],
+                (
+                    SELECT STRING_AGG(CAST(st.[TeamId] AS varchar(20)), ',')
+                    FROM [organization].[Sections] AS s
+                    INNER JOIN [organization].[SectionTeams] AS st ON st.[SectionId] = s.[Id]
+                    WHERE s.[HeadId] = u.[Id] AND s.[Archived] = 0
+                ) AS HeadedTeamIdsCsv,
                 (
                     SELECT COUNT(*)
                     FROM [notifications].[Notifications] AS n
@@ -45,6 +52,14 @@ internal sealed class AboutMeQueries(ISqlConnectionFactory connectionFactory) : 
             ? []
             : row.PermissionCodesCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+        var headedTeamIds = string.IsNullOrWhiteSpace(row.HeadedTeamIdsCsv)
+            ? Array.Empty<int>()
+            : row.HeadedTeamIdsCsv
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(value => int.Parse(value))
+                .Distinct()
+                .ToArray();
+
         return new AboutMeReadModel(
             row.Id,
             row.Name,
@@ -52,6 +67,8 @@ internal sealed class AboutMeQueries(ISqlConnectionFactory connectionFactory) : 
             row.RoleName,
             permissions,
             row.TeamName,
+            row.TeamId,
+            headedTeamIds,
             row.Notifications);
     }
 
@@ -66,6 +83,10 @@ internal sealed class AboutMeQueries(ISqlConnectionFactory connectionFactory) : 
         public string RoleName { get; init; } = string.Empty;
 
         public string? TeamName { get; init; }
+
+        public int? TeamId { get; init; }
+
+        public string? HeadedTeamIdsCsv { get; init; }
 
         public int Notifications { get; init; }
 

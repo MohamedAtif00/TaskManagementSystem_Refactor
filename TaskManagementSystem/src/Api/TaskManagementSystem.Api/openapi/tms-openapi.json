@@ -7453,6 +7453,18 @@
             "type": "string",
             "nullable": true
           },
+          "teamId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "headedTeamIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
           "notifications": {
             "type": "integer",
             "format": "int32"
@@ -7469,6 +7481,8 @@
             "identity.users.manage"
           ],
           "group": "Engineering",
+          "teamId": 3,
+          "headedTeamIds": [],
           "notifications": 0
         }
       },

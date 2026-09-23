@@ -2,10 +2,13 @@ using MediatR;
 using TaskManagementSystem.BuildingBlocks.Application;
 using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.Modules.Ticket.Application;
+using TaskManagementSystem.Modules.Ticket.Domain;
 
 namespace TaskManagementSystem.Modules.Ticket.Features.Comments.UpdateComment;
 
-public sealed class UpdateCommentCommandHandler(ITicketUnitOfWork unitOfWork)
+public sealed class UpdateCommentCommandHandler(
+    ITicketUnitOfWork unitOfWork,
+    ITicketActivityWriter activityWriter)
     : IRequestHandler<UpdateCommentCommand, Result<CommentListItemResult>>
 {
     public async Task<Result<CommentListItemResult>> Handle(
@@ -30,6 +33,11 @@ public sealed class UpdateCommentCommandHandler(ITicketUnitOfWork unitOfWork)
             return Result.Fail<CommentListItemResult>(updateResult.Error);
         }
 
+        await activityWriter.WriteAsync(
+            request.TicketId,
+            TicketActivityType.EditComment,
+            request.UserId,
+            cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
         return Result.Ok(CommentListItemResult.From(comment));
     }

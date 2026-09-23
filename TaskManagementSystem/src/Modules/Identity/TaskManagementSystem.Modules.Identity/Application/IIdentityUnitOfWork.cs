@@ -27,4 +27,6 @@ public sealed record AboutMeReadModel(
     string RoleName,
     IReadOnlyList<string> Permissions,
     string? TeamName,
+    int? TeamId,
+    IReadOnlyList<int> HeadedTeamIds,
     int Notifications);

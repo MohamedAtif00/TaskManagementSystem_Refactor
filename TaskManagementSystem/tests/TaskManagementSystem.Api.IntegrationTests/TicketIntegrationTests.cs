@@ -69,7 +69,7 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
         var proceedResponse = await client.PatchAsync($"/tickets/{ticket.Id}/proceed", null);
         proceedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var proceededTicket = await proceedResponse.Content.ReadFromJsonAsync<TicketDetailResponse>();
-        proceededTicket!.Status.Should().Be(DomainTicketStatus.Done);
+        proceededTicket!.Status.Should().Be(DomainTicketStatus.Doing);
 
         var listByLoResponse = await client.GetAsync($"/learning-objectives/{setup.LearningObjectiveId}/tickets");
         var loTickets = await listByLoResponse.Content.ReadFromJsonAsync<List<TicketListItemResponse>>();

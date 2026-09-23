@@ -4,4 +4,4 @@ using TaskManagementSystem.Modules.Ticket.Application;
 
 namespace TaskManagementSystem.Modules.Ticket.Features.Tickets.PauseTicket;
 
-public sealed record PauseTicketCommand(int TicketId) : ITicketCommand<Result<TicketDetailResult>>;
+public sealed record PauseTicketCommand(int TicketId, int ActorUserId) : ITicketCommand<Result<TicketDetailResult>>;
