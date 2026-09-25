@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\Modules\Identity\TaskManagementSystem.Modules.Identity\TaskManagementSystem.Modules.Identity.csproj" />
     <ProjectReference Include="..\..\Modules\Notifications\TaskManagementSystem.Modules.Notifications\TaskManagementSystem.Modules.Notifications.csproj" />
     <ProjectReference Include="..\..\Modules\Organization\TaskManagementSystem.Modules.Organization\TaskManagementSystem.Modules.Organization.csproj" />
+    <ProjectReference Include="..\..\Modules\Analytics\TaskManagementSystem.Modules.Analytics\TaskManagementSystem.Modules.Analytics.csproj" />
     <ProjectReference Include="..\..\Modules\Sprints\TaskManagementSystem.Modules.Sprints\TaskManagementSystem.Modules.Sprints.csproj" />
     <ProjectReference Include="..\..\Modules\Ticket\TaskManagementSystem.Modules.Ticket\TaskManagementSystem.Modules.Ticket.csproj" />
     <ProjectReference Include="..\..\Modules\Workflows\TaskManagementSystem.Modules.Workflows\TaskManagementSystem.Modules.Workflows.csproj" />

@@ -5,6 +5,7 @@ using TaskManagementSystem.Api.Endpoints.Identity;
 using TaskManagementSystem.Api.Endpoints.Organization;
 using TaskManagementSystem.Api.Endpoints.Curriculum;
 using TaskManagementSystem.Api.Endpoints.Notifications;
+using TaskManagementSystem.Api.Endpoints.Analytics;
 using TaskManagementSystem.Api.Endpoints.Sprints;
 using TaskManagementSystem.Api.Endpoints.Ticket;
 using TaskManagementSystem.Api.Endpoints.Workflows;
@@ -24,6 +25,8 @@ using TaskManagementSystem.Modules.Curriculum.Features.AcademicYears.CreateAcade
 using TaskManagementSystem.Modules.Curriculum.Infrastructure;
 using TaskManagementSystem.Modules.Notifications.Features.Notifications.ListMyNotifications;
 using TaskManagementSystem.Modules.Notifications.Infrastructure;
+using TaskManagementSystem.Modules.Analytics.Features.GetSubjectOverview;
+using TaskManagementSystem.Modules.Analytics.Infrastructure;
 using TaskManagementSystem.Modules.Sprints.Features.Sprints.CreateSprint;
 using TaskManagementSystem.Modules.Sprints.Infrastructure;
 using TaskManagementSystem.Modules.Ticket.Features.Tickets.CreateTicket;
@@ -43,6 +46,7 @@ builder.Services.AddOrganizationModule(builder.Configuration, builder.Environmen
 builder.Services.AddWorkflowsModule(builder.Configuration, builder.Environment);
 builder.Services.AddCurriculumModule(builder.Configuration, builder.Environment);
 builder.Services.AddSprintsModule(builder.Configuration, builder.Environment);
+builder.Services.AddAnalyticsModule(builder.Configuration, builder.Environment);
 builder.Services.AddTicketModule(builder.Configuration, builder.Environment);
 builder.Services.AddNotificationsModule(builder.Configuration, builder.Environment);
 builder.Services.AddAuditLog(builder.Configuration, builder.Environment);
@@ -56,6 +60,7 @@ builder.Services.AddBuildingBlocks(
     typeof(CreateSchemaCommand).Assembly,
     typeof(CreateAcademicYearCommand).Assembly,
     typeof(CreateSprintCommand).Assembly,
+    typeof(GetSubjectOverviewQuery).Assembly,
     typeof(CreateTicketCommand).Assembly,
     typeof(ListMyNotificationsQuery).Assembly,
     typeof(TicketAssignedIntegrationEvent).Assembly);
@@ -80,6 +85,7 @@ app.MapOrganizationEndpoints();
 app.MapWorkflowsEndpoints();
 app.MapCurriculumEndpoints();
 app.MapSprintsEndpoints();
+app.MapAnalyticsEndpoints();
 app.MapTicketEndpoints();
 app.MapNotificationsEndpoints();
 app.MapRealtimeHub();

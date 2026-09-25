@@ -58,6 +58,12 @@ public static class PermissionCodes
         public const string Manage = $"{Prefix}.{PermissionCodes.Manage}";
     }
 
+    public static class Analytics
+    {
+        public const string Prefix = "analytics";
+        public const string Read = $"{Prefix}.{PermissionCodes.Read}";
+    }
+
     public static class Notifications
     {
         public const string Prefix = "notifications";
@@ -143,6 +149,7 @@ public static class PermissionCodes
         Curriculum.Prefix,
         Sprints.Prefix,
         Tickets.Prefix,
+        Analytics.Prefix,
         Notifications.Prefix,
         HrLeave.Prefix,
         HrHolidays.Prefix,
@@ -160,6 +167,7 @@ public static class PermissionCodes
         Curriculum.Read, Curriculum.Create, Curriculum.Update, Curriculum.Delete, Curriculum.Manage,
         Sprints.Read, Sprints.Create, Sprints.Update, Sprints.Delete, Sprints.Manage,
         Tickets.Read, Tickets.Create, Tickets.Update, Tickets.Delete, Tickets.Manage,
+        Analytics.Read,
         Notifications.Read, Notifications.Update, Notifications.Manage,
         HrLeave.Read, HrLeave.Create, HrLeave.Update, HrLeave.Delete, HrLeave.Manage,
         HrHolidays.Read, HrHolidays.Create, HrHolidays.Update, HrHolidays.Delete, HrHolidays.Manage,

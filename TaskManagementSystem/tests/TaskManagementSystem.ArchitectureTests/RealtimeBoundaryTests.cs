@@ -19,6 +19,7 @@ public sealed class RealtimeBoundaryTests
         "TaskManagementSystem.Modules.Notifications",
         "TaskManagementSystem.Modules.Organization",
         "TaskManagementSystem.Modules.Sprints",
+        "TaskManagementSystem.Modules.Analytics",
         "TaskManagementSystem.Modules.Ticket",
         "TaskManagementSystem.Modules.Workflows"
     ];

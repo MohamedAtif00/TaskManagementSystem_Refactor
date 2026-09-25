@@ -21,6 +21,7 @@ public sealed class PersistenceBoundaryTests
         "TaskManagementSystem.Modules.Notifications",
         "TaskManagementSystem.Modules.Organization",
         "TaskManagementSystem.Modules.Sprints",
+        "TaskManagementSystem.Modules.Analytics",
         "TaskManagementSystem.Modules.Ticket",
         "TaskManagementSystem.Modules.Workflows"
     ];
