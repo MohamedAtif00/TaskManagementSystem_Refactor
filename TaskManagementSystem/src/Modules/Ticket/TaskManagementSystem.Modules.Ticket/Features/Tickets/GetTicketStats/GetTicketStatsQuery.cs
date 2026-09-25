@@ -17,4 +17,6 @@ public sealed record TicketStatsResult(
     IReadOnlyList<TicketStatsItemResult> Tickets,
     IReadOnlyList<TicketStatsLoResult> LearningObjectives);
 
-public sealed record GetTicketStatsQuery : IQuery<Result<TicketStatsResult>>;
+public sealed record GetTicketStatsQuery(
+    IReadOnlyList<int>? SubjectIds = null,
+    IReadOnlyList<int>? LearningObjectiveIds = null) : IQuery<Result<TicketStatsResult>>;

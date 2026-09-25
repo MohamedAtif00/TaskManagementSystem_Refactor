@@ -12,7 +12,10 @@ public sealed class GetTicketStatsQueryHandler(TicketStatsQueries ticketStatsQue
         GetTicketStatsQuery request,
         CancellationToken cancellationToken)
     {
-        var stats = await ticketStatsQueries.GetAsync(cancellationToken);
+        var stats = await ticketStatsQueries.GetAsync(
+            request.SubjectIds,
+            request.LearningObjectiveIds,
+            cancellationToken);
         return Result.Ok(stats);
     }
 }

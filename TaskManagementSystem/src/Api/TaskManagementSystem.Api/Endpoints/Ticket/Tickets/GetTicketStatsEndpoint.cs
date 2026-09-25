@@ -16,10 +16,14 @@ public static class GetTicketStatsEndpoint
     }
 
     private static async Task<IResult> HandleAsync(
+        int[]? subjectId,
+        int[]? learningObjectiveId,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new GetTicketStatsQuery(), cancellationToken);
+        var result = await mediator.Send(
+            new GetTicketStatsQuery(subjectId, learningObjectiveId),
+            cancellationToken);
         return result.ToHttpResult(stats =>
             Results.Ok(new TicketStatsResponse
             {
