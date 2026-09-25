@@ -32,6 +32,7 @@ public static class TicketModuleExtensions
         services.AddScoped<SprintTicketsQueries>();
         services.AddScoped<LearningObjectiveTicketsQueries>();
         services.AddScoped<TicketStatsQueries>();
+        services.AddScoped<TicketSummaryQueries>();
         services.AddScoped<IOutboxWriter, EfOutboxWriter<TicketDbContext>>();
         services.AddScoped<IInboxGuard, EfInboxGuard<TicketDbContext>>();
         services.AddOutboxProcessor("ticket", environment);

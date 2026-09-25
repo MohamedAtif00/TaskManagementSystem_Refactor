@@ -16,6 +16,12 @@ public static class TicketErrors
     public static ResultError LearningObjectiveNotFound =>
         new("learning_objective_not_found", "Learning objective not found.");
 
+    public static ResultError SubjectNotFound =>
+        new("subject_not_found", "Subject not found.");
+
+    public static ResultError SprintNotFound =>
+        new("sprint_not_found", "Sprint not found.");
+
     public static ResultError TicketBankNotFound =>
         new("ticket_bank_not_found", "Domain.Ticket bank item not found.");
 

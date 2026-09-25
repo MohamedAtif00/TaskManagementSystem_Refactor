@@ -69,6 +69,16 @@ public sealed class TicketStatsResponse
     public IReadOnlyList<TicketStatsLearningObjectiveResponse> LearningObjectives { get; set; } = [];
 }
 
+public sealed class TicketSummaryResponse
+{
+    public int Backlog { get; set; }
+    public int ToDo { get; set; }
+    public int Doing { get; set; }
+    public int Done { get; set; }
+    public int TotalCount { get; set; }
+    public DateTime CalculatedAtUtc { get; set; }
+}
+
 public sealed class TicketDetailResponse
 {
     public int Id { get; set; }
