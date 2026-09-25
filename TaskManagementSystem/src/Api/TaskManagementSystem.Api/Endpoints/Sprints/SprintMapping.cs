@@ -12,7 +12,9 @@ internal static class SprintMapping
             Name = sprint.Name,
             Description = sprint.Description,
             StartDate = sprint.StartDate,
-            EndDate = sprint.EndDate
+            EndDate = sprint.EndDate,
+            LearningObjectiveCount = sprint.LearningObjectiveCount,
+            ProgressPercent = sprint.ProgressPercent
         };
 
     internal static SprintDetailResponse MapSprintDetail(SprintDetailResult sprint) =>

@@ -29,7 +29,11 @@ public sealed class SearchWorkFromHomeRequestsQueryHandler(IHrUnitOfWork unitOfW
             cancellationToken);
 
         var items = searchResult.Items.Select(r => WorkFromHomeRequestResult.From(r)).ToList();
-        return Result.Ok(new WorkFromHomeRequestListResult(items, searchResult.TotalCount));
+        return Result.Ok(new WorkFromHomeRequestListResult(
+            items,
+            request.Page,
+            request.PageSize,
+            searchResult.TotalCount));
     }
 }
 

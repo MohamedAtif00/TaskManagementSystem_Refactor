@@ -30,7 +30,11 @@ public sealed class SearchLeaveRequestsQueryHandler(IHrUnitOfWork unitOfWork)
             cancellationToken);
 
         var items = searchResult.Items.Select(lr => LeaveRequestResult.From(lr)).ToList();
-        return Result.Ok(new LeaveRequestListResult(items, searchResult.TotalCount));
+        return Result.Ok(new LeaveRequestListResult(
+            items,
+            request.Page,
+            request.PageSize,
+            searchResult.TotalCount));
     }
 }
 

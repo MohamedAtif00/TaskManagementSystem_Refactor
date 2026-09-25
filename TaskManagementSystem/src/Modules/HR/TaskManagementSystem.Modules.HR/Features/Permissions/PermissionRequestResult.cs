@@ -35,6 +35,8 @@ public sealed record PermissionRequestResult(
 
 public sealed record PermissionRequestListResult(
     IReadOnlyList<PermissionRequestResult> Items,
+    int Page,
+    int PageSize,
     int TotalCount);
 
 public sealed record BulkPermissionOpinionResult(

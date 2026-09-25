@@ -1,5 +1,7 @@
 using Dapper;
 using TaskManagementSystem.BuildingBlocks.Application.Data;
+using TaskManagementSystem.BuildingBlocks.Application.Paging;
+using TaskManagementSystem.BuildingBlocks.Domain;
 using TaskManagementSystem.Modules.Identity.Application;
 using TaskManagementSystem.Modules.Identity.Domain;
 
@@ -31,6 +33,72 @@ internal sealed class UserAdminQueries(ISqlConnectionFactory connectionFactory) 
             new CommandDefinition(sql, cancellationToken: cancellationToken));
 
         return users.ToList();
+    }
+
+    public async Task<Result<PageListResult<UserListItemReadModel>>> ListActivePagedAsync(
+        string? search,
+        int? page,
+        int? pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        var paging = PagingValidation.Resolve(page, pageSize);
+        if (paging.IsFailure)
+        {
+            return Result.Fail<PageListResult<UserListItemReadModel>>(paging.Error);
+        }
+
+        var (resolvedPage, resolvedPageSize, skip) = paging.Value;
+        const string sql = """
+            SELECT
+                u.[Id],
+                u.[Code],
+                u.[Name],
+                u.[Role] AS RoleId,
+                r.[Name] AS RoleName,
+                u.[TeamId],
+                t.[Name] AS TeamName,
+                COUNT(*) OVER() AS TotalCount
+            FROM [identity].[Users] AS u
+            INNER JOIN [identity].[Roles] AS r ON r.[Id] = u.[Role]
+            LEFT JOIN [organization].[Teams] AS t ON t.[Id] = u.[TeamId] AND t.[Archived] = 0
+            WHERE u.[Archived] = 0
+              AND (@Search IS NULL
+                   OR u.[Name] LIKE @Search
+                   OR u.[Code] LIKE @Search
+                   OR u.[HR_code] LIKE @Search
+                   OR t.[Name] LIKE @Search
+                   OR r.[Name] LIKE @Search)
+            ORDER BY u.[Name]
+            OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
+            """;
+
+        using var connection = connectionFactory.GetOpenConnection();
+        var rows = (await connection.QueryAsync<UserListItemPagedRow>(
+            new CommandDefinition(
+                sql,
+                new
+                {
+                    Search = string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%",
+                    Skip = (int)skip,
+                    Take = resolvedPageSize
+                },
+                cancellationToken: cancellationToken))).ToList();
+
+        var totalCount = rows.FirstOrDefault()?.TotalCount ?? 0;
+        var items = rows.Select(row => new UserListItemReadModel(
+            row.Id,
+            row.Code,
+            row.Name,
+            row.RoleId,
+            row.RoleName,
+            row.TeamId,
+            row.TeamName)).ToList();
+
+        return Result.Ok(new PageListResult<UserListItemReadModel>(
+            items,
+            resolvedPage,
+            resolvedPageSize,
+            totalCount));
     }
 
     public async Task<UserDetailReadModel?> GetByIdAsync(int userId, CancellationToken cancellationToken = default)
@@ -123,5 +191,17 @@ internal sealed class UserAdminQueries(ISqlConnectionFactory connectionFactory) 
                 cancellationToken: cancellationToken));
 
         return leaders.ToList();
+    }
+
+    private sealed class UserListItemPagedRow
+    {
+        public int Id { get; init; }
+        public string Code { get; init; } = string.Empty;
+        public string Name { get; init; } = string.Empty;
+        public int RoleId { get; init; }
+        public string RoleName { get; init; } = string.Empty;
+        public int? TeamId { get; init; }
+        public string? TeamName { get; init; }
+        public int TotalCount { get; init; }
     }
 }

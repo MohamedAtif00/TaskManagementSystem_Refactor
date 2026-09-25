@@ -123,6 +123,14 @@ public sealed class UserListItemResponse
     public string? TeamName { get; set; }
 }
 
+public sealed class UserListPageResponse
+{
+    public IReadOnlyList<UserListItemResponse> Items { get; set; } = [];
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+}
+
 public sealed class UserDetailResponse
 {
     public int Id { get; set; }

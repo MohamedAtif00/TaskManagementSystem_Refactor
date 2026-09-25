@@ -18,6 +18,7 @@ public static class SprintsModuleExtensions
     {
         services.AddSqlConnectionFactory(configuration);
         services.AddScoped<ILearningObjectiveLookup, LearningObjectiveLookupQueries>();
+        services.AddScoped<SprintListQueries>();
 
         services.AddDbContext<SprintsDbContext>(options =>
         {

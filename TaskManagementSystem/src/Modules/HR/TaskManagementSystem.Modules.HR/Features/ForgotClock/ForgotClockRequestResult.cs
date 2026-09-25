@@ -33,6 +33,8 @@ public sealed record ForgotClockRequestResult(
 
 public sealed record ForgotClockRequestListResult(
     IReadOnlyList<ForgotClockRequestResult> Items,
+    int Page,
+    int PageSize,
     int TotalCount);
 
 public sealed record BulkForgotClockOpinionResult(

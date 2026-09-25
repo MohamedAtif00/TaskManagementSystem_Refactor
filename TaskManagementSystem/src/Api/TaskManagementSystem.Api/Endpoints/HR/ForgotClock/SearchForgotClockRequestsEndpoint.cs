@@ -53,6 +53,8 @@ public static class SearchForgotClockRequestsEndpoint
         return result.ToHttpResult(list => Results.Ok(new ForgotClockRequestListResponse
         {
             Items = list.Items.Select(ForgotClockMapping.MapForgotClock).ToList(),
+            Page = list.Page,
+            PageSize = list.PageSize,
             TotalCount = list.TotalCount
         }));
     }

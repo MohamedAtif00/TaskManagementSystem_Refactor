@@ -7,7 +7,9 @@ public sealed record SprintListItemResult(
     string Name,
     string Description,
     DateTime StartDate,
-    DateTime EndDate)
+    DateTime EndDate,
+    int LearningObjectiveCount = 0,
+    int ProgressPercent = 0)
 {
     public static SprintListItemResult From(Sprint sprint) =>
         new(sprint.Id, sprint.Name, sprint.Description, sprint.StartDate, sprint.EndDate);

@@ -53,6 +53,8 @@ public static class SearchPermissionRequestsEndpoint
         return result.ToHttpResult(list => Results.Ok(new PermissionRequestListResponse
         {
             Items = list.Items.Select(PermissionMapping.MapPermission).ToList(),
+            Page = list.Page,
+            PageSize = list.PageSize,
             TotalCount = list.TotalCount
         }));
     }

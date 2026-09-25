@@ -27,6 +27,8 @@ public sealed record WorkFromHomeRequestResult(
 
 public sealed record WorkFromHomeRequestListResult(
     IReadOnlyList<WorkFromHomeRequestResult> Items,
+    int Page,
+    int PageSize,
     int TotalCount);
 
 public sealed record BulkWorkFromHomeOpinionResult(

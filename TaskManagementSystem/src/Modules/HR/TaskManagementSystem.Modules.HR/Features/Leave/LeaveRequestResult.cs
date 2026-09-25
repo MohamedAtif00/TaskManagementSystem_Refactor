@@ -45,4 +45,6 @@ public sealed record OpinionResult(
 
 public sealed record LeaveRequestListResult(
     IReadOnlyList<LeaveRequestResult> Items,
+    int Page,
+    int PageSize,
     int TotalCount);

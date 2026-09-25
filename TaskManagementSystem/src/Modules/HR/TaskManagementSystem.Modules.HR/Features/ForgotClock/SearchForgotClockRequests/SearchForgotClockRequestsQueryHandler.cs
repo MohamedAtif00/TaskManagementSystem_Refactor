@@ -31,7 +31,11 @@ public sealed class SearchForgotClockRequestsQueryHandler(IHrUnitOfWork unitOfWo
             cancellationToken);
 
         var items = searchResult.Items.Select(r => ForgotClockRequestResult.From(r)).ToList();
-        return Result.Ok(new ForgotClockRequestListResult(items, searchResult.TotalCount));
+        return Result.Ok(new ForgotClockRequestListResult(
+            items,
+            request.Page,
+            request.PageSize,
+            searchResult.TotalCount));
     }
 }
 

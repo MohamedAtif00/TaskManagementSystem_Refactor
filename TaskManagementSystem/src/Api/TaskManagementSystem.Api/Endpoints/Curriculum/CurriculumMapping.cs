@@ -32,6 +32,18 @@ internal static class CurriculumMapping
     internal static SubjectListItemResponse MapSubjectListItem(SubjectListItemResult subject) =>
         new() { Id = subject.Id, Name = subject.Name, Description = subject.Description, Status = subject.Status, SubjectGroupId = subject.SubjectGroupId };
 
+    internal static SubjectCatalogListItemResponse MapSubjectCatalogListItem(SubjectCatalogListItemResult subject) =>
+        new()
+        {
+            Id = subject.Id,
+            Name = subject.Name,
+            FolderPath = subject.FolderPath,
+            Year = subject.Year,
+            Term = subject.Term,
+            Status = subject.Status,
+            ProgressPercent = subject.ProgressPercent
+        };
+
     internal static SubjectDetailResponse MapSubjectDetail(SubjectDetailResult subject) =>
         new() { Id = subject.Id, Name = subject.Name, Description = subject.Description, Status = subject.Status, SubjectGroupId = subject.SubjectGroupId, ArchivedWithFolder = subject.ArchivedWithFolder };
 

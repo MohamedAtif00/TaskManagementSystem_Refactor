@@ -49,6 +49,8 @@ public static class SearchWorkFromHomeRequestsEndpoint
         return result.ToHttpResult(list => Results.Ok(new WorkFromHomeRequestListResponse
         {
             Items = list.Items.Select(WorkFromHomeMapping.MapWorkFromHome).ToList(),
+            Page = list.Page,
+            PageSize = list.PageSize,
             TotalCount = list.TotalCount
         }));
     }

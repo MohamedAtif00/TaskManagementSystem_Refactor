@@ -31,7 +31,11 @@ public sealed class SearchPermissionRequestsQueryHandler(IHrUnitOfWork unitOfWor
             cancellationToken);
 
         var items = searchResult.Items.Select(p => PermissionRequestResult.From(p)).ToList();
-        return Result.Ok(new PermissionRequestListResult(items, searchResult.TotalCount));
+        return Result.Ok(new PermissionRequestListResult(
+            items,
+            request.Page,
+            request.PageSize,
+            searchResult.TotalCount));
     }
 }
 

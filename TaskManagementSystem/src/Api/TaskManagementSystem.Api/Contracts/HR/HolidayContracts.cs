@@ -28,3 +28,11 @@ public sealed class HolidayResponse
 
     public int CreatedByUserId { get; set; }
 }
+
+public sealed class HolidayListPageResponse
+{
+    public IReadOnlyList<HolidayResponse> Items { get; set; } = [];
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+}

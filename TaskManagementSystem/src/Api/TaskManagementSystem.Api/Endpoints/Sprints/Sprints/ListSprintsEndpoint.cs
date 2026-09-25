@@ -1,5 +1,6 @@
 using MediatR;
 using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Api.Contracts.Sprints;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Modules.Sprints.Features.Sprints.ListSprints;
@@ -18,11 +19,26 @@ public static class ListSprintsEndpoint
     private static async Task<IResult> HandleAsync(
         IMediator mediator,
         CancellationToken cancellationToken,
-        string? archived = null)
+        string? archived = null,
+        int? page = null,
+        int? pageSize = null)
     {
-        var result = await mediator.Send(
-            new ListSprintsQuery(OptionalQueryBinding.ParseOptionalBool(archived)),
-            cancellationToken);
+        var parsedArchived = OptionalQueryBinding.ParseOptionalBool(archived);
+        if (page.HasValue || pageSize.HasValue)
+        {
+            var pagedResult = await mediator.Send(
+                new ListSprintsPagedQuery(parsedArchived, page, pageSize),
+                cancellationToken);
+            return pagedResult.ToHttpResult(pageResult => Results.Ok(new SprintListPageResponse
+            {
+                Items = pageResult.Items.Select(SprintMapping.MapSprintListItem).ToList(),
+                Page = pageResult.Page,
+                PageSize = pageResult.PageSize,
+                TotalCount = pageResult.TotalCount
+            }));
+        }
+
+        var result = await mediator.Send(new ListSprintsQuery(parsedArchived), cancellationToken);
         return result.ToHttpResult(sprints =>
             Results.Ok(sprints.Select(SprintMapping.MapSprintListItem).ToList()));
     }

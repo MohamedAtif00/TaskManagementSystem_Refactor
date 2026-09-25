@@ -23,6 +23,16 @@ public sealed class SprintListItemResponse
     public string Description { get; set; } = string.Empty;
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
+    public int LearningObjectiveCount { get; set; }
+    public int ProgressPercent { get; set; }
+}
+
+public sealed class SprintListPageResponse
+{
+    public IReadOnlyList<SprintListItemResponse> Items { get; set; } = [];
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
 }
 
 public sealed class SprintDetailResponse

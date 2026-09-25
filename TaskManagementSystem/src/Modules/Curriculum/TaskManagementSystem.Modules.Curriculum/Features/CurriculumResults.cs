@@ -56,6 +56,19 @@ public sealed record SubjectListItemResult(int Id, string Name, string Descripti
         new(subject.Id, subject.Name, subject.Description, subject.Status, subject.SubjectGroupId);
 }
 
+public sealed record SubjectCatalogListItemResult(
+    int Id,
+    string Name,
+    string FolderPath,
+    string Year,
+    string Term,
+    SubjectStatus Status,
+    int ProgressPercent);
+
+public sealed record SubjectCatalogFilterOptionsResult(
+    IReadOnlyList<string> Years,
+    IReadOnlyList<string> Terms);
+
 public sealed record SubjectDetailResult(
     int Id,
     string Name,

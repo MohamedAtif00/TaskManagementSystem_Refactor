@@ -80,6 +80,8 @@ public static class ResultHttpMapper
             "role_not_found" => StatusCodes.Status404NotFound,
             "cannot_delete_system_permission" => StatusCodes.Status400BadRequest,
             "cannot_delete_system_role" => StatusCodes.Status400BadRequest,
+            "invalid_page" => StatusCodes.Status400BadRequest,
+            "invalid_page_size" => StatusCodes.Status400BadRequest,
             "duplicate_permission_code" => StatusCodes.Status409Conflict,
             "duplicate_role_name" => StatusCodes.Status409Conflict,
             "role_in_use" => StatusCodes.Status409Conflict,

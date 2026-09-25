@@ -32,6 +32,8 @@ public static class HrModuleExtensions
         services.AddScoped<PermissionRequestSearchQueries>();
         services.AddScoped<WorkFromHomeRequestSearchQueries>();
         services.AddScoped<ForgotClockRequestSearchQueries>();
+        services.AddScoped<MemberBalanceListQueries>();
+        services.AddScoped<HolidayListQueries>();
         services.AddScoped<OrgLookupQueries>();
 
         services.AddDbContext<HrDbContext>(options =>

@@ -33,12 +33,30 @@ public static class HrHolidayEndpoints
         IMediator mediator,
         string? fromDate,
         string? toDate,
+        int? page,
+        int? pageSize,
         CancellationToken cancellationToken)
     {
+        var parsedFromDate = OptionalQueryBinding.ParseOptionalDate(fromDate);
+        var parsedToDate = OptionalQueryBinding.ParseOptionalDate(toDate);
+
+        if (page.HasValue || pageSize.HasValue)
+        {
+            var pagedResult = await mediator.Send(
+                new ListHolidaysPagedQuery(parsedFromDate, parsedToDate, page, pageSize),
+                cancellationToken);
+
+            return pagedResult.ToHttpResult(pageResult => Results.Ok(new HolidayListPageResponse
+            {
+                Items = pageResult.Items.Select(MapHoliday).ToList(),
+                Page = pageResult.Page,
+                PageSize = pageResult.PageSize,
+                TotalCount = pageResult.TotalCount
+            }));
+        }
+
         var result = await mediator.Send(
-            new ListHolidaysQuery(
-                OptionalQueryBinding.ParseOptionalDate(fromDate),
-                OptionalQueryBinding.ParseOptionalDate(toDate)),
+            new ListHolidaysQuery(parsedFromDate, parsedToDate),
             cancellationToken);
 
         return result.ToHttpResult(holidaysList =>

@@ -57,6 +57,8 @@ public static class SearchLeaveRequestsEndpoint
         return result.ToHttpResult(list => Results.Ok(new LeaveRequestListResponse
         {
             Items = list.Items.Select(LeaveRequestMapping.MapLeaveRequest).ToList(),
+            Page = list.Page,
+            PageSize = list.PageSize,
             TotalCount = list.TotalCount
         }));
     }

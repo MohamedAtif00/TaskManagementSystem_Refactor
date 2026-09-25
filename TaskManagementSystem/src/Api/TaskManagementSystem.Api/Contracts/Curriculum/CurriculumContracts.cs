@@ -298,3 +298,28 @@ public sealed class YearTreeSubjectResponse
     public string Description { get; set; } = string.Empty;
     public SubjectStatus Status { get; set; }
 }
+
+public sealed class SubjectCatalogListItemResponse
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string FolderPath { get; set; } = string.Empty;
+    public string Year { get; set; } = string.Empty;
+    public string Term { get; set; } = string.Empty;
+    public SubjectStatus Status { get; set; }
+    public int ProgressPercent { get; set; }
+}
+
+public sealed class SubjectCatalogPageResponse
+{
+    public IReadOnlyList<SubjectCatalogListItemResponse> Items { get; set; } = [];
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+}
+
+public sealed class SubjectCatalogFilterOptionsResponse
+{
+    public IReadOnlyList<string> Years { get; set; } = [];
+    public IReadOnlyList<string> Terms { get; set; } = [];
+}

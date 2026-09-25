@@ -5,6 +5,7 @@ public static class SubjectEndpoints
     public static RouteGroupBuilder MapSubjectEndpoints(this RouteGroupBuilder group)
     {
         var subjects = group.MapGroup("/subjects");
+        ListSubjectsPagedEndpoint.Map(subjects);
         GetSubjectByIdEndpoint.Map(subjects);
         UpdateSubjectEndpoint.Map(subjects);
         ArchiveSubjectEndpoint.Map(subjects);

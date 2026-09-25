@@ -20,6 +20,7 @@ public static class CurriculumModuleExtensions
         services.AddScoped<IWorkflowSchemaLookup, WorkflowSchemaLookupQueries>();
         services.AddScoped<IIdentityUserLookup, IdentityUserLookupQueries>();
         services.AddScoped<YearTreeQueries>();
+        services.AddScoped<SubjectCatalogQueries>();
 
         services.AddDbContext<CurriculumDbContext>(options =>
         {
