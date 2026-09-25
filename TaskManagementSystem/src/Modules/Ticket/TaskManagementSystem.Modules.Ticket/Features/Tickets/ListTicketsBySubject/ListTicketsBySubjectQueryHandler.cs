@@ -13,7 +13,7 @@ public sealed class ListTicketsBySubjectQueryHandler(SubjectTicketsQueries subje
         ListTicketsBySubjectQuery request,
         CancellationToken cancellationToken)
     {
-        var tickets = await subjectTicketsQueries.ListBySubjectAsync(
+        return await subjectTicketsQueries.ListBySubjectAsync(
             request.SubjectId,
             request.Statuses,
             request.LearningObjectiveId,
@@ -21,6 +21,5 @@ public sealed class ListTicketsBySubjectQueryHandler(SubjectTicketsQueries subje
             request.Page,
             request.PageSize,
             cancellationToken);
-        return Result.Ok(tickets);
     }
 }

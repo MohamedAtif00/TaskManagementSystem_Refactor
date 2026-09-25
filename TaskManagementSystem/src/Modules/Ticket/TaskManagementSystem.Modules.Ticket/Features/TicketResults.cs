@@ -76,6 +76,24 @@ public sealed record TicketListItemResult(
             row.Flagged,
             row.IsRollback,
             row.RollbackCount);
+
+    internal static TicketListItemResult FromRow(LearningObjectiveTicketsQueries.TicketRow row) =>
+        new(
+            row.Id,
+            row.Name,
+            row.Status,
+            row.Priority,
+            row.Duration,
+            row.CreatedAt,
+            row.LearningObjectiveId,
+            row.StepId,
+            row.UserId,
+            row.TeamId,
+            row.Pause,
+            row.Attention,
+            row.Flagged,
+            row.IsRollback,
+            row.RollbackCount);
 }
 
 public sealed record TicketListPageResult(
@@ -125,6 +143,18 @@ public sealed record TicketDetailResult(
             task.TeamId,
             task.FromId);
 }
+
+public sealed record CommentListPageResult(
+    IReadOnlyList<CommentListItemResult> Items,
+    int Page,
+    int PageSize,
+    int TotalCount);
+
+public sealed record TicketActivityListPageResult(
+    IReadOnlyList<TicketActivityListItemResult> Items,
+    int Page,
+    int PageSize,
+    int TotalCount);
 
 public sealed record CommentListItemResult(
     int Id,

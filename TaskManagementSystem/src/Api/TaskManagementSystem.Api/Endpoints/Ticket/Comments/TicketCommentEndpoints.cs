@@ -8,6 +8,7 @@ public static class TicketCommentEndpoints
         UpdateCommentEndpoint.Map(group);
         DeleteCommentEndpoint.Map(group);
         ListCommentsByTicketEndpoint.Map(group);
+        ListCommentsByTicketPagedEndpoint.Map(group);
         return group;
     }
 }

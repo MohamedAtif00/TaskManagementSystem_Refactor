@@ -1,5 +1,7 @@
 using System.Text;
 using Dapper;
+using TaskManagementSystem.BuildingBlocks.Application.Paging;
+using TaskManagementSystem.BuildingBlocks.Domain;
 using DomainTicketStatus = TaskManagementSystem.Modules.Ticket.Domain.TicketStatus;
 
 namespace TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence.Queries;
@@ -53,23 +55,26 @@ internal static class TicketListQueryBuilder
     public static string OrderAndPaging(bool paged) =>
         paged
             ? """
-              ORDER BY t.[CreatedAt] DESC
+              ORDER BY t.[CreatedAt] DESC, t.[Id] DESC
               OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
               """
-            : "ORDER BY t.[CreatedAt] DESC";
+            : """
+              ORDER BY t.[CreatedAt] DESC, t.[Id] DESC
+              """;
 
-    public static void AddPaging(
+    public static Result<(int Page, int PageSize)> AddPaging(
         DynamicParameters parameters,
         int? page,
-        int? pageSize,
-        out bool paged,
-        out int resolvedPage,
-        out int resolvedPageSize)
+        int? pageSize)
     {
-        resolvedPage = page is >= 1 ? page.Value : 1;
-        resolvedPageSize = Math.Clamp(pageSize ?? 20, 1, 5000);
-        paged = true;
-        parameters.Add("Skip", (resolvedPage - 1) * resolvedPageSize);
-        parameters.Add("Take", resolvedPageSize);
+        var resolved = PagingValidation.Resolve(page, pageSize);
+        if (resolved.IsFailure)
+        {
+            return Result.Fail<(int Page, int PageSize)>(resolved.Error);
+        }
+
+        parameters.Add("Skip", (int)resolved.Value.Skip);
+        parameters.Add("Take", resolved.Value.PageSize);
+        return Result.Ok((resolved.Value.Page, resolved.Value.PageSize));
     }
 }

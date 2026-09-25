@@ -76,8 +76,8 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
         loTickets!.Should().ContainSingle(item => item.Id == ticket.Id);
 
         var listBySubjectResponse = await client.GetAsync($"/subjects/{setup.SubjectId}/tickets");
-        var subjectTickets = await listBySubjectResponse.Content.ReadFromJsonAsync<List<TicketListItemResponse>>();
-        subjectTickets!.Should().ContainSingle(item => item.Id == ticket.Id);
+        var subjectTickets = await listBySubjectResponse.Content.ReadFromJsonAsync<TicketListPageResponse>();
+        subjectTickets!.Items.Should().ContainSingle(item => item.Id == ticket.Id);
     }
 
     [Fact]
@@ -96,10 +96,11 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
         createTicketResponse.StatusCode.Should().Be(HttpStatusCode.Created);
         var ticket = await createTicketResponse.Content.ReadFromJsonAsync<TicketDetailResponse>();
 
-        var unpagedResponse = await client.GetAsync($"/subjects/{setup.SubjectId}/tickets");
-        unpagedResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-        var unpaged = await unpagedResponse.Content.ReadFromJsonAsync<List<TicketListItemResponse>>();
-        unpaged!.Should().Contain(item => item.Id == ticket!.Id);
+        var defaultPageResponse = await client.GetAsync($"/subjects/{setup.SubjectId}/tickets");
+        defaultPageResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var defaultPage = await defaultPageResponse.Content.ReadFromJsonAsync<TicketListPageResponse>();
+        defaultPage!.PageSize.Should().Be(20);
+        defaultPage.Items.Should().Contain(item => item.Id == ticket!.Id);
 
         var pagedBacklogResponse = await client.GetAsync(
             $"/subjects/{setup.SubjectId}/tickets?status=0&page=1&pageSize=10");
@@ -204,7 +205,7 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
         notificationCount.Should().Be(1);
     }
 
-    private static async Task<TicketSetup> CreateTicketSetupAsync(HttpClient client)
+    internal static async Task<TicketSetup> CreateTicketSetupAsync(HttpClient client)
     {
         var createYearResponse = await client.PostAsJsonAsync(
             "/curriculum/years",
@@ -308,7 +309,7 @@ public sealed class TicketIntegrationTests(TmsWebApplicationFactory factory)
             step.Id);
     }
 
-    private sealed record TicketSetup(
+    internal sealed record TicketSetup(
         int SubjectId,
         int LearningObjectiveId,
         int TicketBankItemId,

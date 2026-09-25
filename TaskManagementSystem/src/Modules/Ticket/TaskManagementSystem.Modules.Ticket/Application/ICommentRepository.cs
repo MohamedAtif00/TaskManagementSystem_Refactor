@@ -6,6 +6,12 @@ public interface ICommentRepository
 {
     Task<IReadOnlyList<Comment>> ListByTicketAsync(int ticketId, CancellationToken cancellationToken = default);
 
+    Task<(IReadOnlyList<Comment> Items, int TotalCount)> ListByTicketPagedAsync(
+        int ticketId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
     Task<Comment?> GetByIdTrackedAsync(int commentId, CancellationToken cancellationToken = default);
 
     Task AddAsync(Comment comment, CancellationToken cancellationToken = default);

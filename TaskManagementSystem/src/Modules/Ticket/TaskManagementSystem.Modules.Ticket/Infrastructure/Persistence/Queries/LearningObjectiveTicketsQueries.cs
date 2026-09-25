@@ -8,19 +8,16 @@ using DomainTicketPriority = TaskManagementSystem.Modules.Ticket.Domain.TicketPr
 
 namespace TaskManagementSystem.Modules.Ticket.Infrastructure.Persistence.Queries;
 
-public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactory)
+public sealed class LearningObjectiveTicketsQueries(ISqlConnectionFactory connectionFactory)
 {
-    public async Task<Result<TicketListPageResult>> ListBySubjectAsync(
-        int subjectId,
-        IReadOnlyList<DomainTicketStatus>? statuses = null,
-        int? learningObjectiveId = null,
-        string? name = null,
+    public async Task<Result<TicketListPageResult>> ListByLearningObjectiveAsync(
+        int learningObjectiveId,
         int? page = null,
         int? pageSize = null,
         CancellationToken cancellationToken = default)
     {
         var parameters = new DynamicParameters();
-        parameters.Add("SubjectId", subjectId);
+        parameters.Add("LearningObjectiveId", learningObjectiveId);
         var paging = TicketListQueryBuilder.AddPaging(parameters, page, pageSize);
         if (paging.IsFailure)
         {
@@ -30,17 +27,12 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
         var (resolvedPage, resolvedPageSize) = paging.Value;
 
         var where = new StringBuilder("""
-            WHERE u.[SubjectId] = @SubjectId
+            WHERE t.[LearningObjectiveId] = @LearningObjectiveId
               AND t.[Archived] = 0
-              AND lo.[Archived] = 0
             """);
-        TicketListQueryBuilder.AppendFilters(where, parameters, statuses, learningObjectiveId, name);
 
         var fromSql = """
             FROM [ticket].[Tickets] t
-            INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
-            INNER JOIN [curriculum].[Lessons] l ON lo.[LessonId] = l.[Id]
-            INNER JOIN [curriculum].[Units] u ON l.[UnitId] = u.[Id]
             """;
 
         var sql = $"""

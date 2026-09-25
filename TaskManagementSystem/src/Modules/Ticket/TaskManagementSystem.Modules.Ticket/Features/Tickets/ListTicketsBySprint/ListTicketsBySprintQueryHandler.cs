@@ -13,7 +13,7 @@ public sealed class ListTicketsBySprintQueryHandler(SprintTicketsQueries sprintT
         ListTicketsBySprintQuery request,
         CancellationToken cancellationToken)
     {
-        var tickets = await sprintTicketsQueries.ListBySprintAsync(
+        return await sprintTicketsQueries.ListBySprintAsync(
             request.SprintId,
             request.Statuses,
             request.LearningObjectiveId,
@@ -21,6 +21,5 @@ public sealed class ListTicketsBySprintQueryHandler(SprintTicketsQueries sprintT
             request.Page,
             request.PageSize,
             cancellationToken);
-        return Result.Ok(tickets);
     }
 }

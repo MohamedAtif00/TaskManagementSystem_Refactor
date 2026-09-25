@@ -17,6 +17,7 @@ public static class TicketEndpoints
 
         ListTicketsBySubjectEndpoint.Map(app);
         ListTicketsByLearningObjectiveEndpoint.Map(app);
+        ListTicketsByLearningObjectivePagedEndpoint.Map(app);
         ListTicketsBySprintEndpoint.Map(app);
 
         return group;

@@ -38,8 +38,8 @@ public static class ListTicketsBySprintEndpoint
                 statuses,
                 learningObjectiveId,
                 name,
-                page ?? 1,
-                pageSize ?? 500),
+                page,
+                pageSize),
             cancellationToken);
         return result.ToHttpResult(tickets => Results.Ok(TicketMapping.MapTicketListPage(tickets)));
     }

@@ -17,6 +17,7 @@ public static class TicketCrudEndpoints
         JumpTicketEndpoint.Map(group);
         GetJumpPointsEndpoint.Map(group);
         ListTicketActivityEndpoint.Map(group);
+        ListTicketActivityPagedEndpoint.Map(group);
         GetTicketStatsEndpoint.Map(group);
         return group;
     }

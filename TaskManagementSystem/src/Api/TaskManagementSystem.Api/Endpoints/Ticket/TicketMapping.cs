@@ -57,6 +57,24 @@ internal static class TicketMapping
             FromId = ticket.FromId
         };
 
+    internal static CommentListPageResponse MapCommentListPage(CommentListPageResult page) =>
+        new()
+        {
+            Items = page.Items.Select(MapComment).ToList(),
+            Page = page.Page,
+            PageSize = page.PageSize,
+            TotalCount = page.TotalCount
+        };
+
+    internal static TicketActivityListPageResponse MapActivityListPage(TicketActivityListPageResult page) =>
+        new()
+        {
+            Items = page.Items.Select(MapActivity).ToList(),
+            Page = page.Page,
+            PageSize = page.PageSize,
+            TotalCount = page.TotalCount
+        };
+
     internal static CommentListItemResponse MapComment(CommentListItemResult comment) =>
         new()
         {

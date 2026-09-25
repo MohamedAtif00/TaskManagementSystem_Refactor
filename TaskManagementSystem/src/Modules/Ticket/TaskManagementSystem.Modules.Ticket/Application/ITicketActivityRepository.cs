@@ -9,4 +9,10 @@ public interface ITicketActivityRepository
     Task<IReadOnlyList<TicketActivity>> ListByTicketAsync(
         int ticketId,
         CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlyList<TicketActivity> Items, int TotalCount)> ListByTicketPagedAsync(
+        int ticketId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }

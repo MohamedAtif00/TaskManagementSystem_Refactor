@@ -91,6 +91,22 @@ public sealed class TicketDetailResponse
     public int? FromId { get; set; }
 }
 
+public sealed class CommentListPageResponse
+{
+    public IReadOnlyList<CommentListItemResponse> Items { get; set; } = [];
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+}
+
+public sealed class TicketActivityListPageResponse
+{
+    public IReadOnlyList<TicketActivityResponse> Items { get; set; } = [];
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+}
+
 public sealed class CommentListItemResponse
 {
     public int Id { get; set; }
