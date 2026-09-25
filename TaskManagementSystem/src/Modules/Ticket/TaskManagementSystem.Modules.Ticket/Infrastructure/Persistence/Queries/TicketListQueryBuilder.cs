@@ -21,8 +21,7 @@ internal static class TicketListQueryBuilder
         t.[Attention],
         t.[Flagged],
         t.[IsRollback],
-        t.[RollbackCount],
-        COUNT(*) OVER() AS TotalCount
+        t.[RollbackCount]
         """;
 
     public static void AppendFilters(
@@ -67,16 +66,9 @@ internal static class TicketListQueryBuilder
         out int resolvedPage,
         out int resolvedPageSize)
     {
-        paged = page is >= 1;
-        if (!paged)
-        {
-            resolvedPage = 1;
-            resolvedPageSize = 0;
-            return;
-        }
-
-        resolvedPage = page!.Value;
-        resolvedPageSize = Math.Clamp(pageSize ?? 20, 1, 100);
+        resolvedPage = page is >= 1 ? page.Value : 1;
+        resolvedPageSize = Math.Clamp(pageSize ?? 20, 1, 5000);
+        paged = true;
         parameters.Add("Skip", (resolvedPage - 1) * resolvedPageSize);
         parameters.Add("Take", resolvedPageSize);
     }

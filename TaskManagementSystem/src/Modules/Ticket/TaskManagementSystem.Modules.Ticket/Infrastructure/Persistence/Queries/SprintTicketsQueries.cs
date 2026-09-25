@@ -20,7 +20,7 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
     {
         var parameters = new DynamicParameters();
         parameters.Add("SprintId", sprintId);
-        TicketListQueryBuilder.AddPaging(parameters, page, pageSize, out var paged, out var resolvedPage, out var resolvedPageSize);
+        TicketListQueryBuilder.AddPaging(parameters, page, pageSize, out _, out var resolvedPage, out var resolvedPageSize);
 
         var where = new StringBuilder("""
             WHERE slo.[SprintId] = @SprintId
@@ -28,47 +28,38 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
             """);
         TicketListQueryBuilder.AppendFilters(where, parameters, statuses, learningObjectiveId, name);
 
+        var fromSql = """
+            FROM [ticket].[Tickets] t
+            INNER JOIN [sprints].[SprintLearningObjectives] slo ON t.[LearningObjectiveId] = slo.[LearningObjectiveId]
+            """;
+
         var sql = $"""
             SELECT
                 {TicketListQueryBuilder.SelectList}
-            FROM [ticket].[Tickets] t
-            INNER JOIN [sprints].[SprintLearningObjectives] slo ON t.[LearningObjectiveId] = slo.[LearningObjectiveId]
+            {fromSql}
             {where}
-            {TicketListQueryBuilder.OrderAndPaging(paged)}
+            {TicketListQueryBuilder.OrderAndPaging(paged: true)}
+            """;
+
+        var countSql = $"""
+            SELECT COUNT(*)
+            {fromSql}
+            {where}
             """;
 
         using var connection = connectionFactory.GetOpenConnection();
+        var totalCount = await connection.ExecuteScalarAsync<int>(
+            new CommandDefinition(countSql, parameters, cancellationToken: cancellationToken));
+
         var rows = (await connection.QueryAsync<TicketRow>(
             new CommandDefinition(sql, parameters, cancellationToken: cancellationToken))).AsList();
-
-        if (rows.Count == 0)
-        {
-            var emptyCount = 0;
-            if (paged)
-            {
-                var countSql = $"""
-                    SELECT COUNT(*)
-                    FROM [ticket].[Tickets] t
-                    INNER JOIN [sprints].[SprintLearningObjectives] slo ON t.[LearningObjectiveId] = slo.[LearningObjectiveId]
-                    {where}
-                    """;
-                emptyCount = await connection.ExecuteScalarAsync<int>(
-                    new CommandDefinition(countSql, parameters, cancellationToken: cancellationToken));
-            }
-
-            return new TicketListPageResult(
-                [],
-                paged ? resolvedPage : 1,
-                paged ? resolvedPageSize : 0,
-                emptyCount);
-        }
 
         var items = rows.Select(TicketListItemResult.FromRow).ToList();
         return new TicketListPageResult(
             items,
-            paged ? resolvedPage : 1,
-            paged ? resolvedPageSize : items.Count,
-            rows[0].TotalCount);
+            resolvedPage,
+            resolvedPageSize,
+            totalCount);
     }
 
     internal sealed record TicketRow(
@@ -86,6 +77,5 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
         bool Attention,
         bool Flagged,
         bool IsRollback,
-        int RollbackCount,
-        int TotalCount);
+        int RollbackCount);
 }

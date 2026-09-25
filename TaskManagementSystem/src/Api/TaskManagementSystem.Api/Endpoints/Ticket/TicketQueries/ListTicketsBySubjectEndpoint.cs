@@ -38,12 +38,9 @@ public static class ListTicketsBySubjectEndpoint
                 statuses,
                 learningObjectiveId,
                 name,
-                page,
-                page is null ? null : pageSize ?? 20),
+                page ?? 1,
+                pageSize ?? 500),
             cancellationToken);
-        return result.ToHttpResult(tickets =>
-            page is null
-                ? Results.Ok(tickets.Items.Select(TicketMapping.MapTicketListItem).ToList())
-                : Results.Ok(TicketMapping.MapTicketListPage(tickets)));
+        return result.ToHttpResult(tickets => Results.Ok(TicketMapping.MapTicketListPage(tickets)));
     }
 }
