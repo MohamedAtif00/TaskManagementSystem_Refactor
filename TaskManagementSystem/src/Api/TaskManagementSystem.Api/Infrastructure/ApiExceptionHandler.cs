@@ -15,6 +15,18 @@ public sealed class ApiExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
+        if (exception is OperationCanceledException)
+        {
+            logger.LogDebug(
+                "Request canceled for {Method} {Path}. TraceId={TraceId}",
+                httpContext.Request.Method,
+                httpContext.Request.Path,
+                Activity.Current?.TraceId.ToString());
+
+            httpContext.Response.StatusCode = 499;
+            return true;
+        }
+
         if (exception is ValidationException validationException)
         {
             var errors = ValidationErrorGrouping.GroupByProperty(validationException.Errors);
