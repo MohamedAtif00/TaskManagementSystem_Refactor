@@ -2,7 +2,7 @@
 
 Script-based database management following [kgrzybek/modular-monolith-with-ddd](https://github.com/kgrzybek/modular-monolith-with-ddd). Architecture overview: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-**Last updated:** 2026-09-19 (TeamleaderId removed from identity.Users; organization.Teams is the only owner)
+**Last updated:** 2026-09-26 (legacy import script; subject status notes for Kanban vs Curriculum)
 
 ## Approach
 
@@ -23,6 +23,7 @@ src/Database/
       InitializeDatabase.sql
       Migrations/                           DbUp executes these (alphabetical)
       Seeds/                                Test/dev data (not journaled; re-runnable)
+      DataMigration/                        Manual legacy cutover (e.g. 001_ImportLegacy.sql; not journaled)
     Structure/                              Per-table DDL source files
       {schema}/Tables/*.sql
 ```
@@ -213,6 +214,25 @@ After seeding, verify counts in the script output, then re-run GET timing:
 ```
 
 Clear only (no re-seed): run `002_ClearHeavyLoad.sql` manually or use `-Clear` without re-running seed (the `-Clear` flag runs clear before seed in `seed-heavy-load.ps1`).
+
+## Legacy data import (Automated Task System)
+
+One-off migration from the legacy `dbo` database into `TaskManagementSystem` (preserves legacy IDs via `IDENTITY_INSERT`). Script: [`Scripts/DataMigration/001_ImportLegacy.sql`](../src/Database/TaskManagementSystem.Database/Scripts/DataMigration/001_ImportLegacy.sql).
+
+**Subject status** is copied 1:1 from legacy `dbo.Subjects`: `0` Active, `1` Closed, `2` Hold, `3` Reopened. After import, only **Active** subjects appear on the Kanban list (`/tasks`); Hold, Closed, and Reopened subjects remain in the database and are managed under Curriculum admin (`/projects/curriculum`). See [ARCHITECTURE.md — Kanban vs Curriculum admin](ARCHITECTURE.md#curriculum-years-projects-terms-subjects-los).
+
+**Run** (both databases must exist on the same SQL Server instance; override source name with `-v`):
+
+```powershell
+sqlcmd -S . -E -C -I -v SourceDb=SystemAdminDB_Test_v2 `
+  -i src/Database/TaskManagementSystem.Database/Scripts/DataMigration/001_ImportLegacy.sql
+```
+
+- `-I` is required (`SET QUOTED_IDENTIFIER ON`) for filtered indexes on `ticket.Comments`.
+- Source database name defaults via sqlcmd `:setvar SourceDb` in the script header; pass `-v SourceDb=YourLegacyDb` to override.
+- The script validates row counts (including **Subjects**) and prints a post-import **status breakdown** for non-archived subjects.
+
+This script is **not** run by DbUp or `DatabaseMigrator` — execute manually when cutting over from the legacy system.
 
 ## Integration test bootstrap
 
