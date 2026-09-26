@@ -5,5 +5,5 @@ using TaskManagementSystem.Modules.Curriculum.Infrastructure.Persistence.Queries
 
 namespace TaskManagementSystem.Modules.Curriculum.Features.YearTree.GetYearTree;
 
-public sealed record GetYearTreeQuery(int YearId) : IQuery<Result<YearTreeResult>>;
+public sealed record GetYearTreeQuery(int YearId, int[]? SubjectStatuses = null) : IQuery<Result<YearTreeResult>>;
 

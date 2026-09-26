@@ -4,7 +4,8 @@ using TaskManagementSystem.Api.Contracts.Curriculum;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Api.Endpoints.Curriculum;
- using TaskManagementSystem.Modules.Curriculum.Features.YearTree.GetYearTree;
+ using TaskManagementSystem.Modules.Curriculum.Features.YearTree;
+using TaskManagementSystem.Modules.Curriculum.Features.YearTree.GetYearTree;
 
 namespace TaskManagementSystem.Api.Endpoints.Curriculum.AcademicYears;
 
@@ -21,10 +22,17 @@ public static class GetYearTreeEndpoint
 
     private static async Task<IResult> HandleAsync(
         int yearId,
+        string? statusTab,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var result = await mediator.Send(new GetYearTreeQuery(yearId), cancellationToken);
+        var statuses = YearTreeStatusTabFilter.TryParseStatusTab(statusTab, out var valid);
+        if (!valid)
+        {
+            return Results.BadRequest(new { message = "statusTab must be active, hold, or closed." });
+        }
+
+        var result = await mediator.Send(new GetYearTreeQuery(yearId, statuses), cancellationToken);
         return result.ToHttpResult(tree => Results.Ok(CurriculumMapping.MapYearTree(tree)));
     }
 }

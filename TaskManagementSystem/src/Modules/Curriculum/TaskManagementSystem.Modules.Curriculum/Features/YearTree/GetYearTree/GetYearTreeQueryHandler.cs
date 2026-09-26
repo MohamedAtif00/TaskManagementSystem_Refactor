@@ -11,7 +11,7 @@ public sealed class GetYearTreeQueryHandler(YearTreeQueries yearTreeQueries)
 {
     public async Task<Result<YearTreeResult>> Handle(GetYearTreeQuery request, CancellationToken cancellationToken)
     {
-        var tree = await yearTreeQueries.GetYearTreeAsync(request.YearId, cancellationToken);
+        var tree = await yearTreeQueries.GetYearTreeAsync(request.YearId, request.SubjectStatuses, cancellationToken);
         return tree is null ? Result.Fail<YearTreeResult>(CurriculumErrors.AcademicYearNotFound) : Result.Ok(tree);
     }
 }

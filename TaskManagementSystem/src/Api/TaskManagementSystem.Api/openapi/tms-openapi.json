@@ -4713,6 +4713,20 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "statusTab",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "hold",
+                "closed"
+              ]
+            },
+            "description": "When set, returns only subjects matching the tab (active includes reopened)."
           }
         ],
         "responses": {
@@ -4725,6 +4739,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
