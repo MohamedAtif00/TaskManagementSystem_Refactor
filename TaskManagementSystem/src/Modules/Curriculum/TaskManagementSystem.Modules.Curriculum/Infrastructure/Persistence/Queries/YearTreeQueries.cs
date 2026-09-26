@@ -8,7 +8,10 @@ namespace TaskManagementSystem.Modules.Curriculum.Infrastructure.Persistence.Que
 
 public sealed class YearTreeQueries(ISqlConnectionFactory connectionFactory)
 {
-    public async Task<YearTreeResult?> GetYearTreeAsync(int yearId, CancellationToken cancellationToken = default)
+    public async Task<YearTreeResult?> GetYearTreeAsync(
+        int yearId,
+        int[]? subjectStatuses = null,
+        CancellationToken cancellationToken = default)
     {
         const string yearSql = """
             SELECT [Id], [Name], [Description]
@@ -65,18 +68,28 @@ public sealed class YearTreeQueries(ISqlConnectionFactory connectionFactory)
             : (await connection.QueryAsync<GroupRow>(
                 new CommandDefinition(groupsSql, new { TermIds = termIds }, cancellationToken: cancellationToken))).ToList();
 
-        const string subjectsSql = """
-            SELECT [Id], [Name], [Description], [Status], [SubjectGroupId]
-            FROM [curriculum].[Subjects]
-            WHERE [SubjectGroupId] IN @GroupIds AND [Archived] = 0
-            ORDER BY [Name]
-            """;
+        var subjectsSql = subjectStatuses is { Length: > 0 }
+            ? """
+                SELECT [Id], [Name], [Description], [Status], [SubjectGroupId]
+                FROM [curriculum].[Subjects]
+                WHERE [SubjectGroupId] IN @GroupIds AND [Archived] = 0 AND [Status] IN @Statuses
+                ORDER BY [Name]
+                """
+            : """
+                SELECT [Id], [Name], [Description], [Status], [SubjectGroupId]
+                FROM [curriculum].[Subjects]
+                WHERE [SubjectGroupId] IN @GroupIds AND [Archived] = 0
+                ORDER BY [Name]
+                """;
 
         var groupIds = groups.Select(group => group.Id).ToArray();
         var subjects = groupIds.Length == 0
             ? []
             : (await connection.QueryAsync<SubjectRow>(
-                new CommandDefinition(subjectsSql, new { GroupIds = groupIds }, cancellationToken: cancellationToken))).ToList();
+                new CommandDefinition(
+                    subjectsSql,
+                    new { GroupIds = groupIds, Statuses = subjectStatuses },
+                    cancellationToken: cancellationToken))).ToList();
 
         var subjectsByGroup = subjects.GroupBy(subject => subject.SubjectGroupId)
             .ToDictionary(group => group.Key, group => group.ToList());
@@ -86,6 +99,8 @@ public sealed class YearTreeQueries(ISqlConnectionFactory connectionFactory)
 
         var termsByProject = terms.GroupBy(term => term.ProjectId)
             .ToDictionary(group => group.Key, group => group.ToList());
+
+        var filterEmpty = subjectStatuses is { Length: > 0 };
 
         var projectResults = projects.Select(project =>
         {
@@ -105,14 +120,18 @@ public sealed class YearTreeQueries(ISqlConnectionFactory connectionFactory)
 
                             return new YearTreeSubjectGroupResult(group.Id, group.Name, subjectResults);
                         })
+                        .Where(group => !filterEmpty || group.Subjects.Count > 0)
                         .ToList();
 
                     return new YearTreeTermResult(term.Id, term.Name, term.StartDate, term.EndDate, groupResults);
                 })
+                .Where(term => !filterEmpty || term.SubjectGroups.Count > 0)
                 .ToList();
 
             return new YearTreeProjectResult(project.Id, project.Name, project.Description, termResults);
-        }).ToList();
+        })
+        .Where(project => !filterEmpty || project.Terms.Count > 0)
+        .ToList();
 
         return new YearTreeResult(year.Id, year.Name, year.Description, projectResults);
     }
