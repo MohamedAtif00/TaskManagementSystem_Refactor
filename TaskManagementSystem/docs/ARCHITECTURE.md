@@ -6,7 +6,7 @@ Living snapshot of the new solution. Update this file as the refactor grows.
 
 
 
-**Last updated:** 2026-09-19
+**Last updated:** 2026-09-26
 
 
 
@@ -231,6 +231,9 @@ Curriculum definition MVP: **AcademicYears**, **CurriculumProjects**, **Curricul
 | `DELETE /curriculum/subject-groups/{id}` | Archive subject group | Required |
 | `GET /curriculum/subject-groups/{subjectGroupId}/subjects` | List subjects for group | Required |
 | `POST /curriculum/subject-groups/{subjectGroupId}/subjects` | Create subject | Required |
+| `GET /curriculum/subjects` | Paged subject catalog (Kanban list): `search`, `year`, `term`, `page`, `pageSize`, optional `activeOnly` (default `false`) | Required |
+| `GET /curriculum/subjects/filter-options` | Distinct year/term values for catalog filters | Required |
+| `GET /curriculum/subjects/export` | Full catalog export (same filters as list, including `activeOnly`) | Required |
 | `GET /curriculum/subjects/{id}` | Subject detail | Required |
 | `PUT /curriculum/subjects/{id}` | Update subject | Required |
 | `DELETE /curriculum/subjects/{id}` | Archive subject | Required |
@@ -253,6 +256,17 @@ Curriculum definition MVP: **AcademicYears**, **CurriculumProjects**, **Curricul
 | `GET /curriculum/learning-objectives/{id}` | Learning objective detail | Required |
 | `PUT /curriculum/learning-objectives/{id}` | Update learning objective | Required |
 | `DELETE /curriculum/learning-objectives/{id}` | Archive learning objective | Required |
+
+**Subject status (`curriculum.Subjects.Status`):** `0` Active, `1` Closed, `2` Hold, `3` Reopened (enum `SubjectStatus`).
+
+**Kanban vs Curriculum admin:**
+
+| Surface | Route | Subject scope |
+|---|---|---|
+| Kanban task list | Frontend `/tasks` | Calls `GET /curriculum/subjects?activeOnly=true` (Active only). CSV export uses the same flag. Status column is omitted on the list because every row is Active. |
+| Curriculum admin | Frontend `/projects/curriculum` | Year tree APIs (`GET /curriculum/years/{yearId}/tree`, etc.) return **all** non-archived subjects with status. PMs change status via `PUT /curriculum/subjects/{id}/status` in the subject edit dialog. |
+
+Catalog queries live in [`SubjectCatalogQueries`](../src/Modules/Curriculum/TaskManagementSystem.Modules.Curriculum/Infrastructure/Persistence/Queries/SubjectCatalogQueries.cs) (Dapper). When `activeOnly=true`, the filter is `Status = Active` in addition to `Archived = 0`.
 
 - **Module layout** — [`TaskManagementSystem.Modules.Curriculum`](../src/Modules/Curriculum/TaskManagementSystem.Modules.Curriculum/) with `Domain/`, `Application/`, `Features/`, `Infrastructure/`.
 - **Cross-schema validation** — `SchemaId` on LOs validated via Dapper against `workflows.Schemas`; user assignment validated against `identity.Users` (no project references between modules).
@@ -949,7 +963,7 @@ Automated tests cover unit, integration, and architecture boundaries. Unit and a
 
 | `Modules.Notifications.UnitTests` | Unit | 2 | Notification domain rules and handlers |
 
-| `Api.IntegrationTests` | Integration | 49 | Auth, RBAC, HR, Organization, Workflows, Curriculum, Ticket, Sprints, Notifications, audit, SignalR hub |
+| `Api.IntegrationTests` | Integration | 51+ | Auth, RBAC, HR, Organization, Workflows, Curriculum (incl. subject catalog `activeOnly`), Ticket, Sprints, Notifications, audit, SignalR hub |
 
 | `ArchitectureTests` | Architecture | 11 | SignalR/OpenTelemetry boundaries, Notifications↛Ticket, hub location |
 

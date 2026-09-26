@@ -66,6 +66,7 @@ public sealed class SubjectCatalogQueries(ISqlConnectionFactory connectionFactor
             WHERE (@Search IS NULL OR sb.[Name] LIKE @Search OR sb.[FolderPath] LIKE @Search)
               AND (@Year IS NULL OR sb.[YearName] = @Year)
               AND (@Term IS NULL OR sb.[TermName] = @Term)
+              AND (@ActiveOnly = 0 OR sb.[Status] = @ActiveStatus)
         )
         """;
 
@@ -75,6 +76,7 @@ public sealed class SubjectCatalogQueries(ISqlConnectionFactory connectionFactor
         string? term,
         int? page,
         int? pageSize,
+        bool activeOnly = false,
         CancellationToken cancellationToken = default)
     {
         var paging = PagingValidation.Resolve(page, pageSize);
@@ -85,9 +87,7 @@ public sealed class SubjectCatalogQueries(ISqlConnectionFactory connectionFactor
 
         var (resolvedPage, resolvedPageSize, skip) = paging.Value;
         var parameters = new DynamicParameters();
-        parameters.Add("Search", string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%");
-        parameters.Add("Year", string.IsNullOrWhiteSpace(year) ? null : year.Trim());
-        parameters.Add("Term", string.IsNullOrWhiteSpace(term) ? null : term.Trim());
+        AddFilterParameters(parameters, search, year, term, activeOnly);
         parameters.Add("Skip", (int)skip);
         parameters.Add("Take", resolvedPageSize);
 
@@ -127,12 +127,11 @@ public sealed class SubjectCatalogQueries(ISqlConnectionFactory connectionFactor
         string? search,
         string? year,
         string? term,
+        bool activeOnly = false,
         CancellationToken cancellationToken = default)
     {
         var parameters = new DynamicParameters();
-        parameters.Add("Search", string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%");
-        parameters.Add("Year", string.IsNullOrWhiteSpace(year) ? null : year.Trim());
-        parameters.Add("Term", string.IsNullOrWhiteSpace(term) ? null : term.Trim());
+        AddFilterParameters(parameters, search, year, term, activeOnly);
 
         var listSql = BaseCte + """
             SELECT [Id], [Name], [FolderPath], [YearName], [TermName], [Status], [ProgressPercent]
@@ -176,6 +175,20 @@ public sealed class SubjectCatalogQueries(ISqlConnectionFactory connectionFactor
         var years = rows.Select(row => row.YearName).Distinct().ToList();
         var terms = rows.Select(row => row.TermName).Distinct().OrderBy(name => name).ToList();
         return new SubjectCatalogFilterOptionsResult(years, terms);
+    }
+
+    private static void AddFilterParameters(
+        DynamicParameters parameters,
+        string? search,
+        string? year,
+        string? term,
+        bool activeOnly)
+    {
+        parameters.Add("Search", string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%");
+        parameters.Add("Year", string.IsNullOrWhiteSpace(year) ? null : year.Trim());
+        parameters.Add("Term", string.IsNullOrWhiteSpace(term) ? null : term.Trim());
+        parameters.Add("ActiveOnly", activeOnly ? 1 : 0);
+        parameters.Add("ActiveStatus", (int)SubjectStatus.Active);
     }
 
     private sealed class SubjectCatalogRow

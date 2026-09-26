@@ -10,5 +10,5 @@ public sealed class ListSubjectsExportQueryHandler(SubjectCatalogQueries queries
     public Task<Result<IReadOnlyList<SubjectCatalogListItemResult>>> Handle(
         ListSubjectsExportQuery request,
         CancellationToken cancellationToken) =>
-        queries.ListAllAsync(request.Search, request.Year, request.Term, cancellationToken);
+        queries.ListAllAsync(request.Search, request.Year, request.Term, request.ActiveOnly, cancellationToken);
 }

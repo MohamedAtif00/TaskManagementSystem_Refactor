@@ -17,5 +17,6 @@ public sealed class ListSubjectsPagedQueryHandler(SubjectCatalogQueries queries)
             request.Term,
             request.Page,
             request.PageSize,
+            request.ActiveOnly,
             cancellationToken);
 }

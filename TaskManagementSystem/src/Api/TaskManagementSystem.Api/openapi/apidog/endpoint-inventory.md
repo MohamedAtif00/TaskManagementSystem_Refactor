@@ -1,6 +1,6 @@
 # Endpoint and request-body inventory
 
-161 business HTTP operations registered by Program.cs. OpenAPI download routes and the SignalR transport are infrastructure and are not included. All request bodies have examples in tms-openapi.json; operations marked None do not consume a body.
+164 business HTTP operations registered by Program.cs. OpenAPI download routes and the SignalR transport are infrastructure and are not included. All request bodies have examples in tms-openapi.json; operations marked None do not consume a body.
 
 | Method | Path | Request body |
 | --- | --- | --- |
@@ -119,6 +119,9 @@
 | DELETE | `/curriculum/subject-groups/{id}` | None |
 | GET | `/curriculum/subject-groups/{subjectGroupId}/subjects` | None |
 | POST | `/curriculum/subject-groups/{subjectGroupId}/subjects` | CreateSubjectRequest |
+| GET | `/curriculum/subjects` | None (query: `search`, `year`, `term`, `page`, `pageSize`, `activeOnly`) |
+| GET | `/curriculum/subjects/filter-options` | None |
+| GET | `/curriculum/subjects/export` | None (query: `search`, `year`, `term`, `activeOnly`) |
 | GET | `/curriculum/subjects/{id}` | None |
 | PUT | `/curriculum/subjects/{id}` | UpdateSubjectRequest |
 | DELETE | `/curriculum/subjects/{id}` | None |

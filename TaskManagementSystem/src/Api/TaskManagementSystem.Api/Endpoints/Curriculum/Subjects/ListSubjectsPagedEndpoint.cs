@@ -25,10 +25,11 @@ public static class ListSubjectsPagedEndpoint
         string? term = null,
         int? page = null,
         int? pageSize = null,
+        bool activeOnly = false,
         CancellationToken cancellationToken = default)
     {
         var result = await mediator.Send(
-            new ListSubjectsPagedQuery(search, year, term, page, pageSize),
+            new ListSubjectsPagedQuery(search, year, term, page, pageSize, activeOnly),
             cancellationToken);
 
         return result.ToHttpResult(page => Results.Ok(new SubjectCatalogPageResponse
@@ -57,9 +58,10 @@ public static class ListSubjectsPagedEndpoint
         string? search = null,
         string? year = null,
         string? term = null,
+        bool activeOnly = false,
         CancellationToken cancellationToken = default)
     {
-        var result = await mediator.Send(new ListSubjectsExportQuery(search, year, term), cancellationToken);
+        var result = await mediator.Send(new ListSubjectsExportQuery(search, year, term, activeOnly), cancellationToken);
         return result.ToHttpResult(items =>
             Results.Ok(items.Select(CurriculumMapping.MapSubjectCatalogListItem).ToList()));
     }

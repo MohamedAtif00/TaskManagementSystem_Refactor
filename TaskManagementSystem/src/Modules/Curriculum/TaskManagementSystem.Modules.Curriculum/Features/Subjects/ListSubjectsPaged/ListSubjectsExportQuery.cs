@@ -6,4 +6,5 @@ namespace TaskManagementSystem.Modules.Curriculum.Features.Subjects.ListSubjects
 public sealed record ListSubjectsExportQuery(
     string? Search,
     string? Year,
-    string? Term) : IQuery<Result<IReadOnlyList<SubjectCatalogListItemResult>>>;
+    string? Term,
+    bool ActiveOnly = false) : IQuery<Result<IReadOnlyList<SubjectCatalogListItemResult>>>;

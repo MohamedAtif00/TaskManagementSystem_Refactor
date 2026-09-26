@@ -9,4 +9,5 @@ public sealed record ListSubjectsPagedQuery(
     string? Year,
     string? Term,
     int? Page,
-    int? PageSize) : IQuery<Result<PageListResult<SubjectCatalogListItemResult>>>;
+    int? PageSize,
+    bool ActiveOnly = false) : IQuery<Result<PageListResult<SubjectCatalogListItemResult>>>;
