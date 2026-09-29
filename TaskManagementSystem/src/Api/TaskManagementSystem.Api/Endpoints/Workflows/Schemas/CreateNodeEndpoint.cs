@@ -27,7 +27,7 @@ public static class CreateNodeEndpoint
         CancellationToken cancellationToken)
     {
         var result = await mediator.Send(
-            new CreateNodeCommand(schemaId, request.Name, request.IsStart, request.IsEnd),
+            new CreateNodeCommand(schemaId, request.Name, request.IsStart, request.IsEnd, request.PredecessorIds ?? []),
             cancellationToken);
 
         return result.ToHttpResult(node =>

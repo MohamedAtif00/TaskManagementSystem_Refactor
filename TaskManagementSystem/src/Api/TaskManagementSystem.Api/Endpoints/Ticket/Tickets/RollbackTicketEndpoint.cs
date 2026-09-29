@@ -1,5 +1,6 @@
 using MediatR;
 using TaskManagementSystem.Api.Configuration;
+using TaskManagementSystem.Api.Contracts.Ticket;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Api.Security;
 using TaskManagementSystem.Modules.Identity.Domain;
@@ -17,12 +18,19 @@ public static class RollbackTicketEndpoint
 
     private static async Task<IResult> HandleAsync(
         int id,
+        RollbackTicketRequest request,
         ICurrentUserAccessor currentUserAccessor,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
         var result = await mediator.Send(
-            new RollbackTicketCommand(id, currentUserAccessor.GetRequiredUserId(), currentUserAccessor.GetRequiredRole()),
+            new RollbackTicketCommand(
+                id,
+                request.StepId,
+                request.Clarification,
+                request.IssueNotes,
+                currentUserAccessor.GetRequiredUserId(),
+                currentUserAccessor.GetRequiredRole()),
             cancellationToken);
         return result.ToHttpResult(ticket => Results.Ok(TicketMapping.MapTicketDetail(ticket)));
     }

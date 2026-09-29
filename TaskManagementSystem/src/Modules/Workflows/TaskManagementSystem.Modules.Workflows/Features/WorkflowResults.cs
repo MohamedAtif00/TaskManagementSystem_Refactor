@@ -31,10 +31,17 @@ public sealed record TicketBankListItemResult(
         new(item.Id, item.Name, item.Duration, item.Type, item.TeamLeaderOnly, item.TeamId);
 }
 
-public sealed record NodeListItemResult(int Id, string Name, int Order, bool IsStart, bool IsEnd, int SchemaId)
+public sealed record NodeListItemResult(
+    int Id,
+    string Name,
+    int Order,
+    bool IsStart,
+    bool IsEnd,
+    int SchemaId,
+    IReadOnlyList<int> PredecessorIds)
 {
-    public static NodeListItemResult From(WorkflowNode node) =>
-        new(node.Id, node.Name, node.Order, node.IsStart, node.IsEnd, node.SchemaId);
+    public static NodeListItemResult From(WorkflowNode node, IReadOnlyList<int> predecessorIds) =>
+        new(node.Id, node.Name, node.Order, node.IsStart, node.IsEnd, node.SchemaId, predecessorIds);
 }
 
 public sealed record StepListItemResult(

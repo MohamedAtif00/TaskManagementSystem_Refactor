@@ -133,9 +133,18 @@ public sealed class UpdateTicketPriorityRequest
     public int Priority { get; set; }
 }
 
-public sealed class JumpTicketRequest
+public sealed class RollbackTicketRequest
 {
     public int StepId { get; set; }
+
+    public string Clarification { get; set; } = string.Empty;
+
+    public string IssueNotes { get; set; } = string.Empty;
+}
+
+public sealed class JumpTicketRequest
+{
+    public int[] StepIds { get; set; } = [];
 }
 
 public sealed class JumpPointResponse

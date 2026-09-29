@@ -10,5 +10,6 @@ public interface ITicketActivityWriter
         int? actorOneId,
         CancellationToken cancellationToken = default,
         int? actorTwoId = null,
-        string? additionalInfo = null);
+        string? additionalInfo = null,
+        int? ticketSecondaryId = null);
 }

@@ -8,6 +8,7 @@ public sealed class UpdateNodeCommandValidator : AbstractValidator<UpdateNodeCom
     {
         RuleFor(x => x.NodeId).GreaterThan(0);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleForEach(x => x.PredecessorIds).GreaterThan(0);
     }
 }
 

@@ -23,6 +23,17 @@ public interface IWorkflowStepLookup
         int currentStepId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<WorkflowJumpPoint>> ListStepsBehindAsync(
+        int schemaId,
+        int currentStepId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<int>> ListStepIdsBetweenAsync(
+        int schemaId,
+        int currentStepId,
+        int targetStepId,
+        CancellationToken cancellationToken = default);
+
     Task<bool> IsStepAheadAsync(
         int schemaId,
         int currentStepId,

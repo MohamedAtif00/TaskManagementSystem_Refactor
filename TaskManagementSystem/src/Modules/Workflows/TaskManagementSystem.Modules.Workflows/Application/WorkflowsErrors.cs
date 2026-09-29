@@ -24,4 +24,7 @@ public static class WorkflowsErrors
 
     public static ResultError InvalidReorder =>
         new("invalid_reorder", "Reorder request must include every active item exactly once.");
+
+    public static ResultError PredecessorInvalid =>
+        new("predecessor_invalid", "A predecessor must be another active node in the same workflow.");
 }

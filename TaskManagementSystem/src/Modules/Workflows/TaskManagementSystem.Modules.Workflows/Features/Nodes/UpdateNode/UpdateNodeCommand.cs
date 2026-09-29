@@ -8,5 +8,6 @@ public sealed record UpdateNodeCommand(
     int NodeId,
     string Name,
     bool IsStart,
-    bool IsEnd) : ICommand<Result<NodeListItemResult>>;
+    bool IsEnd,
+    IReadOnlyList<int> PredecessorIds) : ICommand<Result<NodeListItemResult>>;
 

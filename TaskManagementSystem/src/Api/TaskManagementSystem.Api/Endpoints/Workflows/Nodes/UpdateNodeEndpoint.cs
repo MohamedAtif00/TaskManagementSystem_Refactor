@@ -27,7 +27,7 @@ public static class UpdateNodeEndpoint
         CancellationToken cancellationToken)
     {
         var result = await mediator.Send(
-            new UpdateNodeCommand(id, request.Name, request.IsStart, request.IsEnd),
+            new UpdateNodeCommand(id, request.Name, request.IsStart, request.IsEnd, request.PredecessorIds ?? []),
             cancellationToken);
 
         return result.ToHttpResult(node => Results.Ok(WorkflowMapping.MapNodeListItem(node)));

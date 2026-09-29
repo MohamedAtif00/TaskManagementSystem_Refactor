@@ -57,6 +57,89 @@ public static class TicketSuccessor
         return opened;
     }
 
+    public static async Task<Domain.Ticket?> OpenCorrectionAsync(
+        ITicketUnitOfWork unitOfWork,
+        ITicketBankLookup ticketBankLookup,
+        IWorkflowStepLookup workflowStepLookup,
+        Domain.Ticket review,
+        int stepId,
+        CancellationToken cancellationToken)
+    {
+        var step = await workflowStepLookup.GetActiveByIdAsync(stepId, cancellationToken);
+        if (step is null)
+        {
+            return null;
+        }
+
+        var existing = await unitOfWork.Tickets.ListActiveByStepTrackedAsync(
+            step.Id,
+            review.LearningObjectiveId,
+            cancellationToken);
+        var target = existing
+            .Where(ticket => ticket.Id != review.Id)
+            .OrderByDescending(ticket => ticket.Id)
+            .FirstOrDefault();
+        if (target is not null)
+        {
+            var correction = target.BeginCorrection(review.Id);
+            return correction.IsSuccess ? target : null;
+        }
+
+        var created = await CreateFromBankAsync(
+            unitOfWork,
+            ticketBankLookup,
+            review.LearningObjectiveId,
+            step,
+            cancellationToken);
+        if (created is null)
+        {
+            return null;
+        }
+
+        created.Ticket.PrepareSuccessor(created.TeamLeaderOnly, created.IsReview, fromId: null);
+        var begun = created.Ticket.BeginCorrection(review.Id);
+        return begun.IsSuccess ? created.Ticket : null;
+    }
+
+    public static async Task<IReadOnlyList<Domain.Ticket>> OpenDestinationAsync(
+        ITicketUnitOfWork unitOfWork,
+        ITicketBankLookup ticketBankLookup,
+        int learningObjectiveId,
+        WorkflowStepSummary step,
+        CancellationToken cancellationToken)
+    {
+        var opened = new List<Domain.Ticket>();
+        var existing = await unitOfWork.Tickets.ListActiveByStepTrackedAsync(
+            step.Id,
+            learningObjectiveId,
+            cancellationToken);
+        if (existing.Count > 0)
+        {
+            foreach (var ticket in existing)
+            {
+                ticket.Reactivate();
+                opened.Add(ticket);
+            }
+
+            return opened;
+        }
+
+        var created = await CreateFromBankAsync(
+            unitOfWork,
+            ticketBankLookup,
+            learningObjectiveId,
+            step,
+            cancellationToken);
+        if (created is null)
+        {
+            return opened;
+        }
+
+        created.Ticket.PrepareSuccessor(created.TeamLeaderOnly, created.IsReview, fromId: null);
+        opened.Add(created.Ticket);
+        return opened;
+    }
+
     private static async Task<bool> PreviousNodesAreDoneAsync(
         ITicketUnitOfWork unitOfWork,
         IWorkflowStepLookup workflowStepLookup,
@@ -137,4 +220,41 @@ public static class TicketSuccessor
         await unitOfWork.Tickets.AddAsync(created.Value, cancellationToken);
         opened.Add(created.Value);
     }
+
+    private static async Task<BankTicket?> CreateFromBankAsync(
+        ITicketUnitOfWork unitOfWork,
+        ITicketBankLookup ticketBankLookup,
+        int learningObjectiveId,
+        WorkflowStepSummary step,
+        CancellationToken cancellationToken)
+    {
+        var bank = await ticketBankLookup.GetActiveByIdAsync(step.TicketBankId, cancellationToken);
+        if (bank is null || bank.TeamId <= 0)
+        {
+            return null;
+        }
+
+        var priority = Enum.IsDefined(typeof(Domain.TicketPriority), step.Priority)
+            ? (Domain.TicketPriority)step.Priority
+            : Domain.TicketPriority.None;
+        var created = Domain.Ticket.Create(
+            bank.Name,
+            step.Duration,
+            priority,
+            learningObjectiveId,
+            step.Id,
+            bank.TeamId,
+            bank.TeamLeaderOnly,
+            userId: null,
+            DateTime.UtcNow);
+        if (!created.IsSuccess)
+        {
+            return null;
+        }
+
+        await unitOfWork.Tickets.AddAsync(created.Value, cancellationToken);
+        return new BankTicket(created.Value, bank.TeamLeaderOnly, bank.Type == ReviewBankType);
+    }
+
+    private sealed record BankTicket(Domain.Ticket Ticket, bool TeamLeaderOnly, bool IsReview);
 }

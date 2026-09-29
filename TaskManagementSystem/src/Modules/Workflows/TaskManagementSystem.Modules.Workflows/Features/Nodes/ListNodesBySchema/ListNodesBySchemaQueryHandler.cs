@@ -18,7 +18,13 @@ public sealed class ListNodesBySchemaQueryHandler(IWorkflowsUnitOfWork unitOfWor
         }
 
         var nodes = await unitOfWork.Nodes.ListActiveBySchemaAsync(request.SchemaId, cancellationToken);
-        return Result.Ok<IReadOnlyList<NodeListItemResult>>(nodes.Select(NodeListItemResult.From).ToList());
+        var links = await unitOfWork.Nodes.ListPredecessorIdsAsync(nodes.Select(node => node.Id).ToArray(), cancellationToken);
+        var results = nodes
+            .Select(node => NodeListItemResult.From(
+                node,
+                links.TryGetValue(node.Id, out var predecessors) ? predecessors : []))
+            .ToList();
+        return Result.Ok<IReadOnlyList<NodeListItemResult>>(results);
     }
 }
 

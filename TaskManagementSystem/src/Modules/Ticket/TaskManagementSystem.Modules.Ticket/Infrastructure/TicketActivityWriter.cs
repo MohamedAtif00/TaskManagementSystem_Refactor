@@ -11,7 +11,8 @@ internal sealed class TicketActivityWriter(ITicketUnitOfWork unitOfWork) : ITick
         int? actorOneId,
         CancellationToken cancellationToken = default,
         int? actorTwoId = null,
-        string? additionalInfo = null)
+        string? additionalInfo = null,
+        int? ticketSecondaryId = null)
     {
         var activity = TicketActivity.Create(
             ticketId,
@@ -19,7 +20,8 @@ internal sealed class TicketActivityWriter(ITicketUnitOfWork unitOfWork) : ITick
             actorOneId,
             DateTime.UtcNow,
             actorTwoId,
-            additionalInfo);
+            additionalInfo,
+            ticketSecondaryId);
         await unitOfWork.TaskActivities.AddAsync(activity, cancellationToken);
     }
 }

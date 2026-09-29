@@ -28,7 +28,7 @@ public static class TicketActivityText
             TicketActivityType.StatusToDo => $"{actor} added task to their To Do list.",
             TicketActivityType.StatusDoing => $"Task started by {actor}.",
             TicketActivityType.StatusDone => $"Task completed by {actor}.",
-            TicketActivityType.StatusRollback => $"{actor} rolled back Task to {previous}.",
+            TicketActivityType.StatusRollback => RollbackSentence(actor, previous, additionalInfo),
             TicketActivityType.Pause => $"{actor} paused the task.",
             TicketActivityType.Resume => $"{actor} resumed the task.",
             TicketActivityType.Flag => FlagSentence(actor, actorTwoName, additionalInfo),
@@ -46,6 +46,17 @@ public static class TicketActivityText
             TicketActivityType.DeleteComment => $"{actor} removed a comment.",
             _ => string.Empty
         };
+    }
+
+    private static string RollbackSentence(string actor, string previous, string? additionalInfo)
+    {
+        var sentence = $"{actor} rolled back Task to {previous}.";
+        if (string.IsNullOrWhiteSpace(additionalInfo))
+        {
+            return sentence;
+        }
+
+        return $"{sentence} {additionalInfo.Trim()}";
     }
 
     private static string FlagSentence(string actor, string? actorTwoName, string? additionalInfo)

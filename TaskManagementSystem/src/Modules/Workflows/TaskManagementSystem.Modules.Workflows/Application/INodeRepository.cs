@@ -19,4 +19,19 @@ public interface INodeRepository
     Task<bool> SchemaExistsActiveAsync(int schemaId, CancellationToken cancellationToken = default);
 
     Task AddAsync(WorkflowNode node, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyDictionary<int, IReadOnlyList<int>>> ListPredecessorIdsAsync(
+        IReadOnlyCollection<int> nodeIds,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> PredecessorsBelongToSchemaAsync(
+        int schemaId,
+        int nodeId,
+        IReadOnlyCollection<int> predecessorIds,
+        CancellationToken cancellationToken = default);
+
+    Task ReplacePredecessorsAsync(
+        int nodeId,
+        IReadOnlyCollection<int> predecessorIds,
+        CancellationToken cancellationToken = default);
 }

@@ -8,6 +8,7 @@ public sealed class CreateNodeCommandValidator : AbstractValidator<CreateNodeCom
     {
         RuleFor(x => x.SchemaId).GreaterThan(0);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleForEach(x => x.PredecessorIds).GreaterThan(0);
     }
 }
 

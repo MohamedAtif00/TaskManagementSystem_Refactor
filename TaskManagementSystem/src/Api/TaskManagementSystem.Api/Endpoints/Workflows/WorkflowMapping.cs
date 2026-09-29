@@ -50,7 +50,8 @@ internal static class WorkflowMapping
             Order = node.Order,
             IsStart = node.IsStart,
             IsEnd = node.IsEnd,
-            SchemaId = node.SchemaId
+            SchemaId = node.SchemaId,
+            PredecessorIds = node.PredecessorIds.ToArray()
         };
 
     internal static StepListItemResponse MapStepListItem(StepListItemResult step) =>

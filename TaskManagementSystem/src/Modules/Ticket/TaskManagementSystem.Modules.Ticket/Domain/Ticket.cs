@@ -401,6 +401,43 @@ public sealed class Ticket : Entity, IAggregateRoot
         return Result.Ok();
     }
 
+    public Result<NoValue> BeginCorrection(int fromTicketId)
+    {
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
+        }
+
+        if (fromTicketId <= 0)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_not_found", "The review task is required."));
+        }
+
+        Status = TicketStatus.ToDo;
+        FromId = fromTicketId;
+        IsRollback = true;
+        RollbackCount += 1;
+        Pause = false;
+        return Result.Ok();
+    }
+
+    public Result<NoValue> MarkBypassed()
+    {
+        if (Archived)
+        {
+            return Result.Fail<NoValue>(new ResultError("ticket_archived", "Ticket is archived."));
+        }
+
+        if (Status == TicketStatus.Done)
+        {
+            return Result.Ok();
+        }
+
+        Status = TicketStatus.Done;
+        Pause = false;
+        return Result.Ok();
+    }
+
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return Id;

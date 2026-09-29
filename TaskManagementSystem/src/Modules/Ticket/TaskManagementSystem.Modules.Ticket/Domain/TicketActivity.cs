@@ -25,13 +25,15 @@ public sealed class TicketActivity : Entity
         int? actorOneId,
         DateTime timestamp,
         int? actorTwoId = null,
-        string? additionalInfo = null)
+        string? additionalInfo = null,
+        int? ticketSecondaryId = null)
     {
         return new TicketActivity
         {
             TicketId = taskId,
             Type = type,
             AdditionalInfo = string.IsNullOrWhiteSpace(additionalInfo) ? null : additionalInfo.Trim(),
+            TicketSecondaryId = ticketSecondaryId,
             ActorOneId = actorOneId,
             ActorTwoId = actorTwoId,
             TimeStamp = timestamp,

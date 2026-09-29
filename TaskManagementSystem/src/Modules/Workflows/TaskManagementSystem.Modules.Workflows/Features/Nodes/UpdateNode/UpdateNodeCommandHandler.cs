@@ -18,14 +18,28 @@ public sealed class UpdateNodeCommandHandler(IWorkflowsUnitOfWork unitOfWork)
             return Result.Fail<NodeListItemResult>(WorkflowsErrors.NodeNotFound);
         }
 
+        var predecessorIds = (request.PredecessorIds ?? [])
+            .Where(id => id > 0 && id != node.Id)
+            .Distinct()
+            .ToList();
+        if (!await unitOfWork.Nodes.PredecessorsBelongToSchemaAsync(
+                node.SchemaId,
+                node.Id,
+                predecessorIds,
+                cancellationToken))
+        {
+            return Result.Fail<NodeListItemResult>(WorkflowsErrors.PredecessorInvalid);
+        }
+
         var updateResult = node.Update(request.Name, request.IsStart, request.IsEnd);
         if (!updateResult.IsSuccess)
         {
             return Result.Fail<NodeListItemResult>(updateResult.Error);
         }
 
+        await unitOfWork.Nodes.ReplacePredecessorsAsync(node.Id, predecessorIds, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
-        return Result.Ok(NodeListItemResult.From(node));
+        return Result.Ok(NodeListItemResult.From(node, predecessorIds));
     }
 }
 

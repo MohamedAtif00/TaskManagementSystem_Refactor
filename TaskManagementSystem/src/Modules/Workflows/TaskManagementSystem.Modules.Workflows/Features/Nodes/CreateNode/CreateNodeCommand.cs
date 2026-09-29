@@ -9,5 +9,6 @@ public sealed record CreateNodeCommand(
     int SchemaId,
     string Name,
     bool IsStart,
-    bool IsEnd) : ICommand<Result<NodeListItemResult>>;
+    bool IsEnd,
+    IReadOnlyList<int> PredecessorIds) : ICommand<Result<NodeListItemResult>>;
 

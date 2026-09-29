@@ -18,6 +18,16 @@ public sealed class CreateNodeCommandHandler(IWorkflowsUnitOfWork unitOfWork)
             return Result.Fail<NodeListItemResult>(WorkflowsErrors.SchemaNotFound);
         }
 
+        var predecessorIds = DistinctPredecessors(request.PredecessorIds);
+        if (!await unitOfWork.Nodes.PredecessorsBelongToSchemaAsync(
+                request.SchemaId,
+                nodeId: 0,
+                predecessorIds,
+                cancellationToken))
+        {
+            return Result.Fail<NodeListItemResult>(WorkflowsErrors.PredecessorInvalid);
+        }
+
         var order = await unitOfWork.Nodes.GetNextOrderAsync(request.SchemaId, cancellationToken);
         var createResult = WorkflowNode.Create(
             request.Name,
@@ -33,7 +43,14 @@ public sealed class CreateNodeCommandHandler(IWorkflowsUnitOfWork unitOfWork)
         await unitOfWork.Nodes.AddAsync(createResult.Value, cancellationToken);
         await unitOfWork.CommitAsync(cancellationToken);
 
-        return Result.Ok(NodeListItemResult.From(createResult.Value));
+        var node = createResult.Value;
+        await unitOfWork.Nodes.ReplacePredecessorsAsync(node.Id, predecessorIds, cancellationToken);
+        await unitOfWork.CommitAsync(cancellationToken);
+
+        return Result.Ok(NodeListItemResult.From(node, predecessorIds));
     }
+
+    private static IReadOnlyList<int> DistinctPredecessors(IReadOnlyList<int>? predecessorIds) =>
+        (predecessorIds ?? []).Where(id => id > 0).Distinct().ToList();
 }
 

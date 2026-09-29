@@ -99,6 +99,8 @@ public sealed class CreateNodeRequest
     public bool IsStart { get; init; }
 
     public bool IsEnd { get; init; }
+
+    public int[] PredecessorIds { get; init; } = [];
 }
 
 public sealed class UpdateNodeRequest
@@ -108,6 +110,8 @@ public sealed class UpdateNodeRequest
     public bool IsStart { get; init; }
 
     public bool IsEnd { get; init; }
+
+    public int[] PredecessorIds { get; init; } = [];
 }
 
 public sealed class ReorderNodesRequest
@@ -133,6 +137,8 @@ public sealed class NodeListItemResponse
     public bool IsEnd { get; init; }
 
     public int SchemaId { get; init; }
+
+    public int[] PredecessorIds { get; init; } = [];
 }
 
 public sealed class CreateStepRequest
