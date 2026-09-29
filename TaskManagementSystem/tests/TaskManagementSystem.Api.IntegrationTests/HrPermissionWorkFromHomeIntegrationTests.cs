@@ -85,10 +85,9 @@ public sealed class HrPermissionWorkFromHomeIntegrationTests(TmsWebApplicationFa
     {
         var client = await factory.CreateAuthenticatedClientAsync();
         var response = await client.GetAsync("/hr/permissions/99999");
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var failure = await ApiFailureTestHelper.AssertOkFailureAsync(response);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        json.GetProperty("code").GetString().Should().Be("permission_request_not_found");
+        failure.Code.Should().Be("permission_request_not_found");
     }
 
     [Fact]
@@ -105,9 +104,8 @@ public sealed class HrPermissionWorkFromHomeIntegrationTests(TmsWebApplicationFa
         var second = await client.PostAsJsonAsync(
             "/hr/work-from-home",
             new CreateWorkFromHomeRequest(duplicateDate, "Second"));
-        var json = await second.Content.ReadFromJsonAsync<JsonElement>();
+        var failure = await ApiFailureTestHelper.AssertOkFailureAsync(second);
 
-        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        json.GetProperty("code").GetString().Should().Be("work_from_home_duplicate_date");
+        failure.Code.Should().Be("work_from_home_duplicate_date");
     }
 }

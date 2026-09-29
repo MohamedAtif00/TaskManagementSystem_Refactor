@@ -56,7 +56,7 @@ public sealed class TicketSummaryIntegrationTests(TmsWebApplicationFactory facto
         var client = await factory.CreateAuthenticatedClientAsync();
 
         var response = await client.GetAsync("/tickets/summary?sprintId=999999");
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await ApiFailureTestHelper.AssertOkFailureAsync(response);
     }
 
     [Fact]

@@ -19,17 +19,25 @@ public static class ResultHttpMapper
 
     public static HttpResult ToProblemResult(ResultError error)
     {
-        var extensions = new Dictionary<string, object?> { ["code"] = error.Code };
-
-        if (error.ValidationErrors is { Count: > 0 })
+        var statusCode = MapStatusCode(error.Code);
+        if (statusCode == StatusCodes.Status403Forbidden)
         {
-            extensions["errors"] = error.ValidationErrors;
+            var extensions = new Dictionary<string, object?> { ["code"] = error.Code };
+            if (error.ValidationErrors is { Count: > 0 })
+            {
+                extensions["errors"] = error.ValidationErrors;
+            }
+
+            return Results.Problem(
+                detail: error.Message,
+                statusCode: statusCode,
+                extensions: extensions);
         }
 
-        return Results.Problem(
-            detail: error.Message,
-            statusCode: MapStatusCode(error.Code),
-            extensions: extensions);
+        return ApiFailureResponse.Ok(
+            error.Message,
+            error.Code,
+            error.ValidationErrors);
     }
 
     internal static int MapStatusCode(string code) =>

@@ -27,7 +27,7 @@ public static class RequestForgotClockEndpoint
         var punchType = ForgotClockMapping.ParsePunchType(request.PunchType);
         if (punchType is null || !TimeOnly.TryParse(request.IntendedTime, out var intendedTime))
         {
-            return Results.BadRequest();
+            return ApiFailureResponse.Ok("Invalid punch type or intended time.", "invalid_forgot_clock_request");
         }
 
         var result = await mediator.Send(

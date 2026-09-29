@@ -39,7 +39,7 @@ public sealed class OrganizationIntegrationTests(TmsWebApplicationFactory factor
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var getResponse = await client.GetAsync($"/organization/teams/{created.Id}");
-        getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await ApiFailureTestHelper.AssertOkFailureAsync(getResponse);
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public sealed class OrganizationIntegrationTests(TmsWebApplicationFactory factor
                 HeadId = aboutMe.Id,
                 TeamIds = [seededTeam.Id]
             });
-        duplicateResponse.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        await ApiFailureTestHelper.AssertOkFailureAsync(duplicateResponse);
 
         var deleteResponse = await client.DeleteAsync($"/organization/sections/{created.Id}");
         deleteResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);

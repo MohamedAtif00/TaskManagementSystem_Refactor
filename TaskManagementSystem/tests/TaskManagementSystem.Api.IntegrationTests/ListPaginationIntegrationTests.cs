@@ -32,7 +32,7 @@ public sealed class ListPaginationIntegrationTests(TmsWebApplicationFactory fact
 
         var response = await client.GetAsync(url);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await ApiFailureTestHelper.AssertOkFailureAsync(response);
     }
 
     [Fact]

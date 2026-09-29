@@ -117,7 +117,7 @@ public sealed class IdentityUserAdminIntegrationTests(TmsWebApplicationFactory f
         archiveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var missingResponse = await client.GetAsync($"/identity/users/{created.Id}");
-        missingResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        await ApiFailureTestHelper.AssertOkFailureAsync(missingResponse);
     }
 
     [Fact]

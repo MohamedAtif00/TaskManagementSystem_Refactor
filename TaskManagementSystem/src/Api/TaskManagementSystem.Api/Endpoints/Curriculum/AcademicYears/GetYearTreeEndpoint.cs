@@ -29,7 +29,7 @@ public static class GetYearTreeEndpoint
         var statuses = YearTreeStatusTabFilter.TryParseStatusTab(statusTab, out var valid);
         if (!valid)
         {
-            return Results.BadRequest(new { message = "statusTab must be active, hold, or closed." });
+            return ApiFailureResponse.Ok("statusTab must be active, hold, or closed.", "invalid_status_tab");
         }
 
         var result = await mediator.Send(new GetYearTreeQuery(yearId, statuses), cancellationToken);

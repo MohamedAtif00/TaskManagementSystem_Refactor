@@ -73,10 +73,9 @@ public sealed class HrLeaveIntegrationTests(TmsWebApplicationFactory factory) : 
         var client = await factory.CreateAuthenticatedClientAsync();
 
         var response = await client.GetAsync("/hr/leave/leave-requests/99999");
-        var problem = await ReadProblemDetailsAsync(response);
+        var failure = await ApiFailureTestHelper.AssertOkFailureAsync(response);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        problem.Code.Should().Be("leave_request_not_found");
+        failure.Code.Should().Be("leave_request_not_found");
     }
 
     [Fact]
@@ -126,10 +125,9 @@ public sealed class HrLeaveIntegrationTests(TmsWebApplicationFactory factory) : 
         var client = await factory.CreateAuthenticatedClientAsync();
 
         var response = await client.GetAsync("/hr/leave/balances/999999");
-        var problem = await ReadProblemDetailsAsync(response);
+        var failure = await ApiFailureTestHelper.AssertOkFailureAsync(response);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        problem.Code.Should().Be("user_not_found");
+        failure.Code.Should().Be("user_not_found");
     }
 
     [Fact]
@@ -242,21 +240,4 @@ public sealed class HrLeaveIntegrationTests(TmsWebApplicationFactory factory) : 
         holidays!.Should().Contain(h => h.Name == "National Day");
     }
 
-    private static async Task<ProblemDetailsDto> ReadProblemDetailsAsync(HttpResponseMessage response)
-    {
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-
-        return new ProblemDetailsDto
-        {
-            Detail = json.TryGetProperty("detail", out var detail) ? detail.GetString() : null,
-            Code = json.TryGetProperty("code", out var code) ? code.GetString() : null
-        };
-    }
-
-    private sealed class ProblemDetailsDto
-    {
-        public string? Detail { get; init; }
-
-        public string? Code { get; init; }
-    }
 }

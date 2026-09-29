@@ -100,10 +100,9 @@ public sealed class AnalyticsIntegrationTests(TmsWebApplicationFactory factory)
         archiveResponse.StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var response = await client.GetAsync($"/analytics/subjects/{setup.SubjectId}/overview");
-        var problem = await ReadProblemDetailsAsync(response);
+        var failure = await ApiFailureTestHelper.AssertOkFailureAsync(response);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        problem.Code.Should().Be("subject_not_found");
+        failure.Code.Should().Be("subject_not_found");
     }
 
     [Fact]
@@ -112,10 +111,9 @@ public sealed class AnalyticsIntegrationTests(TmsWebApplicationFactory factory)
         var client = await factory.CreateAuthenticatedClientAsync();
 
         var response = await client.GetAsync("/analytics/subjects/999999/overview");
-        var problem = await ReadProblemDetailsAsync(response);
+        var failure = await ApiFailureTestHelper.AssertOkFailureAsync(response);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        problem.Code.Should().Be("subject_not_found");
+        failure.Code.Should().Be("subject_not_found");
     }
 
     [Fact]
@@ -124,10 +122,9 @@ public sealed class AnalyticsIntegrationTests(TmsWebApplicationFactory factory)
         var client = await factory.CreateAuthenticatedClientAsync();
 
         var response = await client.GetAsync("/analytics/sprints/999999/overview");
-        var problem = await ReadProblemDetailsAsync(response);
+        var failure = await ApiFailureTestHelper.AssertOkFailureAsync(response);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        problem.Code.Should().Be("sprint_not_found");
+        failure.Code.Should().Be("sprint_not_found");
     }
 
     [Fact]
@@ -302,22 +299,6 @@ public sealed class AnalyticsIntegrationTests(TmsWebApplicationFactory factory)
             $"/tickets/{ticketId}/assign",
             new AssignTicketRequest { UserId = testUser.Id });
         assignResponse.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
-    private static async Task<ProblemDetailsDto> ReadProblemDetailsAsync(HttpResponseMessage response)
-    {
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return new ProblemDetailsDto
-        {
-            Detail = json.TryGetProperty("detail", out var detail) ? detail.GetString() : null,
-            Code = json.TryGetProperty("code", out var code) ? code.GetString() : null
-        };
-    }
-
-    private sealed class ProblemDetailsDto
-    {
-        public string? Detail { get; init; }
-        public string? Code { get; init; }
     }
 
     private sealed class IdentityUserListItemResponse

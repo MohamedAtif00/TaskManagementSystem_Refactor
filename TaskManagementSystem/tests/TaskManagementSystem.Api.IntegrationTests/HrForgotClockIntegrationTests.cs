@@ -68,10 +68,9 @@ public sealed class HrForgotClockIntegrationTests(TmsWebApplicationFactory facto
         var second = await client.PostAsJsonAsync(
             "/hr/forgot-clock",
             new CreateForgotClockRequest("ClockIn", duplicateDate, "09:30:00", "Second"));
-        var json = await second.Content.ReadFromJsonAsync<JsonElement>();
+        var failure = await ApiFailureTestHelper.AssertOkFailureAsync(second);
 
-        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        json.GetProperty("code").GetString().Should().Be("forgot_clock_duplicate_punch");
+        failure.Code.Should().Be("forgot_clock_duplicate_punch");
     }
 
     [Fact]
@@ -79,9 +78,8 @@ public sealed class HrForgotClockIntegrationTests(TmsWebApplicationFactory facto
     {
         var client = await factory.CreateAuthenticatedClientAsync();
         var response = await client.GetAsync("/hr/forgot-clock/99999");
-        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var failure = await ApiFailureTestHelper.AssertOkFailureAsync(response);
 
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        json.GetProperty("code").GetString().Should().Be("forgot_clock_request_not_found");
+        failure.Code.Should().Be("forgot_clock_request_not_found");
     }
 }

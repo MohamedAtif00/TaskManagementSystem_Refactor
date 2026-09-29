@@ -21,7 +21,7 @@ public sealed class TicketPaginationIntegrationTests(TmsWebApplicationFactory fa
         var setup = await TicketIntegrationTests.CreateTicketSetupAsync(client);
 
         var response = await client.GetAsync($"/subjects/{setup.SubjectId}/tickets?page=1&pageSize=101");
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await ApiFailureTestHelper.AssertOkFailureAsync(response);
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public sealed class TicketPaginationIntegrationTests(TmsWebApplicationFactory fa
         var setup = await TicketIntegrationTests.CreateTicketSetupAsync(client);
 
         var response = await client.GetAsync($"/subjects/{setup.SubjectId}/tickets?page=0&pageSize=20");
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await ApiFailureTestHelper.AssertOkFailureAsync(response);
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed class TicketPaginationIntegrationTests(TmsWebApplicationFactory fa
         var setup = await TicketIntegrationTests.CreateTicketSetupAsync(client);
 
         var response = await client.GetAsync($"/subjects/{setup.SubjectId}/tickets?page=1&pageSize=0");
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await ApiFailureTestHelper.AssertOkFailureAsync(response);
     }
 
     [Fact]

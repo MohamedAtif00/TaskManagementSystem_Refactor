@@ -26,7 +26,7 @@ public static class UpdateTicketPriorityEndpoint
     {
         if (!Enum.IsDefined(typeof(TicketPriority), request.Priority))
         {
-            return Results.BadRequest(new { code = "ticket_invalid_priority", message = "Priority is invalid." });
+            return ApiFailureResponse.Ok("Priority is invalid.", "ticket_invalid_priority");
         }
 
         var actorUserId = currentUserAccessor.GetRequiredUserId();

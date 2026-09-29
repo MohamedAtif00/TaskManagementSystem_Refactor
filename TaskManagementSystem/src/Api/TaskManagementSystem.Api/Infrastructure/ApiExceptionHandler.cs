@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
 using TaskManagementSystem.BuildingBlocks.Application.Behaviors;
 
 namespace TaskManagementSystem.Api.Infrastructure;
@@ -39,16 +38,11 @@ public sealed class ApiExceptionHandler(
                 "validation_failed",
                 errors);
 
-            await WriteProblemDetailsAsync(
+            await WriteOkFailureAsync(
                 httpContext,
-                StatusCodes.Status400BadRequest,
-                "Validation failed",
                 validationException.Message,
-                new Dictionary<string, object?>
-                {
-                    ["code"] = "validation_failed",
-                    ["errors"] = errors
-                },
+                "validation_failed",
+                errors,
                 cancellationToken);
 
             return true;
@@ -67,39 +61,26 @@ public sealed class ApiExceptionHandler(
             ? exception.Message
             : "An unexpected error occurred.";
 
-        await WriteProblemDetailsAsync(
+        await WriteOkFailureAsync(
             httpContext,
-            StatusCodes.Status500InternalServerError,
-            "Internal Server Error",
             detail,
-            new Dictionary<string, object?> { ["code"] = "unexpected_error" },
+            "unexpected_error",
+            null,
             cancellationToken);
 
         return true;
     }
 
-    private static async Task WriteProblemDetailsAsync(
+    private static async Task WriteOkFailureAsync(
         HttpContext httpContext,
-        int statusCode,
-        string title,
-        string detail,
-        IDictionary<string, object?> extensions,
+        string message,
+        string? code,
+        IReadOnlyDictionary<string, string[]>? errors,
         CancellationToken cancellationToken)
     {
-        var problemDetails = new ProblemDetails
-        {
-            Status = statusCode,
-            Title = title,
-            Detail = detail,
-            Type = $"https://httpstatuses.com/{statusCode}"
-        };
-
-        foreach (var (key, value) in extensions)
-        {
-            problemDetails.Extensions[key] = value;
-        }
-
-        httpContext.Response.StatusCode = statusCode;
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        httpContext.Response.StatusCode = StatusCodes.Status200OK;
+        await httpContext.Response.WriteAsJsonAsync(
+            ApiFailureBody.Create(message, code, errors),
+            cancellationToken);
     }
 }

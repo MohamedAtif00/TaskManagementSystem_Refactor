@@ -27,7 +27,7 @@ public static class RequestPermissionEndpoint
         var type = PermissionMapping.ParsePermissionType(request.Type);
         if (type is null || !TimeOnly.TryParse(request.FromTime, out var fromTime) || !TimeOnly.TryParse(request.ToTime, out var toTime))
         {
-            return Results.BadRequest();
+            return ApiFailureResponse.Ok("Invalid permission type or time range.", "invalid_permission_request");
         }
 
         var result = await mediator.Send(

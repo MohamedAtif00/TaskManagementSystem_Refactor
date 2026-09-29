@@ -57,7 +57,7 @@ public static class RequestLeaveEndpoint
             var request = await httpRequest.ReadFromJsonAsync<CreateLeaveRequest>(cancellationToken);
             if (request is null)
             {
-                return Results.BadRequest();
+                return ApiFailureResponse.Ok("Request body is required.", "invalid_leave_request");
             }
 
             type = LeaveRequestMapping.ParseLeaveType(request.Type) ?? LeaveType.Annual;
