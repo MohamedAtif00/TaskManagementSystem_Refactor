@@ -12,9 +12,7 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
 {
     public async Task<Result<TicketListPageResult>> ListBySubjectAsync(
         int subjectId,
-        IReadOnlyList<DomainTicketStatus>? statuses = null,
-        int? learningObjectiveId = null,
-        string? name = null,
+        TicketListFilter filter,
         int? page = null,
         int? pageSize = null,
         CancellationToken cancellationToken = default)
@@ -34,7 +32,7 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
               AND t.[Archived] = 0
               AND lo.[Archived] = 0
             """);
-        TicketListQueryBuilder.AppendFilters(where, parameters, statuses, learningObjectiveId, name);
+        TicketListQueryBuilder.AppendFilters(where, parameters, filter);
 
         var fromSql = """
             FROM [ticket].[Tickets] t
@@ -71,6 +69,33 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
             resolvedPageSize,
             totalCount));
     }
+
+    public async Task<IReadOnlyList<TicketAssignmentLinkResult>> ListAssignmentLinksAsync(
+        int subjectId,
+        CancellationToken cancellationToken = default)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("SubjectId", subjectId);
+        var sql = """
+            SELECT DISTINCT t.[UserId], t.[LearningObjectiveId]
+            FROM [ticket].[Tickets] t
+            INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
+            INNER JOIN [curriculum].[Lessons] l ON lo.[LessonId] = l.[Id]
+            INNER JOIN [curriculum].[Units] u ON l.[UnitId] = u.[Id]
+            WHERE u.[SubjectId] = @SubjectId
+              AND t.[Archived] = 0
+              AND lo.[Archived] = 0
+            """;
+
+        using var connection = connectionFactory.GetOpenConnection();
+        var rows = (await connection.QueryAsync<AssignmentLinkRow>(
+            new CommandDefinition(sql, parameters, cancellationToken: cancellationToken))).AsList();
+        return rows
+            .Select(row => new TicketAssignmentLinkResult(row.UserId, row.LearningObjectiveId))
+            .ToArray();
+    }
+
+    internal sealed record AssignmentLinkRow(int? UserId, int LearningObjectiveId);
 
     internal sealed record TicketRow(
         int Id,

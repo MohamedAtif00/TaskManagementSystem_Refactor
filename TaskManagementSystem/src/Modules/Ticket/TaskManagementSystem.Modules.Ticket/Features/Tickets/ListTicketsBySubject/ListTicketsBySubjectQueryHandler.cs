@@ -15,9 +15,7 @@ public sealed class ListTicketsBySubjectQueryHandler(SubjectTicketsQueries subje
     {
         return await subjectTicketsQueries.ListBySubjectAsync(
             request.SubjectId,
-            request.Statuses,
-            request.LearningObjectiveId,
-            request.Name,
+            request.Filter,
             request.Page,
             request.PageSize,
             cancellationToken);

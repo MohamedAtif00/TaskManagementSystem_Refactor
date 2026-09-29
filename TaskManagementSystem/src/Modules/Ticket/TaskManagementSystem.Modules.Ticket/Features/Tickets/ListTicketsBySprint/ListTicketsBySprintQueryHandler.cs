@@ -15,9 +15,7 @@ public sealed class ListTicketsBySprintQueryHandler(SprintTicketsQueries sprintT
     {
         return await sprintTicketsQueries.ListBySprintAsync(
             request.SprintId,
-            request.Statuses,
-            request.LearningObjectiveId,
-            request.Name,
+            request.Filter,
             request.Page,
             request.PageSize,
             cancellationToken);

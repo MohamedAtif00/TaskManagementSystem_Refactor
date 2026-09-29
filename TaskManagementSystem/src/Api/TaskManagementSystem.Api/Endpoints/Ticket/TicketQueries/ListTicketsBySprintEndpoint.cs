@@ -3,7 +3,6 @@ using TaskManagementSystem.Api.Configuration;
 using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.Modules.Identity.Domain;
 using TaskManagementSystem.Modules.Ticket.Features.Tickets.ListTicketsBySprint;
-using DomainTicketStatus = TaskManagementSystem.Modules.Ticket.Domain.TicketStatus;
 
 namespace TaskManagementSystem.Api.Endpoints.Ticket.TicketQueries;
 
@@ -22,22 +21,32 @@ public static class ListTicketsBySprintEndpoint
     private static async Task<IResult> HandleAsync(
         int sprintId,
         int[]? status,
-        int? learningObjectiveId,
+        int[]? learningObjectiveId,
         string? name,
+        int[]? userId,
+        bool? unassigned,
+        int[]? priority,
+        bool? flagged,
+        bool? paused,
+        bool? rolledBack,
         int? page,
         int? pageSize,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
-        var statuses = status is { Length: > 0 }
-            ? status.Select(value => (DomainTicketStatus)value).ToArray()
-            : null;
         var result = await mediator.Send(
             new ListTicketsBySprintQuery(
                 sprintId,
-                statuses,
-                learningObjectiveId,
-                name,
+                TicketListFilterBinder.Bind(
+                    status,
+                    learningObjectiveId,
+                    name,
+                    userId,
+                    unassigned,
+                    priority,
+                    flagged,
+                    paused,
+                    rolledBack),
                 page,
                 pageSize),
             cancellationToken);

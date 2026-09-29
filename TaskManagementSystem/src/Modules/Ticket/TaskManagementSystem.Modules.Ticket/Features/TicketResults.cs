@@ -102,6 +102,8 @@ public sealed record TicketListPageResult(
     int PageSize,
     int TotalCount);
 
+public sealed record TicketAssignmentLinkResult(int? UserId, int LearningObjectiveId);
+
 public sealed record TicketDetailResult(
     int Id,
     string Name,
