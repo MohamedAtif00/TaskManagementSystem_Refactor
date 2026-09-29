@@ -10,6 +10,10 @@ public interface IStepRepository
 
     Task<IReadOnlyList<WorkflowStep>> ListActiveByNodeAsync(int nodeId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<WorkflowStep>> ListActiveByNodeTrackedAsync(
+        int nodeId,
+        CancellationToken cancellationToken = default);
+
     Task<int> GetNextOrderAsync(int nodeId, CancellationToken cancellationToken = default);
 
     Task<bool> NodeExistsActiveAsync(int nodeId, CancellationToken cancellationToken = default);

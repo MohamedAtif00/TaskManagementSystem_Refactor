@@ -10,6 +10,10 @@ public interface INodeRepository
 
     Task<IReadOnlyList<WorkflowNode>> ListActiveBySchemaAsync(int schemaId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<WorkflowNode>> ListActiveBySchemaTrackedAsync(
+        int schemaId,
+        CancellationToken cancellationToken = default);
+
     Task<int> GetNextOrderAsync(int schemaId, CancellationToken cancellationToken = default);
 
     Task<bool> SchemaExistsActiveAsync(int schemaId, CancellationToken cancellationToken = default);

@@ -4087,6 +4087,47 @@
         }
       }
     },
+    "/workflows/schemas/{schemaId}/nodes/reorder": {
+      "put": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Reorder nodes for schema",
+        "operationId": "reorderNodesBySchema",
+        "parameters": [
+          {
+            "name": "schemaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderNodesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Nodes reordered"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
     "/workflows/nodes/{id}": {
       "put": {
         "tags": [
@@ -4416,6 +4457,47 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/workflows/nodes/{nodeId}/steps/reorder": {
+      "put": {
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Reorder steps for node",
+        "operationId": "reorderStepsByNode",
+        "parameters": [
+          {
+            "name": "nodeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderStepsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Steps reordered"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -9269,6 +9351,36 @@
           },
           "isEnd": {
             "type": "boolean"
+          }
+        }
+      },
+      "ReorderNodesRequest": {
+        "type": "object",
+        "required": [
+          "orderedNodeIds"
+        ],
+        "properties": {
+          "orderedNodeIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        }
+      },
+      "ReorderStepsRequest": {
+        "type": "object",
+        "required": [
+          "orderedStepIds"
+        ],
+        "properties": {
+          "orderedStepIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         }
       },

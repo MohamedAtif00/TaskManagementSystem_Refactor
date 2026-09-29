@@ -13,6 +13,7 @@ public static class WorkflowSchemaEndpoints
         ArchiveSchemaEndpoint.Map(schemas);
         ListNodesBySchemaEndpoint.Map(schemas);
         CreateNodeEndpoint.Map(schemas);
+        ReorderNodesBySchemaEndpoint.Map(schemas);
 
         return group;
     }

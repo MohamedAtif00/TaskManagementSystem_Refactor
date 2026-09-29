@@ -21,4 +21,7 @@ public static class WorkflowsErrors
 
     public static ResultError TeamInvalid =>
         new("team_invalid", "Team not found.");
+
+    public static ResultError InvalidReorder =>
+        new("invalid_reorder", "Reorder request must include every active item exactly once.");
 }

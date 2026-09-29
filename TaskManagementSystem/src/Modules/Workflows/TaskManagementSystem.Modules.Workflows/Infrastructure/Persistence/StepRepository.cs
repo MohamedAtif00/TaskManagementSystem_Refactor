@@ -22,6 +22,14 @@ internal sealed class StepRepository(WorkflowsDbContext context)
             .OrderBy(step => step.Order)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<WorkflowStep>> ListActiveByNodeTrackedAsync(
+        int nodeId,
+        CancellationToken cancellationToken = default) =>
+        await Set
+            .Where(step => step.NodeId == nodeId && !step.Archived)
+            .OrderBy(step => step.Order)
+            .ToListAsync(cancellationToken);
+
     public async Task<int> GetNextOrderAsync(int nodeId, CancellationToken cancellationToken = default)
     {
         var maxOrder = await Set.AsNoTracking()

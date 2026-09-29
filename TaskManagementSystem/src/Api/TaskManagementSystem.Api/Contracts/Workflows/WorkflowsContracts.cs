@@ -110,6 +110,16 @@ public sealed class UpdateNodeRequest
     public bool IsEnd { get; init; }
 }
 
+public sealed class ReorderNodesRequest
+{
+    public int[] OrderedNodeIds { get; init; } = [];
+}
+
+public sealed class ReorderStepsRequest
+{
+    public int[] OrderedStepIds { get; init; } = [];
+}
+
 public sealed class NodeListItemResponse
 {
     public int Id { get; init; }

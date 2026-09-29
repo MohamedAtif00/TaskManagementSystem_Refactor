@@ -59,6 +59,8 @@ public sealed class WorkflowNode : Entity, IAggregateRoot
         return Result.Ok();
     }
 
+    public void SetOrder(int order) => Order = order;
+
     public void Archive() => Archived = true;
 
     protected override IEnumerable<object?> GetEqualityComponents()

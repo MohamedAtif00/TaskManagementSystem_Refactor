@@ -10,6 +10,7 @@ public static class WorkflowNodeEndpoints
         ArchiveNodeEndpoint.Map(nodes);
         ListStepsByNodeEndpoint.Map(nodes);
         CreateStepEndpoint.Map(nodes);
+        ReorderStepsByNodeEndpoint.Map(nodes);
 
         return group;
     }
