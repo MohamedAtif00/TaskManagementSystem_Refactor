@@ -36,6 +36,7 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
         var fromSql = """
             FROM [ticket].[Tickets] t
             INNER JOIN [sprints].[SprintLearningObjectives] slo ON t.[LearningObjectiveId] = slo.[LearningObjectiveId]
+            INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
             """;
 
         var sql = $"""
@@ -106,5 +107,6 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
         bool Attention,
         bool Flagged,
         bool IsRollback,
-        int RollbackCount);
+        int RollbackCount,
+        string LearningObjectiveName);
 }

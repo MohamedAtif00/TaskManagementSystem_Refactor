@@ -112,5 +112,6 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
         bool Attention,
         bool Flagged,
         bool IsRollback,
-        int RollbackCount);
+        int RollbackCount,
+        string LearningObjectiveName);
 }

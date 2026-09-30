@@ -21,6 +21,12 @@ public sealed class AddCommentRequest
     public string Content { get; set; } = string.Empty;
 }
 
+public sealed class LearningObjectiveSummaryResponse
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
 public sealed class TicketListItemResponse
 {
     public int Id { get; set; }
@@ -30,6 +36,7 @@ public sealed class TicketListItemResponse
     public int Duration { get; set; }
     public DateTime CreatedAt { get; set; }
     public int LearningObjectiveId { get; set; }
+    public LearningObjectiveSummaryResponse? LearningObjective { get; set; }
     public int? StepId { get; set; }
     public int? UserId { get; set; }
     public int? TeamId { get; set; }

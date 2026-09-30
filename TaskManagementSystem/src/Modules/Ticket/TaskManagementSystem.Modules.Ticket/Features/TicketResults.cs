@@ -21,7 +21,8 @@ public sealed record TicketListItemResult(
     bool Attention = false,
     bool Flagged = false,
     bool IsRollback = false,
-    int RollbackCount = 0)
+    int RollbackCount = 0,
+    string? LearningObjectiveName = null)
 {
     public static TicketListItemResult From(Domain.Ticket task) =>
         new(
@@ -57,7 +58,8 @@ public sealed record TicketListItemResult(
             row.Attention,
             row.Flagged,
             row.IsRollback,
-            row.RollbackCount);
+            row.RollbackCount,
+            row.LearningObjectiveName);
 
     internal static TicketListItemResult FromRow(SprintTicketsQueries.TicketRow row) =>
         new(
@@ -75,7 +77,8 @@ public sealed record TicketListItemResult(
             row.Attention,
             row.Flagged,
             row.IsRollback,
-            row.RollbackCount);
+            row.RollbackCount,
+            row.LearningObjectiveName);
 
     internal static TicketListItemResult FromRow(LearningObjectiveTicketsQueries.TicketRow row) =>
         new(
@@ -93,7 +96,8 @@ public sealed record TicketListItemResult(
             row.Attention,
             row.Flagged,
             row.IsRollback,
-            row.RollbackCount);
+            row.RollbackCount,
+            row.LearningObjectiveName);
 }
 
 public sealed record TicketListPageResult(

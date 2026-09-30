@@ -15,6 +15,13 @@ internal static class TicketMapping
             Duration = ticket.Duration,
             CreatedAt = ticket.CreatedAt,
             LearningObjectiveId = ticket.LearningObjectiveId,
+            LearningObjective = string.IsNullOrEmpty(ticket.LearningObjectiveName)
+                ? null
+                : new LearningObjectiveSummaryResponse
+                {
+                    Id = ticket.LearningObjectiveId,
+                    Name = ticket.LearningObjectiveName
+                },
             StepId = ticket.StepId,
             UserId = ticket.UserId,
             TeamId = ticket.TeamId,
