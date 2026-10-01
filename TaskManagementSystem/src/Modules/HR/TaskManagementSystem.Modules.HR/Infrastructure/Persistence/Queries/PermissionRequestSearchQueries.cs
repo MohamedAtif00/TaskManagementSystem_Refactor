@@ -114,7 +114,16 @@ internal sealed class PermissionRequestSearchQueries(ISqlConnectionFactory conne
             case "TeamLeader":
                 where.Append("""
                     AND p.[UserId] <> @ViewerUserId
-                    AND (u.[TeamleaderId] = @ViewerUserId OR (@ViewerTeamId IS NOT NULL AND u.[TeamId] = @ViewerTeamId))
+                    AND (
+                        EXISTS (
+                            SELECT 1
+                            FROM [organization].[Teams] AS tm
+                            WHERE tm.[Id] = u.[TeamId]
+                              AND tm.[TeamleaderId] = @ViewerUserId
+                              AND tm.[Archived] = 0
+                        )
+                        OR (@ViewerTeamId IS NOT NULL AND u.[TeamId] = @ViewerTeamId)
+                    )
                     """);
                 return;
             case "SectionHead":
