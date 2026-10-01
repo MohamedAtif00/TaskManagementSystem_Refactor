@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using TaskManagementSystem.Api.Security;
 
 namespace TaskManagementSystem.Api.Configuration;
@@ -9,4 +10,12 @@ public static class AuthorizationEndpointExtensions
 
     public static RouteHandlerBuilder RequirePermissionCode(this RouteHandlerBuilder builder, string permissionCode) =>
         builder.RequireAuthorization(PermissionPolicyNames.For(permissionCode));
+
+    public static RouteHandlerBuilder RequireAnyPermissionCode(this RouteHandlerBuilder builder, params string[] permissionCodes)
+    {
+        var policy = new AuthorizationPolicyBuilder()
+            .AddRequirements(new AnyPermissionRequirement(permissionCodes))
+            .Build();
+        return builder.RequireAuthorization(policy);
+    }
 }

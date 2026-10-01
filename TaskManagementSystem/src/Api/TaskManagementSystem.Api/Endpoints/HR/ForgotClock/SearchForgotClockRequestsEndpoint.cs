@@ -12,13 +12,16 @@ public static class SearchForgotClockRequestsEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder forgotClock)
     {
-        forgotClock.MapGet("/search", HandleAsync).RequirePermissionCode(PermissionCodes.HrForgotClock.Read);
+        forgotClock.MapGet("/search", HandleAsync).RequireAnyPermissionCode(
+            PermissionCodes.HrForgotClock.Read,
+            PermissionCodes.HrForgotClock.Create);
         return forgotClock;
     }
 
     private static async Task<IResult> HandleAsync(
         IMediator mediator,
         ICurrentUserAccessor currentUser,
+        HttpContext httpContext,
         int page = 1,
         int pageSize = 20,
         string? search = null,
@@ -31,7 +34,7 @@ public static class SearchForgotClockRequestsEndpoint
         CancellationToken cancellationToken = default)
     {
         var userId = currentUser.GetRequiredUserId();
-        var role = currentUser.GetRequiredRole();
+        var role = PermissionClaimChecks.ListRole(currentUser, httpContext.User, PermissionCodes.HrForgotClock.Read);
         var teamId = currentUser.GetTeamId();
 
         var result = await mediator.Send(

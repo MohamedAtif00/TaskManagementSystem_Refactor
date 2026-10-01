@@ -13,13 +13,16 @@ public static class SearchLeaveRequestsEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder leave)
     {
-        leave.MapGet("/leave-requests/search", HandleAsync).RequirePermissionCode(PermissionCodes.HrLeave.Read);
+        leave.MapGet("/leave-requests/search", HandleAsync).RequireAnyPermissionCode(
+            PermissionCodes.HrLeave.Read,
+            PermissionCodes.HrLeave.Create);
         return leave;
     }
 
     private static async Task<IResult> HandleAsync(
         IMediator mediator,
         ICurrentUserAccessor currentUser,
+        HttpContext httpContext,
         int page = 1,
         int pageSize = 20,
         string? search = null,
@@ -31,7 +34,7 @@ public static class SearchLeaveRequestsEndpoint
         CancellationToken cancellationToken = default)
     {
         var userId = currentUser.GetRequiredUserId();
-        var role = currentUser.GetRequiredRole();
+        var role = PermissionClaimChecks.ListRole(currentUser, httpContext.User, PermissionCodes.HrLeave.Read);
         var teamId = currentUser.GetTeamId();
 
         LeaveStatus? parsedStatus = Enum.TryParse<LeaveStatus>(status, true, out var leaveStatus)

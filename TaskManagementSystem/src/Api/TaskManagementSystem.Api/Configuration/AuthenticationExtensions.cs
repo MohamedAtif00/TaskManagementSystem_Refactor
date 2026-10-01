@@ -18,6 +18,7 @@ public static class AuthenticationExtensions
             ?? throw new InvalidOperationException("AppSetting:Token is not configured.");
 
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationHandler, AnyPermissionAuthorizationHandler>();
 
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

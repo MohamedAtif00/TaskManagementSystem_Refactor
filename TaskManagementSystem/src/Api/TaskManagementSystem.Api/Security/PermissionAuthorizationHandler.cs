@@ -8,6 +8,11 @@ public sealed class PermissionRequirement(string permissionCode) : IAuthorizatio
     public string PermissionCode { get; } = permissionCode;
 }
 
+public sealed class AnyPermissionRequirement(params string[] permissionCodes) : IAuthorizationRequirement
+{
+    public IReadOnlyList<string> PermissionCodes { get; } = permissionCodes;
+}
+
 internal sealed class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
 {
     protected override Task HandleRequirementAsync(
@@ -24,6 +29,32 @@ internal sealed class PermissionAuthorizationHandler : AuthorizationHandler<Perm
             {
                 context.Succeed(requirement);
                 break;
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class AnyPermissionAuthorizationHandler : AuthorizationHandler<AnyPermissionRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        AnyPermissionRequirement requirement)
+    {
+        var heldPermissions = context.User.Claims
+            .Where(claim => claim.Type == IdentityClaimTypes.Permission)
+            .Select(claim => claim.Value);
+
+        foreach (var requiredCode in requirement.PermissionCodes)
+        {
+            foreach (var heldPermission in heldPermissions)
+            {
+                if (PermissionCodes.IsSatisfiedBy(heldPermission, requiredCode))
+                {
+                    context.Succeed(requirement);
+                    return Task.CompletedTask;
+                }
             }
         }
 

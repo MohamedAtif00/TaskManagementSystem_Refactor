@@ -12,13 +12,16 @@ public static class SearchWorkFromHomeRequestsEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder workFromHome)
     {
-        workFromHome.MapGet("/search", HandleAsync).RequirePermissionCode(PermissionCodes.HrWorkFromHome.Read);
+        workFromHome.MapGet("/search", HandleAsync).RequireAnyPermissionCode(
+            PermissionCodes.HrWorkFromHome.Read,
+            PermissionCodes.HrWorkFromHome.Create);
         return workFromHome;
     }
 
     private static async Task<IResult> HandleAsync(
         IMediator mediator,
         ICurrentUserAccessor currentUser,
+        HttpContext httpContext,
         int page = 1,
         int pageSize = 20,
         string? search = null,
@@ -29,7 +32,7 @@ public static class SearchWorkFromHomeRequestsEndpoint
         CancellationToken cancellationToken = default)
     {
         var userId = currentUser.GetRequiredUserId();
-        var role = currentUser.GetRequiredRole();
+        var role = PermissionClaimChecks.ListRole(currentUser, httpContext.User, PermissionCodes.HrWorkFromHome.Read);
         var teamId = currentUser.GetTeamId();
 
         var result = await mediator.Send(

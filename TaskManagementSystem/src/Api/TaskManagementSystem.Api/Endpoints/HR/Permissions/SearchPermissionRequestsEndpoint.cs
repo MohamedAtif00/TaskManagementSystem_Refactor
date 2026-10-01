@@ -12,13 +12,16 @@ public static class SearchPermissionRequestsEndpoint
 {
     public static RouteGroupBuilder Map(RouteGroupBuilder permissions)
     {
-        permissions.MapGet("/search", HandleAsync).RequirePermissionCode(PermissionCodes.HrTimeoff.Read);
+        permissions.MapGet("/search", HandleAsync).RequireAnyPermissionCode(
+            PermissionCodes.HrTimeoff.Read,
+            PermissionCodes.HrTimeoff.Create);
         return permissions;
     }
 
     private static async Task<IResult> HandleAsync(
         IMediator mediator,
         ICurrentUserAccessor currentUser,
+        HttpContext httpContext,
         int page = 1,
         int pageSize = 20,
         string? search = null,
@@ -31,7 +34,7 @@ public static class SearchPermissionRequestsEndpoint
         CancellationToken cancellationToken = default)
     {
         var userId = currentUser.GetRequiredUserId();
-        var role = currentUser.GetRequiredRole();
+        var role = PermissionClaimChecks.ListRole(currentUser, httpContext.User, PermissionCodes.HrTimeoff.Read);
         var teamId = currentUser.GetTeamId();
 
         var result = await mediator.Send(
