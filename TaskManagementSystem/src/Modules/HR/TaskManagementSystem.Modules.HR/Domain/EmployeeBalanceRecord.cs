@@ -91,6 +91,59 @@ public sealed class EmployeeBalanceRecord : Entity, IAggregateRoot
         Role = roleId;
     }
 
+    public Result<NoValue> SetAmounts(
+        int annualLeave,
+        int annualLeaveMax,
+        int emergencyLeave,
+        int emergencyLeaveMax,
+        int sickLeave,
+        int permission,
+        int permissionMax,
+        int workFromHome,
+        int workFromHomeMax,
+        int fromNextBalanceDaysUsed,
+        int fromNextBalanceMaxDays)
+    {
+        var values = new[]
+        {
+            annualLeave,
+            annualLeaveMax,
+            emergencyLeave,
+            emergencyLeaveMax,
+            sickLeave,
+            permission,
+            permissionMax,
+            workFromHome,
+            workFromHomeMax,
+            fromNextBalanceDaysUsed
+        };
+        if (values.Any(value => value < 0))
+        {
+            return Result.Fail<NoValue>(new ResultError("balance_invalid", "Balance values must be zero or greater."));
+        }
+
+        if (annualLeave > annualLeaveMax
+            || emergencyLeave > emergencyLeaveMax
+            || permission > permissionMax
+            || workFromHome > workFromHomeMax
+            || fromNextBalanceDaysUsed > fromNextBalanceMaxDays)
+        {
+            return Result.Fail<NoValue>(new ResultError("balance_exceeds_max", "Used balance cannot be above its maximum."));
+        }
+
+        AnnualLeave = annualLeave;
+        AnnualLeaveMax = annualLeaveMax;
+        EmergencyLeave = emergencyLeave;
+        EmergencyLeaveMax = emergencyLeaveMax;
+        SickLeave = sickLeave;
+        Permission = permission;
+        PermissionMax = permissionMax;
+        WorkFromHome = workFromHome;
+        WorkFromHomeMax = workFromHomeMax;
+        FromNextBalanceDaysUsed = fromNextBalanceDaysUsed;
+        return Result.Ok();
+    }
+
     protected override IEnumerable<object?> GetEqualityComponents()
     {
         yield return UserId;

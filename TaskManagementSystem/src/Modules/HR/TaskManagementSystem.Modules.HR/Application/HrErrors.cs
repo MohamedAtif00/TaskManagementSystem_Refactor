@@ -25,6 +25,9 @@ public static class HrErrors
     public static ResultError UserNotFound =>
         new("user_not_found", "User not found.");
 
+    public static ResultError BalanceUpdateNotAuthorized =>
+        new("balance_update_not_authorized", "You are not allowed to update this balance.");
+
     public static ResultError LeaveOpinionAlreadyGiven =>
         new("leave_opinion_already_given", "You have already given your opinion on this request.");
 

@@ -13,7 +13,7 @@ public sealed class GetBalancesQueryHandler(
 {
     public async Task<Result<BalancesResult>> Handle(GetBalancesQuery request, CancellationToken cancellationToken)
     {
-        if (request.UserId != request.ViewerUserId && request.ViewerRole != "Owner")
+        if (request.UserId != request.ViewerUserId && request.ViewerRole is not ("Owner" or "ProjectManger"))
         {
             return Result.Fail<BalancesResult>(HrErrors.UserNotFound);
         }

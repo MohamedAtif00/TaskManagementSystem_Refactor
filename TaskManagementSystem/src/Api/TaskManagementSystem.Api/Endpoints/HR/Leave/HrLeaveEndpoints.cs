@@ -8,6 +8,7 @@ public static class HrLeaveEndpoints
 
         GetBalancesEndpoint.Map(leave);
         GetBalancesByUserIdEndpoint.Map(leave);
+        UpdateEmployeeBalanceEndpoint.Map(leave);
         GetLeaveSettingsEndpoint.Map(leave);
         PreviewLeaveEndpoint.Map(leave);
         RequestLeaveEndpoint.Map(leave);

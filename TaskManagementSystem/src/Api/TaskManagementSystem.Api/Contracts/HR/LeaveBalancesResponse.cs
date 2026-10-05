@@ -33,6 +33,29 @@ public sealed class LeaveBalancesResponse
     public int AvailableWorkFromHome { get; set; }
 }
 
+public sealed class UpdateEmployeeBalanceRequest
+{
+    public int AnnualLeave { get; set; }
+
+    public int AnnualLeaveMax { get; set; }
+
+    public int EmergencyLeave { get; set; }
+
+    public int EmergencyLeaveMax { get; set; }
+
+    public int SickLeave { get; set; }
+
+    public int Permission { get; set; }
+
+    public int PermissionMax { get; set; }
+
+    public int WorkFromHome { get; set; }
+
+    public int WorkFromHomeMax { get; set; }
+
+    public int FromNextBalanceDaysUsed { get; set; }
+}
+
 public sealed class MemberBalanceListItemResponse
 {
     public int UserId { get; set; }

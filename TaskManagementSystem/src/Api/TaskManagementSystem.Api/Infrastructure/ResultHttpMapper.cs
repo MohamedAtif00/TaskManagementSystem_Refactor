@@ -80,6 +80,7 @@ public static class ResultHttpMapper
             "notification_already_read" => StatusCodes.Status409Conflict,
             "section_already_exists" => StatusCodes.Status409Conflict,
             "leave_opinion_not_authorized" => StatusCodes.Status403Forbidden,
+            "balance_update_not_authorized" => StatusCodes.Status403Forbidden,
             "permission_opinion_not_authorized" => StatusCodes.Status403Forbidden,
             "work_from_home_opinion_not_authorized" => StatusCodes.Status403Forbidden,
             "forgot_clock_opinion_not_authorized" => StatusCodes.Status403Forbidden,
