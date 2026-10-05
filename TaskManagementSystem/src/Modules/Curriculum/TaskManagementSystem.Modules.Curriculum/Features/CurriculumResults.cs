@@ -180,3 +180,23 @@ public sealed record YearTreeSubjectGroupResult(
     IReadOnlyList<YearTreeSubjectResult> Subjects);
 
 public sealed record YearTreeSubjectResult(int Id, string Name, string Description, SubjectStatus Status);
+
+public sealed record SubjectOutlineResult(IReadOnlyList<SubjectOutlineUnitResult> Units);
+
+public sealed record SubjectOutlineUnitResult(
+    int Id,
+    string Name,
+    IReadOnlyList<SubjectOutlineLessonResult> Lessons);
+
+public sealed record SubjectOutlineLessonResult(
+    int Id,
+    string Name,
+    IReadOnlyList<SubjectOutlineLearningObjectiveResult> LearningObjectives);
+
+public sealed record SubjectOutlineLearningObjectiveResult(
+    int Id,
+    string Name,
+    string Tag,
+    string Template,
+    string Environment,
+    int LessonId);

@@ -14,6 +14,7 @@ public static class SubjectEndpoints
         AssignSubjectUsersEndpoint.Map(subjects);
         UnassignSubjectUsersEndpoint.Map(subjects);
         ListUnitsBySubjectEndpoint.Map(subjects);
+        GetSubjectOutlineEndpoint.Map(subjects);
         CreateUnitEndpoint.Map(subjects);
         return group;
     }

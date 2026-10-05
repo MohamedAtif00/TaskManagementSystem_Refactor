@@ -323,3 +323,32 @@ public sealed class SubjectCatalogFilterOptionsResponse
     public IReadOnlyList<string> Years { get; set; } = [];
     public IReadOnlyList<string> Terms { get; set; } = [];
 }
+
+public sealed class SubjectOutlineResponse
+{
+    public IReadOnlyList<SubjectOutlineUnitResponse> Units { get; set; } = [];
+}
+
+public sealed class SubjectOutlineUnitResponse
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public IReadOnlyList<SubjectOutlineLessonResponse> Lessons { get; set; } = [];
+}
+
+public sealed class SubjectOutlineLessonResponse
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public IReadOnlyList<SubjectOutlineLearningObjectiveResponse> LearningObjectives { get; set; } = [];
+}
+
+public sealed class SubjectOutlineLearningObjectiveResponse
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Tag { get; set; } = string.Empty;
+    public string Template { get; set; } = string.Empty;
+    public string Environment { get; set; } = string.Empty;
+    public int LessonId { get; set; }
+}
