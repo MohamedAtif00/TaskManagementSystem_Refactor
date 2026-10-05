@@ -24,7 +24,8 @@ internal static class TicketListQueryBuilder
         t.[Flagged],
         t.[IsRollback],
         t.[RollbackCount],
-        lo.[Name] AS LearningObjectiveName
+        lo.[Name] AS LearningObjectiveName,
+        au.[Name] AS UserName
         """;
 
     public static void AppendFilters(

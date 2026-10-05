@@ -41,11 +41,16 @@ public sealed class TicketStatsQueries(ISqlConnectionFactory connectionFactory)
                 t.[Status],
                 t.[UserId],
                 t.[LearningObjectiveId],
-                u.[SubjectId]
+                u.[SubjectId],
+                t.[Name],
+                s.[Name] AS SubjectName,
+                lo.[Name] AS LearningObjectiveName,
+                l.[Name] AS LessonName
             FROM [ticket].[Tickets] t
             INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
             INNER JOIN [curriculum].[Lessons] l ON lo.[LessonId] = l.[Id]
             INNER JOIN [curriculum].[Units] u ON l.[UnitId] = u.[Id]
+            INNER JOIN [curriculum].[Subjects] s ON s.[Id] = u.[SubjectId]
             {ticketFilters}
             """;
 

@@ -9,7 +9,11 @@ public sealed record TicketStatsItemResult(
     int Status,
     int? UserId,
     int LearningObjectiveId,
-    int SubjectId);
+    int SubjectId,
+    string Name,
+    string SubjectName,
+    string LearningObjectiveName,
+    string LessonName);
 
 public sealed record TicketStatsLoResult(int Id, int SubjectId);
 

@@ -39,6 +39,7 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
             INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
             INNER JOIN [curriculum].[Lessons] l ON lo.[LessonId] = l.[Id]
             INNER JOIN [curriculum].[Units] u ON l.[UnitId] = u.[Id]
+            LEFT JOIN [identity].[Users] au ON au.[Id] = t.[UserId]
             """;
 
         var sql = $"""
@@ -70,6 +71,51 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
             totalCount));
     }
 
+    public async Task<IReadOnlyList<TicketSheetItemResult>> ListSheetBySubjectAsync(
+        int subjectId,
+        CancellationToken cancellationToken = default)
+    {
+        var parameters = new DynamicParameters();
+        parameters.Add("SubjectId", subjectId);
+        const string sql = """
+            SELECT
+                t.[Id],
+                t.[Name],
+                t.[Status],
+                t.[LearningObjectiveId],
+                t.[UserId],
+                au.[Name] AS UserName,
+                t.[Flagged],
+                t.[Pause],
+                t.[IsRollback]
+            FROM [ticket].[Tickets] t
+            INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
+            INNER JOIN [curriculum].[Lessons] l ON lo.[LessonId] = l.[Id]
+            INNER JOIN [curriculum].[Units] u ON l.[UnitId] = u.[Id]
+            LEFT JOIN [identity].[Users] au ON au.[Id] = t.[UserId]
+            WHERE u.[SubjectId] = @SubjectId
+              AND t.[Archived] = 0
+              AND lo.[Archived] = 0
+            ORDER BY t.[CreatedAt] DESC, t.[Id] DESC
+            """;
+
+        using var connection = connectionFactory.GetOpenConnection();
+        var rows = (await connection.QueryAsync<SheetRow>(
+            new CommandDefinition(sql, parameters, cancellationToken: cancellationToken))).AsList();
+        return rows
+            .Select(row => new TicketSheetItemResult(
+                row.Id,
+                row.Name,
+                row.Status,
+                row.LearningObjectiveId,
+                row.UserId,
+                row.UserName,
+                row.Flagged,
+                row.Pause,
+                row.IsRollback))
+            .ToArray();
+    }
+
     public async Task<IReadOnlyList<TicketAssignmentLinkResult>> ListAssignmentLinksAsync(
         int subjectId,
         CancellationToken cancellationToken = default)
@@ -97,6 +143,17 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
 
     internal sealed record AssignmentLinkRow(int? UserId, int LearningObjectiveId);
 
+    internal sealed record SheetRow(
+        int Id,
+        string Name,
+        DomainTicketStatus Status,
+        int LearningObjectiveId,
+        int? UserId,
+        string? UserName,
+        bool Flagged,
+        bool Pause,
+        bool IsRollback);
+
     internal sealed record TicketRow(
         int Id,
         string Name,
@@ -113,5 +170,6 @@ public sealed class SubjectTicketsQueries(ISqlConnectionFactory connectionFactor
         bool Flagged,
         bool IsRollback,
         int RollbackCount,
-        string LearningObjectiveName);
+        string LearningObjectiveName,
+        string? UserName);
 }

@@ -34,6 +34,7 @@ public sealed class LearningObjectiveTicketsQueries(ISqlConnectionFactory connec
         var fromSql = """
             FROM [ticket].[Tickets] t
             INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
+            LEFT JOIN [identity].[Users] au ON au.[Id] = t.[UserId]
             """;
 
         var sql = $"""
@@ -81,5 +82,6 @@ public sealed class LearningObjectiveTicketsQueries(ISqlConnectionFactory connec
         bool Flagged,
         bool IsRollback,
         int RollbackCount,
-        string LearningObjectiveName);
+        string LearningObjectiveName,
+        string? UserName);
 }

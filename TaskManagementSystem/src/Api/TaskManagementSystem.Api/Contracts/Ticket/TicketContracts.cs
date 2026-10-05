@@ -39,12 +39,26 @@ public sealed class TicketListItemResponse
     public LearningObjectiveSummaryResponse? LearningObjective { get; set; }
     public int? StepId { get; set; }
     public int? UserId { get; set; }
+    public string? UserName { get; set; }
     public int? TeamId { get; set; }
     public bool Pause { get; set; }
     public bool Attention { get; set; }
     public bool Flagged { get; set; }
     public bool IsRollback { get; set; }
     public int RollbackCount { get; set; }
+}
+
+public sealed class TicketSheetItemResponse
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public DomainTicketStatus Status { get; set; }
+    public int LearningObjectiveId { get; set; }
+    public int? UserId { get; set; }
+    public string? UserName { get; set; }
+    public bool Flagged { get; set; }
+    public bool Pause { get; set; }
+    public bool IsRollback { get; set; }
 }
 
 public sealed class TicketListPageResponse
@@ -62,6 +76,10 @@ public sealed class TicketStatsTicketResponse
     public int? UserId { get; set; }
     public int LearningObjectiveId { get; set; }
     public int SubjectId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string SubjectName { get; set; } = string.Empty;
+    public string LearningObjectiveName { get; set; } = string.Empty;
+    public string LessonName { get; set; } = string.Empty;
 }
 
 public sealed class TicketStatsLearningObjectiveResponse

@@ -16,6 +16,7 @@ public static class TicketEndpoints
         TicketWorkTimeEndpoints.Map(group);
 
         ListTicketsBySubjectEndpoint.Map(app);
+        ListSubjectTicketSheetEndpoint.Map(app);
         ListSubjectAssignmentLinksEndpoint.Map(app);
         ListTicketsByLearningObjectiveEndpoint.Map(app);
         ListTicketsByLearningObjectivePagedEndpoint.Map(app);

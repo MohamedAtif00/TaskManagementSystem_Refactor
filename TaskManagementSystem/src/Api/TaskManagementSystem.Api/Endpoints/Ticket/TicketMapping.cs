@@ -24,6 +24,7 @@ internal static class TicketMapping
                 },
             StepId = ticket.StepId,
             UserId = ticket.UserId,
+            UserName = ticket.UserName,
             TeamId = ticket.TeamId,
             Pause = ticket.Pause,
             Attention = ticket.Attention,

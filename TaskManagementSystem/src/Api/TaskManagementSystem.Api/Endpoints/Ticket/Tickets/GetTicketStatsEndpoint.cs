@@ -34,7 +34,11 @@ public static class GetTicketStatsEndpoint
                         Status = ticket.Status,
                         UserId = ticket.UserId,
                         LearningObjectiveId = ticket.LearningObjectiveId,
-                        SubjectId = ticket.SubjectId
+                        SubjectId = ticket.SubjectId,
+                        Name = ticket.Name,
+                        SubjectName = ticket.SubjectName,
+                        LearningObjectiveName = ticket.LearningObjectiveName,
+                        LessonName = ticket.LessonName
                     })
                     .ToList(),
                 LearningObjectives = stats.LearningObjectives
