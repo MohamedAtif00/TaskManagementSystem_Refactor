@@ -64,7 +64,7 @@
     }
   ],
   "workflow": [
-    "0. Local SQL Server: run DatabaseMigrator on Scripts/Migrations/, then ./scripts/seed-database.ps1 (creates TST001). Start API on http://localhost:61173.",
+    "0. Local SQL Server: run DatabaseMigrator on Scripts/Migrations/, then ./scripts/seed-database.ps1 (creates TST001). Start API on http://localhost:5100.",
     "1. Import openapi/tms-openapi.json into Apidog (full API — all 8 modules).",
     "2. Import environment.local-dev.json (Environment Management → … → Import).",
     "3. Select environment 'TMS Local Dev'.",

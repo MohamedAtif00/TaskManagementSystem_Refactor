@@ -21,7 +21,7 @@
     },
     {
       "key": "baseUrl",
-      "value": "http://localhost:61173",
+      "value": "http://localhost:5100",
       "type": "default",
       "enabled": true
     },

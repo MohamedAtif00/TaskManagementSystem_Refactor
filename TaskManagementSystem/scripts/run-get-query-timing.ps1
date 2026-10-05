@@ -1,8 +1,8 @@
 # Runs all GET endpoints from tms-openapi.json against a live API and reports timing.
-# Usage: ./scripts/run-get-query-timing.ps1 [-BaseUrl http://localhost:61173] [-UserCode TST001]
+# Usage: ./scripts/run-get-query-timing.ps1 [-BaseUrl http://localhost:5100] [-UserCode TST001]
 
 param(
-    [string]$BaseUrl = "http://localhost:61173",
+    [string]$BaseUrl = "http://localhost:5100",
     [string]$UserCode = "TST001"
 )
 

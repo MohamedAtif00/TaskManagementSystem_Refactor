@@ -49,7 +49,7 @@ if ($Target -in @('scenario', 'all')) {
 
 Write-ImportStep 3 "Select environment before running"
 Write-Host "   Choose 'TMS Local Dev' in the test scenario run panel."
-Write-Host "   Ensure API is running at http://localhost:61173 and TST001 is seeded."
+Write-Host "   Ensure API is running at http://localhost:5100 and TST001 is seeded."
 
 Write-ImportStep 4 "Run"
 Write-Host "   Open the imported scenario and click Run."

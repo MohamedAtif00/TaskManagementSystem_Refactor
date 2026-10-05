@@ -79,8 +79,8 @@ public static class AuthenticationExtensions
                 "http://localhost:8081",
                 "https://localhost",
                 "https://localhost:443",
-                "https://localhost:61172",
-                "http://localhost:61173",
+                "https://localhost:7100",
+                "http://localhost:5100",
                 "https://ats.stp.local"
             ];
 

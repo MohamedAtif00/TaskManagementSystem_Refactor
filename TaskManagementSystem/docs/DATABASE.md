@@ -210,7 +210,7 @@ Scripts live under `Scripts/Seeds/heavy-load/` (not in the migration journal). A
 After seeding, verify counts in the script output, then re-run GET timing:
 
 ```powershell
-./scripts/run-get-query-timing.ps1 -BaseUrl http://localhost:61173
+./scripts/run-get-query-timing.ps1 -BaseUrl http://localhost:5100
 ```
 
 Clear only (no re-seed): run `002_ClearHeavyLoad.sql` manually or use `-Clear` without re-running seed (the `-Clear` flag runs clear before seed in `seed-heavy-load.ps1`).
