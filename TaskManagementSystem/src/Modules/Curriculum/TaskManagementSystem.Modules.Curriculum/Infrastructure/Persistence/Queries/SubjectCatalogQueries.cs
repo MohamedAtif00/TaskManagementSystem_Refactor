@@ -154,6 +154,28 @@ public sealed class SubjectCatalogQueries(ISqlConnectionFactory connectionFactor
                 row.ProgressPercent)).ToList());
     }
 
+    public async Task<IReadOnlyList<SubjectNameResult>> ListNamesAsync(
+        bool activeOnly,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT s.[Id], s.[Name]
+            FROM [curriculum].[Subjects] s
+            WHERE s.[Archived] = 0
+              AND (@ActiveOnly = 0 OR s.[Status] = @ActiveStatus)
+            ORDER BY s.[Name]
+            """;
+
+        var parameters = new DynamicParameters();
+        parameters.Add("ActiveOnly", activeOnly ? 1 : 0);
+        parameters.Add("ActiveStatus", (int)SubjectStatus.Active);
+
+        using var connection = connectionFactory.GetOpenConnection();
+        var rows = await connection.QueryAsync<SubjectNameRow>(
+            new CommandDefinition(sql, parameters, cancellationToken: cancellationToken));
+        return rows.Select(row => new SubjectNameResult(row.Id, row.Name)).ToList();
+    }
+
     public async Task<SubjectCatalogFilterOptionsResult> GetFilterOptionsAsync(
         CancellationToken cancellationToken = default)
     {
@@ -189,6 +211,12 @@ public sealed class SubjectCatalogQueries(ISqlConnectionFactory connectionFactor
         parameters.Add("Term", string.IsNullOrWhiteSpace(term) ? null : term.Trim());
         parameters.Add("ActiveOnly", activeOnly ? 1 : 0);
         parameters.Add("ActiveStatus", (int)SubjectStatus.Active);
+    }
+
+    private sealed class SubjectNameRow
+    {
+        public int Id { get; init; }
+        public string Name { get; init; } = string.Empty;
     }
 
     private sealed class SubjectCatalogRow

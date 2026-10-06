@@ -69,6 +69,8 @@ public sealed record SubjectCatalogFilterOptionsResult(
     IReadOnlyList<string> Years,
     IReadOnlyList<string> Terms);
 
+public sealed record SubjectNameResult(int Id, string Name);
+
 public sealed record SubjectDetailResult(
     int Id,
     string Name,

@@ -13,6 +13,7 @@ public static class ListSubjectsPagedEndpoint
     public static RouteGroupBuilder Map(RouteGroupBuilder subjects)
     {
         subjects.MapGet("", HandleAsync).RequirePermissionCode(PermissionCodes.Curriculum.Read);
+        subjects.MapGet("/names", HandleNamesAsync).RequirePermissionCode(PermissionCodes.Curriculum.Read);
         subjects.MapGet("/filter-options", HandleFilterOptionsAsync).RequirePermissionCode(PermissionCodes.Curriculum.Read);
         subjects.MapGet("/export", HandleExportAsync).RequirePermissionCode(PermissionCodes.Curriculum.Read);
         return subjects;
@@ -39,6 +40,15 @@ public static class ListSubjectsPagedEndpoint
             PageSize = page.PageSize,
             TotalCount = page.TotalCount
         }));
+    }
+
+    private static async Task<IResult> HandleNamesAsync(
+        IMediator mediator,
+        bool activeOnly = true,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await mediator.Send(new ListSubjectNamesQuery(activeOnly), cancellationToken);
+        return result.ToHttpResult(names => Results.Ok(names));
     }
 
     private static async Task<IResult> HandleFilterOptionsAsync(
