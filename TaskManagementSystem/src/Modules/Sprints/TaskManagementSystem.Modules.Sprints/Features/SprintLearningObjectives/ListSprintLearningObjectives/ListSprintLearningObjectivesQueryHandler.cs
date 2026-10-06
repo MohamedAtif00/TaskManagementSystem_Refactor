@@ -5,7 +5,9 @@ using TaskManagementSystem.Modules.Sprints.Application;
 
 namespace TaskManagementSystem.Modules.Sprints.Features.SprintLearningObjectives.ListSprintLearningObjectives;
 
-public sealed class ListSprintLearningObjectivesQueryHandler(ISprintsUnitOfWork unitOfWork)
+public sealed class ListSprintLearningObjectivesQueryHandler(
+    ISprintsUnitOfWork unitOfWork,
+    ILearningObjectiveLookup learningObjectiveLookup)
     : IRequestHandler<ListSprintLearningObjectivesQuery, Result<IReadOnlyList<int>>>
 {
     public async Task<Result<IReadOnlyList<int>>> Handle(
@@ -19,8 +21,9 @@ public sealed class ListSprintLearningObjectivesQueryHandler(ISprintsUnitOfWork 
 
         var learningObjectiveIds = await unitOfWork.SprintLearningObjectives
             .ListLearningObjectiveIdsBySprintIdAsync(request.SprintId, cancellationToken);
+        var activeIds = (await learningObjectiveLookup.ListActiveIdsAsync(learningObjectiveIds, cancellationToken)).ToHashSet();
 
-        return Result.Ok<IReadOnlyList<int>>(learningObjectiveIds);
+        return Result.Ok<IReadOnlyList<int>>(learningObjectiveIds.Where(activeIds.Contains).ToArray());
     }
 }
 

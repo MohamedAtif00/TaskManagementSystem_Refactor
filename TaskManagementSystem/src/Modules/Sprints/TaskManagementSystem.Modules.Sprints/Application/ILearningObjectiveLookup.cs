@@ -5,4 +5,8 @@ public interface ILearningObjectiveLookup
     Task<bool> ActiveLearningObjectivesExistAsync(
         IReadOnlyCollection<int> learningObjectiveIds,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<int>> ListActiveIdsAsync(
+        IReadOnlyCollection<int> learningObjectiveIds,
+        CancellationToken cancellationToken = default);
 }

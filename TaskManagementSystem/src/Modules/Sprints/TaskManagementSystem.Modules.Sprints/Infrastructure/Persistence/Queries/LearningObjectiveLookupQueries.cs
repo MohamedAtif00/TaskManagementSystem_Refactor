@@ -31,4 +31,29 @@ public sealed class LearningObjectiveLookupQueries(ISqlConnectionFactory connect
 
         return count == learningObjectiveIds.Distinct().Count();
     }
+
+    public async Task<IReadOnlyList<int>> ListActiveIdsAsync(
+        IReadOnlyCollection<int> learningObjectiveIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (learningObjectiveIds.Count == 0)
+        {
+            return [];
+        }
+
+        const string sql = """
+            SELECT [Id]
+            FROM [curriculum].[LearningObjectives]
+            WHERE [Archived] = 0 AND [Id] IN @LearningObjectiveIds
+            """;
+
+        using var connection = connectionFactory.GetOpenConnection();
+        var ids = await connection.QueryAsync<int>(
+            new CommandDefinition(
+                sql,
+                new { LearningObjectiveIds = learningObjectiveIds.Distinct().ToArray() },
+                cancellationToken: cancellationToken));
+
+        return ids.ToArray();
+    }
 }

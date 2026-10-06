@@ -30,6 +30,7 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
         var where = new StringBuilder("""
             WHERE slo.[SprintId] = @SprintId
               AND t.[Archived] = 0
+              AND lo.[Archived] = 0
             """);
         TicketListQueryBuilder.AppendFilters(where, parameters, filter);
 
@@ -79,8 +80,10 @@ public sealed class SprintTicketsQueries(ISqlConnectionFactory connectionFactory
             SELECT DISTINCT t.[UserId], t.[LearningObjectiveId]
             FROM [ticket].[Tickets] t
             INNER JOIN [sprints].[SprintLearningObjectives] slo ON t.[LearningObjectiveId] = slo.[LearningObjectiveId]
+            INNER JOIN [curriculum].[LearningObjectives] lo ON t.[LearningObjectiveId] = lo.[Id]
             WHERE slo.[SprintId] = @SprintId
               AND t.[Archived] = 0
+              AND lo.[Archived] = 0
             """;
 
         using var connection = connectionFactory.GetOpenConnection();

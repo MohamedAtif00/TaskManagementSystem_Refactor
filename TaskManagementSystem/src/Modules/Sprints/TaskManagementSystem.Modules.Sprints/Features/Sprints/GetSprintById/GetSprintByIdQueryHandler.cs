@@ -5,7 +5,9 @@ using TaskManagementSystem.Modules.Sprints.Application;
 
 namespace TaskManagementSystem.Modules.Sprints.Features.Sprints.GetSprintById;
 
-public sealed class GetSprintByIdQueryHandler(ISprintsUnitOfWork unitOfWork)
+public sealed class GetSprintByIdQueryHandler(
+    ISprintsUnitOfWork unitOfWork,
+    ILearningObjectiveLookup learningObjectiveLookup)
     : IRequestHandler<GetSprintByIdQuery, Result<SprintDetailResult>>
 {
     public async Task<Result<SprintDetailResult>> Handle(GetSprintByIdQuery request, CancellationToken cancellationToken)
@@ -18,8 +20,17 @@ public sealed class GetSprintByIdQueryHandler(ISprintsUnitOfWork unitOfWork)
 
         var learningObjectiveIds = await unitOfWork.SprintLearningObjectives
             .ListLearningObjectiveIdsBySprintIdAsync(request.Id, cancellationToken);
+        var visibleIds = await ActiveIdsAsync(learningObjectiveIds, cancellationToken);
 
-        return Result.Ok(SprintDetailResult.From(sprint, learningObjectiveIds));
+        return Result.Ok(SprintDetailResult.From(sprint, visibleIds));
+    }
+
+    private async Task<IReadOnlyList<int>> ActiveIdsAsync(
+        IReadOnlyList<int> learningObjectiveIds,
+        CancellationToken cancellationToken)
+    {
+        var activeIds = (await learningObjectiveLookup.ListActiveIdsAsync(learningObjectiveIds, cancellationToken)).ToHashSet();
+        return learningObjectiveIds.Where(activeIds.Contains).ToArray();
     }
 }
 
