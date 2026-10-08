@@ -9,14 +9,15 @@
     - Skips: RefreshTokens, SSRS report tables, Years, legacy Teams, Groups.ColorCode.
     - Keeps: identity RBAC catalog, hr.PublicHolidays, app.MigrationsJournal.
 
-    Run on local SQL Server with both databases present:
-      sqlcmd -S . -E -C -I -v SourceDb=SystemAdminDB_Test_v2 -i 001_ImportLegacy.sql
+    Run on the SQL Server that holds both databases:
+      sqlcmd -S . -E -C -I -v SourceDb=SystemAdminDB_Test_v4 -v TargetDb=SystemAdminDB_Test_v5 -i 001_ImportLegacy.sql
 
-    Override the source database name with -v SourceDb=YourLegacyDb
+    Override either name with -v SourceDb=YourLegacyDb -v TargetDb=YourNewDb
 
     The -I flag is required (SET QUOTED_IDENTIFIER ON) for filtered indexes on ticket.Comments.
 */
-:setvar SourceDb "SystemAdminDB_Test_v2"
+:setvar SourceDb "SystemAdminDB_Test_v4"
+:setvar TargetDb "TaskManagementSystem"
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 SET QUOTED_IDENTIFIER ON;
@@ -27,12 +28,18 @@ SET CONCAT_NULL_YIELDS_NULL ON;
 SET ARITHABORT ON;
 SET NUMERIC_ROUNDABORT OFF;
 
-USE [TaskManagementSystem];
+USE [$(TargetDb)];
 GO
 
 SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 GO
+
+IF N'$(SourceDb)' = N'$(TargetDb)'
+BEGIN
+    RAISERROR(N'Source and target database must be different.', 16, 1);
+    RETURN;
+END;
 
 IF DB_ID(N'$(SourceDb)') IS NULL
 BEGIN

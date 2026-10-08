@@ -11,9 +11,13 @@
     <Compile Remove="**/*" />
     <Compile Include="Placeholder.cs" />
     <Compile Include="SqlScriptSeeder.cs" />
+    <Compile Include="DatabaseSchemaMigrator.cs" />
+    <Compile Include="DatabaseStartupLog.cs" />
+    <Compile Include="DatabaseVersionBootstrap.cs" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="dbup-sqlserver" Version="6.0.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.1" />
   </ItemGroup>
 

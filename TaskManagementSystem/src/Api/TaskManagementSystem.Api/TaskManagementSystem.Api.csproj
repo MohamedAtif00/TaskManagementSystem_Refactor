@@ -1,4 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <UseAppHost>true</UseAppHost>
+  </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="TaskManagementSystem.Api.IntegrationTests" />
   </ItemGroup>
@@ -17,6 +20,17 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.14.0" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="..\..\Database\TaskManagementSystem.Database\Scripts\Migrations\**\*.sql">
+      <Link>DatabaseScripts\Migrations\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\Database\TaskManagementSystem.Database\Scripts\DataMigration\001_ImportLegacy.sql">
+      <Link>DatabaseScripts\DataMigration\001_ImportLegacy.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Database\TaskManagementSystem.Database\TaskManagementSystem.Database.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\TaskManagementSystem.BuildingBlocks\TaskManagementSystem.BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\TaskManagementSystem.BuildingBlocks.Persistence\TaskManagementSystem.BuildingBlocks.Persistence.csproj" />
     <ProjectReference Include="..\..\BuildingBlocks\TaskManagementSystem.IntegrationEvents\TaskManagementSystem.IntegrationEvents.csproj" />
@@ -30,4 +44,16 @@
     <ProjectReference Include="..\..\Modules\Ticket\TaskManagementSystem.Modules.Ticket\TaskManagementSystem.Modules.Ticket.csproj" />
     <ProjectReference Include="..\..\Modules\Workflows\TaskManagementSystem.Modules.Workflows\TaskManagementSystem.Modules.Workflows.csproj" />
   </ItemGroup>
+  <Target Name="CreatePublishLogsFolder" AfterTargets="Publish">
+    <MakeDir Directories="$(PublishDir)logs" />
+  </Target>
+  <Target Name="UseWindowsSqlClient" AfterTargets="Publish">
+    <PropertyGroup>
+      <_WindowsSqlClient>$(PublishDir)runtimes\win\lib\net9.0\Microsoft.Data.SqlClient.dll</_WindowsSqlClient>
+      <_WindowsSqlClientSni>$(PublishDir)runtimes\win-x64\native\Microsoft.Data.SqlClient.SNI.dll</_WindowsSqlClientSni>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(_WindowsSqlClient)')" Text="The Windows Microsoft.Data.SqlClient.dll was not included in the publish output." />
+    <Copy SourceFiles="$(_WindowsSqlClient)" DestinationFiles="$(PublishDir)Microsoft.Data.SqlClient.dll" OverwriteReadOnlyFiles="true" />
+    <Copy SourceFiles="$(_WindowsSqlClientSni)" DestinationFiles="$(PublishDir)Microsoft.Data.SqlClient.SNI.dll" OverwriteReadOnlyFiles="true" Condition="Exists('$(_WindowsSqlClientSni)')" />
+  </Target>
 </Project>

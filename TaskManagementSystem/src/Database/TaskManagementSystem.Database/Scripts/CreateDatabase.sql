@@ -1,5 +1,6 @@
-IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = N'TaskManagementSystem')
+:setvar TargetDb TaskManagementSystem
+IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = N'$(TargetDb)')
 BEGIN
-    CREATE DATABASE [TaskManagementSystem];
+    CREATE DATABASE [$(TargetDb)];
 END
 GO

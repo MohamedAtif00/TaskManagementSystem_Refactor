@@ -22,6 +22,9 @@ function Get-DatabaseName([string]$ConnectionString) {
 }
 
 $dbName = Get-DatabaseName $ConnectionString
+if ($dbName -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') {
+    throw "Database name '$dbName' contains unsupported characters."
+}
 if (-not $AllowAnyDatabase -and $dbName -notmatch 'TaskManagementSystem|TmsTests_') {
     throw "Refusing to migrate database '$dbName'. Pass -AllowAnyDatabase to override."
 }
@@ -45,7 +48,7 @@ if (-not (Test-Path $migrationsPath)) {
 
 Write-Host "Ensuring database exists..."
 $builder = New-Object System.Data.SqlClient.SqlConnectionStringBuilder $ConnectionString
-$sqlcmdArgs = @("-S", $builder.DataSource, "-C", "-i", $createDbScript)
+$sqlcmdArgs = @("-S", $builder.DataSource, "-C", "-v", "TargetDb=$dbName", "-i", $createDbScript)
 if ($builder.IntegratedSecurity) { $sqlcmdArgs = @("-E") + $sqlcmdArgs }
 elseif ($builder.UserID) { $sqlcmdArgs = @("-U", $builder.UserID, "-P", $builder.Password) + $sqlcmdArgs }
 sqlcmd @sqlcmdArgs | Out-Null

@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using TaskManagementSystem.Api.Infrastructure;
 using TaskManagementSystem.BuildingBlocks.Application.Data;
 using TaskManagementSystem.BuildingBlocks.Persistence.Data;
 using Microsoft.IdentityModel.Tokens;
@@ -27,6 +28,11 @@ namespace TaskManagementSystem.TestCommon.Integration;
 public sealed class TmsWebApplicationFactory : WebApplicationFactory<Program>
 {
     public const string TestJwtSigningKey = "TaskManagementSystemTestSigningKeyMustBe32Chars!";
+
+    public TmsWebApplicationFactory()
+    {
+        DatabaseVersioning.Enabled = false;
+    }
     private readonly string _databaseName = $"TmsTests_{Guid.NewGuid():N}";
     private readonly SemaphoreSlim _seedLock = new(1, 1);
     private bool _databaseInitialized;

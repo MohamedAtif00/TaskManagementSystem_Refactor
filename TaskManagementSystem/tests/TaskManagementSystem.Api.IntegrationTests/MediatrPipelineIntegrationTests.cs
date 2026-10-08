@@ -1,4 +1,5 @@
 using FluentAssertions;
+using TaskManagementSystem.Api.Infrastructure;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Hosting;
@@ -56,6 +57,11 @@ public sealed class MediatrPipelineIntegrationTests : IClassFixture<MediatrPipel
 
 public sealed class MediatrPipelineWebApplicationFactory : WebApplicationFactory<Program>
 {
+    public MediatrPipelineWebApplicationFactory()
+    {
+        DatabaseVersioning.Enabled = false;
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
